@@ -55,7 +55,7 @@ public:
                 }
                 m_mutex.unlock();
 
-                if (m_should_stop.wait_for(std::chrono::milliseconds(1)) == std::future_status::ready)
+                if (m_should_stop.wait_for(std::chrono::milliseconds(10)) == std::future_status::ready)
                     return -2;
             }
         }

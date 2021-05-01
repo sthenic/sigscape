@@ -45,7 +45,7 @@ private:
 
     void NoisySine(struct TimeDomainRecord &record, size_t nof_samples);
     int AllocateRecord(struct TimeDomainRecord *&record, size_t nof_samples);
-    int AllocateOrReuseRecord(struct TimeDomainRecord *&record, size_t nof_samples);
+    int ReuseOrAllocateRecord(struct TimeDomainRecord *&record, size_t nof_samples);
     int AllocateNoisySine(struct TimeDomainRecord *&record, size_t nof_samples);
     void MainLoop(std::future<void> stop);
     void FreeBuffers();

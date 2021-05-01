@@ -42,7 +42,7 @@ private:
 
     int AllocateRecord(struct FrequencyDomainRecord *&record, size_t nof_samples);
     /* Swap order -> ReuseOrAllocate */
-    int AllocateOrReuseRecord(struct FrequencyDomainRecord *&record, size_t nof_samples);
+    int ReuseOrAllocateRecord(struct FrequencyDomainRecord *&record, size_t nof_samples);
     void MainLoop(std::future<void> stop);
     void FreeBuffers();
 

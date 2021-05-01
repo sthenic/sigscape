@@ -112,7 +112,7 @@ int Processing::AllocateRecord(struct FrequencyDomainRecord *&record, size_t nof
     return 0;
 }
 
-int Processing::AllocateOrReuseRecord(struct FrequencyDomainRecord *&record, size_t nof_samples)
+int Processing::ReuseOrAllocateRecord(struct FrequencyDomainRecord *&record, size_t nof_samples)
 {
     /* We prioritize reusing existing memory over allocating new. */
     if (m_write_queue.Read(record, 0) == 0)
@@ -154,7 +154,7 @@ void Processing::MainLoop(std::future<void> stop)
 
         /* Compute FFT */
         struct FrequencyDomainRecord *frequency_domain = NULL;
-        result = AllocateOrReuseRecord(frequency_domain, FFT_SIZE);
+        result = ReuseOrAllocateRecord(frequency_domain, FFT_SIZE);
         if (result != 0)
         {
             if (result == -2) /* Convert forced queue stop into an ok. */

@@ -125,7 +125,7 @@ int SimulatedDataAcquisition::AllocateRecord(struct TimeDomainRecord *&record, s
     return 0;
 }
 
-int SimulatedDataAcquisition::AllocateOrReuseRecord(struct TimeDomainRecord *&record, size_t nof_samples)
+int SimulatedDataAcquisition::ReuseOrAllocateRecord(struct TimeDomainRecord *&record, size_t nof_samples)
 {
     /* We prioritize reusing existing memory over allocating new. */
     if (m_write_queue.Read(record, 0) == 0)
@@ -147,7 +147,7 @@ int SimulatedDataAcquisition::AllocateOrReuseRecord(struct TimeDomainRecord *&re
 
 int SimulatedDataAcquisition::AllocateNoisySine(struct TimeDomainRecord *&record, size_t nof_samples)
 {
-    int result = AllocateOrReuseRecord(record, nof_samples);
+    int result = ReuseOrAllocateRecord(record, nof_samples);
     if (result != 0)
         return result;
     NoisySine(*record, nof_samples);

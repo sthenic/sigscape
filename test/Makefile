@@ -26,6 +26,7 @@ LDFLAGS += \
 	-lCppUTest
 
 INCLUDE_DIRS = \
+	../simple_fft \
 	../include \
 	../../cJSON
 
@@ -34,8 +35,10 @@ CXXFLAGS += \
 
 SOURCES = \
 	src/simulated_data_acquisition.cpp \
+	src/processing.cpp \
 	tthread_safe_queue.cpp \
 	tsimulated_data_acquisition.cpp \
+	tprocessing.cpp \
 	main.cpp
 
 OBJECTS = $(patsubst %,$(BUILDDIR)/%,$(SOURCES:.cpp=.o))

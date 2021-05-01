@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <complex>
 
 enum RecordId
 {
@@ -37,6 +38,7 @@ struct FrequencyDomainRecord
     enum RecordId id;
     double *x;
     double *y;
+    std::complex<double> *yc;
     struct FrequencyDomainRecordHeader header;
     size_t capacity;
 };

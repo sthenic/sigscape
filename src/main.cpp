@@ -3,15 +3,13 @@
 #include "imgui.h"
 #include "implot.h"
 
-#include "fft.h"
-#include "fft_settings.h"
+#include "simulated_data_acquisition.h"
+#include "processing.h"
 
 #include "GL/gl3w.h"
 #include <GLFW/glfw3.h>
 
-#include <cmath>
-#include <cstdio>
-#include <random>
+#include <cstring>
 
 static char text[1024 * 16] =
     "{\n"
@@ -69,34 +67,6 @@ static void glfw_error_callback(int error, const char *description)
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
-static void noisy_sine(real_type *x, real_type *y, int len, real_type offset = 0)
-{
-    static std::default_random_engine generator;
-    static std::normal_distribution<real_type> distribution(0.0, 0.1);
-
-    /* Generate a noisy sine wave of the input length. */
-    for (int i = 0; i < len; ++i)
-    {
-        x[i] = (real_type)i / (real_type)len;
-        y[i] = sinf(50 * x[i]) + distribution(generator) + offset;
-    }
-}
-
-static void compute_fft(real_type *y, complex_type *fft, int len)
-{
-    const char *error = NULL;
-    if (!simple_fft::FFT(y, fft, len, error))
-        printf("Error: %s\n", error);
-}
-
-static void process_fft(complex_type *in, real_type *out, int len)
-{
-    for (int i = 0; i < len; ++i)
-        out[i] = 20 * std::log10(std::abs(in[i]) / len);
-}
-
-#define PLOT_SIZE 1024
-
 int main(int, char **)
 {
     glfwSetErrorCallback(glfw_error_callback);
@@ -130,8 +100,17 @@ int main(int, char **)
 
     ImGui::StyleColorsDark();
 
-    bool show_demo_window = true;
-    bool show_plot_demo_window = true;
+    bool show_demo_window = false;
+    bool show_plot_demo_window = false;
+
+    SimulatedDataAcquisition acquisition;
+    Processing processing(acquisition);
+
+    acquisition.Initialize(8192, 30.0);
+    processing.Initialize();
+
+    processing.Start();
+    acquisition.Start();
 
     while (!glfwWindowShouldClose(window))
     {
@@ -170,24 +149,31 @@ int main(int, char **)
 
         float plot_window_height = (display_h - 1 * frame_height) / 2;
 
-        static real_type x[PLOT_SIZE];
-        static real_type y1[PLOT_SIZE];
+        struct Processing::ProcessedRecord *processed_record = NULL;
+        int result = processing.WaitForBuffer(processed_record, 0);
+
         ImGui::SetNextWindowPos(ImVec2(display_w / 2, frame_height));
         ImGui::SetNextWindowSize(ImVec2(display_w / 2, plot_window_height));
         ImGui::Begin("Time Domain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
         if (ImPlot::BeginPlot("Line Plot", "x", "f(x)", ImVec2(-1, -1),
                               ImPlotFlags_AntiAliased | ImPlotFlags_NoLegend | ImPlotFlags_NoTitle))
         {
-            noisy_sine(x, y1, PLOT_SIZE);
-            ImPlot::PlotLine("sin(x)", x, y1, PLOT_SIZE);
+            static double td_x[65536] = {0};
+            static double td_y[65536] = {0};
+            static int count = 0;
+            if (result == 0)
+            {
+                std::memcpy(td_x, processed_record->time_domain->x, processed_record->time_domain->header.record_length * sizeof(double));
+                std::memcpy(td_y, processed_record->time_domain->y, processed_record->time_domain->header.record_length * sizeof(double));
+                count = static_cast<int>(processed_record->time_domain->header.record_length);
+            }
+            ImPlot::PlotLine("sin(x)", td_x, td_y, count);
             ImPlot::EndPlot();
         }
         ImGui::End();
 
         ImGui::SetNextWindowPos(ImVec2(display_w / 2, frame_height + plot_window_height));
         ImGui::SetNextWindowSize(ImVec2(display_w / 2, plot_window_height));
-        static complex_type fft_y[PLOT_SIZE];
-        static real_type fft_y_abs[PLOT_SIZE];
         ImGui::Begin("Frequency Domain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
         ImPlot::SetNextPlotLimitsX(0.0, 0.5);
@@ -196,12 +182,24 @@ int main(int, char **)
                               ImPlotFlags_AntiAliased | ImPlotFlags_NoLegend | ImPlotFlags_NoTitle,
                               ImPlotAxisFlags_None, ImPlotAxisFlags_None))
         {
-            compute_fft(y1, fft_y, PLOT_SIZE);
-            process_fft(fft_y, fft_y_abs, PLOT_SIZE);
-            ImPlot::PlotLine("sin(x)", x, fft_y_abs, PLOT_SIZE / 2);
+            static double fd_x[65536] = {0};
+            static double fd_y[65536] = {0};
+            static int count = 0;
+            if (result == 0)
+            {
+                std::memcpy(fd_x, processed_record->frequency_domain->x, 4096 * sizeof(double));
+                std::memcpy(fd_y, processed_record->frequency_domain->y, 4096 * sizeof(double));
+                count = 4096;
+            }
+            ImPlot::PlotLine("sin(x)", fd_x, fd_y, count);
             ImPlot::EndPlot();
         }
         ImGui::End();
+
+        if (result == 0)
+        {
+            processing.ReturnBuffer(processed_record);
+        }
 
         if (show_demo_window)
             ImGui::ShowDemoWindow(&show_demo_window);
@@ -215,6 +213,10 @@ int main(int, char **)
 
         glfwSwapBuffers(window);
     }
+
+    printf("Stopping\n");
+    processing.Stop();
+    acquisition.Stop();
 
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();

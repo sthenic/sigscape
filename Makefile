@@ -19,6 +19,7 @@ CFLAGS += \
 
 LDFLAGS += \
 	-lGL \
+	-lpthread \
 	`pkg-config --static --libs glfw3`
 
 INCLUDE_DIRS = \
@@ -43,6 +44,8 @@ CXXSOURCES = \
 	imgui/imgui_demo.cpp \
 	imgui/backends/imgui_impl_glfw.cpp \
 	imgui/backends/imgui_impl_opengl3.cpp \
+	src/simulated_data_acquisition.cpp \
+	src/processing.cpp \
 	src/main.cpp
 
 CSOURCES = \

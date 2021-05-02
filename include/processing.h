@@ -38,11 +38,11 @@ private:
 
     std::timed_mutex m_mutex;
     ThreadSafeQueue<struct ProcessedRecord *> m_read_queue;
-    ThreadSafeQueue<struct FrequencyDomainRecord *> m_write_queue;
-    std::vector<struct FrequencyDomainRecord *> m_records;
+    ThreadSafeQueue<struct ProcessedRecord *> m_write_queue;
+    std::vector<struct ProcessedRecord *> m_records;
 
-    int AllocateRecord(struct FrequencyDomainRecord *&record, size_t nof_samples);
-    int ReuseOrAllocateRecord(struct FrequencyDomainRecord *&record, size_t nof_samples);
+    int AllocateRecord(struct ProcessedRecord *&record, size_t nof_samples);
+    int ReuseOrAllocateRecord(struct ProcessedRecord *&record, size_t nof_samples);
     void MainLoop();
     void FreeBuffers();
 

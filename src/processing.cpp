@@ -63,47 +63,57 @@ int Processing::ReturnBuffer(struct ProcessedRecord *buffer)
         printf("Failed to return the time domain record buffer.\n");
     }
 
-    return m_write_queue.Write(buffer->frequency_domain);
+    buffer->time_domain = NULL;
+    return m_write_queue.Write(buffer);
 }
 
-int Processing::AllocateRecord(struct FrequencyDomainRecord *&record, size_t nof_samples)
+int Processing::AllocateRecord(struct ProcessedRecord *&record, size_t nof_samples)
 {
-    record = static_cast<struct FrequencyDomainRecord *>(std::malloc(sizeof(struct FrequencyDomainRecord)));
+    record = static_cast<struct ProcessedRecord *>(std::malloc(sizeof(struct ProcessedRecord)));
     if (record == NULL)
     {
         printf("Failed to allocate a new record.\n");
         return -3;
     }
 
-    record->x = static_cast<double *>(std::malloc(nof_samples * sizeof(double)));
-    if (record->x == NULL)
+    record->time_domain = NULL;
+    record->frequency_domain = static_cast<struct FrequencyDomainRecord *>(std::malloc(sizeof(struct FrequencyDomainRecord)));
+    if (record->frequency_domain == NULL)
+    {
+        printf("Failed to allocate frequency domain memory.\n");
+        std::free(record);
+        return -3;
+    }
+
+    record->frequency_domain->x = static_cast<double *>(std::malloc(nof_samples * sizeof(double)));
+    if (record->frequency_domain->x == NULL)
     {
         printf("Failed to allocate x axis memory.\n");
         std::free(record);
         return -3;
     }
 
-    record->y = static_cast<double *>(std::malloc(nof_samples * sizeof(double)));
-    if (record->y == NULL)
+    record->frequency_domain->y = static_cast<double *>(std::malloc(nof_samples * sizeof(double)));
+    if (record->frequency_domain->y == NULL)
     {
         printf("Failed to allocate y axis memory.\n");
-        std::free(record->x);
+        std::free(record->frequency_domain->x);
         std::free(record);
         return -3;
     }
 
-    record->yc = static_cast<std::complex<double> *>(std::malloc(nof_samples * sizeof(std::complex<double>)));
-    if (record->yc == NULL)
+    record->frequency_domain->yc = static_cast<std::complex<double> *>(std::malloc(nof_samples * sizeof(std::complex<double>)));
+    if (record->frequency_domain->yc == NULL)
     {
         printf("Failed to allocate y axis memory.\n");
-        std::free(record->x);
-        std::free(record->y);
+        std::free(record->frequency_domain->x);
+        std::free(record->frequency_domain->y);
         std::free(record);
         return -3;
     }
 
-    record->id = FREQUENCY_DOMAIN;
-    record->capacity = nof_samples * sizeof(double);
+    record->frequency_domain->id = FREQUENCY_DOMAIN;
+    record->frequency_domain->capacity = nof_samples * sizeof(double);
 
     /* Add a reference to the data storage. */
     m_mutex.lock();
@@ -113,7 +123,7 @@ int Processing::AllocateRecord(struct FrequencyDomainRecord *&record, size_t nof
     return 0;
 }
 
-int Processing::ReuseOrAllocateRecord(struct FrequencyDomainRecord *&record, size_t nof_samples)
+int Processing::ReuseOrAllocateRecord(struct ProcessedRecord *&record, size_t nof_samples)
 {
     /* We prioritize reusing existing memory over allocating new. */
     if (m_write_queue.Read(record, 0) == 0)
@@ -152,8 +162,8 @@ void Processing::MainLoop()
             continue;
 
         /* Compute FFT */
-        struct FrequencyDomainRecord *frequency_domain = NULL;
-        result = ReuseOrAllocateRecord(frequency_domain, FFT_SIZE);
+        struct ProcessedRecord *processed_record = NULL;
+        result = ReuseOrAllocateRecord(processed_record, FFT_SIZE);
         if (result != 0)
         {
             if (result == -2) /* Convert forced queue stop into an ok. */
@@ -162,9 +172,10 @@ void Processing::MainLoop()
                 m_thread_exit_code = result;
             return;
         }
+        processed_record->time_domain = time_domain;
 
         const char *error = NULL;
-        if (!simple_fft::FFT(time_domain->y, frequency_domain->yc, FFT_SIZE, error))
+        if (!simple_fft::FFT(time_domain->y, processed_record->frequency_domain->yc, FFT_SIZE, error))
         {
             printf("Failed to compute FFT: %s.\n", error);
             m_thread_exit_code = -3;
@@ -173,7 +184,12 @@ void Processing::MainLoop()
 
         /* Compute real spectrum. */
         for (int i = 0; i < static_cast<int>(FFT_SIZE); ++i)
-            frequency_domain->y[i] = 20 * std::log10(std::abs(frequency_domain->yc[i]) / FFT_SIZE);
+        {
+            processed_record->frequency_domain->x[i] = static_cast<double>(i) / static_cast<double>(FFT_SIZE);
+            processed_record->frequency_domain->y[i] = 20 * std::log10(std::abs(processed_record->frequency_domain->yc[i]) / FFT_SIZE);
+        }
+
+        m_read_queue.Write(processed_record);
     }
 }
 
@@ -184,12 +200,13 @@ void Processing::FreeBuffers()
     {
         if (*it != NULL)
         {
-            if ((*it)->x != NULL)
-                std::free((*it)->x);
-            if ((*it)->y != NULL)
-                std::free((*it)->y);
-            if ((*it)->yc != NULL)
-                std::free((*it)->yc);
+            if ((*it)->frequency_domain->x != NULL)
+                std::free((*it)->frequency_domain->x);
+            if ((*it)->frequency_domain->y != NULL)
+                std::free((*it)->frequency_domain->y);
+            if ((*it)->frequency_domain->yc != NULL)
+                std::free((*it)->frequency_domain->yc);
+            std::free((*it)->frequency_domain);
             std::free(*it);
         }
     }

@@ -26,8 +26,9 @@ int Processing::Start()
 
     m_write_queue.Start();
     m_read_queue.Start();
-    m_stop = std::promise<void>();
-    m_thread = std::thread(&Processing::MainLoop, this, std::move(m_stop.get_future()));
+    m_signal_stop = std::promise<void>();
+    m_should_stop = m_signal_stop.get_future();
+    m_thread = std::thread(&Processing::MainLoop, this);
     m_is_running = true;
     return 0;
 }
@@ -39,7 +40,7 @@ int Processing::Stop()
 
     m_write_queue.Stop();
     m_read_queue.Stop();
-    m_stop.set_value();
+    m_signal_stop.set_value();
     m_thread.join();
     FreeBuffers();
     m_is_running = false;
@@ -133,13 +134,13 @@ int Processing::ReuseOrAllocateRecord(struct FrequencyDomainRecord *&record, siz
     return 0;
 }
 
-void Processing::MainLoop(std::future<void> stop)
+void Processing::MainLoop()
 {
     m_thread_exit_code = 0;
     for (;;)
     {
         /* Check if the stop event has been set. */
-        if (stop.wait_for(std::chrono::microseconds(0)) == std::future_status::ready)
+        if (m_should_stop.wait_for(std::chrono::microseconds(0)) == std::future_status::ready)
             break;
 
         /* FIXME: This is a hardcoded type for now. */
@@ -149,8 +150,6 @@ void Processing::MainLoop(std::future<void> stop)
         /* Continue on timeout. */
         if (result == -1)
             continue;
-
-        printf("Got record %lu in processing loop.\n", time_domain->header.record_number);
 
         /* Compute FFT */
         struct FrequencyDomainRecord *frequency_domain = NULL;

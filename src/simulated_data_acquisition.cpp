@@ -39,8 +39,9 @@ int SimulatedDataAcquisition::Start()
 
     m_write_queue.Start();
     m_read_queue.Start();
-    m_stop = std::promise<void>();
-    m_thread = std::thread(&SimulatedDataAcquisition::MainLoop, this, std::move(m_stop.get_future()));
+    m_signal_stop = std::promise<void>();
+    m_should_stop = m_signal_stop.get_future();
+    m_thread = std::thread(&SimulatedDataAcquisition::MainLoop, this);
     m_is_running = true;
     return 0;
 }
@@ -52,7 +53,7 @@ int SimulatedDataAcquisition::Stop()
 
     m_write_queue.Stop();
     m_read_queue.Stop();
-    m_stop.set_value();
+    m_signal_stop.set_value();
     m_thread.join();
     FreeBuffers();
     m_is_running = false;
@@ -154,7 +155,7 @@ int SimulatedDataAcquisition::AllocateNoisySine(struct TimeDomainRecord *&record
     return 0;
 }
 
-void SimulatedDataAcquisition::MainLoop(std::future<void> stop)
+void SimulatedDataAcquisition::MainLoop()
 {
     m_thread_exit_code = 0;
     int wait_us = static_cast<int>(1000000.0 / m_trigger_rate_hz);
@@ -183,7 +184,7 @@ void SimulatedDataAcquisition::MainLoop(std::future<void> stop)
 
         /* We implement the sleep using the stop event to be able to immediately
            react to the event being set. */
-        if (stop.wait_for(std::chrono::microseconds(wait_us)) == std::future_status::ready)
+        if (m_should_stop.wait_for(std::chrono::microseconds(wait_us)) == std::future_status::ready)
             break;
     }
 }

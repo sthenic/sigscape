@@ -29,7 +29,8 @@ public:
 
 private:
     std::thread m_thread;
-    std::promise<void> m_stop;
+    std::promise<void> m_signal_stop;
+    std::future<void> m_should_stop;
     bool m_is_running;
     int m_thread_exit_code;
 
@@ -47,7 +48,7 @@ private:
     int AllocateRecord(struct TimeDomainRecord *&record, size_t nof_samples);
     int ReuseOrAllocateRecord(struct TimeDomainRecord *&record, size_t nof_samples);
     int AllocateNoisySine(struct TimeDomainRecord *&record, size_t nof_samples);
-    void MainLoop(std::future<void> stop);
+    void MainLoop();
     void FreeBuffers();
 
     static constexpr size_t NOF_RECORDS_MAX = 100;

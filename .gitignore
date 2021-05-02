@@ -1,1 +1,6 @@
 build/
+imgui/examples/
+imgui/misc/
+imgui.ini
+*.code-workspace
+.vscode/

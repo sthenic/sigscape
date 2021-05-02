@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <complex>
+#include <algorithm>
 
 enum RecordId
 {
@@ -24,6 +25,8 @@ struct TimeDomainRecord
     {
         x = new double[count];
         y = new double[count];
+        id = TIME_DOMAIN;
+        this->count = count;
     }
 
     ~TimeDomainRecord()
@@ -32,10 +35,35 @@ struct TimeDomainRecord
         delete[] y;
     }
 
+    TimeDomainRecord(const TimeDomainRecord &other) = delete;
+
+    TimeDomainRecord &operator=(const TimeDomainRecord &other)
+    {
+        if (this != &other)
+        {
+            if (count < other.count)
+            {
+                delete[] x;
+                delete[] y;
+                x = new double[other.count];
+                y = new double[other.count];
+                id = TIME_DOMAIN;
+            }
+
+            std::copy(other.x, other.x + other.count, x);
+            std::copy(other.y, other.y + other.count, y);
+            count = other.count;
+            header = other.header;
+        }
+
+        return *this;
+    }
+
     enum RecordId id;
     double *x;
     double *y;
     struct TimeDomainRecordHeader header;
+    size_t count;
     size_t capacity;
 };
 
@@ -52,6 +80,8 @@ struct FrequencyDomainRecord
         x = new double[count];
         y = new double[count];
         yc = new std::complex<double>[count];
+        id = FREQUENCY_DOMAIN;
+        this->count = count;
     }
 
     ~FrequencyDomainRecord()
@@ -61,11 +91,39 @@ struct FrequencyDomainRecord
         delete[] yc;
     }
 
+    FrequencyDomainRecord(const FrequencyDomainRecord &other) = delete;
+
+    FrequencyDomainRecord &operator=(const FrequencyDomainRecord &other)
+    {
+        if (this != &other)
+        {
+            if (count < other.count)
+            {
+                delete[] x;
+                delete[] y;
+                delete[] yc;
+                x = new double[other.count];
+                y = new double[other.count];
+                yc = new std::complex<double>[other.count];
+                id = FREQUENCY_DOMAIN;
+            }
+
+            std::copy(other.x, other.x + other.count, x);
+            std::copy(other.y, other.y + other.count, y);
+            std::copy(other.yc, other.yc + other.count, yc);
+            count = other.count;
+            header = other.header;
+        }
+
+        return *this;
+    }
+
     enum RecordId id;
     double *x;
     double *y;
     std::complex<double> *yc;
     struct FrequencyDomainRecordHeader header;
+    size_t count;
     size_t capacity;
 };
 
@@ -80,6 +138,7 @@ struct ProcessedRecord
 
         frequency_domain = new FrequencyDomainRecord(count);
         owns_time_domain = allocate_time_domain;
+        this->count = count;
     }
 
     ~ProcessedRecord()
@@ -92,9 +151,29 @@ struct ProcessedRecord
         delete frequency_domain;
     }
 
+    ProcessedRecord(const ProcessedRecord &other) = delete;
+
+    ProcessedRecord &operator=(const ProcessedRecord &other)
+    {
+        if (this != &other)
+        {
+            if (owns_time_domain)
+                *time_domain = *other.time_domain;
+            else
+                time_domain = other.time_domain;
+
+            *frequency_domain = *other.frequency_domain;
+            count = other.count;
+        }
+
+        return *this;
+    }
+
     struct TimeDomainRecord *time_domain;
     struct FrequencyDomainRecord *frequency_domain;
     bool owns_time_domain;
+    size_t count;
+    size_t capacity;
 };
 
 #endif

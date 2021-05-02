@@ -12,12 +12,15 @@ DEFINES = \
 
 CFLAGS += \
 	-O2 \
+	-g3 \
+	-MMD \
 	-Wall -Wextra \
 	-Wswitch -Wswitch-enum \
 	-Werror=overflow \
 	$(patsubst %,-D%,$(DEFINES))
 
 LDFLAGS += \
+	-g3 \
 	-lGL \
 	-lpthread \
 	`pkg-config --static --libs glfw3`
@@ -44,8 +47,8 @@ CXXSOURCES = \
 	imgui/imgui_demo.cpp \
 	imgui/backends/imgui_impl_glfw.cpp \
 	imgui/backends/imgui_impl_opengl3.cpp \
-	src/simulated_data_acquisition.cpp \
-	src/processing.cpp \
+	src/simulator.cpp \
+	src/data_processing.cpp \
 	src/main.cpp
 
 CSOURCES = \
@@ -53,6 +56,7 @@ CSOURCES = \
 
 OBJECTS = $(patsubst %,$(BUILDDIR)/%,$(CXXSOURCES:.cpp=.o))
 OBJECTS += $(patsubst %,$(BUILDDIR)/%,$(CSOURCES:.c=.o))
+DEPENDS = $(OBJECTS:.o=.d)
 BIN = $(BUILDDIR)/$(PROJECT)
 
 .PHONY: all clean
@@ -80,3 +84,5 @@ $(BIN): $(OBJECTS)
 
 clean:
 	@rm -rf $(BUILDDIR)
+
+-include $(DEPENDS)

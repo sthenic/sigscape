@@ -47,7 +47,15 @@ void DataProcessing::MainLoop()
 
         /* Continue on timeout. */
         if (result == -1)
+        {
             continue;
+        }
+        else if (result < 0)
+        {
+            printf("Failed to get a time domain buffer %d.\n", result);
+            m_thread_exit_code = -3;
+            return;
+        }
 
         /* Compute FFT */
         struct ProcessedRecord *processed_record = NULL;

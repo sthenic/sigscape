@@ -3,13 +3,11 @@
 #include "imgui.h"
 #include "implot.h"
 
-#include "simulated_data_acquisition.h"
-#include "processing.h"
+#include "data_processing.h"
+#include "simulator.h"
 
 #include "GL/gl3w.h"
 #include <GLFW/glfw3.h>
-
-#include <cstring>
 
 static char text[1024 * 16] =
     "{\n"
@@ -103,10 +101,11 @@ int main(int, char **)
     bool show_demo_window = false;
     bool show_plot_demo_window = false;
 
-    SimulatedDataAcquisition acquisition;
-    Processing processing(acquisition);
+    DataAcquisitionSimulator acquisition;
+    DataProcessing processing(acquisition);
+    ProcessedRecord stored_processed_record(65536, true);
 
-    acquisition.Initialize(8192, 30.0);
+    acquisition.Initialize(8192, 2);
     processing.Initialize();
 
     processing.Start();
@@ -149,8 +148,12 @@ int main(int, char **)
 
         float plot_window_height = (display_h - 1 * frame_height) / 2;
 
-        struct Processing::ProcessedRecord *processed_record = NULL;
-        int result = processing.WaitForBuffer(processed_record, 0);
+        struct ProcessedRecord *processed_record = NULL;
+        if (processing.WaitForBuffer(processed_record, 0) == 0)
+        {
+            stored_processed_record = *processed_record;
+            processing.ReturnBuffer(processed_record);
+        }
 
         ImGui::SetNextWindowPos(ImVec2(display_w / 2, frame_height));
         ImGui::SetNextWindowSize(ImVec2(display_w / 2, plot_window_height));
@@ -158,16 +161,9 @@ int main(int, char **)
         if (ImPlot::BeginPlot("Line Plot", "x", "f(x)", ImVec2(-1, -1),
                               ImPlotFlags_AntiAliased | ImPlotFlags_NoLegend | ImPlotFlags_NoTitle))
         {
-            static double td_x[65536] = {0};
-            static double td_y[65536] = {0};
-            static int count = 0;
-            if (result == 0)
-            {
-                std::memcpy(td_x, processed_record->time_domain->x, processed_record->time_domain->header.record_length * sizeof(double));
-                std::memcpy(td_y, processed_record->time_domain->y, processed_record->time_domain->header.record_length * sizeof(double));
-                count = static_cast<int>(processed_record->time_domain->header.record_length);
-            }
-            ImPlot::PlotLine("sin(x)", td_x, td_y, count);
+            ImPlot::PlotLine("sin(x)", stored_processed_record.time_domain->x,
+                             stored_processed_record.time_domain->y,
+                             stored_processed_record.time_domain->count);
             ImPlot::EndPlot();
         }
         ImGui::End();
@@ -182,24 +178,12 @@ int main(int, char **)
                               ImPlotFlags_AntiAliased | ImPlotFlags_NoLegend | ImPlotFlags_NoTitle,
                               ImPlotAxisFlags_None, ImPlotAxisFlags_None))
         {
-            static double fd_x[65536] = {0};
-            static double fd_y[65536] = {0};
-            static int count = 0;
-            if (result == 0)
-            {
-                std::memcpy(fd_x, processed_record->frequency_domain->x, 4096 * sizeof(double));
-                std::memcpy(fd_y, processed_record->frequency_domain->y, 4096 * sizeof(double));
-                count = 4096;
-            }
-            ImPlot::PlotLine("sin(x)", fd_x, fd_y, count);
+            ImPlot::PlotLine("sin(x)", stored_processed_record.frequency_domain->x,
+                             stored_processed_record.frequency_domain->y,
+                             stored_processed_record.frequency_domain->count);
             ImPlot::EndPlot();
         }
         ImGui::End();
-
-        if (result == 0)
-        {
-            processing.ReturnBuffer(processed_record);
-        }
 
         if (show_demo_window)
             ImGui::ShowDemoWindow(&show_demo_window);

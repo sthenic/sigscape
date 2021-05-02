@@ -23,11 +23,7 @@ int Simulator::Initialize(size_t record_length, double trigger_rate_hz)
 
 int Simulator::WaitForBuffer(struct TimeDomainRecord *&buffer, int timeout)
 {
-    int result = m_read_queue.Read(buffer, timeout);
-    if (result != 0)
-        return result;
-    else
-        return buffer->capacity;
+    return m_read_queue.Read(buffer, timeout);
 }
 
 int Simulator::ReturnBuffer(struct TimeDomainRecord *buffer)
@@ -55,7 +51,6 @@ void Simulator::MainLoop()
         }
         record->header.record_length = m_record_length;
         record->header.record_number = record_number;
-        record->capacity = m_record_length * sizeof(double);
         NoisySine(*record, m_record_length);
 
         /* Add to the outgoing queue. */

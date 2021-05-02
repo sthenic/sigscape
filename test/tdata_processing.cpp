@@ -45,3 +45,15 @@ TEST(DataProcessingGroup, Records)
     LONGS_EQUAL(0, processing->Stop());
     LONGS_EQUAL(0, acquisition.Stop());
 }
+
+
+TEST(DataProcessingGroup, Copy)
+{
+    FrequencyDomainRecord r0(100);
+    FrequencyDomainRecord r1(25);
+    r1 = r0;
+
+    ProcessedRecord r2(100);
+    ProcessedRecord r3(25);
+    r3 = r2;
+}

@@ -54,11 +54,11 @@ TEST(SimulatorGroup, Records)
             continue;
         }
 
-        LONGS_EQUAL(RECORD_LENGTH * sizeof(double), result);
+        LONGS_EQUAL(0, result);
         CHECK(record != NULL);
         LONGS_EQUAL(TIME_DOMAIN, record->id);
         LONGS_EQUAL(RECORD_LENGTH, record->header.record_length);
-        LONGS_EQUAL(RECORD_LENGTH * sizeof(double), record->capacity);
+        LONGS_EQUAL(RECORD_LENGTH, record->count);
         LONGS_EQUAL(nof_records_received++, record->header.record_number);
 
         if (!return_records)
@@ -69,4 +69,11 @@ TEST(SimulatorGroup, Records)
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     LONGS_EQUAL(0, simulator.Stop());
+}
+
+TEST(SimulatorGroup, Copy)
+{
+    TimeDomainRecord r0(100);
+    TimeDomainRecord r1(50);
+    r1 = r0;
 }

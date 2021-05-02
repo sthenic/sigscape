@@ -1,65 +1,70 @@
-#include "imgui.h"
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_opengl3.h"
+#include "imgui.h"
 #include "implot.h"
 
-#include "fft_settings.h"
 #include "fft.h"
+#include "fft_settings.h"
 
 #include "GL/gl3w.h"
 #include <GLFW/glfw3.h>
 
-#include <cstdio>
 #include <cmath>
+#include <cstdio>
 #include <random>
 
-static char text[1024 * 16] = "{\n"
-"    \"_id\": \"608472ef48e54b8f8c0b6fd8\",\n"
-"    \"index\": 0,\n"
-"    \"guid\": \"13424586-b852-4ac9-b530-12bb04b29000\",\n"
-"    \"isActive\": true,\n"
-"    \"balance\": \"$3,814.57\",\n"
-"    \"picture\": \"http://placehold.it/32x32\",\n"
-"    \"age\": 40,\n"
-"    \"eyeColor\": \"green\",\n"
-"    \"name\": \"Tabatha Guerrero\",\n"
-"    \"gender\": \"female\",\n"
-"    \"company\": \"CYCLONICA\",\n"
-"    \"email\": \"tabathaguerrero@cyclonica.com\",\n"
-"    \"phone\": \"+1 (826) 529-3897\",\n"
-"    \"address\": \"222 Brevoort Place, Navarre, Oregon, 5132\",\n"
-"    \"about\": \"Minim est aliqua amet et veniam. Exercitation minim dolor id nisi veniam quis nostrud irure. Incididunt nostrud occaecat labore quis commodo ad esse non laborum velit ipsum pariatur aliquip aute. Eu aliquip laboris laborum proident elit sit exercitation culpa exercitation in sit proident. Mollit proident consequat culpa pariatur velit exercitation voluptate dolor qui adipisicing. Sint in culpa aliquip ea eu nulla proident.\r\n\",\n"
-"    \"registered\": \"2016-11-02T02:24:09 -01:00\",\n"
-"    \"latitude\": -9.873761,\n"
-"    \"longitude\": -132.827924,\n"
-"    \"tags\": [\n"
-"        \"ad\",\n"
-"        \"proident\",\n"
-"        \"anim\",\n"
-"        \"eu\",\n"
-"        \"ipsum\",\n"
-"        \"labore\",\n"
-"        \"nulla\"\n"
-"    ],\n"
-"    \"friends\": [\n"
-"        {\n"
-"            \"id\": 0,\n"
-"            \"name\": \"Prince Battle\"\n"
-"        },\n"
-"        {\n"
-"            \"id\": 1,\n"
-"            \"name\": \"Orr Torres\"\n"
-"        },\n"
-"        {\n"
-"            \"id\": 2,\n"
-"            \"name\": \"Jennings Skinner\"\n"
-"        }\n"
-"    ],\n"
-"    \"greeting\": \"Hello, Tabatha Guerrero! You have 9 unread messages.\",\n"
-"    \"favoriteFruit\": \"banana\"\n"
-"}\n";
+static char text[1024 * 16] =
+    "{\n"
+    "    \"_id\": \"608472ef48e54b8f8c0b6fd8\",\n"
+    "    \"index\": 0,\n"
+    "    \"guid\": \"13424586-b852-4ac9-b530-12bb04b29000\",\n"
+    "    \"isActive\": true,\n"
+    "    \"balance\": \"$3,814.57\",\n"
+    "    \"picture\": \"http://placehold.it/32x32\",\n"
+    "    \"age\": 40,\n"
+    "    \"eyeColor\": \"green\",\n"
+    "    \"name\": \"Tabatha Guerrero\",\n"
+    "    \"gender\": \"female\",\n"
+    "    \"company\": \"CYCLONICA\",\n"
+    "    \"email\": \"tabathaguerrero@cyclonica.com\",\n"
+    "    \"phone\": \"+1 (826) 529-3897\",\n"
+    "    \"address\": \"222 Brevoort Place, Navarre, Oregon, 5132\",\n"
+    "    \"about\": \"Minim est aliqua amet et veniam. Exercitation minim dolor id nisi veniam "
+    "quis nostrud irure. Incididunt nostrud occaecat labore quis commodo ad esse non laborum velit "
+    "ipsum pariatur aliquip aute. Eu aliquip laboris laborum proident elit sit exercitation culpa "
+    "exercitation in sit proident. Mollit proident consequat culpa pariatur velit exercitation "
+    "voluptate dolor qui adipisicing. Sint in culpa aliquip ea eu nulla proident.\r\n\",\n"
+    "    \"registered\": \"2016-11-02T02:24:09 -01:00\",\n"
+    "    \"latitude\": -9.873761,\n"
+    "    \"longitude\": -132.827924,\n"
+    "    \"tags\": [\n"
+    "        \"ad\",\n"
+    "        \"proident\",\n"
+    "        \"anim\",\n"
+    "        \"eu\",\n"
+    "        \"ipsum\",\n"
+    "        \"labore\",\n"
+    "        \"nulla\"\n"
+    "    ],\n"
+    "    \"friends\": [\n"
+    "        {\n"
+    "            \"id\": 0,\n"
+    "            \"name\": \"Prince Battle\"\n"
+    "        },\n"
+    "        {\n"
+    "            \"id\": 1,\n"
+    "            \"name\": \"Orr Torres\"\n"
+    "        },\n"
+    "        {\n"
+    "            \"id\": 2,\n"
+    "            \"name\": \"Jennings Skinner\"\n"
+    "        }\n"
+    "    ],\n"
+    "    \"greeting\": \"Hello, Tabatha Guerrero! You have 9 unread messages.\",\n"
+    "    \"favoriteFruit\": \"banana\"\n"
+    "}\n";
 
-static void glfw_error_callback(int error, const char* description)
+static void glfw_error_callback(int error, const char *description)
 {
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
@@ -98,11 +103,11 @@ int main(int, char **)
     if (!glfwInit())
         return -1;
 
-    const char* glsl_version = "#version 130";
+    const char *glsl_version = "#version 130";
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
-    GLFWwindow* window = glfwCreateWindow(1920, 1200, "ADQ Rapid", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(1920, 1200, "ADQ Rapid", NULL, NULL);
     if (window == NULL)
         return 1;
     glfwMakeContextCurrent(window);
@@ -117,7 +122,8 @@ int main(int, char **)
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImPlot::CreateContext();
-    ImGuiIO &io = ImGui::GetIO(); (void)io;
+    ImGuiIO &io = ImGui::GetIO();
+    (void)io;
 
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
@@ -130,7 +136,8 @@ int main(int, char **)
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
-        // glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
+        // glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z
+        // * clear_color.w, clear_color.w);
         glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
         glClear(GL_COLOR_BUFFER_BIT);
         int display_w, display_h;
@@ -168,7 +175,9 @@ int main(int, char **)
         ImGui::SetNextWindowPos(ImVec2(display_w / 2, frame_height));
         ImGui::SetNextWindowSize(ImVec2(display_w / 2, plot_window_height));
         ImGui::Begin("Time Domain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-        if (ImPlot::BeginPlot("Line Plot", "x", "f(x)", ImVec2(-1, -1), ImPlotFlags_AntiAliased | ImPlotFlags_NoLegend | ImPlotFlags_NoTitle)) {
+        if (ImPlot::BeginPlot("Line Plot", "x", "f(x)", ImVec2(-1, -1),
+                              ImPlotFlags_AntiAliased | ImPlotFlags_NoLegend | ImPlotFlags_NoTitle))
+        {
             noisy_sine(x, y1, PLOT_SIZE);
             ImPlot::PlotLine("sin(x)", x, y1, PLOT_SIZE);
             ImPlot::EndPlot();
@@ -217,4 +226,3 @@ int main(int, char **)
     glfwTerminate();
     return 0;
 }
-

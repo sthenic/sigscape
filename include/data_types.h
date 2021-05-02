@@ -20,6 +20,18 @@ struct TimeDomainRecordHeader
 /* A time domain record. */
 struct TimeDomainRecord
 {
+    TimeDomainRecord(size_t count)
+    {
+        x = new double[count];
+        y = new double[count];
+    }
+
+    ~TimeDomainRecord()
+    {
+        delete[] x;
+        delete[] y;
+    }
+
     enum RecordId id;
     double *x;
     double *y;
@@ -35,12 +47,54 @@ struct FrequencyDomainRecordHeader
 
 struct FrequencyDomainRecord
 {
+    FrequencyDomainRecord(size_t count)
+    {
+        x = new double[count];
+        y = new double[count];
+        yc = new std::complex<double>[count];
+    }
+
+    ~FrequencyDomainRecord()
+    {
+        delete[] x;
+        delete[] y;
+        delete[] yc;
+    }
+
     enum RecordId id;
     double *x;
     double *y;
     std::complex<double> *yc;
     struct FrequencyDomainRecordHeader header;
     size_t capacity;
+};
+
+struct ProcessedRecord
+{
+    ProcessedRecord(size_t count, bool allocate_time_domain = false)
+    {
+        if (allocate_time_domain)
+            time_domain = new TimeDomainRecord(count);
+        else
+            time_domain = NULL;
+
+        frequency_domain = new FrequencyDomainRecord(count);
+        owns_time_domain = allocate_time_domain;
+    }
+
+    ~ProcessedRecord()
+    {
+        if (owns_time_domain)
+            delete time_domain;
+        else
+            time_domain = NULL;
+
+        delete frequency_domain;
+    }
+
+    struct TimeDomainRecord *time_domain;
+    struct FrequencyDomainRecord *frequency_domain;
+    bool owns_time_domain;
 };
 
 #endif

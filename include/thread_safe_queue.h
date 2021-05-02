@@ -9,9 +9,20 @@ template <typename T>
 class ThreadSafeQueue
 {
 public:
+    ThreadSafeQueue()
+        : m_signal_stop()
+        , m_should_stop()
+        , m_is_started(false)
+        , m_mutex()
+        , m_queue()
+    {
+        Initialize();
+    }
+
     int Initialize()
     {
         m_queue = {};
+        m_mutex.unlock();
         m_signal_stop = std::promise<void>();
         m_should_stop = m_signal_stop.get_future();
         m_is_started = false;

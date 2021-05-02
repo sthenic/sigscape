@@ -36,9 +36,13 @@ CXXFLAGS += \
 SOURCES = \
 	src/simulated_data_acquisition.cpp \
 	src/processing.cpp \
+	src/simulator.cpp \
+	src/data_processing.cpp \
 	tthread_safe_queue.cpp \
 	tsimulated_data_acquisition.cpp \
 	tprocessing.cpp \
+	tsimulator.cpp \
+	tdata_processing.cpp \
 	main.cpp
 
 OBJECTS = $(patsubst %,$(BUILDDIR)/%,$(SOURCES:.cpp=.o))

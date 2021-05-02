@@ -1,0 +1,82 @@
+#include "simulator.h"
+
+Simulator::Simulator()
+    : m_record_length(0)
+    , m_trigger_rate_hz(0)
+    , m_random_generator()
+    , m_distribution(0, 0.1)
+{
+}
+
+Simulator::~Simulator()
+{
+}
+
+int Simulator::Initialize(size_t record_length, double trigger_rate_hz)
+{
+    m_record_length = record_length;
+    m_trigger_rate_hz = trigger_rate_hz;
+    m_read_queue.Initialize();
+    m_write_queue.Initialize();
+    return 0;
+}
+
+int Simulator::WaitForBuffer(struct TimeDomainRecord *&buffer, int timeout)
+{
+    int result = m_read_queue.Read(buffer, timeout);
+    if (result != 0)
+        return result;
+    else
+        return buffer->capacity;
+}
+
+int Simulator::ReturnBuffer(struct TimeDomainRecord *buffer)
+{
+    return m_write_queue.Write(buffer);
+}
+
+void Simulator::MainLoop()
+{
+    m_thread_exit_code = 0;
+    int wait_us = static_cast<int>(1000000.0 / m_trigger_rate_hz);
+    int record_number = 0;
+
+    for (;;)
+    {
+        struct TimeDomainRecord *record = NULL;
+        int result = ReuseOrAllocateBuffer(record, m_record_length);
+        if (result != 0)
+        {
+            if (result == -2) /* Convert forced queue stop into an ok. */
+                m_thread_exit_code = 0;
+            else
+                m_thread_exit_code = result;
+            return;
+        }
+        record->header.record_length = m_record_length;
+        record->header.record_number = record_number;
+        record->capacity = m_record_length * sizeof(double);
+        NoisySine(*record, m_record_length);
+
+        /* Add to the outgoing queue. */
+        m_read_queue.Write(record);
+
+        /* Update bookkeeping variables. */
+        record_number++;
+
+        /* We implement the sleep using the stop event to be able to immediately
+           react to the event being set. */
+        if (m_should_stop.wait_for(std::chrono::microseconds(wait_us)) == std::future_status::ready)
+            break;
+    }
+}
+
+void Simulator::NoisySine(struct TimeDomainRecord &record, size_t count)
+{
+    /* Generate a noisy sine wave of the input length. */
+    for (size_t i = 0; i < count; ++i)
+    {
+        record.x[i] = static_cast<double>(i) / static_cast<double>(count);
+        record.y[i] = sinf(50 * record.x[i]) + m_distribution(m_random_generator);
+    }
+}

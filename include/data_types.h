@@ -27,6 +27,7 @@ struct TimeDomainRecord
         y = new double[count];
         id = TIME_DOMAIN;
         this->count = count;
+        capacity = count;
     }
 
     ~TimeDomainRecord()
@@ -41,13 +42,14 @@ struct TimeDomainRecord
     {
         if (this != &other)
         {
-            if (count < other.count)
+            if (capacity < other.count)
             {
                 delete[] x;
                 delete[] y;
                 x = new double[other.count];
                 y = new double[other.count];
                 id = TIME_DOMAIN;
+                capacity = other.count;
             }
 
             std::copy(other.x, other.x + other.count, x);
@@ -82,6 +84,7 @@ struct FrequencyDomainRecord
         yc = new std::complex<double>[count];
         id = FREQUENCY_DOMAIN;
         this->count = count;
+        capacity = count;
     }
 
     ~FrequencyDomainRecord()
@@ -97,7 +100,7 @@ struct FrequencyDomainRecord
     {
         if (this != &other)
         {
-            if (count < other.count)
+            if (capacity < other.count)
             {
                 delete[] x;
                 delete[] y;
@@ -106,6 +109,7 @@ struct FrequencyDomainRecord
                 y = new double[other.count];
                 yc = new std::complex<double>[other.count];
                 id = FREQUENCY_DOMAIN;
+                capacity = other.count;
             }
 
             std::copy(other.x, other.x + other.count, x);
@@ -138,7 +142,6 @@ struct ProcessedRecord
 
         frequency_domain = new FrequencyDomainRecord(count);
         owns_time_domain = allocate_time_domain;
-        this->count = count;
     }
 
     ~ProcessedRecord()
@@ -163,7 +166,6 @@ struct ProcessedRecord
                 time_domain = other.time_domain;
 
             *frequency_domain = *other.frequency_domain;
-            count = other.count;
         }
 
         return *this;
@@ -172,8 +174,6 @@ struct ProcessedRecord
     struct TimeDomainRecord *time_domain;
     struct FrequencyDomainRecord *frequency_domain;
     bool owns_time_domain;
-    size_t count;
-    size_t capacity;
 };
 
 #endif

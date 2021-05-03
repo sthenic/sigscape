@@ -18,6 +18,7 @@ public:
         , m_should_stop()
         , m_is_running(false)
         , m_thread_exit_code(-1)
+        , m_nof_buffers_max(100)
         , m_mutex()
         , m_read_queue()
         , m_write_queue()
@@ -61,13 +62,12 @@ public:
     virtual int ReturnBuffer(T *buffer) = 0;
 
 protected:
-    static constexpr size_t MAX_NOF_BUFFERS = 100;
-
     std::thread m_thread;
     std::promise<void> m_signal_stop;
     std::future<void> m_should_stop;
     bool m_is_running;
     int m_thread_exit_code;
+    size_t m_nof_buffers_max;
 
     std::mutex m_mutex;
     ThreadSafeQueue<T*> m_read_queue;
@@ -104,7 +104,7 @@ protected:
             m_mutex.lock();
             size_t nof_buffers = m_buffers.size();
             m_mutex.unlock();
-            if (nof_buffers < MAX_NOF_BUFFERS)
+            if (nof_buffers < m_nof_buffers_max)
                 return AllocateBuffer(buffer, count);
             else
                 return m_write_queue.Read(buffer, -1);

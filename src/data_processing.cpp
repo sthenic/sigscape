@@ -3,6 +3,8 @@
 #include "fft.h"
 #include "fft_settings.h"
 
+#include <cmath>
+
 DataProcessing::DataProcessing(DataAcquisition &acquisition)
     : m_acquisition(acquisition)
 {
@@ -59,7 +61,8 @@ void DataProcessing::MainLoop()
 
         /* Compute FFT */
         struct ProcessedRecord *processed_record = NULL;
-        result = ReuseOrAllocateBuffer(processed_record, FFT_SIZE);
+        int fft_size = PreviousPowerOfTwo(time_domain->count);
+        result = ReuseOrAllocateBuffer(processed_record, fft_size);
         if (result != 0)
         {
             if (result == -2) /* Convert forced queue stop into an ok. */
@@ -71,7 +74,7 @@ void DataProcessing::MainLoop()
         processed_record->time_domain = time_domain;
 
         const char *error = NULL;
-        if (!simple_fft::FFT(time_domain->y, processed_record->frequency_domain->yc, FFT_SIZE, error))
+        if (!simple_fft::FFT(time_domain->y, processed_record->frequency_domain->yc, fft_size, error))
         {
             printf("Failed to compute FFT: %s.\n", error);
             m_thread_exit_code = -3;
@@ -79,12 +82,24 @@ void DataProcessing::MainLoop()
         }
 
         /* Compute real spectrum. */
-        for (int i = 0; i < static_cast<int>(FFT_SIZE); ++i)
+        for (int i = 0; i < fft_size; ++i)
         {
-            processed_record->frequency_domain->x[i] = static_cast<double>(i) / static_cast<double>(FFT_SIZE);
-            processed_record->frequency_domain->y[i] = 20 * std::log10(std::abs(processed_record->frequency_domain->yc[i]) / FFT_SIZE);
+            processed_record->frequency_domain->x[i] = static_cast<double>(i) / static_cast<double>(fft_size);
+            processed_record->frequency_domain->y[i] = 20 * std::log10(std::abs(processed_record->frequency_domain->yc[i]) / fft_size);
         }
 
         m_read_queue.Write(processed_record);
     }
+}
+
+template <typename T>
+int DataProcessing::NextPowerOfTwo(T i)
+{
+    return std::pow(2, std::ceil(std::log2(i)));
+}
+
+template <typename T>
+int DataProcessing::PreviousPowerOfTwo(T i)
+{
+    return std::pow(2, std::floor(std::log2(i)));
 }

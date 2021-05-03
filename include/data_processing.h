@@ -19,8 +19,11 @@ public:
 private:
     DataAcquisition &m_acquisition;
 
-    /* FIXME: Remove */
-    static constexpr size_t FFT_SIZE = 8192;
+    template <typename T>
+    int NextPowerOfTwo(T i);
+
+    template <typename T>
+    int PreviousPowerOfTwo(T i);
 };
 
 #endif

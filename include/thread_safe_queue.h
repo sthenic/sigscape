@@ -22,7 +22,6 @@ public:
     int Initialize()
     {
         m_queue = {};
-        m_mutex.unlock();
         m_signal_stop = std::promise<void>();
         m_should_stop = m_signal_stop.get_future();
         m_is_started = false;
@@ -33,6 +32,7 @@ public:
     {
         if (m_is_started)
             return -3;
+
         m_is_started = true;
         return 0;
     }
@@ -41,6 +41,7 @@ public:
     {
         if (!m_is_started)
             return -3;
+
         m_signal_stop.set_value();
         m_is_started = false;
         return 0;
@@ -56,15 +57,14 @@ public:
             /* Waiting indefinitely. */
             for (;;)
             {
-                m_mutex.lock();
+                std::unique_lock<std::mutex> lock(m_mutex);
                 if (m_queue.size() > 0)
                 {
                     value = m_queue.front();
                     m_queue.pop();
-                    m_mutex.unlock();
                     return 0;
                 }
-                m_mutex.unlock();
+                lock.unlock();
 
                 if (m_should_stop.wait_for(std::chrono::milliseconds(10)) == std::future_status::ready)
                     return -2;
@@ -73,15 +73,13 @@ public:
         else if (timeout == 0)
         {
             /* Immediate */
-            m_mutex.lock();
+            std::unique_lock<std::mutex> lock(m_mutex);
             if (m_queue.size() > 0)
             {
                 value = m_queue.front();
                 m_queue.pop();
-                m_mutex.unlock();
                 return 0;
             }
-            m_mutex.unlock();
             return -1;
         }
         else
@@ -89,15 +87,14 @@ public:
             int waited_ms = 0;
             while (waited_ms < timeout)
             {
-                m_mutex.lock();
+                std::unique_lock<std::mutex> lock(m_mutex);
                 if (m_queue.size() > 0)
                 {
                     value = m_queue.front();
                     m_queue.pop();
-                    m_mutex.unlock();
                     return 0;
                 }
-                m_mutex.unlock();
+                lock.unlock();
 
                 ++waited_ms;
                 if (m_should_stop.wait_for(std::chrono::milliseconds(1)) == std::future_status::ready)
@@ -113,9 +110,8 @@ public:
         if (!m_is_started)
             return -3;
 
-        m_mutex.lock();
+        std::unique_lock<std::mutex> lock(m_mutex);
         m_queue.push(value);
-        m_mutex.unlock();
         return 0;
     }
 

@@ -108,10 +108,12 @@ int main(int, char **)
     ProcessedRecord stored_processed_record_a(65536, true);
     ProcessedRecord stored_processed_record_b(65536, true);
 
-    acquisition_a.Initialize(8192, 2);
+    acquisition_a.Initialize(10000, 2);
     processing_a.Initialize();
 
-    acquisition_b.Initialize(8192, 30);
+    Simulator::SineWave sine_b;
+    sine_b.amplitude = 0.5;
+    acquisition_b.Initialize(10000, 30, sine_b);
     processing_b.Initialize();
 
     acquisition_a.Start();
@@ -196,10 +198,10 @@ int main(int, char **)
         {
             ImPlot::PlotLine("CHA", stored_processed_record_a.frequency_domain->x,
                              stored_processed_record_a.frequency_domain->y,
-                             stored_processed_record_a.frequency_domain->count);
+                             stored_processed_record_a.frequency_domain->count / 2);
             ImPlot::PlotLine("CHB", stored_processed_record_b.frequency_domain->x,
                              stored_processed_record_b.frequency_domain->y,
-                             stored_processed_record_b.frequency_domain->count);
+                             stored_processed_record_b.frequency_domain->count / 2);
             ImPlot::EndPlot();
         }
         ImGui::End();

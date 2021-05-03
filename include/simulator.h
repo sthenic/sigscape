@@ -13,7 +13,22 @@ public:
     Simulator();
     ~Simulator();
 
-    int Initialize(size_t record_length, double trigger_rate_hz);
+    struct SineWave
+    {
+        SineWave()
+            : amplitude(1.0)
+            , offset(0.0)
+            , phase(0.0)
+            , noise_std_dev(0.1)
+        {};
+
+        double amplitude;
+        double offset;
+        double phase;
+        double noise_std_dev;
+    };
+
+    int Initialize(size_t record_length, double trigger_rate_hz, const struct SineWave &sine = SineWave());
     int WaitForBuffer(struct TimeDomainRecord *&buffer, int timeout);
     int ReturnBuffer(struct TimeDomainRecord *buffer);
     void MainLoop();
@@ -23,6 +38,7 @@ private:
     double m_trigger_rate_hz;
     std::default_random_engine m_random_generator;
     std::normal_distribution<double> m_distribution;
+    struct SineWave m_sine;
 
     void NoisySine(struct TimeDomainRecord &record, size_t count);
 };
@@ -34,9 +50,9 @@ public:
     DataAcquisitionSimulator() {};
     ~DataAcquisitionSimulator() {};
 
-    int Initialize(size_t record_length, double trigger_rate_hz)
+    int Initialize(size_t record_length, double trigger_rate_hz, const struct Simulator::SineWave &sine = Simulator::SineWave())
     {
-        return m_simulator.Initialize(record_length, trigger_rate_hz);
+        return m_simulator.Initialize(record_length, trigger_rate_hz, sine);
     }
 
     int Start()

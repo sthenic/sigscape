@@ -101,15 +101,23 @@ int main(int, char **)
     bool show_demo_window = false;
     bool show_plot_demo_window = false;
 
-    DataAcquisitionSimulator acquisition;
-    DataProcessing processing(acquisition);
-    ProcessedRecord stored_processed_record(65536, true);
+    DataAcquisitionSimulator acquisition_a;
+    DataAcquisitionSimulator acquisition_b;
+    DataProcessing processing_a(acquisition_a);
+    DataProcessing processing_b(acquisition_b);
+    ProcessedRecord stored_processed_record_a(65536, true);
+    ProcessedRecord stored_processed_record_b(65536, true);
 
-    acquisition.Initialize(8192, 2);
-    processing.Initialize();
+    acquisition_a.Initialize(8192, 2);
+    processing_a.Initialize();
 
-    processing.Start();
-    acquisition.Start();
+    acquisition_b.Initialize(8192, 30);
+    processing_b.Initialize();
+
+    processing_a.Start();
+    acquisition_a.Start();
+    processing_b.Start();
+    acquisition_b.Start();
 
     while (!glfwWindowShouldClose(window))
     {
@@ -149,21 +157,29 @@ int main(int, char **)
         float plot_window_height = (display_h - 1 * frame_height) / 2;
 
         struct ProcessedRecord *processed_record = NULL;
-        if (processing.WaitForBuffer(processed_record, 0) == 0)
+        if (processing_a.WaitForBuffer(processed_record, 0) == 0)
         {
-            stored_processed_record = *processed_record;
-            processing.ReturnBuffer(processed_record);
+            stored_processed_record_a = *processed_record;
+            processing_a.ReturnBuffer(processed_record);
+        }
+        if (processing_b.WaitForBuffer(processed_record, 0) == 0)
+        {
+            stored_processed_record_b = *processed_record;
+            processing_b.ReturnBuffer(processed_record);
         }
 
         ImGui::SetNextWindowPos(ImVec2(display_w / 2, frame_height));
         ImGui::SetNextWindowSize(ImVec2(display_w / 2, plot_window_height));
         ImGui::Begin("Time Domain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
         if (ImPlot::BeginPlot("Line Plot", "x", "f(x)", ImVec2(-1, -1),
-                              ImPlotFlags_AntiAliased | ImPlotFlags_NoLegend | ImPlotFlags_NoTitle))
+                              ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
         {
-            ImPlot::PlotLine("sin(x)", stored_processed_record.time_domain->x,
-                             stored_processed_record.time_domain->y,
-                             stored_processed_record.time_domain->count);
+            ImPlot::PlotLine("CHA", stored_processed_record_a.time_domain->x,
+                             stored_processed_record_a.time_domain->y,
+                             stored_processed_record_a.time_domain->count);
+            ImPlot::PlotLine("CHB", stored_processed_record_b.time_domain->x,
+                             stored_processed_record_b.time_domain->y,
+                             stored_processed_record_b.time_domain->count);
             ImPlot::EndPlot();
         }
         ImGui::End();
@@ -175,12 +191,15 @@ int main(int, char **)
         ImPlot::SetNextPlotLimitsX(0.0, 0.5);
         ImPlot::SetNextPlotLimitsY(-80.0, 0.0);
         if (ImPlot::BeginPlot("Line Plot", "x", "f(x)", ImVec2(-1, -1),
-                              ImPlotFlags_AntiAliased | ImPlotFlags_NoLegend | ImPlotFlags_NoTitle,
+                              ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle,
                               ImPlotAxisFlags_None, ImPlotAxisFlags_None))
         {
-            ImPlot::PlotLine("sin(x)", stored_processed_record.frequency_domain->x,
-                             stored_processed_record.frequency_domain->y,
-                             stored_processed_record.frequency_domain->count);
+            ImPlot::PlotLine("CHA", stored_processed_record_a.frequency_domain->x,
+                             stored_processed_record_a.frequency_domain->y,
+                             stored_processed_record_a.frequency_domain->count);
+            ImPlot::PlotLine("CHB", stored_processed_record_b.frequency_domain->x,
+                             stored_processed_record_b.frequency_domain->y,
+                             stored_processed_record_b.frequency_domain->count);
             ImPlot::EndPlot();
         }
         ImGui::End();
@@ -199,8 +218,10 @@ int main(int, char **)
     }
 
     printf("Stopping\n");
-    processing.Stop();
-    acquisition.Stop();
+    processing_a.Stop();
+    acquisition_a.Stop();
+    processing_b.Stop();
+    acquisition_b.Stop();
 
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();

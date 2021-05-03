@@ -114,10 +114,10 @@ int main(int, char **)
     acquisition_b.Initialize(8192, 30);
     processing_b.Initialize();
 
-    processing_a.Start();
     acquisition_a.Start();
-    processing_b.Start();
+    processing_a.Start();
     acquisition_b.Start();
+    processing_b.Start();
 
     while (!glfwWindowShouldClose(window))
     {

@@ -10,7 +10,6 @@ TEST_GROUP(ThreadSafeQueue)
 
     void setup()
     {
-        LONGS_EQUAL(0, queue.Initialize());
     }
 
     void teardown()

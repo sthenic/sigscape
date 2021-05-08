@@ -16,16 +16,6 @@ public:
         , m_mutex()
         , m_queue()
     {
-        Initialize();
-    }
-
-    int Initialize()
-    {
-        m_queue = {};
-        m_signal_stop = std::promise<void>();
-        m_should_stop = m_signal_stop.get_future();
-        m_is_started = false;
-        return 0;
     }
 
     int Start()
@@ -33,6 +23,9 @@ public:
         if (m_is_started)
             return -3;
 
+        m_queue = {}; /* TODO: Not ok if we ever want to have stuff prequeued. */
+        m_signal_stop = std::promise<void>();
+        m_should_stop = m_signal_stop.get_future();
         m_is_started = true;
         return 0;
     }

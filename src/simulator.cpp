@@ -19,8 +19,6 @@ int Simulator::Initialize(size_t record_length, double trigger_rate_hz, const st
     m_record_length = record_length;
     m_trigger_rate_hz = trigger_rate_hz;
     m_sine = sine;
-    m_read_queue.Initialize();
-    m_write_queue.Initialize();
     return 0;
 }
 

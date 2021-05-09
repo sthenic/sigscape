@@ -30,7 +30,7 @@ public:
         FreeBuffers();
     }
 
-    int Start()
+    virtual int Start()
     {
         if (m_is_running)
             return -1;
@@ -44,7 +44,7 @@ public:
         return 0;
     }
 
-    int Stop()
+    virtual int Stop()
     {
         if (!m_is_running)
             return -1;

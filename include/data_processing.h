@@ -12,6 +12,8 @@ public:
     ~DataProcessing();
 
     int Initialize();
+    int Start();
+    int Stop();
     int WaitForBuffer(struct ProcessedRecord *&buffer, int timeout);
     int ReturnBuffer(struct ProcessedRecord *buffer);
     void MainLoop();

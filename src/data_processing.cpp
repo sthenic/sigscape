@@ -14,10 +14,29 @@ DataProcessing::~DataProcessing()
 {
 }
 
-
 int DataProcessing::Initialize()
 {
+    /* TODO: Nothing to initialize right now. */
     return 0;
+}
+
+int DataProcessing::Start()
+{
+    int result = m_acquisition.Start();
+    if (result != 0)
+        return result;
+    return BufferThread::Start();
+}
+
+int DataProcessing::Stop()
+{
+    /* Regardless of what happens, we want to send the stop signal to the
+       acquisition object too. */
+    int processing_result = BufferThread::Stop();
+    int acquisition_result = m_acquisition.Stop();
+    if (processing_result != 0)
+        return processing_result;
+    return acquisition_result;
 }
 
 int DataProcessing::WaitForBuffer(struct ProcessedRecord *&buffer, int timeout)
@@ -72,6 +91,7 @@ void DataProcessing::MainLoop()
             return;
         }
         processed_record->time_domain = time_domain;
+        processed_record->frequency_domain->header.record_number = time_domain->header.record_number;
 
         const char *error = NULL;
         if (!simple_fft::FFT(time_domain->y, processed_record->frequency_domain->yc, fft_size, error))

@@ -10,55 +10,51 @@
 #include <GLFW/glfw3.h>
 
 static char text[1024 * 16] =
-    "{\n"
-    "    \"_id\": \"608472ef48e54b8f8c0b6fd8\",\n"
-    "    \"index\": 0,\n"
-    "    \"guid\": \"13424586-b852-4ac9-b530-12bb04b29000\",\n"
-    "    \"isActive\": true,\n"
-    "    \"balance\": \"$3,814.57\",\n"
-    "    \"picture\": \"http://placehold.it/32x32\",\n"
-    "    \"age\": 40,\n"
-    "    \"eyeColor\": \"green\",\n"
-    "    \"name\": \"Tabatha Guerrero\",\n"
-    "    \"gender\": \"female\",\n"
-    "    \"company\": \"CYCLONICA\",\n"
-    "    \"email\": \"tabathaguerrero@cyclonica.com\",\n"
-    "    \"phone\": \"+1 (826) 529-3897\",\n"
-    "    \"address\": \"222 Brevoort Place, Navarre, Oregon, 5132\",\n"
-    "    \"about\": \"Minim est aliqua amet et veniam. Exercitation minim dolor id nisi veniam "
-    "quis nostrud irure. Incididunt nostrud occaecat labore quis commodo ad esse non laborum velit "
-    "ipsum pariatur aliquip aute. Eu aliquip laboris laborum proident elit sit exercitation culpa "
-    "exercitation in sit proident. Mollit proident consequat culpa pariatur velit exercitation "
-    "voluptate dolor qui adipisicing. Sint in culpa aliquip ea eu nulla proident.\r\n\",\n"
-    "    \"registered\": \"2016-11-02T02:24:09 -01:00\",\n"
-    "    \"latitude\": -9.873761,\n"
-    "    \"longitude\": -132.827924,\n"
-    "    \"tags\": [\n"
-    "        \"ad\",\n"
-    "        \"proident\",\n"
-    "        \"anim\",\n"
-    "        \"eu\",\n"
-    "        \"ipsum\",\n"
-    "        \"labore\",\n"
-    "        \"nulla\"\n"
-    "    ],\n"
-    "    \"friends\": [\n"
-    "        {\n"
-    "            \"id\": 0,\n"
-    "            \"name\": \"Prince Battle\"\n"
-    "        },\n"
-    "        {\n"
-    "            \"id\": 1,\n"
-    "            \"name\": \"Orr Torres\"\n"
-    "        },\n"
-    "        {\n"
-    "            \"id\": 2,\n"
-    "            \"name\": \"Jennings Skinner\"\n"
-    "        }\n"
-    "    ],\n"
-    "    \"greeting\": \"Hello, Tabatha Guerrero! You have 9 unread messages.\",\n"
-    "    \"favoriteFruit\": \"banana\"\n"
-    "}\n";
+R"({
+    "_id": "608472ef48e54b8f8c0b6fd8",
+    "index": 0,
+    "guid": "13424586-b852-4ac9-b530-12bb04b29000",
+    "isActive": true,
+    "balance": "$3,814.57",
+    "picture": "http://placehold.it/32x32",
+    "age": 40,
+    "eyeColor": "green",
+    "name": "Tabatha Guerrero",
+    "gender": "female",
+    "company": "CYCLONICA",
+    "email": "tabathaguerrero@cyclonica.com",
+    "phone": "+1 (826) 529-3897",
+    "address": "222 Brevoort Place, Navarre, Oregon, 5132",
+    "about": "Minim est aliqua amet et veniam. Exercitation minim dolor id nisi veniam quis nostrud irure. Incididunt nostrud occaecat labore quis commodo ad esse non laborum velit ipsum pariatur aliquip aute. Eu aliquip laboris laborum proident elit sit exercitation culpa exercitation in sit proident. Mollit proident consequat culpa pariatur velit exercitation voluptate dolor qui adipisicing. Sint in culpa aliquip ea eu nulla proident.",
+    "registered": "2016-11-02T02:24:09 -01:00",
+    "latitude": -9.873761,
+    "longitude": -132.827924,
+    "tags": [
+        "ad",
+        "proident",
+        "anim",
+        "eu",
+        "ipsum",
+        "labore",
+        "nulla"
+    ],
+    "friends": [
+        {
+            "id": 0,
+            "name": "Prince Battle"
+        },
+        {
+            "id": 1,
+            "name": "Orr Torres"
+        },
+        {
+            "id": 2,
+            "name": "Jennings Skinner"
+        }
+    ],
+    "greeting": "Hello, Tabatha Guerrero! You have 9 unread messages.",
+    "favoriteFruit": "banana"
+})";
 
 static void glfw_error_callback(int error, const char *description)
 {
@@ -108,18 +104,9 @@ int main(int, char **)
     ProcessedRecord stored_processed_record_a(65536, true);
     ProcessedRecord stored_processed_record_b(65536, true);
 
-    acquisition_a.Initialize(10000, 2);
-    processing_a.Initialize();
 
     Simulator::SineWave sine_b;
     sine_b.amplitude = 0.5;
-    acquisition_b.Initialize(10000, 30, sine_b);
-    processing_b.Initialize();
-
-    acquisition_a.Start();
-    processing_a.Start();
-    acquisition_b.Start();
-    processing_b.Start();
 
     while (!glfwWindowShouldClose(window))
     {
@@ -140,6 +127,18 @@ int main(int, char **)
         if (ImGui::MenuItem("Run"))
         {
             printf("Pressed run\n");
+            acquisition_a.Initialize(10000, 2);
+            processing_a.Initialize();
+            acquisition_b.Initialize(10000, 30, sine_b);
+            processing_b.Initialize();
+
+            processing_a.Start();
+            processing_b.Start();
+        }
+        if (ImGui::MenuItem("Stop"))
+        {
+            processing_a.Stop();
+            processing_b.Stop();
         }
         if (ImGui::MenuItem("Quit"))
         {
@@ -221,9 +220,7 @@ int main(int, char **)
 
     printf("Stopping\n");
     processing_a.Stop();
-    acquisition_a.Stop();
     processing_b.Stop();
-    acquisition_b.Stop();
 
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();

@@ -77,3 +77,35 @@ TEST(SimulatorGroup, Copy)
     TimeDomainRecord r1(50);
     r1 = r0;
 }
+
+
+TEST(SimulatorGroup, RepeatedStartStop)
+{
+    constexpr size_t RECORD_LENGTH = 8192;
+    constexpr double TRIGGER_RATE_HZ = 1.0;
+    constexpr int NOF_RECORDS = 2;
+    constexpr int NOF_LOOPS = 5;
+
+    for (int i = 0; i < NOF_LOOPS; ++i)
+    {
+        LONGS_EQUAL(0, simulator.Initialize(RECORD_LENGTH, TRIGGER_RATE_HZ));
+        LONGS_EQUAL(0, simulator.Start());
+
+        int nof_records_received = 0;
+        while (nof_records_received != NOF_RECORDS)
+        {
+            struct TimeDomainRecord *record = NULL;
+            LONGS_EQUAL(0, simulator.WaitForBuffer((void *&)record, 1000, NULL));
+            CHECK(record != NULL);
+
+            LONGS_EQUAL(TIME_DOMAIN, record->id);
+            LONGS_EQUAL(nof_records_received, record->header.record_number);
+            printf("Record %d, %d\n", i, nof_records_received);
+            nof_records_received++;
+
+            LONGS_EQUAL(0, simulator.ReturnBuffer(record));
+        }
+
+        LONGS_EQUAL(0, simulator.Stop());
+    }
+}

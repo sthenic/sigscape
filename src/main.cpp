@@ -111,9 +111,10 @@ int main(int, char **)
 
     Simulator::SineWave sine_a;
     sine_a.amplitude = 0.5;
-    sine_a.frequency = 400e3;
+    sine_a.frequency = 17e6;
     sine_a.noise_std_dev = 0.01;
     sine_a.sampling_frequency = 2.5e9;
+    sine_a.harmonic_distortion = true;
 
     Simulator::SineWave sine_b;
     sine_b.amplitude = 0.5;

@@ -22,6 +22,7 @@ public:
             , phase(0.0)
             , noise_std_dev(0.1)
             , sampling_frequency(500e6)
+            , harmonic_distortion(false)
         {};
 
         double amplitude;
@@ -30,6 +31,7 @@ public:
         double phase;
         double noise_std_dev;
         double sampling_frequency;
+        bool harmonic_distortion;
     };
 
     int Initialize(size_t record_length, double trigger_rate_hz, const struct SineWave &sine = SineWave());

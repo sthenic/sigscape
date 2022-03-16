@@ -77,4 +77,17 @@ void Simulator::NoisySine(struct TimeDomainRecord &record, size_t count)
                       * sinf(2 * M_PI * m_sine.frequency * record.x[i] + m_sine.phase)
                       + m_distribution(m_random_generator) + m_sine.offset;
     }
+
+    /* Add HD2, HD3, HD4 and HD5. */
+    if (m_sine.harmonic_distortion)
+    {
+        for (size_t i = 0; i < count; ++i)
+        {
+            for (int hd = 2; hd <= 5; ++hd)
+            {
+                record.y[i] += 0.1 / (1 << hd)
+                               * sinf(2 * M_PI * hd * m_sine.frequency * record.x[i]);
+            }
+        }
+    }
 }

@@ -18,14 +18,18 @@ public:
         SineWave()
             : amplitude(1.0)
             , offset(0.0)
+            , frequency(1e6)
             , phase(0.0)
             , noise_std_dev(0.1)
+            , sampling_frequency(500e6)
         {};
 
         double amplitude;
         double offset;
+        double frequency;
         double phase;
         double noise_std_dev;
+        double sampling_frequency;
     };
 
     int Initialize(size_t record_length, double trigger_rate_hz, const struct SineWave &sine = SineWave());

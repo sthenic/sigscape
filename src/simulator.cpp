@@ -7,7 +7,6 @@ Simulator::Simulator()
     , m_distribution(0, 0.1)
     , m_sine()
 {
-    m_distribution = std::normal_distribution<double>(0, m_sine.noise_std_dev);
 }
 
 Simulator::~Simulator()
@@ -19,6 +18,7 @@ int Simulator::Initialize(size_t record_length, double trigger_rate_hz, const st
     m_record_length = record_length;
     m_trigger_rate_hz = trigger_rate_hz;
     m_sine = sine;
+    m_distribution = std::normal_distribution<double>(0, m_sine.noise_std_dev);
     return 0;
 }
 
@@ -72,8 +72,9 @@ void Simulator::NoisySine(struct TimeDomainRecord &record, size_t count)
     /* Generate a noisy sine wave of the input length. */
     for (size_t i = 0; i < count; ++i)
     {
-        record.x[i] = static_cast<double>(i) / static_cast<double>(count);
-        record.y[i] = m_sine.amplitude * sinf(50 * record.x[i]) +
-                      m_distribution(m_random_generator) + m_sine.offset;
+        record.x[i] = static_cast<double>(i) / static_cast<double>(m_sine.sampling_frequency);
+        record.y[i] = m_sine.amplitude
+                      * sinf(2 * M_PI * m_sine.frequency * record.x[i] + m_sine.phase)
+                      + m_distribution(m_random_generator) + m_sine.offset;
     }
 }

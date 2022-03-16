@@ -109,9 +109,17 @@ int main(int, char **)
     ProcessedRecord stored_processed_record_a(65536, true);
     ProcessedRecord stored_processed_record_b(65536, true);
 
+    Simulator::SineWave sine_a;
+    sine_a.amplitude = 0.5;
+    sine_a.frequency = 400e3;
+    sine_a.noise_std_dev = 0.01;
+    sine_a.sampling_frequency = 2.5e9;
 
     Simulator::SineWave sine_b;
     sine_b.amplitude = 0.5;
+    sine_b.frequency = 800e3;
+    sine_b.noise_std_dev = 0.01;
+    sine_b.sampling_frequency = 2.5e9;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -132,7 +140,7 @@ int main(int, char **)
         if (ImGui::MenuItem("Run"))
         {
             printf("Pressed run\n");
-            acquisition_a.Initialize(10000, 2);
+            acquisition_a.Initialize(10000, 2, sine_a);
             processing_a.Initialize();
             acquisition_b.Initialize(10000, 30, sine_b);
             processing_b.Initialize();

@@ -6,7 +6,7 @@
 #include "data_processing.h"
 #include "simulator.h"
 
-// #include "ADQAPI.h"
+#include "ADQAPI.h"
 
 #include "GL/gl3w.h"
 #include <GLFW/glfw3.h>
@@ -14,57 +14,7 @@
 #include <cstdlib>
 #include <filesystem>
 
-static char text[1024 * 16] =
-R"({
-    "_id": "608472ef48e54b8f8c0b6fd8",
-    "index": 0,
-    "guid": "13424586-b852-4ac9-b530-12bb04b29000",
-    "isActive": true,
-    "balance": "$3,814.57",
-    "picture": "http://placehold.it/32x32",
-    "age": 40,
-    "eyeColor": "green",
-    "name": "Tabatha Guerrero",
-    "gender": "female",
-    "company": "CYCLONICA",
-    "email": "tabathaguerrero@cyclonica.com",
-    "phone": "+1 (826) 529-3897",
-    "address": "222 Brevoort Place, Navarre, Oregon, 5132",
-    "about": "Minim est aliqua amet et veniam. Exercitation minim dolor id nisi veniam quis
-              nostrud irure. Incididunt nostrud occaecat labore quis commodo ad esse non laborum
-              velit ipsum pariatur aliquip aute. Eu aliquip laboris laborum proident elit sit
-              exercitation culpa exercitation in sit proident. Mollit proident consequat culpa
-              pariatur velit exercitation voluptate dolor qui adipisicing. Sint in culpa aliquip
-              ea eu nulla proident.",
-    "registered": "2016-11-02T02:24:09 -01:00",
-    "latitude": -9.873761,
-    "longitude": -132.827924,
-    "tags": [
-        "ad",
-        "proident",
-        "anim",
-        "eu",
-        "ipsum",
-        "labore",
-        "nulla"
-    ],
-    "friends": [
-        {
-            "id": 0,
-            "name": "Prince Battle"
-        },
-        {
-            "id": 1,
-            "name": "Orr Torres"
-        },
-        {
-            "id": 2,
-            "name": "Jennings Skinner"
-        }
-    ],
-    "greeting": "Hello, Tabatha Guerrero! You have 9 unread messages.",
-    "favoriteFruit": "banana"
-})";
+static char text[1024 * 16] = "";
 
 static void glfw_error_callback(int error, const char *description)
 {
@@ -148,31 +98,31 @@ int main(int, char **)
         processing_b.Stop();
     };
 
-    // void *adq_cu = CreateADQControlUnit();
-    // if (adq_cu == NULL)
-    // {
-    //     printf("Failed to create an ADQControlUnit.\n");
-    // }
+    void *adq_cu = CreateADQControlUnit();
+    if (adq_cu == NULL)
+    {
+        printf("Failed to create an ADQControlUnit.\n");
+    }
 
-    // struct ADQInfoListEntry *adq_list = NULL;
-    // int nof_devices = 0;
-    // if (!ADQControlUnit_ListDevices(adq_cu, &adq_list, (unsigned int *)&nof_devices))
-    // {
-    //     printf("Failed to list devices.\n");
-    // }
-    // printf("Found %d devices.\n", nof_devices);
+    struct ADQInfoListEntry *adq_list = NULL;
+    int nof_devices = 0;
+    if (!ADQControlUnit_ListDevices(adq_cu, &adq_list, (unsigned int *)&nof_devices))
+    {
+        printf("Failed to list devices.\n");
+    }
+    printf("Found %d devices.\n", nof_devices);
 
-    // struct ADQInfoListEntry dummy_adq_list[4];
-    // for (int i = 0; i < sizeof(dummy_adq_list) / sizeof(dummy_adq_list[0]); ++i)
-    // {
-    //     dummy_adq_list[i].ProductID = PID_ADQ3;
-    // }
+    struct ADQInfoListEntry dummy_adq_list[4];
+    for (int i = 0; i < sizeof(dummy_adq_list) / sizeof(dummy_adq_list[0]); ++i)
+    {
+        dummy_adq_list[i].ProductID = PID_ADQ3;
+    }
 
-    // if (nof_devices == 0)
-    // {
-    //     adq_list = dummy_adq_list;
-    //     nof_devices = sizeof(dummy_adq_list) / sizeof(dummy_adq_list[0]);
-    // }
+    if (nof_devices == 0)
+    {
+        adq_list = dummy_adq_list;
+        nof_devices = sizeof(dummy_adq_list) / sizeof(dummy_adq_list[0]);
+    }
 
     // std::string data_directory = "/home/marcus/.local/share/adq-rapid";
     // std::filesystem::path data_directory_path(data_directory);
@@ -319,7 +269,7 @@ int main(int, char **)
         if (!any_selected)
             ss << "No digitizer available.";
 
-        ImGui::Text(ss.str().c_str());
+        ImGui::Text("%s", ss.str().c_str());
 
         const ImVec2 COMMAND_PALETTE_BUTTON_SIZE{90, 50};
         if (ImGui::Button("Start", COMMAND_PALETTE_BUTTON_SIZE))
@@ -328,11 +278,13 @@ int main(int, char **)
             Start();
         }
         ImGui::SameLine();
+        ImGui::BeginDisabled();
         if (ImGui::Button("Stop", COMMAND_PALETTE_BUTTON_SIZE))
         {
             printf("Stop!\n");
             Stop();
         }
+        ImGui::EndDisabled();
         ImGui::SameLine();
         if (ImGui::Button("Set", COMMAND_PALETTE_BUTTON_SIZE))
         {
@@ -388,9 +340,10 @@ int main(int, char **)
         ImGui::SetNextWindowPos(ImVec2(display_w / 2, frame_height));
         ImGui::SetNextWindowSize(ImVec2(display_w / 2, plot_window_height));
         ImGui::Begin("Time Domain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-        if (ImPlot::BeginPlot("Line Plot", "x", "f(x)", ImVec2(-1, -1),
-                              ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
+        if (ImPlot::BeginPlot("Time domain", ImVec2(-1, -1), ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
         {
+            ImPlot::SetupAxis(ImAxis_X1, "Time");
+            ImPlot::SetupAxis(ImAxis_Y1, "f(x)");
             ImPlot::PlotLine("CHA", stored_processed_record_a.time_domain->x,
                              stored_processed_record_a.time_domain->y,
                              stored_processed_record_a.time_domain->count);
@@ -405,12 +358,12 @@ int main(int, char **)
         ImGui::SetNextWindowSize(ImVec2(display_w / 2, plot_window_height));
         ImGui::Begin("Frequency Domain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
-        ImPlot::SetNextPlotLimitsX(0.0, 0.5);
-        ImPlot::SetNextPlotLimitsY(-80.0, 0.0);
-        if (ImPlot::BeginPlot("Line Plot", "x", "f(x)", ImVec2(-1, -1),
-                              ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle,
-                              ImPlotAxisFlags_None, ImPlotAxisFlags_None))
+        if (ImPlot::BeginPlot("FFT", ImVec2(-1, -1), ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
         {
+            ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, 0.5);
+            ImPlot::SetupAxisLimits(ImAxis_Y1, -80.0, 0.0);
+            ImPlot::SetupAxis(ImAxis_X1, "Hz");
+            ImPlot::SetupAxis(ImAxis_Y1, "FFT");
             ImPlot::PlotLine("CHA", stored_processed_record_a.frequency_domain->x,
                              stored_processed_record_a.frequency_domain->y,
                              stored_processed_record_a.frequency_domain->count / 2);

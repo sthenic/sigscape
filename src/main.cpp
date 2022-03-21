@@ -12,7 +12,7 @@
 #include <GLFW/glfw3.h>
 
 #include <cstdlib>
-#include <filesystem>
+//#include <filesystem>
 
 static char text[1024 * 16] = "";
 

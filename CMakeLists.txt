@@ -25,7 +25,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     src/main.cpp
 )
 
-include_directories(
+target_include_directories(${PROJECT_NAME} PRIVATE
     implot
     imgui
     simple_fft
@@ -35,8 +35,6 @@ include_directories(
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     IMGUI_IMPL_OPENGL_LOADER_GL3W
-    ${GLFW3_CFLAGS}
-    ${ADQ_CFLAGS}
 )
 
 if (UNIX)
@@ -47,6 +45,11 @@ elseif(WIN32)
     target_compile_options(${PROJECT_NAME} PRIVATE
         /W4 /WX)
 endif()
+
+target_compile_options(${PROJECT_NAME} PRIVATE
+    ${GLFW3_CFLAGS}
+    ${ADQ_CFLAGS}
+)
 
 target_link_libraries(${PROJECT_NAME}
     GL

@@ -39,6 +39,7 @@ SOURCES = \
 	tthread_safe_queue.cpp \
 	tsimulator.cpp \
 	tdata_processing.cpp \
+	tmessage_thread.cpp \
 	main.cpp
 
 OBJECTS = $(patsubst %,$(BUILDDIR)/%,$(SOURCES:.cpp=.o))

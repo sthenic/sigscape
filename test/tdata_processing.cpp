@@ -69,7 +69,6 @@ TEST(DataProcessingGroup, RepeatedStartStop)
 
     for (int i = 0; i < NOF_LOOPS; ++i)
     {
-        printf("Interation %d\n", i);
         LONGS_EQUAL(0, processing->Start());
 
         int nof_records_received = 0;

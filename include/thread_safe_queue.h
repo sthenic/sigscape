@@ -98,7 +98,7 @@ public:
         }
     }
 
-    int Write(T value)
+    int Write(const T &value)
     {
         if (!m_is_started)
             return -3;

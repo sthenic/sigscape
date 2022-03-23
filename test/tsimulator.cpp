@@ -100,7 +100,6 @@ TEST(SimulatorGroup, RepeatedStartStop)
 
             LONGS_EQUAL(TIME_DOMAIN, record->id);
             LONGS_EQUAL(nof_records_received, record->header.record_number);
-            printf("Record %d, %d\n", i, nof_records_received);
             nof_records_received++;
 
             LONGS_EQUAL(0, simulator.ReturnBuffer(record));

@@ -74,7 +74,7 @@ void Simulator::NoisySine(struct TimeDomainRecord &record, size_t count)
     {
         record.x[i] = static_cast<double>(i) / static_cast<double>(m_sine.sampling_frequency);
         record.y[i] = m_sine.amplitude
-                      * sinf(2 * M_PI * m_sine.frequency * record.x[i] + m_sine.phase)
+                      * std::sin(2 * M_PI * m_sine.frequency * record.x[i] + m_sine.phase)
                       + m_distribution(m_random_generator) + m_sine.offset;
     }
 
@@ -86,7 +86,7 @@ void Simulator::NoisySine(struct TimeDomainRecord &record, size_t count)
             for (int hd = 2; hd <= 5; ++hd)
             {
                 record.y[i] += 0.1 / (1 << hd)
-                               * sinf(2 * M_PI * hd * m_sine.frequency * record.x[i]);
+                               * std::sin(2 * M_PI * hd * m_sine.frequency * record.x[i]);
             }
         }
     }

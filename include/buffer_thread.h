@@ -80,7 +80,7 @@ protected:
         {
             buffer = new T(count);
         }
-        catch (const std::bad_alloc &e)
+        catch (const std::bad_alloc &)
         {
             return -1;
         }

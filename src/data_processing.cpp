@@ -115,11 +115,11 @@ void DataProcessing::MainLoop()
 template <typename T>
 int DataProcessing::NextPowerOfTwo(T i)
 {
-    return std::pow(2, std::ceil(std::log2(i)));
+    return static_cast<int>(std::pow(2, std::ceil(std::log2(i))));
 }
 
 template <typename T>
 int DataProcessing::PreviousPowerOfTwo(T i)
 {
-    return std::pow(2, std::floor(std::log2(i)));
+    return static_cast<int>(std::pow(2, std::floor(std::log2(i))));
 }

@@ -326,12 +326,13 @@ int main(int, char **)
         float plot_window_height = (display_h - 1 * frame_height) / 2;
 
         struct ProcessedRecord *processed_record = NULL;
-        if (processing_a.WaitForBuffer(processed_record, 0) == 0)
+        if (processing_a.WaitForBuffer(processed_record, 0) == ADQR_EOK)
         {
             stored_processed_record_a = *processed_record;
             processing_a.ReturnBuffer(processed_record);
         }
-        if (processing_b.WaitForBuffer(processed_record, 0) == 0)
+
+        if (processing_b.WaitForBuffer(processed_record, 0) == ADQR_EOK)
         {
             stored_processed_record_b = *processed_record;
             processing_b.ReturnBuffer(processed_record);

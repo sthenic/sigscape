@@ -25,25 +25,25 @@ TEST_GROUP(DataProcessingGroup)
 
 TEST(DataProcessingGroup, StartStop)
 {
-    LONGS_EQUAL(0, acquisition.Initialize(1024, 1.0));
-    LONGS_EQUAL(0, processing->Initialize());
-    LONGS_EQUAL(-1, processing->Stop());
-    LONGS_EQUAL(0, processing->Start());
-    LONGS_EQUAL(-1, processing->Start());
-    LONGS_EQUAL(0, processing->Stop());
+    LONGS_EQUAL(ADQR_EOK, acquisition.Initialize(1024, 1.0));
+    LONGS_EQUAL(ADQR_EOK, processing->Initialize());
+    LONGS_EQUAL(ADQR_ENOTREADY, processing->Stop());
+    LONGS_EQUAL(ADQR_EOK, processing->Start());
+    LONGS_EQUAL(ADQR_ENOTREADY, processing->Start());
+    LONGS_EQUAL(ADQR_EOK, processing->Stop());
 }
 
 TEST(DataProcessingGroup, Records)
 {
     constexpr size_t RECORD_LENGTH = 8192;
     constexpr double TRIGGER_RATE_HZ = 30.0;
-    LONGS_EQUAL(0, acquisition.Initialize(RECORD_LENGTH, TRIGGER_RATE_HZ));
-    LONGS_EQUAL(0, processing->Initialize());
+    LONGS_EQUAL(ADQR_EOK, acquisition.Initialize(RECORD_LENGTH, TRIGGER_RATE_HZ));
+    LONGS_EQUAL(ADQR_EOK, processing->Initialize());
 
-    LONGS_EQUAL(0, processing->Start());
+    LONGS_EQUAL(ADQR_EOK, processing->Start());
 
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-    LONGS_EQUAL(0, processing->Stop());
+    LONGS_EQUAL(ADQR_EOK, processing->Stop());
 }
 
 TEST(DataProcessingGroup, Copy)
@@ -64,18 +64,18 @@ TEST(DataProcessingGroup, RepeatedStartStop)
     constexpr int NOF_RECORDS = 200;
     constexpr int NOF_LOOPS = 2;
 
-    LONGS_EQUAL(0, acquisition.Initialize(RECORD_LENGTH, TRIGGER_RATE_HZ));
-    LONGS_EQUAL(0, processing->Initialize());
+    LONGS_EQUAL(ADQR_EOK, acquisition.Initialize(RECORD_LENGTH, TRIGGER_RATE_HZ));
+    LONGS_EQUAL(ADQR_EOK, processing->Initialize());
 
     for (int i = 0; i < NOF_LOOPS; ++i)
     {
-        LONGS_EQUAL(0, processing->Start());
+        LONGS_EQUAL(ADQR_EOK, processing->Start());
 
         int nof_records_received = 0;
         while (nof_records_received != NOF_RECORDS)
         {
             struct ProcessedRecord *record = NULL;
-            LONGS_EQUAL(0, processing->WaitForBuffer(record, 1000));
+            LONGS_EQUAL(ADQR_EOK, processing->WaitForBuffer(record, 1000));
             CHECK(record != NULL);
 
             LONGS_EQUAL(TIME_DOMAIN, record->time_domain->id);
@@ -84,9 +84,9 @@ TEST(DataProcessingGroup, RepeatedStartStop)
             LONGS_EQUAL(nof_records_received, record->frequency_domain->header.record_number);
             nof_records_received++;
 
-            LONGS_EQUAL(0, processing->ReturnBuffer(record));
+            LONGS_EQUAL(ADQR_EOK, processing->ReturnBuffer(record));
         }
 
-        LONGS_EQUAL(0, processing->Stop());
+        LONGS_EQUAL(ADQR_EOK, processing->Stop());
     }
 }

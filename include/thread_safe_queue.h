@@ -1,6 +1,8 @@
 #ifndef THREAD_SAFE_QUEUE_H_V53B5L
 #define THREAD_SAFE_QUEUE_H_V53B5L
 
+#include "error.h"
+
 #include <queue>
 #include <mutex>
 #include <future>
@@ -21,29 +23,29 @@ public:
     int Start()
     {
         if (m_is_started)
-            return -3;
+            return ADQR_ENOTREADY;
 
         m_queue = {}; /* TODO: Not ok if we ever want to have stuff prequeued. */
         m_signal_stop = std::promise<void>();
         m_should_stop = m_signal_stop.get_future();
         m_is_started = true;
-        return 0;
+        return ADQR_EOK;
     }
 
     int Stop()
     {
         if (!m_is_started)
-            return -3;
+            return ADQR_ENOTREADY;
 
         m_signal_stop.set_value();
         m_is_started = false;
-        return 0;
+        return ADQR_EOK;
     }
 
     int Read(T &value, int timeout)
     {
         if (!m_is_started)
-            return -3;
+            return ADQR_ENOTREADY;
 
         if (timeout < 0)
         {
@@ -55,12 +57,12 @@ public:
                 {
                     value = m_queue.front();
                     m_queue.pop();
-                    return 0;
+                    return ADQR_EOK;
                 }
                 lock.unlock();
 
                 if (m_should_stop.wait_for(std::chrono::milliseconds(10)) == std::future_status::ready)
-                    return -2;
+                    return ADQR_EINTERRUPTED;
             }
         }
         else if (timeout == 0)
@@ -71,9 +73,9 @@ public:
             {
                 value = m_queue.front();
                 m_queue.pop();
-                return 0;
+                return ADQR_EOK;
             }
-            return -1;
+            return ADQR_EAGAIN;
         }
         else
         {
@@ -85,27 +87,27 @@ public:
                 {
                     value = m_queue.front();
                     m_queue.pop();
-                    return 0;
+                    return ADQR_EOK;
                 }
                 lock.unlock();
 
                 ++waited_ms;
                 if (m_should_stop.wait_for(std::chrono::milliseconds(1)) == std::future_status::ready)
-                    return -2;
+                    return ADQR_EINTERRUPTED;
             }
 
-            return -1;
+            return ADQR_EAGAIN;
         }
     }
 
     int Write(const T &value)
     {
         if (!m_is_started)
-            return -3;
+            return ADQR_ENOTREADY;
 
         std::unique_lock<std::mutex> lock(m_mutex);
         m_queue.push(value);
-        return 0;
+        return ADQR_EOK;
     }
 
 private:

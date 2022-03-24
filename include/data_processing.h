@@ -4,6 +4,7 @@
 #include "buffer_thread.h"
 #include "data_acquisition.h"
 #include "data_types.h"
+#include "error.h"
 
 class DataProcessing : public BufferThread<DataProcessing, ProcessedRecord>
 {

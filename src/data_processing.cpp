@@ -17,13 +17,13 @@ DataProcessing::~DataProcessing()
 int DataProcessing::Initialize()
 {
     /* TODO: Nothing to initialize right now. */
-    return 0;
+    return ADQR_EOK;
 }
 
 int DataProcessing::Start()
 {
     int result = m_acquisition.Start();
-    if (result != 0)
+    if (result != ADQR_EOK)
         return result;
     return BufferThread::Start();
 }
@@ -34,7 +34,7 @@ int DataProcessing::Stop()
        acquisition object too. */
     int processing_result = BufferThread::Stop();
     int acquisition_result = m_acquisition.Stop();
-    if (processing_result != 0)
+    if (processing_result != ADQR_EOK)
         return processing_result;
     return acquisition_result;
 }
@@ -55,7 +55,7 @@ int DataProcessing::ReturnBuffer(struct ProcessedRecord *buffer)
 
 void DataProcessing::MainLoop()
 {
-    m_thread_exit_code = 0;
+    m_thread_exit_code = ADQR_EOK;
     for (;;)
     {
         /* Check if the stop event has been set. */
@@ -67,14 +67,14 @@ void DataProcessing::MainLoop()
         int result = m_acquisition.WaitForBuffer((void *&)time_domain, 100, NULL);
 
         /* Continue on timeout. */
-        if (result == -1)
+        if (result == ADQR_EAGAIN)
         {
             continue;
         }
         else if (result < 0)
         {
             printf("Failed to get a time domain buffer %d.\n", result);
-            m_thread_exit_code = -3;
+            m_thread_exit_code = ADQR_EINTERNAL;
             return;
         }
 
@@ -82,10 +82,10 @@ void DataProcessing::MainLoop()
         struct ProcessedRecord *processed_record = NULL;
         int fft_size = PreviousPowerOfTwo(time_domain->count);
         result = ReuseOrAllocateBuffer(processed_record, fft_size);
-        if (result != 0)
+        if (result != ADQR_EOK)
         {
-            if (result == -2) /* Convert forced queue stop into an ok. */
-                m_thread_exit_code = 0;
+            if (result == ADQR_EINTERRUPTED) /* Convert forced queue stop into an ok. */
+                m_thread_exit_code = ADQR_EOK;
             else
                 m_thread_exit_code = result;
             return;
@@ -97,7 +97,7 @@ void DataProcessing::MainLoop()
         if (!simple_fft::FFT(time_domain->y, processed_record->frequency_domain->yc, fft_size, error))
         {
             printf("Failed to compute FFT: %s.\n", error);
-            m_thread_exit_code = -3;
+            m_thread_exit_code = ADQR_EINTERNAL;
             return;
         }
 

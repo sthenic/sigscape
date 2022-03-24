@@ -19,7 +19,7 @@ int Simulator::Initialize(size_t record_length, double trigger_rate_hz, const st
     m_trigger_rate_hz = trigger_rate_hz;
     m_sine = sine;
     m_distribution = std::normal_distribution<double>(0, m_sine.noise_std_dev);
-    return 0;
+    return ADQR_EOK;
 }
 
 int Simulator::WaitForBuffer(struct TimeDomainRecord *&buffer, int timeout)
@@ -34,7 +34,7 @@ int Simulator::ReturnBuffer(struct TimeDomainRecord *buffer)
 
 void Simulator::MainLoop()
 {
-    m_thread_exit_code = 0;
+    m_thread_exit_code = ADQR_EOK;
     int wait_us = static_cast<int>(1000000.0 / m_trigger_rate_hz);
     int record_number = 0;
 
@@ -42,10 +42,10 @@ void Simulator::MainLoop()
     {
         struct TimeDomainRecord *record = NULL;
         int result = ReuseOrAllocateBuffer(record, m_record_length);
-        if (result != 0)
+        if (result != ADQR_EOK)
         {
-            if (result == -2) /* Convert forced queue stop into an ok. */
-                m_thread_exit_code = 0;
+            if (result == ADQR_EINTERRUPTED) /* Convert forced queue stop into an ok. */
+                m_thread_exit_code = ADQR_EOK;
             else
                 m_thread_exit_code = result;
             return;

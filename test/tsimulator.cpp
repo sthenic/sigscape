@@ -22,11 +22,11 @@ TEST(SimulatorGroup, Test0)
 {
     constexpr size_t RECORD_LENGTH = 1024;
     constexpr double TRIGGER_RATE_HZ = 4.0;
-    LONGS_EQUAL(0, simulator.Initialize(RECORD_LENGTH, TRIGGER_RATE_HZ));
-    LONGS_EQUAL(-1, simulator.Stop());
-    LONGS_EQUAL(0, simulator.Start());
-    LONGS_EQUAL(-1, simulator.Start());
-    LONGS_EQUAL(0, simulator.Stop());
+    LONGS_EQUAL(ADQR_EOK, simulator.Initialize(RECORD_LENGTH, TRIGGER_RATE_HZ));
+    LONGS_EQUAL(ADQR_ENOTREADY, simulator.Stop());
+    LONGS_EQUAL(ADQR_EOK, simulator.Start());
+    LONGS_EQUAL(ADQR_ENOTREADY, simulator.Start());
+    LONGS_EQUAL(ADQR_EOK, simulator.Stop());
 }
 
 TEST(SimulatorGroup, Records)
@@ -34,8 +34,8 @@ TEST(SimulatorGroup, Records)
     constexpr size_t RECORD_LENGTH = 1024;
     constexpr double TRIGGER_RATE_HZ = 100.0;
     constexpr int NOF_RECORDS = 200;
-    LONGS_EQUAL(0, simulator.Initialize(RECORD_LENGTH, TRIGGER_RATE_HZ));
-    LONGS_EQUAL(0, simulator.Start());
+    LONGS_EQUAL(ADQR_EOK, simulator.Initialize(RECORD_LENGTH, TRIGGER_RATE_HZ));
+    LONGS_EQUAL(ADQR_EOK, simulator.Start());
 
     std::vector<struct TimeDomainRecord *> records;
     bool return_records = false;
@@ -45,16 +45,16 @@ TEST(SimulatorGroup, Records)
         struct TimeDomainRecord *record = NULL;
         int result = simulator.WaitForBuffer((void *&)record, 1000, NULL);
 
-        if ((result == -1) && !return_records)
+        if ((result == ADQR_EAGAIN) && !return_records)
         {
             for (auto it = records.begin(); it != records.end(); ++it)
-                LONGS_EQUAL(0, simulator.ReturnBuffer(*it));
+                LONGS_EQUAL(ADQR_EOK, simulator.ReturnBuffer(*it));
             records.clear();
             return_records = true;
             continue;
         }
 
-        LONGS_EQUAL(0, result);
+        LONGS_EQUAL(ADQR_EOK, result);
         CHECK(record != NULL);
         LONGS_EQUAL(TIME_DOMAIN, record->id);
         LONGS_EQUAL(RECORD_LENGTH, record->header.record_length);
@@ -64,11 +64,11 @@ TEST(SimulatorGroup, Records)
         if (!return_records)
             records.push_back(record);
         else
-            LONGS_EQUAL(0, simulator.ReturnBuffer(record));
+            LONGS_EQUAL(ADQR_EOK, simulator.ReturnBuffer(record));
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    LONGS_EQUAL(0, simulator.Stop());
+    LONGS_EQUAL(ADQR_EOK, simulator.Stop());
 }
 
 TEST(SimulatorGroup, Copy)
@@ -88,23 +88,23 @@ TEST(SimulatorGroup, RepeatedStartStop)
 
     for (int i = 0; i < NOF_LOOPS; ++i)
     {
-        LONGS_EQUAL(0, simulator.Initialize(RECORD_LENGTH, TRIGGER_RATE_HZ));
-        LONGS_EQUAL(0, simulator.Start());
+        LONGS_EQUAL(ADQR_EOK, simulator.Initialize(RECORD_LENGTH, TRIGGER_RATE_HZ));
+        LONGS_EQUAL(ADQR_EOK, simulator.Start());
 
         int nof_records_received = 0;
         while (nof_records_received != NOF_RECORDS)
         {
             struct TimeDomainRecord *record = NULL;
-            LONGS_EQUAL(0, simulator.WaitForBuffer((void *&)record, 1000, NULL));
+            LONGS_EQUAL(ADQR_EOK, simulator.WaitForBuffer((void *&)record, 1000, NULL));
             CHECK(record != NULL);
 
             LONGS_EQUAL(TIME_DOMAIN, record->id);
             LONGS_EQUAL(nof_records_received, record->header.record_number);
             nof_records_received++;
 
-            LONGS_EQUAL(0, simulator.ReturnBuffer(record));
+            LONGS_EQUAL(ADQR_EOK, simulator.ReturnBuffer(record));
         }
 
-        LONGS_EQUAL(0, simulator.Stop());
+        LONGS_EQUAL(ADQR_EOK, simulator.Stop());
     }
 }

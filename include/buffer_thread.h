@@ -4,6 +4,7 @@
 #define BUFFER_THREAD_H_69EMSR
 
 #include "thread_safe_queue.h"
+#include "error.h"
 
 #include <thread>
 #include <future>
@@ -17,7 +18,7 @@ public:
         , m_signal_stop()
         , m_should_stop()
         , m_is_running(false)
-        , m_thread_exit_code(-1)
+        , m_thread_exit_code(ADQR_EINTERRUPTED)
         , m_nof_buffers_max(100)
         , m_mutex()
         , m_read_queue()
@@ -33,7 +34,7 @@ public:
     virtual int Start()
     {
         if (m_is_running)
-            return -1;
+            return ADQR_ENOTREADY;
 
         m_write_queue.Start();
         m_read_queue.Start();
@@ -41,13 +42,13 @@ public:
         m_should_stop = m_signal_stop.get_future();
         m_thread = std::thread([this]{ static_cast<C*>(this)->MainLoop(); });
         m_is_running = true;
-        return 0;
+        return ADQR_EOK;
     }
 
     virtual int Stop()
     {
         if (!m_is_running)
-            return -1;
+            return ADQR_ENOTREADY;
 
         m_write_queue.Stop();
         m_read_queue.Stop();
@@ -82,7 +83,7 @@ protected:
         }
         catch (const std::bad_alloc &)
         {
-            return -1;
+            return ADQR_EINTERNAL;
         }
 
         /* Add a reference to the data storage. */
@@ -95,9 +96,9 @@ protected:
     int ReuseOrAllocateBuffer(T *&buffer, size_t count)
     {
         /* We prioritize reusing existing memory over allocating new. */
-        if (m_write_queue.Read(buffer, 0) == 0)
+        if (m_write_queue.Read(buffer, 0) == ADQR_EOK)
         {
-            return 0;
+            return ADQR_EOK;
         }
         else
         {

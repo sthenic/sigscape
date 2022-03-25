@@ -1,5 +1,7 @@
 #include "simulator.h"
 
+#include <cmath>
+
 Simulator::Simulator()
     : m_record_length(0)
     , m_trigger_rate_hz(0)

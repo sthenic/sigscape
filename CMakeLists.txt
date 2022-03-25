@@ -2,9 +2,13 @@ cmake_minimum_required(VERSION 3.15)
 project(adq-rapid)
 add_executable(${PROJECT_NAME} src/main.cpp)
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(GLFW3 REQUIRED glfw3)
-pkg_check_modules(ADQ REQUIRED libadq)
+if (UNIX)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GLFW3 REQUIRED glfw3)
+    pkg_check_modules(ADQ REQUIRED libadq)
+elseif(WIN32)
+    message(WARNING "Not implemented for Windows yet.")
+endif()
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 
@@ -38,10 +42,13 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 )
 
 if (UNIX)
-    add_compile_definitions(LINUX)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+        LINUX)
     target_compile_options(${PROJECT_NAME} PRIVATE
         -Wall -Wextra -Wswitch -Wswitch-enum -Werror=overflow)
 elseif(WIN32)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+        _USE_MATH_DEFINES)
     target_compile_options(${PROJECT_NAME} PRIVATE
         /W4 /WX)
 endif()

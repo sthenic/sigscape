@@ -90,7 +90,7 @@ protected:
         m_mutex.lock();
         m_buffers.push_back(buffer);
         m_mutex.unlock();
-        return 0;
+        return ADQR_EOK;
     }
 
     int ReuseOrAllocateBuffer(T *&buffer, size_t count)

@@ -17,7 +17,7 @@ public:
         , m_signal_stop()
         , m_should_stop()
         , m_is_running(false)
-        , m_thread_exit_code(-1)
+        , m_thread_exit_code(ADQR_EINTERRUPTED)
         , m_read_queue()
         , m_write_queue()
     {};
@@ -27,7 +27,7 @@ public:
     virtual int Start()
     {
         if (m_is_running)
-            return -1;
+            return ADQR_ENOTREADY;
 
         m_write_queue.Start();
         m_read_queue.Start();
@@ -35,13 +35,13 @@ public:
         m_should_stop = m_signal_stop.get_future();
         m_thread = std::thread([this]{ static_cast<C*>(this)->MainLoop(); });
         m_is_running = true;
-        return 0;
+        return ADQR_EOK;
     }
 
     virtual int Stop()
     {
         if (!m_is_running)
-            return -1;
+            return ADQR_ENOTREADY;
 
         m_write_queue.Stop();
         m_read_queue.Stop();

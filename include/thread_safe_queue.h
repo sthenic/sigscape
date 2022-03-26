@@ -51,6 +51,17 @@ public:
         return ADQR_EOK;
     }
 
+    /* Only compiles when <T> is a pointer type. */
+    void Free()
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        while (!m_queue.empty())
+        {
+            delete m_queue.front();
+            m_queue.pop();
+        }
+    }
+
     int Read(T &value, int timeout)
     {
         if (!m_is_started)
@@ -170,10 +181,20 @@ private:
     int Pop(T &value)
     {
         value = m_queue.front();
+
         /* We only pop the entry if we're not using the persistent mode and if
-           we do (tail condition), only if there's another entry in the queue. */
+           we do (tail condition), only if there's another entry in the queue.
+           If we popped the entry in the persistent mode we return ADQR_ELAST to
+           signal that this happened. If the queue contains memory allocated on
+           the heap, the reader may want to return the memory. */
+
         if (!m_is_persistent || (m_queue.size() > 1))
+        {
             m_queue.pop();
+            if (m_is_persistent)
+                return ADQR_ELAST;
+        }
+
         return ADQR_EOK;
     }
 };

@@ -1,3 +1,10 @@
+/* This is a template class for a thread safe queue. The queue may have a finite
+   capacity (infinite by default) and/or a 'persistent' behavior (disabled by
+   default). In the persistent mode, the last value remains on the read port
+   until there's a new value to present. Perhaps a niche feature, but it can be
+   used to represent a state in the reading thread that's controlled by the
+   writing thread. */
+
 #ifndef THREAD_SAFE_QUEUE_H_V53B5L
 #define THREAD_SAFE_QUEUE_H_V53B5L
 
@@ -11,13 +18,14 @@ template <typename T>
 class ThreadSafeQueue
 {
 public:
-    ThreadSafeQueue(size_t capacity = 0)
+    ThreadSafeQueue(size_t capacity = 0, bool is_persistent = false)
         : m_signal_stop()
         , m_should_stop()
         , m_is_started(false)
         , m_mutex()
         , m_queue()
         , m_capacity(capacity)
+        , m_is_persistent(is_persistent)
     {
     }
 
@@ -55,11 +63,7 @@ public:
             {
                 std::unique_lock<std::mutex> lock(m_mutex);
                 if (m_queue.size() > 0)
-                {
-                    value = m_queue.front();
-                    m_queue.pop();
-                    return ADQR_EOK;
-                }
+                    return Pop(value);
                 lock.unlock();
 
                 if (m_should_stop.wait_for(std::chrono::milliseconds(10)) == std::future_status::ready)
@@ -71,12 +75,9 @@ public:
             /* Immediate */
             std::unique_lock<std::mutex> lock(m_mutex);
             if (m_queue.size() > 0)
-            {
-                value = m_queue.front();
-                m_queue.pop();
-                return ADQR_EOK;
-            }
-            return ADQR_EAGAIN;
+                return Pop(value);
+            else
+                return ADQR_EAGAIN;
         }
         else
         {
@@ -85,11 +86,7 @@ public:
             {
                 std::unique_lock<std::mutex> lock(m_mutex);
                 if (m_queue.size() > 0)
-                {
-                    value = m_queue.front();
-                    m_queue.pop();
-                    return ADQR_EOK;
-                }
+                    return Pop(value);
                 lock.unlock();
 
                 ++waited_ms;
@@ -168,6 +165,17 @@ private:
     std::mutex m_mutex;
     std::queue<T> m_queue;
     size_t m_capacity;
+    bool m_is_persistent;
+
+    int Pop(T &value)
+    {
+        value = m_queue.front();
+        /* We only pop the entry if we're not using the persistent mode and if
+           we do (tail condition), only if there's another entry in the queue. */
+        if (!m_is_persistent || (m_queue.size() > 1))
+            m_queue.pop();
+        return ADQR_EOK;
+    }
 };
 
 #endif

@@ -7,6 +7,8 @@
 TEST_GROUP(ThreadSafeQueue)
 {
     ThreadSafeQueue<int> queue;
+    ThreadSafeQueue<int> capped_queue{10};
+    ThreadSafeQueue<int> persistent_queue{0, true};
 
     void setup()
     {
@@ -15,6 +17,8 @@ TEST_GROUP(ThreadSafeQueue)
     void teardown()
     {
         queue.Stop();
+        capped_queue.Stop();
+        persistent_queue.Stop();
     }
 };
 
@@ -31,7 +35,7 @@ static void Writer(ThreadSafeQueue<int> *queue)
     for (int i = 0; i < 5; ++i)
     {
         LONGS_EQUAL(ADQR_EOK, queue->Write(10 * i));
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
 }
 
@@ -43,7 +47,7 @@ TEST(ThreadSafeQueue, WriteRead)
     for (int i = 0; i < 5; ++i)
     {
         int value = 0;
-        LONGS_EQUAL(ADQR_EOK, queue.Read(value, 1000));
+        LONGS_EQUAL(ADQR_EOK, queue.Read(value, 500));
         LONGS_EQUAL(i * 10, value);
     }
 
@@ -85,7 +89,6 @@ static void Overflower(ThreadSafeQueue<int> *queue)
 
 TEST(ThreadSafeQueue, CapacityOverflow)
 {
-    ThreadSafeQueue<int> capped_queue(10);
     LONGS_EQUAL(ADQR_EOK, capped_queue.Start());
 
     std::thread overflower(&Overflower, &capped_queue);
@@ -111,4 +114,31 @@ TEST(ThreadSafeQueue, CapacityOverflow)
     }
 
     overflower.join();
+}
+
+TEST(ThreadSafeQueue, Persistent)
+{
+    LONGS_EQUAL(ADQR_EOK, persistent_queue.Start());
+
+    int value = 0;
+    LONGS_EQUAL(ADQR_EAGAIN, persistent_queue.Read(value, 0));
+    LONGS_EQUAL(ADQR_EOK, persistent_queue.Write(10));
+
+    for (int i = 0; i < 10; ++i)
+    {
+        LONGS_EQUAL(ADQR_EOK, persistent_queue.Read(value, 0));
+        LONGS_EQUAL(10, value);
+    }
+
+    LONGS_EQUAL(ADQR_EOK, persistent_queue.Write(20));
+
+    /* Expect 10 one more time. */
+    LONGS_EQUAL(ADQR_EOK, persistent_queue.Read(value, 0));
+    LONGS_EQUAL(10, value);
+
+    /* The value should change on the next read. */
+    LONGS_EQUAL(ADQR_EOK, persistent_queue.Read(value, 0));
+    LONGS_EQUAL(20, value);
+
+    LONGS_EQUAL(ADQR_EOK, persistent_queue.Stop());
 }

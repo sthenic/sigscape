@@ -12,6 +12,7 @@ DEFINES =
 CXXFLAGS += \
 	-g3 \
 	-MMD \
+	-DLINUX \
 	-Wall -Wextra \
 	-Wswitch -Wswitch-default -Wswitch-enum \
 	-Werror=overflow \
@@ -36,10 +37,12 @@ CXXFLAGS += \
 SOURCES = \
 	src/simulator.cpp \
 	src/data_processing.cpp \
+	src/simulated_digitizer.cpp \
 	tthread_safe_queue.cpp \
 	tsimulator.cpp \
 	tdata_processing.cpp \
 	tmessage_thread.cpp \
+	tsimulated_digitizer.cpp \
 	main.cpp
 
 OBJECTS = $(patsubst %,$(BUILDDIR)/%,$(SOURCES:.cpp=.o))

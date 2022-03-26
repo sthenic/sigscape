@@ -36,7 +36,18 @@ struct TimeDomainRecord
         delete[] y;
     }
 
-    TimeDomainRecord(const TimeDomainRecord &other) = delete;
+    TimeDomainRecord(const TimeDomainRecord &other)
+    {
+        x = new double[other.count];
+        y = new double[other.count];
+        id = TIME_DOMAIN;
+        header = other.header;
+        count = other.count;
+        capacity = other.count;
+
+        std::copy(other.x, other.x + other.count, x);
+        std::copy(other.y, other.y + other.count, y);
+    }
 
     TimeDomainRecord &operator=(const TimeDomainRecord &other)
     {
@@ -94,7 +105,20 @@ struct FrequencyDomainRecord
         delete[] yc;
     }
 
-    FrequencyDomainRecord(const FrequencyDomainRecord &other) = delete;
+    FrequencyDomainRecord(const FrequencyDomainRecord &other)
+    {
+        x = new double[other.count];
+        y = new double[other.count];
+        yc = new std::complex<double>[other.count];
+        id = FREQUENCY_DOMAIN;
+        header = other.header;
+        count = other.count;
+        capacity = other.count;
+
+        std::copy(other.x, other.x + other.count, x);
+        std::copy(other.y, other.y + other.count, y);
+        std::copy(other.yc, other.yc + other.count, yc);
+    }
 
     FrequencyDomainRecord &operator=(const FrequencyDomainRecord &other)
     {
@@ -154,18 +178,34 @@ struct ProcessedRecord
         delete frequency_domain;
     }
 
-    ProcessedRecord(const ProcessedRecord &other) = delete;
+    ProcessedRecord(const ProcessedRecord &other)
+    {
+        owns_time_domain = true;
+        if (other.time_domain != NULL)
+            time_domain = new TimeDomainRecord(*other.time_domain);
+        else
+            time_domain = NULL;
+
+        if (other.frequency_domain != NULL)
+            frequency_domain = new FrequencyDomainRecord(*other.frequency_domain);
+        else
+            frequency_domain = NULL;
+    }
 
     ProcessedRecord &operator=(const ProcessedRecord &other)
     {
         if (this != &other)
         {
-            if (owns_time_domain)
+            /* FIXME: Think about this again. */
+            if ((owns_time_domain) && (time_domain != NULL))
                 *time_domain = *other.time_domain;
             else
                 time_domain = other.time_domain;
 
-            *frequency_domain = *other.frequency_domain;
+            if (frequency_domain != NULL)
+                *frequency_domain = *other.frequency_domain;
+            else
+                frequency_domain = other.frequency_domain;
         }
 
         return *this;

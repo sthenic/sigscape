@@ -3,8 +3,8 @@
 #include <cmath>
 
 Simulator::Simulator()
-    : m_record_length(0)
-    , m_trigger_rate_hz(0)
+    : m_record_length(32768)
+    , m_trigger_rate_hz(5)
     , m_random_generator()
     , m_distribution(0, 0.1)
     , m_sine()

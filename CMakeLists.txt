@@ -26,6 +26,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     imgui/backends/imgui_impl_opengl3.cpp
     src/simulator.cpp
     src/data_processing.cpp
+    src/simulated_digitizer.cpp
     src/main.cpp
 )
 

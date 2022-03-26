@@ -1,6 +1,7 @@
 #ifndef ERROR_H_E94S9C
 #define ERROR_H_E94S9C
 
+#define ADQR_ELAST (1) /* Used by the thread safe persistent queue to signal the last time an element is returned. */
 #define ADQR_EOK (0) /* OK */
 #define ADQR_EINVAL (-1) /* Invalid argument */
 #define ADQR_EAGAIN (-2) /* Resource temporarily unavailable */

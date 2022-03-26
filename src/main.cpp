@@ -3,8 +3,7 @@
 #include "imgui.h"
 #include "implot.h"
 
-#include "data_processing.h"
-#include "simulator.h"
+#include "simulated_digitizer.h"
 
 #include "ADQAPI.h"
 
@@ -54,48 +53,21 @@ int main(int, char **)
 
     ImGui::StyleColorsDark();
 
-    bool show_imgui_demo_window = true;
+    bool show_imgui_demo_window = false;
     bool show_implot_demo_window = false;
 
-    DataAcquisitionSimulator acquisition_a;
-    DataAcquisitionSimulator acquisition_b;
-    DataProcessing processing_a(acquisition_a);
-    DataProcessing processing_b(acquisition_b);
-    ProcessedRecord stored_processed_record_a(65536, true);
-    ProcessedRecord stored_processed_record_b(65536, true);
-
-    Simulator::SineWave sine_a;
-    sine_a.amplitude = 0.5;
-    sine_a.frequency = 17e6;
-    sine_a.noise_std_dev = 0.01;
-    sine_a.sampling_frequency = 2.5e9;
-    sine_a.harmonic_distortion = true;
-
-    Simulator::SineWave sine_b;
-    sine_b.amplitude = 0.5;
-    sine_b.frequency = 800e3;
-    sine_b.noise_std_dev = 0.01;
-    sine_b.sampling_frequency = 2.5e9;
-
-    auto Initialize = [&]()
-    {
-        acquisition_a.Initialize(10000, 2, sine_a);
-        processing_a.Initialize();
-        acquisition_b.Initialize(10000, 30, sine_b);
-        processing_b.Initialize();
-    };
+    SimulatedDigitizer digitizer;
+    digitizer.Initialize();
+    digitizer.Start();
 
     auto Start = [&]()
     {
-        Initialize();
-        processing_a.Start();
-        processing_b.Start();
+        digitizer.PostMessage({MESSAGE_ID_START_ACQUISITION, 0, NULL});
     };
 
     auto Stop = [&]()
     {
-        processing_a.Stop();
-        processing_b.Stop();
+        digitizer.PostMessage({MESSAGE_ID_STOP_ACQUISITION, 0, NULL});
     };
 
     void *adq_cu = CreateADQControlUnit();
@@ -174,7 +146,7 @@ int main(int, char **)
         if (ImGui::BeginMenu("Style"))
         {
             static int style_idx = 0;
-            if (ImGui::Combo("", &style_idx, "Dark\0Light\0"))
+            if (ImGui::Combo("##combostyle", &style_idx, "Dark\0Light\0"))
             {
                 switch (style_idx)
                 {
@@ -278,13 +250,11 @@ int main(int, char **)
             Start();
         }
         ImGui::SameLine();
-        ImGui::BeginDisabled();
         if (ImGui::Button("Stop", COMMAND_PALETTE_BUTTON_SIZE))
         {
             printf("Stop!\n");
             Stop();
         }
-        ImGui::EndDisabled();
         ImGui::SameLine();
         if (ImGui::Button("Set", COMMAND_PALETTE_BUTTON_SIZE))
         {
@@ -326,17 +296,7 @@ int main(int, char **)
         float plot_window_height = (display_h - 1 * frame_height) / 2;
 
         struct ProcessedRecord *processed_record = NULL;
-        if (processing_a.WaitForBuffer(processed_record, 0) == ADQR_EOK)
-        {
-            stored_processed_record_a = *processed_record;
-            processing_a.ReturnBuffer(processed_record);
-        }
-
-        if (processing_b.WaitForBuffer(processed_record, 0) == ADQR_EOK)
-        {
-            stored_processed_record_b = *processed_record;
-            processing_b.ReturnBuffer(processed_record);
-        }
+        int result = digitizer.WaitForProcessedRecord(processed_record);
 
         ImGui::SetNextWindowPos(ImVec2(display_w / 2, frame_height));
         ImGui::SetNextWindowSize(ImVec2(display_w / 2, plot_window_height));
@@ -345,12 +305,12 @@ int main(int, char **)
         {
             ImPlot::SetupAxis(ImAxis_X1, "Time");
             ImPlot::SetupAxis(ImAxis_Y1, "f(x)");
-            ImPlot::PlotLine("CHA", stored_processed_record_a.time_domain->x,
-                             stored_processed_record_a.time_domain->y,
-                             stored_processed_record_a.time_domain->count);
-            ImPlot::PlotLine("CHB", stored_processed_record_b.time_domain->x,
-                             stored_processed_record_b.time_domain->y,
-                             stored_processed_record_b.time_domain->count);
+            if (result >= 0)
+            {
+                ImPlot::PlotLine("CHA", processed_record->time_domain->x,
+                                 processed_record->time_domain->y,
+                                 processed_record->time_domain->count);
+            }
             ImPlot::EndPlot();
         }
         ImGui::End();
@@ -365,15 +325,21 @@ int main(int, char **)
             ImPlot::SetupAxisLimits(ImAxis_Y1, -80.0, 0.0);
             ImPlot::SetupAxis(ImAxis_X1, "Hz");
             ImPlot::SetupAxis(ImAxis_Y1, "FFT");
-            ImPlot::PlotLine("CHA", stored_processed_record_a.frequency_domain->x,
-                             stored_processed_record_a.frequency_domain->y,
-                             stored_processed_record_a.frequency_domain->count / 2);
-            ImPlot::PlotLine("CHB", stored_processed_record_b.frequency_domain->x,
-                             stored_processed_record_b.frequency_domain->y,
-                             stored_processed_record_b.frequency_domain->count / 2);
+            if (result >= 0)
+            {
+                ImPlot::PlotLine("CHA", processed_record->frequency_domain->x,
+                                 processed_record->frequency_domain->y,
+                                 processed_record->frequency_domain->count / 2);
+            }
             ImPlot::EndPlot();
         }
         ImGui::End();
+
+        if (result == ADQR_ELAST)
+        {
+            delete processed_record;
+            processed_record = NULL;
+        }
 
         if (show_imgui_demo_window)
             ImGui::ShowDemoWindow(&show_imgui_demo_window);
@@ -389,8 +355,11 @@ int main(int, char **)
     }
 
     printf("Stopping\n");
-    processing_a.Stop();
-    processing_b.Stop();
+
+    /* FIXME: wait until threads close */
+    Stop();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    digitizer.Stop();
 
     if (adq_cu != NULL)
     {

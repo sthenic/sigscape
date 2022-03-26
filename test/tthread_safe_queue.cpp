@@ -69,3 +69,46 @@ TEST(ThreadSafeQueue, AbruptStop)
     LONGS_EQUAL(ADQR_ENOTREADY, queue.Stop());
 }
 
+static void Overflower(ThreadSafeQueue<int> *queue)
+{
+    for (int i = 0; i < 10; ++i)
+        LONGS_EQUAL(ADQR_EOK, queue->Write(10 * i));
+
+    LONGS_EQUAL(ADQR_EAGAIN, queue->Write(100));
+    LONGS_EQUAL(ADQR_EOK, queue->Write(101, -1));
+
+    /* Wait for the queue to empty. */
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    for (int i = 0; i < 10; ++i)
+        LONGS_EQUAL(ADQR_EOK, queue->Write(20 * i));
+}
+
+TEST(ThreadSafeQueue, CapacityOverflow)
+{
+    ThreadSafeQueue<int> capped_queue(10);
+    LONGS_EQUAL(ADQR_EOK, capped_queue.Start());
+
+    std::thread overflower(&Overflower, &capped_queue);
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    /* Read first set of values. */
+    int value = 0;
+    for (int i = 0; i < 10; ++i)
+    {
+        LONGS_EQUAL(ADQR_EOK, capped_queue.Read(value, 1000));
+        LONGS_EQUAL(i * 10, value);
+    }
+
+    /* Expect the overflow attempt. */
+    LONGS_EQUAL(ADQR_EOK, capped_queue.Read(value, 1000));
+    LONGS_EQUAL(101, value);
+
+    /* Read second set of values. */
+    for (int i = 0; i < 10; ++i)
+    {
+        LONGS_EQUAL(ADQR_EOK, capped_queue.Read(value, 1000));
+        LONGS_EQUAL(i * 20, value);
+    }
+
+    overflower.join();
+}

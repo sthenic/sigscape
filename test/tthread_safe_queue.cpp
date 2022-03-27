@@ -7,20 +7,18 @@
 TEST_GROUP(ThreadSafeQueue)
 {
     ThreadSafeQueue<int> queue;
-    ThreadSafeQueue<int> capped_queue{10};
-    ThreadSafeQueue<int> persistent_queue{0, true};
-    ThreadSafeQueue<int*> persistent_queue_heap{0, true};
+    ThreadSafeQueue<int*> heap_queue;
 
     void setup()
     {
+        queue.SetParameters(0, false);
+        heap_queue.SetParameters(0, false);
     }
 
     void teardown()
     {
         queue.Stop();
-        capped_queue.Stop();
-        persistent_queue.Stop();
-        persistent_queue_heap.Stop();
+        heap_queue.Stop();
     }
 };
 
@@ -93,27 +91,28 @@ static void Overflower(ThreadSafeQueue<int> *queue)
 
 TEST(ThreadSafeQueue, CapacityOverflow)
 {
-    LONGS_EQUAL(ADQR_EOK, capped_queue.Start());
+    LONGS_EQUAL(ADQR_EOK, queue.SetParameters(10, false));
+    LONGS_EQUAL(ADQR_EOK, queue.Start());
 
-    std::thread overflower(&Overflower, &capped_queue);
+    std::thread overflower(&Overflower, &queue);
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
     /* Read first set of values. */
     int value = 0;
     for (int i = 0; i < 10; ++i)
     {
-        LONGS_EQUAL(ADQR_EOK, capped_queue.Read(value, 1000));
+        LONGS_EQUAL(ADQR_EOK, queue.Read(value, 1000));
         LONGS_EQUAL(i * 10, value);
     }
 
     /* Expect the overflow attempt. */
-    LONGS_EQUAL(ADQR_EOK, capped_queue.Read(value, 1000));
+    LONGS_EQUAL(ADQR_EOK, queue.Read(value, 1000));
     LONGS_EQUAL(101, value);
 
     /* Read second set of values. */
     for (int i = 0; i < 10; ++i)
     {
-        LONGS_EQUAL(ADQR_EOK, capped_queue.Read(value, 1000));
+        LONGS_EQUAL(ADQR_EOK, queue.Read(value, 1000));
         LONGS_EQUAL(i * 20, value);
     }
 
@@ -122,59 +121,61 @@ TEST(ThreadSafeQueue, CapacityOverflow)
 
 TEST(ThreadSafeQueue, Persistent)
 {
-    LONGS_EQUAL(ADQR_EOK, persistent_queue.Start());
+    LONGS_EQUAL(ADQR_EOK, queue.SetParameters(10, true));
+    LONGS_EQUAL(ADQR_EOK, queue.Start());
 
     int value = 0;
-    LONGS_EQUAL(ADQR_EAGAIN, persistent_queue.Read(value, 0));
-    LONGS_EQUAL(ADQR_EOK, persistent_queue.Write(10));
+    LONGS_EQUAL(ADQR_EAGAIN, queue.Read(value, 0));
+    LONGS_EQUAL(ADQR_EOK, queue.Write(10));
 
     for (int i = 0; i < 10; ++i)
     {
-        LONGS_EQUAL(ADQR_EOK, persistent_queue.Read(value, 0));
+        LONGS_EQUAL(ADQR_EOK, queue.Read(value, 0));
         LONGS_EQUAL(10, value);
     }
 
-    LONGS_EQUAL(ADQR_EOK, persistent_queue.Write(20));
+    LONGS_EQUAL(ADQR_EOK, queue.Write(20));
 
     /* Expect 10 one more time, marked w/ ADQR_ELAST. */
-    LONGS_EQUAL(ADQR_ELAST, persistent_queue.Read(value, 0));
+    LONGS_EQUAL(ADQR_ELAST, queue.Read(value, 0));
     LONGS_EQUAL(10, value);
 
     /* The value should change on the next read. */
-    LONGS_EQUAL(ADQR_EOK, persistent_queue.Read(value, 0));
+    LONGS_EQUAL(ADQR_EOK, queue.Read(value, 0));
     LONGS_EQUAL(20, value);
 
-    LONGS_EQUAL(ADQR_EOK, persistent_queue.Stop());
+    LONGS_EQUAL(ADQR_EOK, queue.Stop());
 }
 
 TEST(ThreadSafeQueue, PersistentLeaking)
 {
-    LONGS_EQUAL(ADQR_EOK, persistent_queue_heap.Start());
+    LONGS_EQUAL(ADQR_EOK, heap_queue.SetParameters(10, true));
+    LONGS_EQUAL(ADQR_EOK, heap_queue.Start());
 
     for (int i = 0; i < 10; ++i)
     {
-        LONGS_EQUAL(ADQR_EOK, persistent_queue_heap.Write(new int{i}));
+        LONGS_EQUAL(ADQR_EOK, heap_queue.Write(new int{i}));
     }
 
     int *value = NULL;
     for (int i = 0; i < 9; ++i)
     {
-        LONGS_EQUAL(ADQR_ELAST, persistent_queue_heap.Read(value, 0));
+        LONGS_EQUAL(ADQR_ELAST, heap_queue.Read(value, 0));
         LONGS_EQUAL(i, *value);
         delete value;
     }
 
-    LONGS_EQUAL(ADQR_EOK, persistent_queue_heap.Read(value, 0));
+    LONGS_EQUAL(ADQR_EOK, heap_queue.Read(value, 0));
     LONGS_EQUAL(9, *value);
 
-    LONGS_EQUAL(ADQR_EOK, persistent_queue_heap.Write(new int{100}));
-    LONGS_EQUAL(ADQR_ELAST, persistent_queue_heap.Read(value, 0));
+    LONGS_EQUAL(ADQR_EOK, heap_queue.Write(new int{100}));
+    LONGS_EQUAL(ADQR_ELAST, heap_queue.Read(value, 0));
     LONGS_EQUAL(9, *value);
     delete value;
 
-    LONGS_EQUAL(ADQR_EOK, persistent_queue_heap.Read(value, 0));
+    LONGS_EQUAL(ADQR_EOK, heap_queue.Read(value, 0));
     LONGS_EQUAL(100, *value);
 
-    persistent_queue_heap.Free();
-    LONGS_EQUAL(ADQR_EOK, persistent_queue_heap.Stop());
+    heap_queue.Free();
+    LONGS_EQUAL(ADQR_EOK, heap_queue.Stop());
 }

@@ -20,6 +20,55 @@ static void glfw_error_callback(int error, const char *description)
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
+static int display_w = 0;
+static int display_h = 0;
+
+void DoPlot(Digitizer &digitizer)
+{
+    const float FRAME_HEIGHT = ImGui::GetFrameHeight();
+    const float PLOT_WINDOW_HEIGHT = (display_h - 1 * FRAME_HEIGHT) / 2;
+
+    std::shared_ptr<struct ProcessedRecord> processed_record = NULL;
+    int result = digitizer.WaitForProcessedRecord(0, processed_record);
+
+    ImGui::SetNextWindowPos(ImVec2(display_w / 2, FRAME_HEIGHT));
+    ImGui::SetNextWindowSize(ImVec2(display_w / 2, PLOT_WINDOW_HEIGHT));
+    ImGui::Begin("Time Domain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+    if (ImPlot::BeginPlot("Time domain", ImVec2(-1, -1), ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
+    {
+        ImPlot::SetupAxis(ImAxis_X1, "Time");
+        ImPlot::SetupAxis(ImAxis_Y1, "f(x)");
+        if (result >= 0)
+        {
+            ImPlot::PlotLine("CHA", processed_record->time_domain->x,
+                             processed_record->time_domain->y,
+                             processed_record->time_domain->count);
+        }
+        ImPlot::EndPlot();
+    }
+    ImGui::End();
+
+    ImGui::SetNextWindowPos(ImVec2(display_w / 2, FRAME_HEIGHT + PLOT_WINDOW_HEIGHT));
+    ImGui::SetNextWindowSize(ImVec2(display_w / 2, PLOT_WINDOW_HEIGHT));
+    ImGui::Begin("Frequency Domain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+
+    if (ImPlot::BeginPlot("FFT", ImVec2(-1, -1), ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
+    {
+        ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, 0.5);
+        ImPlot::SetupAxisLimits(ImAxis_Y1, -80.0, 0.0);
+        ImPlot::SetupAxis(ImAxis_X1, "Hz");
+        ImPlot::SetupAxis(ImAxis_Y1, "FFT");
+        if (result >= 0)
+        {
+            ImPlot::PlotLine("CHA", processed_record->frequency_domain->x,
+                             processed_record->frequency_domain->y,
+                             processed_record->frequency_domain->count / 2);
+        }
+        ImPlot::EndPlot();
+    }
+    ImGui::End();
+}
+
 int main(int, char **)
 {
     glfwSetErrorCallback(glfw_error_callback);
@@ -121,7 +170,6 @@ int main(int, char **)
         glfwPollEvents();
         glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
         glClear(GL_COLOR_BUFFER_BIT);
-        int display_w, display_h;
         glfwGetFramebufferSize(window, &display_w, &display_h);
         glViewport(0, 0, display_w, display_h);
 
@@ -293,53 +341,7 @@ int main(int, char **)
                                   ImVec2(-FLT_MIN, -FLT_MIN), ImGuiInputTextFlags_AllowTabInput);
         ImGui::End();
 
-        float plot_window_height = (display_h - 1 * frame_height) / 2;
-
-        struct ProcessedRecord *processed_record = NULL;
-        int result = digitizer.WaitForProcessedRecord(processed_record);
-
-        ImGui::SetNextWindowPos(ImVec2(display_w / 2, frame_height));
-        ImGui::SetNextWindowSize(ImVec2(display_w / 2, plot_window_height));
-        ImGui::Begin("Time Domain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-        if (ImPlot::BeginPlot("Time domain", ImVec2(-1, -1), ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
-        {
-            ImPlot::SetupAxis(ImAxis_X1, "Time");
-            ImPlot::SetupAxis(ImAxis_Y1, "f(x)");
-            if (result >= 0)
-            {
-                ImPlot::PlotLine("CHA", processed_record->time_domain->x,
-                                 processed_record->time_domain->y,
-                                 processed_record->time_domain->count);
-            }
-            ImPlot::EndPlot();
-        }
-        ImGui::End();
-
-        ImGui::SetNextWindowPos(ImVec2(display_w / 2, frame_height + plot_window_height));
-        ImGui::SetNextWindowSize(ImVec2(display_w / 2, plot_window_height));
-        ImGui::Begin("Frequency Domain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-
-        if (ImPlot::BeginPlot("FFT", ImVec2(-1, -1), ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
-        {
-            ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, 0.5);
-            ImPlot::SetupAxisLimits(ImAxis_Y1, -80.0, 0.0);
-            ImPlot::SetupAxis(ImAxis_X1, "Hz");
-            ImPlot::SetupAxis(ImAxis_Y1, "FFT");
-            if (result >= 0)
-            {
-                ImPlot::PlotLine("CHA", processed_record->frequency_domain->x,
-                                 processed_record->frequency_domain->y,
-                                 processed_record->frequency_domain->count / 2);
-            }
-            ImPlot::EndPlot();
-        }
-        ImGui::End();
-
-        if (result == ADQR_ELAST)
-        {
-            delete processed_record;
-            processed_record = NULL;
-        }
+        DoPlot(digitizer);
 
         if (show_imgui_demo_window)
             ImGui::ShowDemoWindow(&show_imgui_demo_window);

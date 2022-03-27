@@ -13,7 +13,6 @@
 #include <queue>
 #include <mutex>
 #include <future>
-#include <type_traits>
 
 template <typename T>
 class ThreadSafeQueue
@@ -29,6 +28,9 @@ public:
         , m_is_persistent(is_persistent)
     {
     }
+
+    ThreadSafeQueue(const ThreadSafeQueue &other) = delete;
+    ThreadSafeQueue &operator=(const ThreadSafeQueue &other) = delete;
 
     int Start()
     {

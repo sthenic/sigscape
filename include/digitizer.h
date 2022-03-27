@@ -47,9 +47,13 @@ public:
         , m_processed_record_queue{}
     {
         for (int i = 0; i < ADQ_MAX_NOF_CHANNELS; ++i)
-            m_processed_record_queue[i].SetParameters(100, true);
+        {
+            m_processed_record_queue.push_back(
+                std::make_unique<ThreadSafeQueue<std::shared_ptr<struct ProcessedRecord>>>(100, true));
+        }
     }
 
+    /* FIXME: Needed? */
     ~Digitizer()
     {
         Stop();
@@ -61,24 +65,32 @@ public:
 
     virtual int Start() override
     {
-        int result = m_processed_record_queue[0].Start();
-        if (result != ADQR_EOK)
-            return result;
+        for (auto &queue : m_processed_record_queue)
+        {
+            int result = queue->Start();
+            if (result != ADQR_EOK)
+                return result;
+        }
+
         return MessageThread::Start();
     }
 
     virtual int Stop() override
     {
         /* FIXME: Error code capture and propagation. */
-        m_processed_record_queue[0].Stop();
-        m_processed_record_queue[0].Free();
+        for (auto &queue : m_processed_record_queue)
+            queue->Stop();
+
         MessageThread::Stop();
         return ADQR_EOK;
     }
 
-    int WaitForProcessedRecord(struct ProcessedRecord *&record)
+    int WaitForProcessedRecord(int channel, std::shared_ptr<struct ProcessedRecord> &record)
     {
-        return m_processed_record_queue[0].Read(record, 0);
+        if ((channel < 0) || (channel > ADQ_MAX_NOF_CHANNELS))
+            return ADQR_EINVAL;
+
+        return m_processed_record_queue[channel]->Read(record, 0);
     }
 
 protected:
@@ -87,7 +99,9 @@ protected:
 
     enum DigitizerState m_state;
 
-    ThreadSafeQueue<struct ProcessedRecord *> m_processed_record_queue[ADQ_MAX_NOF_CHANNELS];
+    std::vector<
+        std::unique_ptr<ThreadSafeQueue<std::shared_ptr<struct ProcessedRecord>>>
+    > m_processed_record_queue;
 };
 
 #endif

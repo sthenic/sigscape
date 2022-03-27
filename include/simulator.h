@@ -12,7 +12,6 @@ class Simulator : public BufferThread<Simulator, TimeDomainRecord>
 {
 public:
     Simulator();
-    ~Simulator();
 
     struct SineWave
     {

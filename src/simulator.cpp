@@ -11,10 +11,6 @@ Simulator::Simulator()
 {
 }
 
-Simulator::~Simulator()
-{
-}
-
 int Simulator::Initialize(size_t record_length, double trigger_rate_hz, const struct SineWave &sine)
 {
     m_record_length = record_length;

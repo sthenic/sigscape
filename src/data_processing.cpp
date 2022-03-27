@@ -48,6 +48,7 @@ int DataProcessing::ReturnBuffer(std::shared_ptr<ProcessedRecord> buffer)
 {
     /* FIXME: Figure out return code logic. */
     m_acquisition.ReturnBuffer(buffer->time_domain);
+    buffer->time_domain = NULL;
     return m_write_queue.Write(buffer);
 }
 

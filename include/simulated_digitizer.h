@@ -13,7 +13,6 @@ class SimulatedDigitizer : public Digitizer
 {
 public:
     SimulatedDigitizer();
-    ~SimulatedDigitizer();
 
     /* Initialize the digitizer. */
     int Initialize();
@@ -21,8 +20,8 @@ public:
 private:
     void MainLoop() override;
 
-    DataAcquisitionSimulator m_simulator;
-    DataProcessing m_data_processing;
+    std::vector<std::shared_ptr<DataAcquisitionSimulator>> m_simulator;
+    std::vector<std::unique_ptr<DataProcessing>> m_data_processing;
 
     /* The digitizer's parameter set. */
 

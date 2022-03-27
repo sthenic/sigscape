@@ -2,12 +2,15 @@
 
 SimulatedDigitizer::SimulatedDigitizer()
     : Digitizer()
-    , m_simulator()
-    , m_data_processing(m_simulator)
-{}
-
-SimulatedDigitizer::~SimulatedDigitizer()
+    , m_simulator{}
+    , m_data_processing{}
 {
+    for (int i = 0; i < ADQ_MAX_NOF_CHANNELS; ++i)
+    {
+        auto simulator = std::make_shared<DataAcquisitionSimulator>();
+        m_simulator.push_back(simulator);
+        m_data_processing.push_back(std::make_unique<DataProcessing>(*simulator));
+    }
 }
 
 int SimulatedDigitizer::Initialize()
@@ -75,15 +78,15 @@ int SimulatedDigitizer::HandleMessage(const struct DigitizerMessage &msg)
     {
     case MESSAGE_ID_START_ACQUISITION:
         printf("Entering acquisition.\n");
-        m_simulator.Initialize(10000, 4.0, Simulator::SineWave());
-        m_data_processing.Start();
+        m_simulator[0]->Initialize(10000, 10.0, Simulator::SineWave());
+        m_data_processing[0]->Start();
         m_state = STATE_ACQUISITION;
         m_read_queue.Write({MESSAGE_ID_NEW_STATE, STATE_ACQUISITION, NULL});
         break;
 
     case MESSAGE_ID_STOP_ACQUISITION:
         printf("Entering configuration.\n");
-        m_data_processing.Stop();
+        m_data_processing[0]->Stop();
         m_state = STATE_CONFIGURATION;
         m_read_queue.Write({MESSAGE_ID_NEW_STATE, STATE_CONFIGURATION, NULL});
         break;
@@ -106,7 +109,7 @@ int SimulatedDigitizer::DoAcquisition()
 {
     /* FIXME: Support several channels. */
     std::shared_ptr<ProcessedRecord> processed_record = NULL;
-    int result = m_data_processing.WaitForBuffer(processed_record, 0);
+    int result = m_data_processing[0]->WaitForBuffer(processed_record, 0);
     if (result == ADQR_EAGAIN)
     {
         return ADQR_EOK;
@@ -133,6 +136,6 @@ int SimulatedDigitizer::DoAcquisition()
         printf("Queue is full, discarding %d (no copy).\n", nof_discarded++);
     }
 
-    m_data_processing.ReturnBuffer(processed_record);
+    m_data_processing[0]->ReturnBuffer(processed_record);
     return ADQR_EOK;
 }

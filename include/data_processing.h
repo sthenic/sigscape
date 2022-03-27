@@ -13,8 +13,8 @@ public:
     ~DataProcessing();
 
     int Initialize();
-    int Start();
-    int Stop();
+    int Start() override;
+    int Stop() override;
     int WaitForBuffer(std::shared_ptr<ProcessedRecord> &buffer, int timeout) override;
     int ReturnBuffer(std::shared_ptr<ProcessedRecord> buffer) override;
     void MainLoop() override;

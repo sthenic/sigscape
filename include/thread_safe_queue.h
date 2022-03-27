@@ -19,25 +19,15 @@ template <typename T>
 class ThreadSafeQueue
 {
 public:
-    ThreadSafeQueue()
+    ThreadSafeQueue(size_t capacity = 0, bool is_persistent = false)
         : m_signal_stop()
         , m_should_stop()
         , m_is_started(false)
         , m_mutex()
         , m_queue()
-        , m_capacity(0)
-        , m_is_persistent(false)
+        , m_capacity(capacity)
+        , m_is_persistent(is_persistent)
     {
-    }
-
-    int SetParameters(size_t capacity, bool is_persistent)
-    {
-        if (m_is_started)
-            return ADQR_ENOTREADY;
-
-        m_capacity = capacity;
-        m_is_persistent = is_persistent;
-        return ADQR_EOK;
     }
 
     int Start()

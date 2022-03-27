@@ -1,5 +1,5 @@
 /*
- * An abstract base class that defines the interface for a digitizer.
+ * An abstract base class that defines the interface of a digitizer.
  */
 
 #ifndef DIGITIZER_H_TMDVZV
@@ -7,10 +7,6 @@
 
 #include "message_thread.h"
 #include "data_types.h"
-#include "ADQAPI.h"
-
-#include <mutex>
-#include <algorithm>
 
 enum DigitizerMessageId
 {
@@ -44,21 +40,49 @@ class Digitizer : public MessageThread<Digitizer, struct DigitizerMessage>
 public:
     /* FIXME: Delete default constructor? */
     Digitizer()
-        : m_state(STATE_NOT_ENUMERATED)
+        : MessageThread()
+        , m_state(STATE_NOT_ENUMERATED)
+        , m_processed_record_queue(100, true)
     {}
 
-    ~Digitizer() = default;
+    ~Digitizer()
+    {
+        Stop();
+    }
 
-    /* Delete copy constructors. Needed? */
+    /* Delete copy constructors. */
     Digitizer(const Digitizer &) = delete;
     Digitizer &operator=(const Digitizer &) = delete;
 
-    /* FIXME: Make this into an abstract class. */
+    virtual int Start() override
+    {
+        int result = m_processed_record_queue.Start();
+        if (result != ADQR_EOK)
+            return result;
+        return MessageThread::Start();
+    }
+
+    virtual int Stop() override
+    {
+        /* FIXME: Error code capture and propagation. */
+        m_processed_record_queue.Stop();
+        m_processed_record_queue.Free();
+        MessageThread::Stop();
+        return ADQR_EOK;
+    }
+
+    int WaitForProcessedRecord(struct ProcessedRecord *&record)
+    {
+        return m_processed_record_queue.Read(record, 0);
+    }
 
 protected:
     /* TODO: Perhaps write a file watcher w/ C++17's std::filesystem:
        https://solarianprogrammer.com/2019/01/13/cpp-17-filesystem-write-file-watcher-monitor/ */
+
     enum DigitizerState m_state;
+    /* FIXME: Need arrays for each channel. */
+    ThreadSafeQueue<struct ProcessedRecord *> m_processed_record_queue;
 };
 
 #endif

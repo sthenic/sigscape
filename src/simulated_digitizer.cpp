@@ -4,12 +4,10 @@ SimulatedDigitizer::SimulatedDigitizer()
     : Digitizer()
     , m_simulator()
     , m_data_processing(m_simulator)
-    , m_data_read_queue(0, true)
 {}
 
 SimulatedDigitizer::~SimulatedDigitizer()
 {
-    Stop();
 }
 
 int SimulatedDigitizer::Initialize()
@@ -18,23 +16,8 @@ int SimulatedDigitizer::Initialize()
     return ADQR_EOK;
 }
 
-int SimulatedDigitizer::Start()
-{
-    m_data_read_queue.Start();
-    return MessageThread::Start();
-}
-
-int SimulatedDigitizer::Stop()
-{
-    m_data_read_queue.Stop();
-    m_data_read_queue.Free();
-    return MessageThread::Stop();
-}
-
 void SimulatedDigitizer::MainLoop()
 {
-    m_data_read_queue.Start();
-
     m_read_queue.Write({MESSAGE_ID_NEW_STATE, STATE_NOT_ENUMERATED, NULL});
     m_read_queue.Write({MESSAGE_ID_SETUP_STARTING, 0, NULL});
 
@@ -92,7 +75,7 @@ int SimulatedDigitizer::HandleMessage(const struct DigitizerMessage &msg)
     {
     case MESSAGE_ID_START_ACQUISITION:
         printf("Entering acquisition.\n");
-        m_simulator.Initialize(10000, 60.0, Simulator::SineWave());
+        m_simulator.Initialize(10000, 10.0, Simulator::SineWave());
         m_data_processing.Start();
         m_state = STATE_ACQUISITION;
         m_read_queue.Write({MESSAGE_ID_NEW_STATE, STATE_ACQUISITION, NULL});
@@ -137,8 +120,15 @@ int SimulatedDigitizer::DoAcquisition()
     /* We have a buffer whose contents we copy into persistent storage used to
        plot the data. The plot process may hold the lock, in which case we
        discard the data. FIXME: Perhaps two modes: discard or not? */
-    struct ProcessedRecord *copy = new ProcessedRecord(*processed_record);
-    result = m_data_read_queue.Write(copy);
+    if (!m_processed_record_queue.IsFull())
+    {
+        m_processed_record_queue.Write(new ProcessedRecord(*processed_record));
+    }
+    else
+    {
+        static int nof_discarded = 0;
+        printf("Queue is full, discarding %d (no copy).\n", nof_discarded++);
+    }
 
     m_data_processing.ReturnBuffer(processed_record);
     return ADQR_EOK;

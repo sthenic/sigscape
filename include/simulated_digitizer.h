@@ -18,23 +18,11 @@ public:
     /* Initialize the digitizer. */
     int Initialize();
 
-    int Start() override;
-    int Stop() override;
-
-    /* Consider moving all this unto */
-    int WaitForProcessedRecord(struct ProcessedRecord *&record)
-    {
-        return m_data_read_queue.Read(record, 0);
-    }
-
 private:
     void MainLoop() override;
 
     DataAcquisitionSimulator m_simulator;
     DataProcessing m_data_processing;
-
-    /* FIXME: Need arrays for each channel. */
-    ThreadSafeQueue<struct ProcessedRecord *> m_data_read_queue;
 
     /* The digitizer's parameter set. */
 

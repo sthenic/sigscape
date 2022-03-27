@@ -13,6 +13,7 @@
 #include <queue>
 #include <mutex>
 #include <future>
+#include <type_traits>
 
 template <typename T>
 class ThreadSafeQueue
@@ -167,6 +168,12 @@ public:
 
         m_queue.push(value);
         return ADQR_EOK;
+    }
+
+    bool IsFull()
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        return (m_capacity > 0) && (m_queue.size() >= m_capacity);
     }
 
 private:

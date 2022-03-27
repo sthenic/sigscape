@@ -80,11 +80,13 @@ static void Overflower(ThreadSafeQueue<int> *queue)
     for (int i = 0; i < 10; ++i)
         LONGS_EQUAL(ADQR_EOK, queue->Write(10 * i));
 
+    LONGS_EQUAL(true, queue->IsFull());
     LONGS_EQUAL(ADQR_EAGAIN, queue->Write(100));
     LONGS_EQUAL(ADQR_EOK, queue->Write(101, -1));
 
     /* Wait for the queue to empty. */
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    LONGS_EQUAL(false, queue->IsFull());
     for (int i = 0; i < 10; ++i)
         LONGS_EQUAL(ADQR_EOK, queue->Write(20 * i));
 }

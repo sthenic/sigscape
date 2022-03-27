@@ -28,7 +28,7 @@ void DoPlot(Digitizer &digitizer)
     const float FRAME_HEIGHT = ImGui::GetFrameHeight();
     const float PLOT_WINDOW_HEIGHT = (display_h - 1 * FRAME_HEIGHT) / 2;
 
-    std::shared_ptr<struct ProcessedRecord> processed_record = NULL;
+    std::shared_ptr<ProcessedRecord> processed_record = NULL;
     int result = digitizer.WaitForProcessedRecord(0, processed_record);
 
     ImGui::SetNextWindowPos(ImVec2(display_w / 2, FRAME_HEIGHT));

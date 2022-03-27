@@ -8,7 +8,7 @@
 
 #include <random>
 
-class Simulator : public BufferThread<Simulator, struct TimeDomainRecord>
+class Simulator : public BufferThread<Simulator, TimeDomainRecord>
 {
 public:
     Simulator();
@@ -36,9 +36,9 @@ public:
     };
 
     int Initialize(size_t record_length, double trigger_rate_hz, const struct SineWave &sine = SineWave());
-    int WaitForBuffer(struct TimeDomainRecord *&buffer, int timeout);
-    int ReturnBuffer(struct TimeDomainRecord *buffer);
-    void MainLoop();
+    int WaitForBuffer(std::shared_ptr<TimeDomainRecord> &buffer, int timeout) override;
+    int ReturnBuffer(std::shared_ptr<TimeDomainRecord> buffer) override;
+    void MainLoop() override;
 
 private:
     size_t m_record_length;
@@ -47,7 +47,7 @@ private:
     std::normal_distribution<double> m_distribution;
     struct SineWave m_sine;
 
-    void NoisySine(struct TimeDomainRecord &record, size_t count);
+    void NoisySine(TimeDomainRecord &record, size_t count);
 };
 
 /* Thin wrapper around the simulator that implements the interface declared by DataAcquisition. */
@@ -72,15 +72,15 @@ public:
         return m_simulator.Stop();
     }
 
-    int WaitForBuffer(void *&buffer, int timeout, void *status)
+    int WaitForBuffer(std::shared_ptr<void> &buffer, int timeout, void *status)
     {
         (void)status;
-        return m_simulator.WaitForBuffer(reinterpret_cast<TimeDomainRecord *&>(buffer), timeout);
+        return m_simulator.WaitForBuffer(reinterpret_cast<std::shared_ptr<TimeDomainRecord> &>(buffer), timeout);
     }
 
-    int ReturnBuffer(void *buffer)
+    int ReturnBuffer(std::shared_ptr<void> buffer)
     {
-        return m_simulator.ReturnBuffer(reinterpret_cast<TimeDomainRecord *&>(buffer));
+        return m_simulator.ReturnBuffer(reinterpret_cast<std::shared_ptr<TimeDomainRecord> &>(buffer));
     }
 
 private:

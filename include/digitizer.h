@@ -49,7 +49,7 @@ public:
         for (int i = 0; i < ADQ_MAX_NOF_CHANNELS; ++i)
         {
             m_processed_record_queue.push_back(
-                std::make_unique<ThreadSafeQueue<std::shared_ptr<struct ProcessedRecord>>>(100, true));
+                std::make_unique<ThreadSafeQueue<std::shared_ptr<ProcessedRecord>>>(100, true));
         }
     }
 
@@ -85,7 +85,7 @@ public:
         return ADQR_EOK;
     }
 
-    int WaitForProcessedRecord(int channel, std::shared_ptr<struct ProcessedRecord> &record)
+    int WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedRecord> &record)
     {
         if ((channel < 0) || (channel > ADQ_MAX_NOF_CHANNELS))
             return ADQR_EINVAL;
@@ -100,7 +100,7 @@ protected:
     enum DigitizerState m_state;
 
     std::vector<
-        std::unique_ptr<ThreadSafeQueue<std::shared_ptr<struct ProcessedRecord>>>
+        std::unique_ptr<ThreadSafeQueue<std::shared_ptr<ProcessedRecord>>>
     > m_processed_record_queue;
 };
 

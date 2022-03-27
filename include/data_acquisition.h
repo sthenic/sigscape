@@ -11,8 +11,8 @@ class DataAcquisition
 public:
     virtual int Start() = 0;
     virtual int Stop() = 0;
-    virtual int WaitForBuffer(void *&buffer, int timeout, void *status) = 0;
-    virtual int ReturnBuffer(void *buffer) = 0;
+    virtual int WaitForBuffer(std::shared_ptr<void> &buffer, int timeout, void *status) = 0;
+    virtual int ReturnBuffer(std::shared_ptr<void> buffer) = 0;
 };
 
 #endif

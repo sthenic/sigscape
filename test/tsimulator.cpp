@@ -37,13 +37,13 @@ TEST(SimulatorGroup, Records)
     LONGS_EQUAL(ADQR_EOK, simulator.Initialize(RECORD_LENGTH, TRIGGER_RATE_HZ));
     LONGS_EQUAL(ADQR_EOK, simulator.Start());
 
-    std::vector<struct TimeDomainRecord *> records;
+    std::vector<std::shared_ptr<TimeDomainRecord>> records;
     bool return_records = false;
     int nof_records_received = 0;
     while (nof_records_received != NOF_RECORDS)
     {
-        struct TimeDomainRecord *record = NULL;
-        int result = simulator.WaitForBuffer((void *&)record, 1000, NULL);
+        std::shared_ptr<TimeDomainRecord> record = NULL;
+        int result = simulator.WaitForBuffer((std::shared_ptr<void> &)record, 1000, NULL);
 
         if ((result == ADQR_EAGAIN) && !return_records)
         {
@@ -94,8 +94,8 @@ TEST(SimulatorGroup, RepeatedStartStop)
         int nof_records_received = 0;
         while (nof_records_received != NOF_RECORDS)
         {
-            struct TimeDomainRecord *record = NULL;
-            LONGS_EQUAL(ADQR_EOK, simulator.WaitForBuffer((void *&)record, 1000, NULL));
+            std::shared_ptr<TimeDomainRecord> record = NULL;
+            LONGS_EQUAL(ADQR_EOK, simulator.WaitForBuffer((std::shared_ptr<void> &)record, 1000, NULL));
             CHECK(record != NULL);
 
             LONGS_EQUAL(TIME_DOMAIN, record->id);

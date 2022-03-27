@@ -24,12 +24,12 @@ int Simulator::Initialize(size_t record_length, double trigger_rate_hz, const st
     return ADQR_EOK;
 }
 
-int Simulator::WaitForBuffer(struct TimeDomainRecord *&buffer, int timeout)
+int Simulator::WaitForBuffer(std::shared_ptr<TimeDomainRecord> &buffer, int timeout)
 {
     return m_read_queue.Read(buffer, timeout);
 }
 
-int Simulator::ReturnBuffer(struct TimeDomainRecord *buffer)
+int Simulator::ReturnBuffer(std::shared_ptr<TimeDomainRecord> buffer)
 {
     return m_write_queue.Write(buffer);
 }
@@ -42,7 +42,7 @@ void Simulator::MainLoop()
 
     for (;;)
     {
-        struct TimeDomainRecord *record = NULL;
+        std::shared_ptr<TimeDomainRecord> record = NULL;
         int result = ReuseOrAllocateBuffer(record, m_record_length);
         if (result != ADQR_EOK)
         {
@@ -69,7 +69,7 @@ void Simulator::MainLoop()
     }
 }
 
-void Simulator::NoisySine(struct TimeDomainRecord &record, size_t count)
+void Simulator::NoisySine(TimeDomainRecord &record, size_t count)
 {
     /* Generate a noisy sine wave of the input length. */
     for (size_t i = 0; i < count; ++i)

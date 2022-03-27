@@ -74,7 +74,7 @@ TEST(DataProcessingGroup, RepeatedStartStop)
         int nof_records_received = 0;
         while (nof_records_received != NOF_RECORDS)
         {
-            struct ProcessedRecord *record = NULL;
+            std::shared_ptr<ProcessedRecord> record = NULL;
             LONGS_EQUAL(ADQR_EOK, processing->WaitForBuffer(record, 1000));
             CHECK(record != NULL);
 

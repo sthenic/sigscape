@@ -157,63 +157,42 @@ struct FrequencyDomainRecord
 
 struct ProcessedRecord
 {
-    ProcessedRecord(size_t count, bool allocate_time_domain = false)
+    ProcessedRecord(size_t count)
     {
-        if (allocate_time_domain)
-            time_domain = new TimeDomainRecord(count);
-        else
-            time_domain = NULL;
-
-        frequency_domain = new FrequencyDomainRecord(count);
-        owns_time_domain = allocate_time_domain;
-    }
-
-    ~ProcessedRecord()
-    {
-        if (owns_time_domain)
-            delete time_domain;
-        else
-            time_domain = NULL;
-
-        delete frequency_domain;
+        time_domain = std::make_shared<TimeDomainRecord>(count);
+        frequency_domain = std::make_shared<FrequencyDomainRecord>(count);
     }
 
     ProcessedRecord(const ProcessedRecord &other)
     {
-        owns_time_domain = true;
+        /* We make a deep copy of the other object and create new shared pointers. */
         if (other.time_domain != NULL)
-            time_domain = new TimeDomainRecord(*other.time_domain);
-        else
-            time_domain = NULL;
+            time_domain = std::make_shared<TimeDomainRecord>(*other.time_domain);
 
         if (other.frequency_domain != NULL)
-            frequency_domain = new FrequencyDomainRecord(*other.frequency_domain);
-        else
-            frequency_domain = NULL;
+            frequency_domain = std::make_shared<FrequencyDomainRecord>(*other.frequency_domain);
     }
 
     ProcessedRecord &operator=(const ProcessedRecord &other)
     {
         if (this != &other)
         {
-            /* FIXME: Think about this again. */
-            if ((owns_time_domain) && (time_domain != NULL))
-                *time_domain = *other.time_domain;
+            if (other.time_domain != NULL)
+                time_domain = std::make_shared<TimeDomainRecord>(*other.time_domain);
             else
-                time_domain = other.time_domain;
+                time_domain = NULL;
 
-            if (frequency_domain != NULL)
-                *frequency_domain = *other.frequency_domain;
+            if (other.frequency_domain != NULL)
+                frequency_domain = std::make_shared<FrequencyDomainRecord>(*other.frequency_domain);
             else
-                frequency_domain = other.frequency_domain;
+                frequency_domain = NULL;
         }
 
         return *this;
     }
 
-    struct TimeDomainRecord *time_domain;
-    struct FrequencyDomainRecord *frequency_domain;
-    bool owns_time_domain;
+    std::shared_ptr<TimeDomainRecord> time_domain;
+    std::shared_ptr<FrequencyDomainRecord> frequency_domain;
 };
 
 #endif

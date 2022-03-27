@@ -15,9 +15,9 @@ public:
     int Initialize();
     int Start();
     int Stop();
-    int WaitForBuffer(struct ProcessedRecord *&buffer, int timeout);
-    int ReturnBuffer(struct ProcessedRecord *buffer);
-    void MainLoop();
+    int WaitForBuffer(std::shared_ptr<ProcessedRecord> &buffer, int timeout) override;
+    int ReturnBuffer(std::shared_ptr<ProcessedRecord> buffer) override;
+    void MainLoop() override;
 
 private:
     DataAcquisition &m_acquisition;

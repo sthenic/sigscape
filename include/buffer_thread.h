@@ -20,16 +20,13 @@ public:
         , m_is_running(false)
         , m_thread_exit_code(ADQR_EINTERRUPTED)
         , m_nof_buffers_max(100)
-        , m_mutex()
+        , m_nof_buffers(0)
         , m_read_queue()
         , m_write_queue()
-        , m_buffers()
     {};
 
     virtual ~BufferThread()
-    {
-        FreeBuffers();
-    }
+    {}
 
     virtual int Start()
     {
@@ -54,13 +51,12 @@ public:
         m_read_queue.Stop();
         m_signal_stop.set_value();
         m_thread.join();
-        FreeBuffers();
         m_is_running = false;
         return m_thread_exit_code;
     }
 
-    virtual int WaitForBuffer(T *&buffer, int timeout) = 0;
-    virtual int ReturnBuffer(T *buffer) = 0;
+    virtual int WaitForBuffer(std::shared_ptr<T> &buffer, int timeout) = 0;
+    virtual int ReturnBuffer(std::shared_ptr<T> buffer) = 0;
 
 protected:
     std::thread m_thread;
@@ -69,31 +65,27 @@ protected:
     bool m_is_running;
     int m_thread_exit_code;
     size_t m_nof_buffers_max;
+    size_t m_nof_buffers;
 
-    std::mutex m_mutex;
-    ThreadSafeQueue<T*> m_read_queue;
-    ThreadSafeQueue<T*> m_write_queue;
-    std::vector<T*> m_buffers;
+    ThreadSafeQueue<std::shared_ptr<T>> m_read_queue;
+    ThreadSafeQueue<std::shared_ptr<T>> m_write_queue;
 
-    int AllocateBuffer(T *&buffer, size_t count)
+    int AllocateBuffer(std::shared_ptr<T> &buffer, size_t count)
     {
         try
         {
-            buffer = new T(count);
+            buffer = std::make_shared<T>(count);
         }
         catch (const std::bad_alloc &)
         {
             return ADQR_EINTERNAL;
         }
 
-        /* Add a reference to the data storage. */
-        m_mutex.lock();
-        m_buffers.push_back(buffer);
-        m_mutex.unlock();
+        ++m_nof_buffers;
         return ADQR_EOK;
     }
 
-    int ReuseOrAllocateBuffer(T *&buffer, size_t count)
+    int ReuseOrAllocateBuffer(std::shared_ptr<T> &buffer, size_t count)
     {
         /* We prioritize reusing existing memory over allocating new. */
         if (m_write_queue.Read(buffer, 0) == ADQR_EOK)
@@ -102,23 +94,11 @@ protected:
         }
         else
         {
-            m_mutex.lock();
-            size_t nof_buffers = m_buffers.size();
-            m_mutex.unlock();
-            if (nof_buffers < m_nof_buffers_max)
+            if (m_nof_buffers < m_nof_buffers_max)
                 return AllocateBuffer(buffer, count);
             else
                 return m_write_queue.Read(buffer, -1);
         }
-    }
-
-    void FreeBuffers()
-    {
-        m_mutex.lock();
-        for (auto it = m_buffers.begin(); it != m_buffers.end(); ++it)
-            delete *it;
-        m_buffers.clear();
-        m_mutex.unlock();
     }
 
     virtual void MainLoop() = 0;

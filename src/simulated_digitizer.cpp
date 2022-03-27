@@ -105,7 +105,7 @@ int SimulatedDigitizer::HandleMessage(const struct DigitizerMessage &msg)
 int SimulatedDigitizer::DoAcquisition()
 {
     /* FIXME: Support several channels. */
-    struct ProcessedRecord *processed_record = NULL;
+    std::shared_ptr<ProcessedRecord> processed_record = NULL;
     int result = m_data_processing.WaitForBuffer(processed_record, 0);
     if (result == ADQR_EAGAIN)
     {
@@ -117,9 +117,9 @@ int SimulatedDigitizer::DoAcquisition()
         return result;
     }
 
-    /* We have a buffer whose contents we copy into persistent storage used to
-       plot the data. The plot process may hold the lock, in which case we
-       discard the data. FIXME: Perhaps two modes: discard or not? */
+    /* To avoid a potentially costly copy operation, we check if the outbound
+       queue is full before we make a deep copied ProcessedRecord object. This
+       is used by the GUI thread for plotting. */
     if (!m_processed_record_queue[0]->IsFull())
     {
         m_processed_record_queue[0]->Write(
@@ -128,6 +128,7 @@ int SimulatedDigitizer::DoAcquisition()
     }
     else
     {
+        /* FIXME: Remove */
         static int nof_discarded = 0;
         printf("Queue is full, discarding %d (no copy).\n", nof_discarded++);
     }

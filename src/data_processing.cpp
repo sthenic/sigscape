@@ -39,17 +39,15 @@ int DataProcessing::Stop()
     return acquisition_result;
 }
 
-int DataProcessing::WaitForBuffer(struct ProcessedRecord *&buffer, int timeout)
+int DataProcessing::WaitForBuffer(std::shared_ptr<ProcessedRecord> &buffer, int timeout)
 {
     return m_read_queue.Read(buffer, timeout);
 }
 
-int DataProcessing::ReturnBuffer(struct ProcessedRecord *buffer)
+int DataProcessing::ReturnBuffer(std::shared_ptr<ProcessedRecord> buffer)
 {
     /* FIXME: Figure out return code logic. */
     m_acquisition.ReturnBuffer(buffer->time_domain);
-    if (!buffer->owns_time_domain)
-        buffer->time_domain = NULL;
     return m_write_queue.Write(buffer);
 }
 
@@ -63,8 +61,8 @@ void DataProcessing::MainLoop()
             break;
 
         /* FIXME: This is a hardcoded type for now. */
-        struct TimeDomainRecord *time_domain = NULL;
-        int result = m_acquisition.WaitForBuffer((void *&)time_domain, 100, NULL);
+        std::shared_ptr<TimeDomainRecord> time_domain = NULL;
+        int result = m_acquisition.WaitForBuffer((std::shared_ptr<void> &)time_domain, 100, NULL);
 
         /* Continue on timeout. */
         if (result == ADQR_EAGAIN)
@@ -79,7 +77,7 @@ void DataProcessing::MainLoop()
         }
 
         /* Compute FFT */
-        struct ProcessedRecord *processed_record = NULL;
+        std::shared_ptr<ProcessedRecord> processed_record = NULL;
         int fft_size = PreviousPowerOfTwo(time_domain->count);
         result = ReuseOrAllocateBuffer(processed_record, fft_size);
         if (result != ADQR_EOK)

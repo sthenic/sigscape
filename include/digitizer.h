@@ -7,6 +7,9 @@
 
 #include "message_thread.h"
 #include "data_types.h"
+#include "ADQAPI.h"
+
+#include <array>
 
 enum DigitizerMessageId
 {
@@ -38,12 +41,14 @@ struct DigitizerMessage
 class Digitizer : public MessageThread<Digitizer, struct DigitizerMessage>
 {
 public:
-    /* FIXME: Delete default constructor? */
     Digitizer()
         : MessageThread()
         , m_state(STATE_NOT_ENUMERATED)
-        , m_processed_record_queue(100, true)
-    {}
+        , m_processed_record_queue{}
+    {
+        for (int i = 0; i < ADQ_MAX_NOF_CHANNELS; ++i)
+            m_processed_record_queue[i].SetParameters(100, true);
+    }
 
     ~Digitizer()
     {
@@ -56,7 +61,7 @@ public:
 
     virtual int Start() override
     {
-        int result = m_processed_record_queue.Start();
+        int result = m_processed_record_queue[0].Start();
         if (result != ADQR_EOK)
             return result;
         return MessageThread::Start();
@@ -65,15 +70,15 @@ public:
     virtual int Stop() override
     {
         /* FIXME: Error code capture and propagation. */
-        m_processed_record_queue.Stop();
-        m_processed_record_queue.Free();
+        m_processed_record_queue[0].Stop();
+        m_processed_record_queue[0].Free();
         MessageThread::Stop();
         return ADQR_EOK;
     }
 
     int WaitForProcessedRecord(struct ProcessedRecord *&record)
     {
-        return m_processed_record_queue.Read(record, 0);
+        return m_processed_record_queue[0].Read(record, 0);
     }
 
 protected:
@@ -81,8 +86,8 @@ protected:
        https://solarianprogrammer.com/2019/01/13/cpp-17-filesystem-write-file-watcher-monitor/ */
 
     enum DigitizerState m_state;
-    /* FIXME: Need arrays for each channel. */
-    ThreadSafeQueue<struct ProcessedRecord *> m_processed_record_queue;
+
+    ThreadSafeQueue<struct ProcessedRecord *> m_processed_record_queue[ADQ_MAX_NOF_CHANNELS];
 };
 
 #endif

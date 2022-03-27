@@ -120,9 +120,9 @@ int SimulatedDigitizer::DoAcquisition()
     /* We have a buffer whose contents we copy into persistent storage used to
        plot the data. The plot process may hold the lock, in which case we
        discard the data. FIXME: Perhaps two modes: discard or not? */
-    if (!m_processed_record_queue.IsFull())
+    if (!m_processed_record_queue[0].IsFull())
     {
-        m_processed_record_queue.Write(new ProcessedRecord(*processed_record));
+        m_processed_record_queue[0].Write(new ProcessedRecord(*processed_record));
     }
     else
     {

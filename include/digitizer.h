@@ -44,13 +44,7 @@ public:
     Digitizer()
         : MessageThread()
         , m_state(STATE_NOT_ENUMERATED)
-        , m_processed_record_queue{}
     {
-        for (int i = 0; i < ADQ_MAX_NOF_CHANNELS; ++i)
-        {
-            m_processed_record_queue.push_back(
-                std::make_unique<ThreadSafeQueue<std::shared_ptr<ProcessedRecord>>>(100, true));
-        }
     }
 
     /* FIXME: Needed? */
@@ -63,45 +57,11 @@ public:
     Digitizer(const Digitizer &) = delete;
     Digitizer &operator=(const Digitizer &) = delete;
 
-    virtual int Start() override
-    {
-        for (auto &queue : m_processed_record_queue)
-        {
-            int result = queue->Start();
-            if (result != ADQR_EOK)
-                return result;
-        }
-
-        return MessageThread::Start();
-    }
-
-    virtual int Stop() override
-    {
-        /* FIXME: Error code capture and propagation. */
-        for (auto &queue : m_processed_record_queue)
-            queue->Stop();
-
-        MessageThread::Stop();
-        return ADQR_EOK;
-    }
-
-    int WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedRecord> &record)
-    {
-        if ((channel < 0) || (channel > ADQ_MAX_NOF_CHANNELS))
-            return ADQR_EINVAL;
-
-        return m_processed_record_queue[channel]->Read(record, 0);
-    }
-
 protected:
     /* TODO: Perhaps write a file watcher w/ C++17's std::filesystem:
        https://solarianprogrammer.com/2019/01/13/cpp-17-filesystem-write-file-watcher-monitor/ */
 
     enum DigitizerState m_state;
-
-    std::vector<
-        std::unique_ptr<ThreadSafeQueue<std::shared_ptr<ProcessedRecord>>>
-    > m_processed_record_queue;
 };
 
 #endif

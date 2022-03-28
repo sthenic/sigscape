@@ -75,16 +75,18 @@ TEST(DataProcessingGroup, RepeatedStartStop)
         while (nof_records_received != NOF_RECORDS)
         {
             std::shared_ptr<ProcessedRecord> record = NULL;
-            LONGS_EQUAL(ADQR_EOK, processing->WaitForBuffer(record, 1000));
+            int result = processing->WaitForBuffer(record, 1000);
             CHECK(record != NULL);
+            CHECK((result == ADQR_EOK) || (result == ADQR_ELAST));
 
-            LONGS_EQUAL(TIME_DOMAIN, record->time_domain->id);
-            LONGS_EQUAL(FREQUENCY_DOMAIN, record->frequency_domain->id);
-            LONGS_EQUAL(nof_records_received, record->time_domain->header.record_number);
-            LONGS_EQUAL(nof_records_received, record->frequency_domain->header.record_number);
-            nof_records_received++;
-
-            LONGS_EQUAL(ADQR_EOK, processing->ReturnBuffer(record));
+            if (result == ADQR_ELAST)
+            {
+                LONGS_EQUAL(TIME_DOMAIN, record->time_domain->id);
+                LONGS_EQUAL(FREQUENCY_DOMAIN, record->frequency_domain->id);
+                LONGS_EQUAL(nof_records_received, record->time_domain->header.record_number);
+                LONGS_EQUAL(nof_records_received, record->frequency_domain->header.record_number);
+                nof_records_received++;
+            }
         }
 
         LONGS_EQUAL(ADQR_EOK, processing->Stop());

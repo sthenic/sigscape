@@ -17,6 +17,8 @@ public:
     /* Initialize the digitizer. */
     int Initialize();
 
+    int WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedRecord> &record);
+
 private:
     void MainLoop() override;
 
@@ -26,7 +28,7 @@ private:
     /* The digitizer's parameter set. */
 
     int HandleMessage(const struct DigitizerMessage &msg);
-    int DoAcquisition();
+    // int DoAcquisition();
 };
 
 #endif

@@ -9,7 +9,7 @@
 #include <thread>
 #include <future>
 
-template <class C, typename T>
+template <class C, typename T, size_t CAPACITY = 0, bool PERSISTENT = false>
 class BufferThread
 {
 public:
@@ -21,7 +21,7 @@ public:
         , m_thread_exit_code(ADQR_EINTERRUPTED)
         , m_nof_buffers_max(100)
         , m_nof_buffers(0)
-        , m_read_queue()
+        , m_read_queue(CAPACITY, PERSISTENT)
         , m_write_queue()
     {};
 
@@ -54,8 +54,16 @@ public:
         return m_thread_exit_code;
     }
 
-    virtual int WaitForBuffer(std::shared_ptr<T> &buffer, int timeout) = 0;
-    virtual int ReturnBuffer(std::shared_ptr<T> buffer) = 0;
+    /* We provide a default implementation of the outward facing queue interface. */
+    virtual int WaitForBuffer(std::shared_ptr<T> &buffer, int timeout)
+    {
+        return m_read_queue.Read(buffer, timeout);
+    }
+
+    virtual int ReturnBuffer(std::shared_ptr<T> buffer)
+    {
+        return m_write_queue.Write(buffer);
+    }
 
 protected:
     std::thread m_thread;

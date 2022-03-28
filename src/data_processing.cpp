@@ -39,19 +39,6 @@ int DataProcessing::Stop()
     return acquisition_result;
 }
 
-int DataProcessing::WaitForBuffer(std::shared_ptr<ProcessedRecord> &buffer, int timeout)
-{
-    return m_read_queue.Read(buffer, timeout);
-}
-
-int DataProcessing::ReturnBuffer(std::shared_ptr<ProcessedRecord> buffer)
-{
-    /* FIXME: Figure out return code logic. */
-    m_acquisition.ReturnBuffer(buffer->time_domain);
-    buffer->time_domain = NULL;
-    return m_write_queue.Write(buffer);
-}
-
 void DataProcessing::MainLoop()
 {
     m_thread_exit_code = ADQR_EOK;
@@ -77,37 +64,43 @@ void DataProcessing::MainLoop()
             return;
         }
 
-        /* Compute FFT */
-        std::shared_ptr<ProcessedRecord> processed_record = NULL;
-        int fft_size = PreviousPowerOfTwo(time_domain->count);
-        result = ReuseOrAllocateBuffer(processed_record, fft_size);
-        if (result != ADQR_EOK)
+        /* We only allocate memory and calculate the FFT if we know that we're
+           going to show it, i.e. if the outbound queue has space available. */
+        if (!m_read_queue.IsFull())
         {
-            if (result == ADQR_EINTERRUPTED) /* Convert forced queue stop into an ok. */
-                m_thread_exit_code = ADQR_EOK;
-            else
-                m_thread_exit_code = result;
-            return;
-        }
-        processed_record->time_domain = time_domain;
-        processed_record->frequency_domain->header.record_number = time_domain->header.record_number;
+            /* Compute FFT */
+            int fft_size = PreviousPowerOfTwo(time_domain->count);
+            auto processed_record = std::make_shared<ProcessedRecord>(fft_size);
 
-        const char *error = NULL;
-        if (!simple_fft::FFT(time_domain->y, processed_record->frequency_domain->yc, fft_size, error))
+            /* We copy the time domain data in order to return the buffer to the
+               acquisition interface ASAP. */
+            *processed_record->time_domain = *time_domain;
+            processed_record->frequency_domain->header.record_number = time_domain->header.record_number;
+
+            const char *error = NULL;
+            if (!simple_fft::FFT(time_domain->y, processed_record->frequency_domain->yc, fft_size, error))
+            {
+                printf("Failed to compute FFT: %s.\n", error);
+                m_thread_exit_code = ADQR_EINTERNAL;
+                return;
+            }
+
+            /* Compute real spectrum. */
+            for (int i = 0; i < fft_size; ++i)
+            {
+                processed_record->frequency_domain->x[i] = static_cast<double>(i) / static_cast<double>(fft_size);
+                processed_record->frequency_domain->y[i] = 20 * std::log10(std::abs(processed_record->frequency_domain->yc[i]) / fft_size);
+            }
+
+            m_read_queue.Write(processed_record);
+        }
+        else
         {
-            printf("Failed to compute FFT: %s.\n", error);
-            m_thread_exit_code = ADQR_EINTERNAL;
-            return;
+            static int nof_discarded = 0;
+            printf("Skipping (no FFT or allocation) since queue is full (%d).\n", nof_discarded++);
         }
 
-        /* Compute real spectrum. */
-        for (int i = 0; i < fft_size; ++i)
-        {
-            processed_record->frequency_domain->x[i] = static_cast<double>(i) / static_cast<double>(fft_size);
-            processed_record->frequency_domain->y[i] = 20 * std::log10(std::abs(processed_record->frequency_domain->yc[i]) / fft_size);
-        }
-
-        m_read_queue.Write(processed_record);
+        m_acquisition.ReturnBuffer(time_domain);
     }
 }
 

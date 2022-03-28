@@ -19,6 +19,14 @@ int SimulatedDigitizer::Initialize()
     return ADQR_EOK;
 }
 
+int SimulatedDigitizer::WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedRecord> &record)
+{
+    if ((channel < 0) || (channel > ADQ_MAX_NOF_CHANNELS))
+        return ADQR_EINVAL;
+
+    return m_data_processing[channel]->WaitForBuffer(record, 0);
+}
+
 void SimulatedDigitizer::MainLoop()
 {
     m_read_queue.Write({MESSAGE_ID_NEW_STATE, STATE_NOT_ENUMERATED, NULL});
@@ -54,17 +62,6 @@ void SimulatedDigitizer::MainLoop()
             break;
         }
 
-        if (m_state == STATE_ACQUISITION)
-        {
-            result = DoAcquisition();
-            if (result != ADQR_EOK)
-            {
-                printf("Acquisition failed, result %d.\n", result);
-                m_thread_exit_code = ADQR_EINTERNAL;
-                break;
-            }
-        }
-
         /* We implement the sleep using the stop event to be able to immediately
             react to the event being set. */
         if (m_should_stop.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready)
@@ -78,7 +75,7 @@ int SimulatedDigitizer::HandleMessage(const struct DigitizerMessage &msg)
     {
     case MESSAGE_ID_START_ACQUISITION:
         printf("Entering acquisition.\n");
-        m_simulator[0]->Initialize(10000, 10.0, Simulator::SineWave());
+        m_simulator[0]->Initialize(32768, 30.0, Simulator::SineWave());
         m_data_processing[0]->Start();
         m_state = STATE_ACQUISITION;
         m_read_queue.Write({MESSAGE_ID_NEW_STATE, STATE_ACQUISITION, NULL});
@@ -102,40 +99,5 @@ int SimulatedDigitizer::HandleMessage(const struct DigitizerMessage &msg)
         return ADQR_EINTERNAL;
     }
 
-    return ADQR_EOK;
-}
-
-int SimulatedDigitizer::DoAcquisition()
-{
-    /* FIXME: Support several channels. */
-    std::shared_ptr<ProcessedRecord> processed_record = NULL;
-    int result = m_data_processing[0]->WaitForBuffer(processed_record, 0);
-    if (result == ADQR_EAGAIN)
-    {
-        return ADQR_EOK;
-    }
-    else if (result < 0)
-    {
-        printf("Failed to get a processed record buffer %d.\n", result);
-        return result;
-    }
-
-    /* To avoid a potentially costly copy operation, we check if the outbound
-       queue is full before we make a deep copied ProcessedRecord object. This
-       is used by the GUI thread for plotting. */
-    if (!m_processed_record_queue[0]->IsFull())
-    {
-        m_processed_record_queue[0]->Write(
-            std::make_shared<ProcessedRecord>(*processed_record)
-        );
-    }
-    else
-    {
-        /* FIXME: Remove */
-        static int nof_discarded = 0;
-        printf("Queue is full, discarding %d (no copy).\n", nof_discarded++);
-    }
-
-    m_data_processing[0]->ReturnBuffer(processed_record);
     return ADQR_EOK;
 }

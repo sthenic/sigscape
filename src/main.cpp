@@ -23,7 +23,8 @@ static void glfw_error_callback(int error, const char *description)
 static int display_w = 0;
 static int display_h = 0;
 
-void DoPlot(Digitizer &digitizer)
+/* FIXME: Change this type later on once the interface gets moved. */
+void DoPlot(SimulatedDigitizer &digitizer)
 {
     const float FRAME_HEIGHT = ImGui::GetFrameHeight();
     const float PLOT_WINDOW_HEIGHT = (display_h - 1 * FRAME_HEIGHT) / 2;

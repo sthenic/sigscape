@@ -6,7 +6,7 @@
 #include "data_types.h"
 #include "error.h"
 
-class DataProcessing : public BufferThread<DataProcessing, ProcessedRecord>
+class DataProcessing : public BufferThread<DataProcessing, ProcessedRecord, 100, true>
 {
 public:
     DataProcessing(DataAcquisition &acquisition);
@@ -15,11 +15,10 @@ public:
     int Initialize();
     int Start() override;
     int Stop() override;
-    int WaitForBuffer(std::shared_ptr<ProcessedRecord> &buffer, int timeout) override;
-    int ReturnBuffer(std::shared_ptr<ProcessedRecord> buffer) override;
     void MainLoop() override;
 
 private:
+
     DataAcquisition &m_acquisition;
 
     template <typename T>

@@ -8,7 +8,12 @@
 #include "message_thread.h"
 #include "data_types.h"
 #include "data_processing.h"
+
+#ifdef SIMULATION_ONLY
+#define ADQ_MAX_NOF_CHANNELS 8
+#else
 #include "ADQAPI.h"
+#endif
 
 #include <array>
 

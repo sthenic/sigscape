@@ -1,17 +1,36 @@
 cmake_minimum_required(VERSION 3.15)
-project(adq-rapid)
+project(adq-rapid VERSION 1.0)
 add_executable(${PROJECT_NAME} src/main.cpp)
 
 if (UNIX)
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(GLFW3 REQUIRED glfw3)
-    pkg_check_modules(ADQ REQUIRED libadq)
+    if (APPLE)
+      find_library(COCOA Cocoa REQUIRED)
+      target_compile_definitions(${PROJECT_NAME} PRIVATE SIMULATION_ONLY)
+    else()
+      find_package(PkgConfig REQUIRED)
+      pkg_check_modules(ADQ REQUIRED libadq)
+    endif()
 elseif(WIN32)
     message(WARNING "Not implemented for Windows yet.")
 endif()
 
-set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
+include(FetchContent)
+FetchContent_Declare(
+  glfw
+  GIT_REPOSITORY https://github.com/glfw/glfw
+  GIT_TAG 3.3.6
+)
 
+# Disable examples etc.
+set(GLFW_BUILD_EXAMPLES OFF CACHE INTERNAL "Build the GLFW example programs")
+set(GLFW_BUILD_TESTS OFF CACHE INTERNAL "Build the GLFW test programs")
+set(GLFW_BUILD_DOCS OFF CACHE INTERNAL "Build the GLFW documentation")
+set(GLFW_INSTALL OFF CACHE INTERNAL "Generate installation target")
+# TODO: Set GLFW_BUILD_SHARED_LIBRARY to something?
+
+FetchContent_MakeAvailable(glfw)
+
+set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 target_sources(${PROJECT_NAME} PRIVATE
     lib/GL/gl3w.c
     implot/implot.cpp
@@ -55,14 +74,14 @@ elseif(WIN32)
 endif()
 
 target_compile_options(${PROJECT_NAME} PRIVATE
-    ${GLFW3_CFLAGS}
     ${ADQ_CFLAGS}
 )
 
 target_link_libraries(${PROJECT_NAME}
-    GL
+  PRIVATE
     pthread
-    ${GLFW3_STATIC_LIBRARIES}
+    glfw
+    ${COCOA}
     ${ADQ_LIBRARIES}
 )
 

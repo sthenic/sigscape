@@ -77,8 +77,8 @@ target_compile_options(${PROJECT_NAME} PRIVATE
     ${ADQ_CFLAGS}
 )
 
-target_link_libraries(${PROJECT_NAME}
-  PRIVATE
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    GL
     pthread
     glfw
     ${COCOA}

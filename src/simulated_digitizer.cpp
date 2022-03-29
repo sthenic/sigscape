@@ -3,13 +3,12 @@
 SimulatedDigitizer::SimulatedDigitizer()
     : Digitizer()
     , m_simulator{}
-    , m_data_processing{}
 {
     for (int i = 0; i < ADQ_MAX_NOF_CHANNELS; ++i)
     {
         auto simulator = std::make_shared<DataAcquisitionSimulator>();
         m_simulator.push_back(simulator);
-        m_data_processing.push_back(std::make_unique<DataProcessing>(*simulator));
+        m_processing_threads.push_back(std::make_unique<DataProcessing>(*simulator));
     }
 }
 
@@ -17,14 +16,6 @@ int SimulatedDigitizer::Initialize()
 {
     /* FIXME: Implement */
     return ADQR_EOK;
-}
-
-int SimulatedDigitizer::WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedRecord> &record)
-{
-    if ((channel < 0) || (channel > ADQ_MAX_NOF_CHANNELS))
-        return ADQR_EINVAL;
-
-    return m_data_processing[channel]->WaitForBuffer(record, 0);
 }
 
 void SimulatedDigitizer::MainLoop()
@@ -74,19 +65,30 @@ int SimulatedDigitizer::HandleMessage(const struct DigitizerMessage &msg)
     switch (msg.id)
     {
     case MESSAGE_ID_START_ACQUISITION:
+    {
         printf("Entering acquisition.\n");
-        m_simulator[0]->Initialize(32768, 30.0, Simulator::SineWave());
-        m_data_processing[0]->Start();
+        Simulator::SineWave sine;
+        m_simulator[0]->Initialize(18000, 30.0, sine);
+        sine.frequency = 9e6;
+        sine.amplitude = 0.8;
+        sine.noise_std_dev = 0.02;
+        m_simulator[1]->Initialize(18000, 15.0, sine);
+        m_processing_threads[0]->Start();
+        m_processing_threads[1]->Start();
         m_state = STATE_ACQUISITION;
         m_read_queue.Write({MESSAGE_ID_NEW_STATE, STATE_ACQUISITION, NULL});
         break;
+    }
 
     case MESSAGE_ID_STOP_ACQUISITION:
+    {
         printf("Entering configuration.\n");
-        m_data_processing[0]->Stop();
+        m_processing_threads[0]->Stop();
+        m_processing_threads[1]->Stop();
         m_state = STATE_CONFIGURATION;
         m_read_queue.Write({MESSAGE_ID_NEW_STATE, STATE_CONFIGURATION, NULL});
         break;
+    }
 
     case MESSAGE_ID_SETUP_STARTING:
     case MESSAGE_ID_SETUP_OK:

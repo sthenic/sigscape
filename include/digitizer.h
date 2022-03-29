@@ -7,6 +7,7 @@
 
 #include "message_thread.h"
 #include "data_types.h"
+#include "data_processing.h"
 #include "ADQAPI.h"
 
 #include <array>
@@ -44,6 +45,7 @@ public:
     Digitizer()
         : MessageThread()
         , m_state(STATE_NOT_ENUMERATED)
+        , m_processing_threads{}
     {
     }
 
@@ -57,11 +59,24 @@ public:
     Digitizer(const Digitizer &) = delete;
     Digitizer &operator=(const Digitizer &) = delete;
 
+    /* Interface to the digitizer's data processing threads, one per channel. */
+    int WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedRecord> &record)
+    {
+        if ((channel < 0) || (channel > ADQ_MAX_NOF_CHANNELS))
+            return ADQR_EINVAL;
+
+        return m_processing_threads[channel]->WaitForBuffer(record, 0);
+    }
+
 protected:
     /* TODO: Perhaps write a file watcher w/ C++17's std::filesystem:
        https://solarianprogrammer.com/2019/01/13/cpp-17-filesystem-write-file-watcher-monitor/ */
 
+    /* The digitizer's state. */
     enum DigitizerState m_state;
+
+    /* The digitizer's data processing threads, one per channel. */
+    std::vector<std::unique_ptr<DataProcessing>> m_processing_threads;
 };
 
 #endif

@@ -23,14 +23,16 @@ static void glfw_error_callback(int error, const char *description)
 static int display_w = 0;
 static int display_h = 0;
 
-/* FIXME: Change this type later on once the interface gets moved. */
-void DoPlot(SimulatedDigitizer &digitizer)
+void DoPlot(Digitizer &digitizer)
 {
     const float FRAME_HEIGHT = ImGui::GetFrameHeight();
     const float PLOT_WINDOW_HEIGHT = (display_h - 1 * FRAME_HEIGHT) / 2;
 
-    std::shared_ptr<ProcessedRecord> processed_record = NULL;
-    int result = digitizer.WaitForProcessedRecord(0, processed_record);
+    /* FIXME: Figure out something other than this manual unrolling. */
+    std::shared_ptr<ProcessedRecord> processed_record0 = NULL;
+    std::shared_ptr<ProcessedRecord> processed_record1 = NULL;
+    int result0 = digitizer.WaitForProcessedRecord(0, processed_record0);
+    int result1 = digitizer.WaitForProcessedRecord(1, processed_record1);
 
     ImGui::SetNextWindowPos(ImVec2(display_w / 2, FRAME_HEIGHT));
     ImGui::SetNextWindowSize(ImVec2(display_w / 2, PLOT_WINDOW_HEIGHT));
@@ -39,11 +41,17 @@ void DoPlot(SimulatedDigitizer &digitizer)
     {
         ImPlot::SetupAxis(ImAxis_X1, "Time");
         ImPlot::SetupAxis(ImAxis_Y1, "f(x)");
-        if (result >= 0)
+        if (result0 >= 0)
         {
-            ImPlot::PlotLine("CHA", processed_record->time_domain->x,
-                             processed_record->time_domain->y,
-                             processed_record->time_domain->count);
+            ImPlot::PlotLine("CHA", processed_record0->time_domain->x,
+                             processed_record0->time_domain->y,
+                             processed_record0->time_domain->count);
+        }
+        if (result1 >= 0)
+        {
+            ImPlot::PlotLine("CHB", processed_record1->time_domain->x,
+                             processed_record1->time_domain->y,
+                             processed_record1->time_domain->count);
         }
         ImPlot::EndPlot();
     }
@@ -59,11 +67,17 @@ void DoPlot(SimulatedDigitizer &digitizer)
         ImPlot::SetupAxisLimits(ImAxis_Y1, -80.0, 0.0);
         ImPlot::SetupAxis(ImAxis_X1, "Hz");
         ImPlot::SetupAxis(ImAxis_Y1, "FFT");
-        if (result >= 0)
+        if (result0 >= 0)
         {
-            ImPlot::PlotLine("CHA", processed_record->frequency_domain->x,
-                             processed_record->frequency_domain->y,
-                             processed_record->frequency_domain->count / 2);
+            ImPlot::PlotLine("CHA", processed_record0->frequency_domain->x,
+                             processed_record0->frequency_domain->y,
+                             processed_record0->frequency_domain->count / 2);
+        }
+        if (result1 >= 0)
+        {
+            ImPlot::PlotLine("CHB", processed_record1->frequency_domain->x,
+                             processed_record1->frequency_domain->y,
+                             processed_record1->frequency_domain->count / 2);
         }
         ImPlot::EndPlot();
     }

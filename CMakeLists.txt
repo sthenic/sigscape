@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.15)
 project(adq-rapid VERSION 1.0)
-add_executable(${PROJECT_NAME} src/main.cpp)
+add_executable(${PROJECT_NAME})
 
 if (UNIX)
     if (APPLE)
-      find_library(COCOA Cocoa REQUIRED)
       target_compile_definitions(${PROJECT_NAME} PRIVATE SIMULATION_ONLY)
     else()
       find_package(PkgConfig REQUIRED)
+      find_package(OpenGL REQUIRED)
       pkg_check_modules(ADQ REQUIRED libadq)
     endif()
 elseif(WIN32)
@@ -30,19 +30,51 @@ set(GLFW_INSTALL OFF CACHE INTERNAL "Generate installation target")
 
 FetchContent_MakeAvailable(glfw)
 
+FetchContent_Declare(
+  gl3w
+  GIT_REPOSITORY https://github.com/skaslev/gl3w
+  GIT_TAG 5f8d7fd191ba22ff2b60c1106d7135bb9a335533 # Some commit
+)
+FetchContent_MakeAvailable(gl3w)
+
+FetchContent_Declare(
+    implot
+    GIT_REPOSITORY https://github.com/epezent/implot
+    GIT_TAG v0.13
+)
+FetchContent_MakeAvailable(implot)
+
+FetchContent_Declare(
+    imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG v1.87
+)
+FetchContent_MakeAvailable(imgui)
+
+# It doesn't work to link directly to gl3w for some reason.
+# Maybe something to do with https://github.com/skaslev/gl3w/issues/66
+# However adding the generation target as a dependency and then
+# including and building the generated sources works
+# gl3w.c must be set as GENERATED to prevent cmake from complaining that
+# the filed doesn't exist during generation
+add_dependencies(${PROJECT_NAME} gl3w_gen)
+set_property(SOURCE ${gl3w_BINARY_DIR}/src/gl3w.c PROPERTY GENERATED 1)
+
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 target_sources(${PROJECT_NAME} PRIVATE
-    lib/GL/gl3w.c
-    implot/implot.cpp
-    implot/implot_items.cpp
-    implot/implot_demo.cpp
-    imgui/imgui.cpp
-    imgui/imgui_draw.cpp
-    imgui/imgui_tables.cpp
-    imgui/imgui_widgets.cpp
-    imgui/imgui_demo.cpp
-    imgui/backends/imgui_impl_glfw.cpp
-    imgui/backends/imgui_impl_opengl3.cpp
+    # BINARY_DIR is required here since we want to use the generated code
+    # from gl3w
+    ${gl3w_BINARY_DIR}/src/gl3w.c
+    ${implot_SOURCE_DIR}/implot.cpp
+    ${implot_SOURCE_DIR}/implot_items.cpp
+    ${implot_SOURCE_DIR}/implot_demo.cpp
+    ${imgui_SOURCE_DIR}/imgui.cpp
+    ${imgui_SOURCE_DIR}/imgui_draw.cpp
+    ${imgui_SOURCE_DIR}/imgui_tables.cpp
+    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+    ${imgui_SOURCE_DIR}/imgui_demo.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
     src/simulator.cpp
     src/data_processing.cpp
     src/simulated_digitizer.cpp
@@ -53,7 +85,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     implot
     imgui
     simple_fft
-    lib
+    ${gl3w_BINARY_DIR}/include
     include
 )
 
@@ -67,6 +99,7 @@ if (UNIX)
     target_compile_options(${PROJECT_NAME} PRIVATE
         -Wall -Wextra -Wswitch -Wswitch-enum -Werror=overflow)
 elseif(WIN32)
+    # TODO: Maybe this should be behind elsif(MSCV) instead?
     target_compile_definitions(${PROJECT_NAME} PRIVATE
         _USE_MATH_DEFINES)
     target_compile_options(${PROJECT_NAME} PRIVATE
@@ -76,12 +109,9 @@ endif()
 target_compile_options(${PROJECT_NAME} PRIVATE
     ${ADQ_CFLAGS}
 )
-
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    GL
+    OpenGL::GL
     pthread
     glfw
-    ${COCOA}
     ${ADQ_LIBRARIES}
 )
-

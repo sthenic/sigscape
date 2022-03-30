@@ -23,6 +23,18 @@ static void glfw_error_callback(int error, const char *description)
 static int display_w = 0;
 static int display_h = 0;
 
+static const float FIRST_COLUMN_RELATIVE_WIDTH = 0.2;
+static const float SECOND_COLUMN_RELATIVE_WIDTH = 0.6;
+static const float THIRD_COLUMN_RELATIVE_WIDTH = 0.2;
+
+#define FIRST_COLUMN_SIZE (display_w * FIRST_COLUMN_RELATIVE_WIDTH)
+#define SECOND_COLUMN_SIZE (display_w * SECOND_COLUMN_RELATIVE_WIDTH)
+#define THIRD_COLUMN_SIZE (display_w * THIRD_COLUMN_RELATIVE_WIDTH)
+
+#define FIRST_COLUMN_POSITION (0.0)
+#define SECOND_COLUMN_POSITION (display_w * FIRST_COLUMN_RELATIVE_WIDTH)
+#define THIRD_COLUMN_POSITION (display_w * (FIRST_COLUMN_RELATIVE_WIDTH + SECOND_COLUMN_RELATIVE_WIDTH))
+
 void DoPlot(Digitizer &digitizer)
 {
     const float FRAME_HEIGHT = ImGui::GetFrameHeight();
@@ -34,8 +46,8 @@ void DoPlot(Digitizer &digitizer)
     int result0 = digitizer.WaitForProcessedRecord(0, processed_record0);
     int result1 = digitizer.WaitForProcessedRecord(1, processed_record1);
 
-    ImGui::SetNextWindowPos(ImVec2(display_w / 2, FRAME_HEIGHT));
-    ImGui::SetNextWindowSize(ImVec2(display_w / 2, PLOT_WINDOW_HEIGHT));
+    ImGui::SetNextWindowPos(ImVec2(SECOND_COLUMN_POSITION, FRAME_HEIGHT));
+    ImGui::SetNextWindowSize(ImVec2(SECOND_COLUMN_SIZE, PLOT_WINDOW_HEIGHT));
     ImGui::Begin("Time Domain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
     if (ImPlot::BeginPlot("Time domain", ImVec2(-1, -1), ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
     {
@@ -57,8 +69,8 @@ void DoPlot(Digitizer &digitizer)
     }
     ImGui::End();
 
-    ImGui::SetNextWindowPos(ImVec2(display_w / 2, FRAME_HEIGHT + PLOT_WINDOW_HEIGHT));
-    ImGui::SetNextWindowSize(ImVec2(display_w / 2, PLOT_WINDOW_HEIGHT));
+    ImGui::SetNextWindowPos(ImVec2(SECOND_COLUMN_POSITION, FRAME_HEIGHT + PLOT_WINDOW_HEIGHT));
+    ImGui::SetNextWindowSize(ImVec2(SECOND_COLUMN_SIZE, PLOT_WINDOW_HEIGHT));
     ImGui::Begin("Frequency Domain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
     if (ImPlot::BeginPlot("FFT", ImVec2(-1, -1), ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
@@ -82,6 +94,18 @@ void DoPlot(Digitizer &digitizer)
         ImPlot::EndPlot();
     }
     ImGui::End();
+
+    /* Metric windows */
+    ImGui::SetNextWindowPos(ImVec2(THIRD_COLUMN_POSITION, FRAME_HEIGHT));
+    ImGui::SetNextWindowSize(ImVec2(THIRD_COLUMN_SIZE, PLOT_WINDOW_HEIGHT));
+    ImGui::Begin("Metrics##timedomain", NULL, ImGuiWindowFlags_NoMove);
+    ImGui::End();
+
+    ImGui::SetNextWindowPos(ImVec2(THIRD_COLUMN_POSITION, FRAME_HEIGHT + PLOT_WINDOW_HEIGHT));
+    ImGui::SetNextWindowSize(ImVec2(THIRD_COLUMN_SIZE, PLOT_WINDOW_HEIGHT));
+    ImGui::Begin("Metrics##frequencydomain", NULL, ImGuiWindowFlags_NoMove);
+    ImGui::End();
+
 }
 
 int main(int, char **)
@@ -222,8 +246,8 @@ int main(int, char **)
         ImGui::EndMainMenuBar();
 
         float frame_height = ImGui::GetFrameHeight();
-        ImGui::SetNextWindowPos(ImVec2(0.0, frame_height));
-        ImGui::SetNextWindowSize(ImVec2(display_w / 2, 200.0));
+        ImGui::SetNextWindowPos(ImVec2(FIRST_COLUMN_POSITION, frame_height));
+        ImGui::SetNextWindowSize(ImVec2(FIRST_COLUMN_SIZE, 200.0));
         ImGui::Begin("Digitizers", NULL, ImGuiWindowFlags_NoMove);
         static bool selected[16] = {0};
 
@@ -242,7 +266,6 @@ int main(int, char **)
 
         if (ImGui::BeginTable("Digitizers", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings))
         {
-
             if (nof_devices == 0)
             {
                 ImGui::TableNextColumn();
@@ -282,8 +305,8 @@ int main(int, char **)
         }
         ImGui::End();
 
-        ImGui::SetNextWindowPos(ImVec2(0.0, 200.0 + frame_height));
-        ImGui::SetNextWindowSize(ImVec2(display_w / 2, 200.0));
+        ImGui::SetNextWindowPos(ImVec2(FIRST_COLUMN_POSITION, 200.0 + frame_height));
+        ImGui::SetNextWindowSize(ImVec2(FIRST_COLUMN_SIZE, 200.0));
         ImGui::Begin("Command Palette");
         std::stringstream ss;
         bool any_selected = false;
@@ -306,7 +329,7 @@ int main(int, char **)
 
         ImGui::Text("%s", ss.str().c_str());
 
-        const ImVec2 COMMAND_PALETTE_BUTTON_SIZE{90, 50};
+        const ImVec2 COMMAND_PALETTE_BUTTON_SIZE{85, 50};
         if (ImGui::Button("Start", COMMAND_PALETTE_BUTTON_SIZE))
         {
             printf("Start!\n");
@@ -328,7 +351,6 @@ int main(int, char **)
         {
             printf("Get!\n");
         }
-        ImGui::SameLine();
         if (ImGui::Button("Initialize", COMMAND_PALETTE_BUTTON_SIZE))
         {
             printf("Initialize!\n");
@@ -338,19 +360,20 @@ int main(int, char **)
         {
             printf("Validate!\n");
         }
+        ImGui::SameLine();
         if (ImGui::Button("SetPorts", COMMAND_PALETTE_BUTTON_SIZE))
         {
             printf("SetPorts!\n");
         }
         ImGui::SameLine();
-        if (ImGui::Button("SetSelection", COMMAND_PALETTE_BUTTON_SIZE))
+        if (ImGui::Button("Set\nSelection", COMMAND_PALETTE_BUTTON_SIZE))
         {
             printf("SetSelection!\n");
         }
         ImGui::End();
 
-        ImGui::SetNextWindowPos(ImVec2(0.0, 400.0 + frame_height));
-        ImGui::SetNextWindowSize(ImVec2(display_w / 2, display_h - 400.0 - frame_height));
+        ImGui::SetNextWindowPos(ImVec2(FIRST_COLUMN_POSITION, 400.0 + frame_height));
+        ImGui::SetNextWindowSize(ImVec2(FIRST_COLUMN_SIZE, display_h - 400.0 - frame_height));
         ImGui::Begin("Parameters", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
         ImGui::InputTextMultiline("##parameters", text, IM_ARRAYSIZE(text),
                                   ImVec2(-FLT_MIN, -FLT_MIN), ImGuiInputTextFlags_AllowTabInput);

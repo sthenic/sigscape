@@ -72,6 +72,7 @@ int SimulatedDigitizer::HandleMessage(const struct DigitizerMessage &msg)
         sine.frequency = 9e6;
         sine.amplitude = 0.8;
         sine.noise_std_dev = 0.02;
+        sine.harmonic_distortion = true;
         m_simulator[1]->Initialize(18000, 15.0, sine);
         m_processing_threads[0]->Start();
         m_processing_threads[1]->Start();

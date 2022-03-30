@@ -99,11 +99,31 @@ void DoPlot(Digitizer &digitizer)
     ImGui::SetNextWindowPos(ImVec2(THIRD_COLUMN_POSITION, FRAME_HEIGHT));
     ImGui::SetNextWindowSize(ImVec2(THIRD_COLUMN_SIZE, PLOT_WINDOW_HEIGHT));
     ImGui::Begin("Metrics##timedomain", NULL, ImGuiWindowFlags_NoMove);
+    if (result0 >= 0)
+    {
+        ImGui::Text("Maximum value: %.4f", processed_record0->time_domain_metrics.max_value);
+        ImGui::Text("Minimum value: %.4f", processed_record0->time_domain_metrics.min_value);
+    }
+    if (result1 >= 0)
+    {
+        ImGui::Text("Maximum value: %.4f", processed_record1->time_domain_metrics.max_value);
+        ImGui::Text("Minimum value: %.4f", processed_record1->time_domain_metrics.min_value);
+    }
     ImGui::End();
 
     ImGui::SetNextWindowPos(ImVec2(THIRD_COLUMN_POSITION, FRAME_HEIGHT + PLOT_WINDOW_HEIGHT));
     ImGui::SetNextWindowSize(ImVec2(THIRD_COLUMN_SIZE, PLOT_WINDOW_HEIGHT));
     ImGui::Begin("Metrics##frequencydomain", NULL, ImGuiWindowFlags_NoMove);
+    if (result0 >= 0)
+    {
+        ImGui::Text("Maximum value: %.4f", processed_record0->frequency_domain_metrics.max_value);
+        ImGui::Text("Minimum value: %.4f", processed_record0->frequency_domain_metrics.min_value);
+    }
+    if (result1 >= 0)
+    {
+        ImGui::Text("Maximum value: %.4f", processed_record1->frequency_domain_metrics.max_value);
+        ImGui::Text("Minimum value: %.4f", processed_record1->frequency_domain_metrics.min_value);
+    }
     ImGui::End();
 
 }

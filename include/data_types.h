@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <complex>
 #include <algorithm>
+#include <limits>
 
 enum RecordId
 {
@@ -161,6 +162,10 @@ struct ProcessedRecord
     {
         time_domain = std::make_shared<TimeDomainRecord>(count);
         frequency_domain = std::make_shared<FrequencyDomainRecord>(count);
+        time_domain_metrics.max_value = std::numeric_limits<double>::lowest();
+        time_domain_metrics.min_value = std::numeric_limits<double>::max();
+        frequency_domain_metrics.max_value = std::numeric_limits<double>::lowest();
+        frequency_domain_metrics.min_value = std::numeric_limits<double>::max();
     }
 
     ProcessedRecord(const ProcessedRecord &other)
@@ -171,6 +176,9 @@ struct ProcessedRecord
 
         if (other.frequency_domain != NULL)
             frequency_domain = std::make_shared<FrequencyDomainRecord>(*other.frequency_domain);
+
+        time_domain_metrics = other.time_domain_metrics;
+        frequency_domain_metrics = other.frequency_domain_metrics;
     }
 
     ProcessedRecord &operator=(const ProcessedRecord &other)
@@ -186,6 +194,9 @@ struct ProcessedRecord
                 frequency_domain = std::make_shared<FrequencyDomainRecord>(*other.frequency_domain);
             else
                 frequency_domain = NULL;
+
+            time_domain_metrics = other.time_domain_metrics;
+            frequency_domain_metrics = other.frequency_domain_metrics;
         }
 
         return *this;
@@ -193,6 +204,18 @@ struct ProcessedRecord
 
     std::shared_ptr<TimeDomainRecord> time_domain;
     std::shared_ptr<FrequencyDomainRecord> frequency_domain;
+
+    struct TimeDomainMetrics
+    {
+        double max_value;
+        double min_value;
+    } time_domain_metrics;
+
+    struct FrequencyDomainMetrics
+    {
+        double max_value;
+        double min_value;
+    } frequency_domain_metrics;
 };
 
 #endif

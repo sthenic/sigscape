@@ -90,6 +90,21 @@ void DataProcessing::MainLoop()
             {
                 processed_record->frequency_domain->x[i] = static_cast<double>(i) / static_cast<double>(fft_size);
                 processed_record->frequency_domain->y[i] = 20 * std::log10(std::abs(processed_record->frequency_domain->yc[i]) / fft_size);
+
+                if (processed_record->frequency_domain->y[i] > processed_record->frequency_domain_metrics.max_value)
+                    processed_record->frequency_domain_metrics.max_value = processed_record->frequency_domain->y[i];
+
+                if (processed_record->frequency_domain->y[i] < processed_record->frequency_domain_metrics.min_value)
+                    processed_record->frequency_domain_metrics.min_value = processed_record->frequency_domain->y[i];
+            }
+
+            for (size_t i = 0; i < time_domain->count; ++i)
+            {
+                if (processed_record->time_domain->y[i] > processed_record->time_domain_metrics.max_value)
+                    processed_record->time_domain_metrics.max_value = processed_record->time_domain->y[i];
+
+                if (processed_record->time_domain->y[i] < processed_record->time_domain_metrics.min_value)
+                    processed_record->time_domain_metrics.min_value = processed_record->time_domain->y[i];
             }
 
             m_read_queue.Write(processed_record);

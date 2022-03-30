@@ -11,8 +11,12 @@ if (UNIX)
       pkg_check_modules(ADQ REQUIRED libadq)
     endif()
 elseif(WIN32)
-    message(WARNING "Not implemented for Windows yet.")
+    find_package(OpenGL REQUIRED)
 endif()
+
+find_package(Threads REQUIRED)
+set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -82,8 +86,8 @@ target_sources(${PROJECT_NAME} PRIVATE
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-    implot
-    imgui
+    ${implot_SOURCE_DIR}
+    ${imgui_SOURCE_DIR}
     simple_fft
     ${gl3w_BINARY_DIR}/include
     include
@@ -101,17 +105,22 @@ if (UNIX)
 elseif(WIN32)
     # TODO: Maybe this should be behind elsif(MSCV) instead?
     target_compile_definitions(${PROJECT_NAME} PRIVATE
-        _USE_MATH_DEFINES)
+        _USE_MATH_DEFINES
+        IMGUI_USER_CONFIG="imgui_config.h")
     target_compile_options(${PROJECT_NAME} PRIVATE
-        /W4 /WX)
+        /W4)
 endif()
+
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    SIMULATION_ONLY)
 
 target_compile_options(${PROJECT_NAME} PRIVATE
     ${ADQ_CFLAGS}
 )
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
     OpenGL::GL
-    pthread
+    Threads::Threads
     glfw
     ${ADQ_LIBRARIES}
 )

@@ -150,12 +150,12 @@ int main(int, char **)
 
     auto Start = [&]()
     {
-        digitizer.PostMessage({MESSAGE_ID_START_ACQUISITION, 0, NULL});
+        digitizer.SendMessage({MESSAGE_ID_START_ACQUISITION, 0, NULL});
     };
 
     auto Stop = [&]()
     {
-        digitizer.PostMessage({MESSAGE_ID_STOP_ACQUISITION, 0, NULL});
+        digitizer.SendMessage({MESSAGE_ID_STOP_ACQUISITION, 0, NULL});
     };
 
     void *adq_cu = CreateADQControlUnit();

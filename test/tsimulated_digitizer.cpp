@@ -34,7 +34,7 @@ TEST(SimulatedDigitizer, Initialize)
     LONGS_EQUAL(ADQR_EOK, digitizer.WaitForMessage(msg, 1000));
     LONGS_EQUAL(MESSAGE_ID_SETUP_OK, msg.id);
 
-    LONGS_EQUAL(ADQR_EOK, digitizer.PostMessage({
+    LONGS_EQUAL(ADQR_EOK, digitizer.SendMessage({
         MESSAGE_ID_START_ACQUISITION, 0, NULL
     }));
 
@@ -44,7 +44,7 @@ TEST(SimulatedDigitizer, Initialize)
 
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-    LONGS_EQUAL(ADQR_EOK, digitizer.PostMessage({
+    LONGS_EQUAL(ADQR_EOK, digitizer.SendMessage({
         MESSAGE_ID_STOP_ACQUISITION, 0, NULL
     }));
 

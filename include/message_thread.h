@@ -56,7 +56,7 @@ public:
         return m_read_queue.Read(message, timeout);
     }
 
-    int PostMessage(const T &message)
+    int SendMessage(const T &message)
     {
         return m_write_queue.Write(message);
     }

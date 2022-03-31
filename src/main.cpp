@@ -5,7 +5,9 @@
 
 #include "simulated_digitizer.h"
 
+#ifndef SIMULATION_ONLY
 #include "ADQAPI.h"
+#endif
 
 #include "GL/gl3w.h"
 #include <GLFW/glfw3.h>
@@ -134,9 +136,18 @@ int main(int, char **)
     if (!glfwInit())
         return -1;
 
+#if defined(__APPLE__)
+    // GL 3.2 + GLSL 150
+    const char* glsl_version = "#version 150";
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
+#else
     const char *glsl_version = "#version 130";
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+#endif
 
     GLFWwindow *window = glfwCreateWindow(1920, 1200, "ADQ Rapid", NULL, NULL);
     if (window == NULL)
@@ -178,6 +189,9 @@ int main(int, char **)
         digitizer.SendMessage({MESSAGE_ID_STOP_ACQUISITION, 0, NULL});
     };
 
+#ifdef SIMULATION_ONLY
+    int nof_devices = 4;
+#else
     void *adq_cu = CreateADQControlUnit();
     if (adq_cu == NULL)
     {
@@ -203,6 +217,7 @@ int main(int, char **)
         adq_list = dummy_adq_list;
         nof_devices = sizeof(dummy_adq_list) / sizeof(dummy_adq_list[0]);
     }
+#endif
 
     // std::string data_directory = "/home/marcus/.local/share/adq-rapid";
     // std::filesystem::path data_directory_path(data_directory);
@@ -420,11 +435,12 @@ int main(int, char **)
     Stop();
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     digitizer.Stop();
-
+#ifndef SIMULATION_ONLY
     if (adq_cu != NULL)
     {
         DeleteADQControlUnit(adq_cu);
     }
+#endif
 
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();

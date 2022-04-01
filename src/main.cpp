@@ -181,12 +181,12 @@ int main(int, char **)
 
     auto Start = [&]()
     {
-        digitizer.SendMessage({MESSAGE_ID_START_ACQUISITION, 0, NULL});
+        digitizer.PushMessage({MESSAGE_ID_START_ACQUISITION, 0, NULL});
     };
 
     auto Stop = [&]()
     {
-        digitizer.SendMessage({MESSAGE_ID_STOP_ACQUISITION, 0, NULL});
+        digitizer.PushMessage({MESSAGE_ID_STOP_ACQUISITION, 0, NULL});
     };
 
 #ifdef SIMULATION_ONLY

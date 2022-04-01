@@ -214,7 +214,7 @@ TEST(MessageThread, RevolvingMessages)
         LONGS_EQUAL(ADQR_EOK, msg.code);
 
         msg.id = MESSAGE_ID_RETURN_DATA;
-        LONGS_EQUAL(ADQR_EOK, thread.SendMessage(msg));
+        LONGS_EQUAL(ADQR_EOK, thread.PushMessage(msg));
     }
 
     /* Expect a timeout. */

@@ -24,6 +24,7 @@ public:
 
     virtual ~MessageThread() {};
 
+    /* Start the thread. */
     virtual int Start()
     {
         if (m_is_running)
@@ -38,6 +39,7 @@ public:
         return ADQR_EOK;
     }
 
+    /* Stop the thread. */
     virtual int Stop()
     {
         if (!m_is_running)
@@ -51,12 +53,14 @@ public:
         return m_thread_exit_code;
     }
 
+    /* Wait for a message from the thread. */
     int WaitForMessage(T &message, int timeout)
     {
         return m_read_queue.Read(message, timeout);
     }
 
-    int SendMessage(const T &message)
+    /* Push a message to the thread. */
+    int PushMessage(const T &message)
     {
         return m_write_queue.Write(message);
     }

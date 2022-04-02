@@ -10,7 +10,8 @@ enum class FileWatcherMessageId
 {
     FILE_CREATED,
     FILE_DELETED,
-    FILE_UPDATED
+    FILE_UPDATED,
+    UPDATE_FILE
 };
 
 struct FileWatcherMessage
@@ -32,6 +33,8 @@ private:
     bool m_is_watching;
 
     void ReadContents(std::string &str);
+    void WriteContents(const std::string &str);
+    void HandleMessages();
 };
 
 #endif

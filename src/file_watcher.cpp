@@ -47,6 +47,9 @@ void FileWatcher::MainLoop()
                                 std::make_shared<std::string>("")});
         }
 
+        /* Handle any incoming messages. */
+        HandleMessages();
+
         /* We implement the sleep using the stop event to be able to immediately
            react to the event being set. */
         if (m_should_stop.wait_for(std::chrono::milliseconds(250)) == std::future_status::ready)
@@ -62,4 +65,33 @@ void FileWatcher::ReadContents(std::string &str)
     str.reserve(size);
     str.resize(size);
     ifs.read(&str[0], size);
+}
+
+void FileWatcher::WriteContents(const std::string &str)
+{
+    /* Open an output filestream, truncating the current contents and write the input string. */
+    std::ofstream ofs(m_path, std::ios::out | std::ios::trunc);
+    ofs << str;
+    ofs.close();
+}
+
+void FileWatcher::HandleMessages()
+{
+    /* Empty the inwards facing message queue. */
+    FileWatcherMessage message;
+    while (m_write_queue.Read(message, 0) == ADQR_EOK)
+    {
+        switch (message.id)
+        {
+        case FileWatcherMessageId::UPDATE_FILE:
+            WriteContents(*message.contents);
+            break;
+
+        case FileWatcherMessageId::FILE_CREATED:
+        case FileWatcherMessageId::FILE_DELETED:
+        case FileWatcherMessageId::FILE_UPDATED:
+        default:
+            break;
+        }
+    }
 }

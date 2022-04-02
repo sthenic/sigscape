@@ -12,6 +12,7 @@ SimulatedDigitizer::SimulatedDigitizer()
     }
 
     m_file_watcher = std::make_unique<FileWatcher>("./simulated_digitizer.json");
+    m_parameter_queue = std::make_unique<ThreadSafeQueue<std::shared_ptr<std::string>>>(0, true);
 }
 
 int SimulatedDigitizer::Initialize()
@@ -22,6 +23,7 @@ int SimulatedDigitizer::Initialize()
 
 void SimulatedDigitizer::MainLoop()
 {
+    m_parameter_queue->Start();
     m_file_watcher->Start();
 
     m_read_queue.Write(DigitizerMessage(DigitizerMessageId::NEW_STATE,
@@ -67,8 +69,7 @@ void SimulatedDigitizer::MainLoop()
             case FileWatcherMessageId::FILE_CREATED:
             case FileWatcherMessageId::FILE_UPDATED:
             case FileWatcherMessageId::FILE_DELETED:
-                m_read_queue.Write(DigitizerMessage(DigitizerMessageId::PARAMETERS_UPDATED,
-                                                    file_watcher_message.contents));
+                m_parameter_queue->Write(file_watcher_message.contents);
                 break;
 
             case FileWatcherMessageId::UPDATE_FILE:
@@ -120,7 +121,6 @@ int SimulatedDigitizer::HandleMessage(const struct DigitizerMessage &msg)
     case DigitizerMessageId::SETUP_STARTING:
     case DigitizerMessageId::SETUP_OK:
     case DigitizerMessageId::SETUP_FAILED:
-    case DigitizerMessageId::PARAMETERS_UPDATED:
     case DigitizerMessageId::NEW_STATE:
     default:
         printf("Unknown message id %d.\n", static_cast<int>(msg.id));

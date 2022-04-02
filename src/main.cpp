@@ -407,19 +407,20 @@ int main(int, char **)
         }
         ImGui::End();
 
-        struct DigitizerMessage message;
-        int result = digitizer.WaitForMessage(message, 0);
+        /* The idea here would be to read & copy the parameters from the selected digitizer(s). */
+        std::shared_ptr<std::string> parameters;
+        int result = digitizer.WaitForParameters(parameters);
         if (result == ADQR_EOK)
         {
-            if (message.id == DigitizerMessageId::PARAMETERS_UPDATED)
-                std::strncpy(text, message.str->c_str(), sizeof(text));
+            std::strncpy(text, parameters->c_str(), sizeof(text));
         }
 
         ImGui::SetNextWindowPos(ImVec2(FIRST_COLUMN_POSITION, 400.0 + frame_height));
         ImGui::SetNextWindowSize(ImVec2(FIRST_COLUMN_SIZE, display_h - 400.0 - frame_height));
         ImGui::Begin("Parameters", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
         ImGui::InputTextMultiline("##parameters", text, IM_ARRAYSIZE(text),
-                                  ImVec2(-FLT_MIN, -FLT_MIN), ImGuiInputTextFlags_AllowTabInput);
+                                  ImVec2(-FLT_MIN, -FLT_MIN),
+                                  ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_ReadOnly);
         ImGui::End();
 
         DoPlot(digitizer);

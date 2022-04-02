@@ -23,7 +23,6 @@ enum class DigitizerMessageId
     SETUP_STARTING,
     SETUP_OK,
     SETUP_FAILED,
-    PARAMETERS_UPDATED,
     START_ACQUISITION,
     STOP_ACQUISITION,
     NEW_STATE
@@ -84,6 +83,13 @@ public:
         return m_processing_threads[channel]->WaitForBuffer(record, 0);
     }
 
+    /* TODO: We can probably do the same generalization for the MessageThread
+             with a persistent read queue and expose that directly. */
+    int WaitForParameters(std::shared_ptr<std::string> &str)
+    {
+        return m_parameter_queue->Read(str, 0);
+    }
+
 protected:
     /* TODO: Perhaps write a file watcher w/ C++17's std::filesystem:
        https://solarianprogrammer.com/2019/01/13/cpp-17-filesystem-write-file-watcher-monitor/ */
@@ -93,6 +99,7 @@ protected:
 
     /* File watcher to watch the digitizer's configuration file. */
     std::unique_ptr<FileWatcher> m_file_watcher;
+    std::unique_ptr<ThreadSafeQueue<std::shared_ptr<std::string>>> m_parameter_queue;
 
     /* The digitizer's data processing threads, one per channel. */
     std::vector<std::unique_ptr<DataProcessing>> m_processing_threads;

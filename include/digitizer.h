@@ -69,7 +69,10 @@ public:
     Digitizer()
         : MessageThread()
         , m_state(DigitizerState::NOT_ENUMERATED)
-        , m_file_watcher()
+        , m_watcher_parameters()
+        , m_watcher_clock_system_parameters()
+        , m_parameters()
+        , m_clock_system_parameters()
         , m_processing_threads{}
     {
     }
@@ -87,19 +90,24 @@ public:
              with a persistent read queue and expose that directly. */
     int WaitForParameters(std::shared_ptr<std::string> &str)
     {
-        return m_parameter_queue->Read(str, 0);
+        return m_parameters->Read(str, 0);
+    }
+
+    int WaitForClockSystemParameters(std::shared_ptr<std::string> &str)
+    {
+        return m_clock_system_parameters->Read(str, 0);
     }
 
 protected:
-    /* TODO: Perhaps write a file watcher w/ C++17's std::filesystem:
-       https://solarianprogrammer.com/2019/01/13/cpp-17-filesystem-write-file-watcher-monitor/ */
-
     /* The digitizer's state. */
     enum DigitizerState m_state;
 
-    /* File watcher to watch the digitizer's configuration file. */
-    std::unique_ptr<FileWatcher> m_file_watcher;
-    std::unique_ptr<ThreadSafeQueue<std::shared_ptr<std::string>>> m_parameter_queue;
+    /* File watchers and queues to watch and propagate contents from the
+       digitizer's configuration files. */
+    std::unique_ptr<FileWatcher> m_watcher_parameters;
+    std::unique_ptr<FileWatcher> m_watcher_clock_system_parameters;
+    std::unique_ptr<ThreadSafeQueue<std::shared_ptr<std::string>>> m_parameters;
+    std::unique_ptr<ThreadSafeQueue<std::shared_ptr<std::string>>> m_clock_system_parameters;
 
     /* The digitizer's data processing threads, one per channel. */
     std::vector<std::unique_ptr<DataProcessing>> m_processing_threads;

@@ -79,7 +79,7 @@ void FileWatcher::HandleMessages()
 {
     /* Empty the inwards facing message queue. */
     FileWatcherMessage message;
-    while (m_write_queue.Read(message, 0) == ADQR_EOK)
+    while (ADQR_EOK == m_write_queue.Read(message, 0))
     {
         switch (message.id)
         {

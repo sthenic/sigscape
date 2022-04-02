@@ -20,9 +20,12 @@ private:
 
     std::vector<std::shared_ptr<DataAcquisitionSimulator>> m_simulator;
 
-    /* FIXME: The digitizer's parameter set. */
-
+    /* FIXME: ProcessMessages() */
     int HandleMessage(const struct DigitizerMessage &msg);
+
+    void ProcessWatcherMessages(
+        const std::unique_ptr<FileWatcher> &watcher,
+        const std::unique_ptr<ThreadSafeQueue<std::shared_ptr<std::string>>> &queue);
 };
 
 #endif

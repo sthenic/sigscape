@@ -29,6 +29,11 @@ public:
     {
     }
 
+    virtual ~ThreadSafeQueue()
+    {
+        Stop();
+    }
+
     ThreadSafeQueue(const ThreadSafeQueue &other) = delete;
     ThreadSafeQueue &operator=(const ThreadSafeQueue &other) = delete;
 

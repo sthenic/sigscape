@@ -11,8 +11,10 @@ SimulatedDigitizer::SimulatedDigitizer()
         m_processing_threads.push_back(std::make_unique<DataProcessing>(*simulator));
     }
 
-    m_file_watcher = std::make_unique<FileWatcher>("./simulated_digitizer.json");
-    m_parameter_queue = std::make_unique<ThreadSafeQueue<std::shared_ptr<std::string>>>(0, true);
+    m_watcher_parameters = std::make_unique<FileWatcher>("./simulated_digitizer.json");
+    m_watcher_clock_system_parameters = std::make_unique<FileWatcher>("./simulated_digitizer_clock_system.json");
+    m_parameters = std::make_unique<ThreadSafeQueue<std::shared_ptr<std::string>>>(0, true);
+    m_clock_system_parameters = std::make_unique<ThreadSafeQueue<std::shared_ptr<std::string>>>(0, true);
 }
 
 int SimulatedDigitizer::Initialize()
@@ -23,8 +25,11 @@ int SimulatedDigitizer::Initialize()
 
 void SimulatedDigitizer::MainLoop()
 {
-    m_parameter_queue->Start();
-    m_file_watcher->Start();
+    m_parameters->Start();
+    m_clock_system_parameters->Start();
+
+    m_watcher_parameters->Start();
+    m_watcher_clock_system_parameters->Start();
 
     m_read_queue.Write(DigitizerMessage(DigitizerMessageId::NEW_STATE,
                                         DigitizerState::NOT_ENUMERATED));
@@ -60,23 +65,9 @@ void SimulatedDigitizer::MainLoop()
             break;
         }
 
-        struct FileWatcherMessage file_watcher_message;
-        result = m_file_watcher->WaitForMessage(file_watcher_message, 0);
-        if (result == ADQR_EOK)
-        {
-            switch (file_watcher_message.id)
-            {
-            case FileWatcherMessageId::FILE_CREATED:
-            case FileWatcherMessageId::FILE_UPDATED:
-            case FileWatcherMessageId::FILE_DELETED:
-                m_parameter_queue->Write(file_watcher_message.contents);
-                break;
-
-            case FileWatcherMessageId::UPDATE_FILE:
-            default:
-                break;
-            }
-        }
+        /* FIXME: Probably zip these up in pairs? */
+        ProcessWatcherMessages(m_watcher_parameters, m_parameters);
+        ProcessWatcherMessages(m_watcher_clock_system_parameters, m_clock_system_parameters);
 
         /* We implement the sleep using the stop event to be able to immediately
             react to the event being set. */
@@ -128,4 +119,26 @@ int SimulatedDigitizer::HandleMessage(const struct DigitizerMessage &msg)
     }
 
     return ADQR_EOK;
+}
+
+void SimulatedDigitizer::ProcessWatcherMessages(
+    const std::unique_ptr<FileWatcher> &watcher,
+    const std::unique_ptr<ThreadSafeQueue<std::shared_ptr<std::string>>> &queue)
+{
+    FileWatcherMessage message;
+    while (ADQR_EOK == watcher->WaitForMessage(message, 0))
+    {
+        switch (message.id)
+        {
+        case FileWatcherMessageId::FILE_CREATED:
+        case FileWatcherMessageId::FILE_UPDATED:
+        case FileWatcherMessageId::FILE_DELETED:
+            queue->Write(message.contents);
+            break;
+
+        case FileWatcherMessageId::UPDATE_FILE:
+        default:
+            break;
+        }
+    }
 }

@@ -25,7 +25,10 @@ public:
         , m_write_queue()
     {};
 
-    virtual ~BufferThread() {}
+    virtual ~BufferThread()
+    {
+        Stop();
+    }
 
     virtual int Start()
     {

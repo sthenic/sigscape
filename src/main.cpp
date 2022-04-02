@@ -15,8 +15,6 @@
 #include <cstdlib>
 #include <cstring>
 
-static char text[1024 * 16] = "";
-
 static void glfw_error_callback(int error, const char *description)
 {
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
@@ -386,16 +384,7 @@ int main(int, char **)
         {
             printf("Get!\n");
         }
-        if (ImGui::Button("Initialize", COMMAND_PALETTE_BUTTON_SIZE))
-        {
-            printf("Initialize!\n");
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Validate", COMMAND_PALETTE_BUTTON_SIZE))
-        {
-            printf("Validate!\n");
-        }
-        ImGui::SameLine();
+        ImGui::BeginDisabled();
         if (ImGui::Button("SetPorts", COMMAND_PALETTE_BUTTON_SIZE))
         {
             printf("SetPorts!\n");
@@ -405,22 +394,50 @@ int main(int, char **)
         {
             printf("SetSelection!\n");
         }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        if (ImGui::Button("Initialize", COMMAND_PALETTE_BUTTON_SIZE))
+        {
+            printf("Initialize!\n");
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Validate", COMMAND_PALETTE_BUTTON_SIZE))
+        {
+            printf("Validate!\n");
+        }
         ImGui::End();
 
-        /* The idea here would be to read & copy the parameters from the selected digitizer(s). */
-        std::shared_ptr<std::string> parameters;
-        int result = digitizer.WaitForParameters(parameters);
-        if (result == ADQR_EOK)
-        {
-            std::strncpy(text, parameters->c_str(), sizeof(text));
-        }
 
         ImGui::SetNextWindowPos(ImVec2(FIRST_COLUMN_POSITION, 400.0 + frame_height));
         ImGui::SetNextWindowSize(ImVec2(FIRST_COLUMN_SIZE, display_h - 400.0 - frame_height));
-        ImGui::Begin("Parameters", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-        ImGui::InputTextMultiline("##parameters", text, IM_ARRAYSIZE(text),
-                                  ImVec2(-FLT_MIN, -FLT_MIN),
-                                  ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_ReadOnly);
+        ImGui::Begin("Configuration", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+        if (ImGui::BeginTabBar("Parameters", ImGuiTabBarFlags_None))
+        {
+            /* TODO: The idea here would be to read & copy the parameters from the selected digitizer. */
+            if (ImGui::BeginTabItem("Parameters"))
+            {
+                /* FIXME: Add label w/ path */
+                /* FIXME: Could get fancy w/ only copying in ADQR_ELAST -> ADQR_EOK transition. */
+                /* It's ok with a static pointer here as long as we keep the
+                   widget in read only mode. */
+                static auto parameters = std::make_shared<std::string>("");
+                digitizer.WaitForParameters(parameters);
+                ImGui::InputTextMultiline("##parameters", parameters->data(), parameters->size(),
+                                          ImVec2(-FLT_MIN, -FLT_MIN), ImGuiInputTextFlags_ReadOnly);
+                ImGui::EndTabItem();
+            }
+
+            if (ImGui::BeginTabItem("Clock System"))
+            {
+                /* FIXME: Add label w/ path */
+                static auto parameters = std::make_shared<std::string>("");
+                digitizer.WaitForClockSystemParameters(parameters);
+                ImGui::InputTextMultiline("##clocksystem", parameters->data(), parameters->size(),
+                                          ImVec2(-FLT_MIN, -FLT_MIN), ImGuiInputTextFlags_ReadOnly);
+                ImGui::EndTabItem();
+            }
+            ImGui::EndTabBar();
+        }
         ImGui::End();
 
         DoPlot(digitizer);

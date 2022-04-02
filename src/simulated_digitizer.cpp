@@ -24,21 +24,22 @@ void SimulatedDigitizer::MainLoop()
 {
     m_file_watcher->Start();
 
-    m_read_queue.Write({MESSAGE_ID_NEW_STATE, STATE_NOT_ENUMERATED, NULL});
-    m_read_queue.Write({MESSAGE_ID_SETUP_STARTING, 0, NULL});
+    m_read_queue.Write(DigitizerMessage(DigitizerMessageId::NEW_STATE,
+                                        DigitizerState::NOT_ENUMERATED));
+    m_read_queue.Write(DigitizerMessage(DigitizerMessageId::SETUP_STARTING));
 
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    m_read_queue.Write({MESSAGE_ID_SETUP_OK, 0, NULL});
+    m_read_queue.Write(DigitizerMessage(DigitizerMessageId::SETUP_OK));
 
     m_thread_exit_code = ADQR_EOK;
     for (;;)
     {
         /* FIXME: Refactor into its own function. */
-        struct DigitizerMessage msg;
-        int result = m_write_queue.Read(msg, 0);
+        struct DigitizerMessage message;
+        int result = m_write_queue.Read(message, 0);
         if (result == ADQR_EOK)
         {
-            result = HandleMessage(msg);
+            result = HandleMessage(message);
             if (result != ADQR_EOK)
             {
                 printf("Failed to handle a message, result %d.\n", result);
@@ -57,18 +58,20 @@ void SimulatedDigitizer::MainLoop()
             break;
         }
 
-        struct FileWatcherMessage fmsg;
-        result = m_file_watcher->WaitForMessage(fmsg, 0);
+        struct FileWatcherMessage file_watcher_message;
+        result = m_file_watcher->WaitForMessage(file_watcher_message, 0);
         if (result == ADQR_EOK)
         {
-            switch (fmsg.id)
+            switch (file_watcher_message.id)
             {
             case FileWatcherMessageId::FILE_CREATED:
             case FileWatcherMessageId::FILE_UPDATED:
             case FileWatcherMessageId::FILE_DELETED:
-                m_read_queue.Write({MESSAGE_ID_PARAMETER_SET_UPDATED_FROM_FILE, 0, fmsg.contents});
+                m_read_queue.Write(DigitizerMessage(DigitizerMessageId::PARAMETERS_UPDATED,
+                                                    file_watcher_message.contents));
                 break;
 
+            case FileWatcherMessageId::UPDATE_FILE:
             default:
                 break;
             }
@@ -85,7 +88,7 @@ int SimulatedDigitizer::HandleMessage(const struct DigitizerMessage &msg)
 {
     switch (msg.id)
     {
-    case MESSAGE_ID_START_ACQUISITION:
+    case DigitizerMessageId::START_ACQUISITION:
     {
         printf("Entering acquisition.\n");
         Simulator::SineWave sine;
@@ -97,29 +100,30 @@ int SimulatedDigitizer::HandleMessage(const struct DigitizerMessage &msg)
         m_simulator[1]->Initialize(18000, 15.0, sine);
         m_processing_threads[0]->Start();
         m_processing_threads[1]->Start();
-        m_state = STATE_ACQUISITION;
-        m_read_queue.Write({MESSAGE_ID_NEW_STATE, STATE_ACQUISITION, NULL});
+        m_state = DigitizerState::ACQUISITION;
+        m_read_queue.Write(DigitizerMessage(DigitizerMessageId::NEW_STATE,
+                                            DigitizerState::ACQUISITION));
         break;
     }
 
-    case MESSAGE_ID_STOP_ACQUISITION:
+    case DigitizerMessageId::STOP_ACQUISITION:
     {
         printf("Entering configuration.\n");
         m_processing_threads[0]->Stop();
         m_processing_threads[1]->Stop();
-        m_state = STATE_CONFIGURATION;
-        m_read_queue.Write({MESSAGE_ID_NEW_STATE, STATE_CONFIGURATION, NULL});
+        m_state = DigitizerState::CONFIGURATION;
+        m_read_queue.Write(DigitizerMessage(DigitizerMessageId::NEW_STATE,
+                                            DigitizerState::CONFIGURATION));
         break;
     }
 
-    case MESSAGE_ID_SETUP_STARTING:
-    case MESSAGE_ID_SETUP_OK:
-    case MESSAGE_ID_SETUP_FAILED:
-    case MESSAGE_ID_PARAMETER_SET_UPDATED_FROM_FILE:
-    case MESSAGE_ID_PARAMETER_SET_UPDATED_FROM_GUI:
-    case MESSAGE_ID_NEW_STATE:
+    case DigitizerMessageId::SETUP_STARTING:
+    case DigitizerMessageId::SETUP_OK:
+    case DigitizerMessageId::SETUP_FAILED:
+    case DigitizerMessageId::PARAMETERS_UPDATED:
+    case DigitizerMessageId::NEW_STATE:
     default:
-        printf("Unknown message id %d.\n", msg.id);
+        printf("Unknown message id %d.\n", static_cast<int>(msg.id));
         return ADQR_EINTERNAL;
     }
 

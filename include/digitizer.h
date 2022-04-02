@@ -18,31 +18,50 @@
 
 #include <array>
 
-enum DigitizerMessageId
+enum class DigitizerMessageId
 {
-    MESSAGE_ID_SETUP_STARTING,
-    MESSAGE_ID_SETUP_OK,
-    MESSAGE_ID_SETUP_FAILED,
-    MESSAGE_ID_PARAMETER_SET_UPDATED_FROM_FILE,
-    MESSAGE_ID_PARAMETER_SET_UPDATED_FROM_GUI, /* FIXME: Maybe we keep it read only in the GUI. */
-    MESSAGE_ID_START_ACQUISITION,
-    MESSAGE_ID_STOP_ACQUISITION,
-    MESSAGE_ID_NEW_STATE
+    SETUP_STARTING,
+    SETUP_OK,
+    SETUP_FAILED,
+    PARAMETERS_UPDATED,
+    START_ACQUISITION,
+    STOP_ACQUISITION,
+    NEW_STATE
 };
 
-enum DigitizerState
+enum class DigitizerState
 {
-    STATE_NOT_ENUMERATED,
-    STATE_INITIALIZATION,
-    STATE_CONFIGURATION,
-    STATE_ACQUISITION
+    NOT_ENUMERATED,
+    INITIALIZATION,
+    CONFIGURATION,
+    ACQUISITION
 };
 
 struct DigitizerMessage
 {
-    enum DigitizerMessageId id;
-    int status;
-    std::shared_ptr<void> data;
+    /* Default constructor (for receiving messages). */
+    DigitizerMessage() = default;
+
+    /* Create an empty message. */
+    DigitizerMessage(DigitizerMessageId id)
+        : id(id)
+    {};
+
+    /* Create a state message. */
+    DigitizerMessage(DigitizerMessageId id, DigitizerState state)
+        : id(id)
+        , state(state)
+    {}
+
+    /* Create a string message. */
+    DigitizerMessage(DigitizerMessageId id, std::shared_ptr<std::string> str)
+        : id(id)
+        , str(str)
+    {}
+
+    DigitizerMessageId id;
+    DigitizerState state;
+    std::shared_ptr<std::string> str;
 };
 
 class Digitizer : public MessageThread<Digitizer, struct DigitizerMessage>
@@ -50,7 +69,7 @@ class Digitizer : public MessageThread<Digitizer, struct DigitizerMessage>
 public:
     Digitizer()
         : MessageThread()
-        , m_state(STATE_NOT_ENUMERATED)
+        , m_state(DigitizerState::NOT_ENUMERATED)
         , m_file_watcher()
         , m_processing_threads{}
     {

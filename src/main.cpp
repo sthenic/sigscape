@@ -181,12 +181,12 @@ int main(int, char **)
 
     auto Start = [&]()
     {
-        digitizer.PushMessage({MESSAGE_ID_START_ACQUISITION, 0, NULL});
+        digitizer.PushMessage(DigitizerMessage(DigitizerMessageId::START_ACQUISITION));
     };
 
     auto Stop = [&]()
     {
-        digitizer.PushMessage({MESSAGE_ID_STOP_ACQUISITION, 0, NULL});
+        digitizer.PushMessage(DigitizerMessage(DigitizerMessageId::STOP_ACQUISITION));
     };
 
 #ifdef SIMULATION_ONLY
@@ -411,13 +411,8 @@ int main(int, char **)
         int result = digitizer.WaitForMessage(message, 0);
         if (result == ADQR_EOK)
         {
-            if (message.id == MESSAGE_ID_PARAMETER_SET_UPDATED_FROM_FILE)
-            {
-                /* FIXME: Make this into 'svalue' in struct DigitizerMessage instead. */
-                printf("Contents updated!\n");
-                auto contents = (std::string *)(message.data.get());
-                std::strncpy(text, contents->c_str(), sizeof(text));
-            }
+            if (message.id == DigitizerMessageId::PARAMETERS_UPDATED)
+                std::strncpy(text, message.str->c_str(), sizeof(text));
         }
 
         ImGui::SetNextWindowPos(ImVec2(FIRST_COLUMN_POSITION, 400.0 + frame_height));

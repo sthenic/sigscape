@@ -177,16 +177,6 @@ int main(int, char **)
     digitizer.Initialize();
     digitizer.Start();
 
-    auto Start = [&]()
-    {
-        digitizer.PushMessage(DigitizerMessage(DigitizerMessageId::START_ACQUISITION));
-    };
-
-    auto Stop = [&]()
-    {
-        digitizer.PushMessage(DigitizerMessage(DigitizerMessageId::STOP_ACQUISITION));
-    };
-
 #ifdef SIMULATION_ONLY
     int nof_devices = 4;
 #else
@@ -366,23 +356,25 @@ int main(int, char **)
         if (ImGui::Button("Start", COMMAND_PALETTE_BUTTON_SIZE))
         {
             printf("Start!\n");
-            Start();
+            digitizer.PushMessage(DigitizerMessage(DigitizerMessageId::START_ACQUISITION));
         }
         ImGui::SameLine();
         if (ImGui::Button("Stop", COMMAND_PALETTE_BUTTON_SIZE))
         {
             printf("Stop!\n");
-            Stop();
+            digitizer.PushMessage(DigitizerMessage(DigitizerMessageId::STOP_ACQUISITION));
         }
         ImGui::SameLine();
         if (ImGui::Button("Set", COMMAND_PALETTE_BUTTON_SIZE))
         {
             printf("Set!\n");
+            digitizer.PushMessage(DigitizerMessage(DigitizerMessageId::SET_PARAMETERS));
         }
         ImGui::SameLine();
         if (ImGui::Button("Get", COMMAND_PALETTE_BUTTON_SIZE))
         {
             printf("Get!\n");
+            digitizer.PushMessage(DigitizerMessage(DigitizerMessageId::GET_PARAMETERS));
         }
         ImGui::BeginDisabled();
         if (ImGui::Button("SetPorts", COMMAND_PALETTE_BUTTON_SIZE))
@@ -399,11 +391,13 @@ int main(int, char **)
         if (ImGui::Button("Initialize", COMMAND_PALETTE_BUTTON_SIZE))
         {
             printf("Initialize!\n");
+            digitizer.PushMessage(DigitizerMessage(DigitizerMessageId::INITIALIZE_PARAMETERS));
         }
         ImGui::SameLine();
         if (ImGui::Button("Validate", COMMAND_PALETTE_BUTTON_SIZE))
         {
             printf("Validate!\n");
+            digitizer.PushMessage(DigitizerMessage(DigitizerMessageId::VALIDATE_PARAMETERS));
         }
         ImGui::End();
 
@@ -458,7 +452,7 @@ int main(int, char **)
     printf("Stopping\n");
 
     /* FIXME: wait until threads close */
-    Stop();
+    digitizer.PushMessage(DigitizerMessage(DigitizerMessageId::STOP_ACQUISITION));
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     digitizer.Stop();
 #ifndef SIMULATION_ONLY

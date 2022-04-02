@@ -1,5 +1,28 @@
 #include "simulated_digitizer.h"
 
+#include <sstream>
+#include <type_traits>
+
+const std::string SimulatedDigitizer::DEFAULT_PARAMETERS =
+R"""(frequency:
+    1e6, 9e6
+amplitude:
+    1.0, 0.8
+record length:
+    18000, 18000
+trigger frequency:
+    5.0, 15.0
+harmonic distortion:
+    0, 1
+noise standard deviation:
+    0.1, 0.02
+)""";
+
+const std::string SimulatedDigitizer::DEFAULT_CLOCK_SYSTEM_PARAMETERS =
+R"""(sampling frequency:
+    500e6, 500e6
+)""";
+
 SimulatedDigitizer::SimulatedDigitizer()
     : Digitizer()
     , m_simulator{}
@@ -11,8 +34,8 @@ SimulatedDigitizer::SimulatedDigitizer()
         m_processing_threads.push_back(std::make_unique<DataProcessing>(*simulator));
     }
 
-    m_watcher_parameters = std::make_unique<FileWatcher>("./simulated_digitizer.json");
-    m_watcher_clock_system_parameters = std::make_unique<FileWatcher>("./simulated_digitizer_clock_system.json");
+    m_watcher_parameters = std::make_unique<FileWatcher>("./simulated_digitizer.txt");
+    m_watcher_clock_system_parameters = std::make_unique<FileWatcher>("./simulated_digitizer_clock_system.txt");
     m_parameters = std::make_unique<ThreadSafeQueue<std::shared_ptr<std::string>>>(0, true);
     m_clock_system_parameters = std::make_unique<ThreadSafeQueue<std::shared_ptr<std::string>>>(0, true);
 }
@@ -41,29 +64,7 @@ void SimulatedDigitizer::MainLoop()
     m_thread_exit_code = ADQR_EOK;
     for (;;)
     {
-        /* FIXME: Refactor into its own function. */
-        struct DigitizerMessage message;
-        int result = m_write_queue.Read(message, 0);
-        if (result == ADQR_EOK)
-        {
-            result = HandleMessage(message);
-            if (result != ADQR_EOK)
-            {
-                printf("Failed to handle a message, result %d.\n", result);
-                m_thread_exit_code = ADQR_EINTERNAL;
-                break;
-            }
-        }
-        else if ((result == ADQR_EINTERRUPTED) || (result == ADQR_ENOTREADY))
-        {
-            break;
-        }
-        else if (result != ADQR_EAGAIN)
-        {
-            printf("Failed to read an inbound message, result %d.\n", result);
-            m_thread_exit_code = ADQR_EINTERNAL;
-            break;
-        }
+        ProcessMessages();
 
         /* FIXME: Probably zip these up in pairs? */
         ProcessWatcherMessages(m_watcher_parameters, m_parameters);
@@ -76,49 +77,84 @@ void SimulatedDigitizer::MainLoop()
     }
 }
 
-int SimulatedDigitizer::HandleMessage(const struct DigitizerMessage &msg)
+void SimulatedDigitizer::ProcessMessages()
 {
-    switch (msg.id)
+    DigitizerMessage message;
+    while (ADQR_EOK == m_write_queue.Read(message, 0))
     {
-    case DigitizerMessageId::START_ACQUISITION:
-    {
-        printf("Entering acquisition.\n");
-        Simulator::SineWave sine;
-        m_simulator[0]->Initialize(18000, 30.0, sine);
-        sine.frequency = 9e6;
-        sine.amplitude = 0.8;
-        sine.noise_std_dev = 0.02;
-        sine.harmonic_distortion = true;
-        m_simulator[1]->Initialize(18000, 15.0, sine);
-        m_processing_threads[0]->Start();
-        m_processing_threads[1]->Start();
-        m_state = DigitizerState::ACQUISITION;
-        m_read_queue.Write(DigitizerMessage(DigitizerMessageId::NEW_STATE,
-                                            DigitizerState::ACQUISITION));
-        break;
-    }
+        switch (message.id)
+        {
+        case DigitizerMessageId::START_ACQUISITION:
+        {
+            printf("Entering acquisition.\n");
+            Simulator::SineWave sine;
+            m_simulator[0]->Initialize(18000, 30.0, sine);
+            sine.frequency = 9e6;
+            sine.amplitude = 0.8;
+            sine.noise_std_dev = 0.02;
+            sine.harmonic_distortion = true;
+            m_simulator[1]->Initialize(18000, 15.0, sine);
+            m_processing_threads[0]->Start();
+            m_processing_threads[1]->Start();
+            m_state = DigitizerState::ACQUISITION;
+            m_read_queue.Write(DigitizerMessage(DigitizerMessageId::NEW_STATE,
+                                                DigitizerState::ACQUISITION));
+            break;
+        }
 
-    case DigitizerMessageId::STOP_ACQUISITION:
-    {
-        printf("Entering configuration.\n");
-        m_processing_threads[0]->Stop();
-        m_processing_threads[1]->Stop();
-        m_state = DigitizerState::CONFIGURATION;
-        m_read_queue.Write(DigitizerMessage(DigitizerMessageId::NEW_STATE,
-                                            DigitizerState::CONFIGURATION));
-        break;
-    }
+        case DigitizerMessageId::STOP_ACQUISITION:
+        {
+            printf("Entering configuration.\n");
+            m_processing_threads[0]->Stop();
+            m_processing_threads[1]->Stop();
+            m_state = DigitizerState::CONFIGURATION;
+            m_read_queue.Write(DigitizerMessage(DigitizerMessageId::NEW_STATE,
+                                                DigitizerState::CONFIGURATION));
+            break;
+        }
 
-    case DigitizerMessageId::SETUP_STARTING:
-    case DigitizerMessageId::SETUP_OK:
-    case DigitizerMessageId::SETUP_FAILED:
-    case DigitizerMessageId::NEW_STATE:
-    default:
-        printf("Unknown message id %d.\n", static_cast<int>(msg.id));
-        return ADQR_EINTERNAL;
-    }
+        case DigitizerMessageId::SET_PARAMETERS:
+        {
+            /* FIXME: Implement */
+            std::shared_ptr<std::string> parameters;
+            int result = m_parameters->Read(parameters, 0);
+            if (result == ADQR_EOK)
+            {
+                std::vector<double> frequency;
+                result = ParseLine(1, *parameters, frequency);
+                if (result == ADQR_EOK)
+                    printf("Success\n");
+                else
+                    printf("Failed\n");
+            }
+            break;
+        }
 
-    return ADQR_EOK;
+        case DigitizerMessageId::VALIDATE_PARAMETERS:
+            /* FIXME: Implement something */
+            break;
+
+        case DigitizerMessageId::GET_PARAMETERS:
+            /* The file holds the state so there's nothing to do. */
+            break;
+
+        case DigitizerMessageId::INITIALIZE_PARAMETERS:
+            m_watcher_parameters->PushMessage(
+                {FileWatcherMessageId::UPDATE_FILE,
+                 std::make_shared<std::string>(DEFAULT_PARAMETERS)});
+            m_watcher_clock_system_parameters->PushMessage(
+                {FileWatcherMessageId::UPDATE_FILE,
+                 std::make_shared<std::string>(DEFAULT_CLOCK_SYSTEM_PARAMETERS)});
+            break;
+
+        case DigitizerMessageId::SETUP_STARTING:
+        case DigitizerMessageId::SETUP_OK:
+        case DigitizerMessageId::SETUP_FAILED:
+        case DigitizerMessageId::NEW_STATE:
+        default:
+            break;
+        }
+    }
 }
 
 void SimulatedDigitizer::ProcessWatcherMessages(
@@ -141,4 +177,45 @@ void SimulatedDigitizer::ProcessWatcherMessages(
             break;
         }
     }
+}
+
+template<typename T>
+int SimulatedDigitizer::ParseLine(int line_idx, const std::string &str, std::vector<T> &values)
+{
+    /* Iterate through the string until we get to the target line, then attempt
+       to read a comma-separated list of elements of the target type. */
+    std::stringstream ss(str);
+    std::string line;
+    int idx = 0;
+
+    while (std::getline(ss, line, '\n'))
+    {
+        if (idx == line_idx)
+        {
+            std::stringstream lss(line);
+            std::string str_value;
+            while (std::getline(lss, str_value, ','))
+            {
+                try
+                {
+                    if (std::is_floating_point<T>::value)
+                        values.push_back(std::stod(str_value));
+                    else
+                        values.push_back(std::stoi(str_value));
+
+                }
+                catch (const std::invalid_argument &)
+                {
+                    return ADQR_EINVAL;
+                }
+                catch (const std::out_of_range &)
+                {
+                    return ADQR_EINVAL;
+                }
+            }
+        }
+        ++idx;
+    }
+
+    return ADQR_EOK;
 }

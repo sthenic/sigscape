@@ -16,16 +16,19 @@ public:
     int Initialize();
 
 private:
-    void MainLoop() override;
-
     std::vector<std::shared_ptr<DataAcquisitionSimulator>> m_simulator;
 
-    /* FIXME: ProcessMessages() */
-    int HandleMessage(const struct DigitizerMessage &msg);
+    static const std::string DEFAULT_PARAMETERS;
+    static const std::string DEFAULT_CLOCK_SYSTEM_PARAMETERS;
 
+    void MainLoop() override;
+    void ProcessMessages();
     void ProcessWatcherMessages(
         const std::unique_ptr<FileWatcher> &watcher,
         const std::unique_ptr<ThreadSafeQueue<std::shared_ptr<std::string>>> &queue);
+
+    template<typename T>
+    int ParseLine(int line_idx, const std::string &str, std::vector<T> &values);
 };
 
 #endif

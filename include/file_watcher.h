@@ -20,7 +20,7 @@ struct FileWatcherMessage
     std::shared_ptr<std::string> contents;
 };
 
-class FileWatcher : public MessageThread<FileWatcher, struct FileWatcherMessage>
+class FileWatcher : public MessageThread<FileWatcher, FileWatcherMessage>
 {
 public:
     FileWatcher(const std::string &path);

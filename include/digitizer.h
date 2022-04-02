@@ -8,6 +8,7 @@
 #include "message_thread.h"
 #include "data_types.h"
 #include "data_processing.h"
+#include "file_watcher.h"
 
 #ifdef SIMULATION_ONLY
 #define ADQ_MAX_NOF_CHANNELS 8
@@ -41,7 +42,7 @@ struct DigitizerMessage
 {
     enum DigitizerMessageId id;
     int status;
-    void *data;
+    std::shared_ptr<void> data;
 };
 
 class Digitizer : public MessageThread<Digitizer, struct DigitizerMessage>
@@ -50,6 +51,7 @@ public:
     Digitizer()
         : MessageThread()
         , m_state(STATE_NOT_ENUMERATED)
+        , m_file_watcher()
         , m_processing_threads{}
     {
     }
@@ -69,6 +71,9 @@ protected:
 
     /* The digitizer's state. */
     enum DigitizerState m_state;
+
+    /* File watcher to watch the digitizer's configuration file. */
+    std::unique_ptr<FileWatcher> m_file_watcher;
 
     /* The digitizer's data processing threads, one per channel. */
     std::vector<std::unique_ptr<DataProcessing>> m_processing_threads;

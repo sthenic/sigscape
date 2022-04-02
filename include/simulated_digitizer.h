@@ -13,7 +13,6 @@ class SimulatedDigitizer : public Digitizer
 public:
     SimulatedDigitizer();
 
-    /* Initialize the digitizer. */
     int Initialize();
 
 private:

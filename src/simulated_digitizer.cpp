@@ -10,6 +10,8 @@ SimulatedDigitizer::SimulatedDigitizer()
         m_simulator.push_back(simulator);
         m_processing_threads.push_back(std::make_unique<DataProcessing>(*simulator));
     }
+
+    m_file_watcher = std::make_unique<FileWatcher>("./simulated_digitizer.json");
 }
 
 int SimulatedDigitizer::Initialize()
@@ -20,6 +22,8 @@ int SimulatedDigitizer::Initialize()
 
 void SimulatedDigitizer::MainLoop()
 {
+    m_file_watcher->Start();
+
     m_read_queue.Write({MESSAGE_ID_NEW_STATE, STATE_NOT_ENUMERATED, NULL});
     m_read_queue.Write({MESSAGE_ID_SETUP_STARTING, 0, NULL});
 
@@ -51,6 +55,23 @@ void SimulatedDigitizer::MainLoop()
             printf("Failed to read an inbound message, result %d.\n", result);
             m_thread_exit_code = ADQR_EINTERNAL;
             break;
+        }
+
+        struct FileWatcherMessage fmsg;
+        result = m_file_watcher->WaitForMessage(fmsg, 0);
+        if (result == ADQR_EOK)
+        {
+            switch (fmsg.id)
+            {
+            case FileWatcherMessageId::FILE_CREATED:
+            case FileWatcherMessageId::FILE_UPDATED:
+            case FileWatcherMessageId::FILE_DELETED:
+                m_read_queue.Write({MESSAGE_ID_PARAMETER_SET_UPDATED_FROM_FILE, 0, fmsg.contents});
+                break;
+
+            default:
+                break;
+            }
         }
 
         /* We implement the sleep using the stop event to be able to immediately

@@ -82,6 +82,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     src/simulator.cpp
     src/data_processing.cpp
     src/simulated_digitizer.cpp
+    src/file_watcher.cpp
     src/main.cpp
 )
 

@@ -54,16 +54,6 @@ public:
     {
     }
 
-    /* FIXME: Needed? */
-    ~Digitizer()
-    {
-        Stop();
-    }
-
-    /* Delete copy constructors. */
-    Digitizer(const Digitizer &) = delete;
-    Digitizer &operator=(const Digitizer &) = delete;
-
     /* Interface to the digitizer's data processing threads, one per channel. */
     int WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedRecord> &record)
     {

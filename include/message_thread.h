@@ -22,7 +22,10 @@ public:
         , m_write_queue()
     {};
 
-    virtual ~MessageThread() {};
+    virtual ~MessageThread()
+    {
+        Stop();
+    };
 
     /* Start the thread. */
     virtual int Start()

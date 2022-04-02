@@ -10,6 +10,7 @@ SOURCEDIR = ../src
 DEFINES =
 
 CXXFLAGS += \
+	-std=c++17 \
 	-g3 \
 	-MMD \
 	-DLINUX \
@@ -38,11 +39,13 @@ SOURCES = \
 	src/simulator.cpp \
 	src/data_processing.cpp \
 	src/simulated_digitizer.cpp \
+	src/file_watcher.cpp \
 	tthread_safe_queue.cpp \
 	tsimulator.cpp \
 	tdata_processing.cpp \
 	tmessage_thread.cpp \
 	tsimulated_digitizer.cpp \
+	tfile_watcher.cpp \
 	main.cpp
 
 OBJECTS = $(patsubst %,$(BUILDDIR)/%,$(SOURCES:.cpp=.o))

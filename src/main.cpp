@@ -14,6 +14,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <cinttypes>
 
 static void glfw_error_callback(int error, const char *description)
 {
@@ -41,10 +42,10 @@ void DoPlot(Digitizer &digitizer)
     const float PLOT_WINDOW_HEIGHT = (display_h - 1 * FRAME_HEIGHT) / 2;
 
     /* FIXME: Figure out something other than this manual unrolling. */
-    std::shared_ptr<ProcessedRecord> processed_record0 = NULL;
-    std::shared_ptr<ProcessedRecord> processed_record1 = NULL;
-    int result0 = digitizer.WaitForProcessedRecord(0, processed_record0);
-    int result1 = digitizer.WaitForProcessedRecord(1, processed_record1);
+    static std::shared_ptr<ProcessedRecord> processed_record0 = NULL;
+    static std::shared_ptr<ProcessedRecord> processed_record1 = NULL;
+    digitizer.WaitForProcessedRecord(0, processed_record0);
+    digitizer.WaitForProcessedRecord(1, processed_record1);
 
     ImGui::SetNextWindowPos(ImVec2(SECOND_COLUMN_POSITION, FRAME_HEIGHT));
     ImGui::SetNextWindowSize(ImVec2(SECOND_COLUMN_SIZE, PLOT_WINDOW_HEIGHT));
@@ -53,13 +54,13 @@ void DoPlot(Digitizer &digitizer)
     {
         ImPlot::SetupAxis(ImAxis_X1, "Time");
         ImPlot::SetupAxis(ImAxis_Y1, "f(x)");
-        if (result0 >= 0)
+        if (processed_record0 != NULL)
         {
             ImPlot::PlotLine("CHA", processed_record0->time_domain->x,
                              processed_record0->time_domain->y,
                              processed_record0->time_domain->count);
         }
-        if (result1 >= 0)
+        if (processed_record1 != NULL)
         {
             ImPlot::PlotLine("CHB", processed_record1->time_domain->x,
                              processed_record1->time_domain->y,
@@ -79,13 +80,13 @@ void DoPlot(Digitizer &digitizer)
         ImPlot::SetupAxisLimits(ImAxis_Y1, -80.0, 0.0);
         ImPlot::SetupAxis(ImAxis_X1, "Hz");
         ImPlot::SetupAxis(ImAxis_Y1, "FFT");
-        if (result0 >= 0)
+        if (processed_record0 != NULL)
         {
             ImPlot::PlotLine("CHA", processed_record0->frequency_domain->x,
                              processed_record0->frequency_domain->y,
                              processed_record0->frequency_domain->count / 2);
         }
-        if (result1 >= 0)
+        if (processed_record1 != NULL)
         {
             ImPlot::PlotLine("CHB", processed_record1->frequency_domain->x,
                              processed_record1->frequency_domain->y,
@@ -99,13 +100,15 @@ void DoPlot(Digitizer &digitizer)
     ImGui::SetNextWindowPos(ImVec2(THIRD_COLUMN_POSITION, FRAME_HEIGHT));
     ImGui::SetNextWindowSize(ImVec2(THIRD_COLUMN_SIZE, PLOT_WINDOW_HEIGHT));
     ImGui::Begin("Metrics##timedomain", NULL, ImGuiWindowFlags_NoMove);
-    if (result0 >= 0)
+    if (processed_record0 != NULL)
     {
+        ImGui::Text("Record number: %" PRIu64, processed_record0->time_domain->header.record_number);
         ImGui::Text("Maximum value: %.4f", processed_record0->time_domain_metrics.max_value);
         ImGui::Text("Minimum value: %.4f", processed_record0->time_domain_metrics.min_value);
     }
-    if (result1 >= 0)
+    if (processed_record1 != NULL)
     {
+        ImGui::Text("Record number: %" PRIu64, processed_record1->time_domain->header.record_number);
         ImGui::Text("Maximum value: %.4f", processed_record1->time_domain_metrics.max_value);
         ImGui::Text("Minimum value: %.4f", processed_record1->time_domain_metrics.min_value);
     }
@@ -114,18 +117,19 @@ void DoPlot(Digitizer &digitizer)
     ImGui::SetNextWindowPos(ImVec2(THIRD_COLUMN_POSITION, FRAME_HEIGHT + PLOT_WINDOW_HEIGHT));
     ImGui::SetNextWindowSize(ImVec2(THIRD_COLUMN_SIZE, PLOT_WINDOW_HEIGHT));
     ImGui::Begin("Metrics##frequencydomain", NULL, ImGuiWindowFlags_NoMove);
-    if (result0 >= 0)
+    if (processed_record0 != NULL)
     {
+        ImGui::Text("Record number: %" PRIu64, processed_record0->frequency_domain->header.record_number);
         ImGui::Text("Maximum value: %.4f", processed_record0->frequency_domain_metrics.max_value);
         ImGui::Text("Minimum value: %.4f", processed_record0->frequency_domain_metrics.min_value);
     }
-    if (result1 >= 0)
+    if (processed_record1 != NULL)
     {
+        ImGui::Text("Record number: %" PRIu64, processed_record1->frequency_domain->header.record_number);
         ImGui::Text("Maximum value: %.4f", processed_record1->frequency_domain_metrics.max_value);
         ImGui::Text("Minimum value: %.4f", processed_record1->frequency_domain_metrics.min_value);
     }
     ImGui::End();
-
 }
 
 int main(int, char **)

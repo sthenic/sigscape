@@ -54,6 +54,9 @@ void SimulatedDigitizer::MainLoop()
     m_watcher_parameters->Start();
     m_watcher_clock_system_parameters->Start();
 
+    m_simulator[0]->Initialize();
+    m_simulator[1]->Initialize();
+
     m_read_queue.Write(DigitizerMessage(DigitizerMessageId::NEW_STATE,
                                         DigitizerState::NOT_ENUMERATED));
     m_read_queue.Write(DigitizerMessage(DigitizerMessageId::SETUP_STARTING));
@@ -87,13 +90,6 @@ void SimulatedDigitizer::ProcessMessages()
         case DigitizerMessageId::START_ACQUISITION:
         {
             printf("Entering acquisition.\n");
-            Simulator::SineWave sine;
-            m_simulator[0]->Initialize(18000, 30.0, sine);
-            sine.frequency = 9e6;
-            sine.amplitude = 0.8;
-            sine.noise_std_dev = 0.02;
-            sine.harmonic_distortion = true;
-            m_simulator[1]->Initialize(18000, 15.0, sine);
             m_processing_threads[0]->Start();
             m_processing_threads[1]->Start();
             m_state = DigitizerState::ACQUISITION;
@@ -115,18 +111,12 @@ void SimulatedDigitizer::ProcessMessages()
 
         case DigitizerMessageId::SET_PARAMETERS:
         {
-            /* FIXME: Implement */
-            std::shared_ptr<std::string> parameters;
-            int result = m_parameters->Read(parameters, 0);
-            if (result == ADQR_EOK)
-            {
-                std::vector<double> frequency;
-                result = ParseLine(1, *parameters, frequency);
-                if (result == ADQR_EOK)
-                    printf("Success\n");
-                else
-                    printf("Failed\n");
-            }
+            /* TODO: We temporarily suspend the  */
+            m_processing_threads[0]->Stop();
+            m_processing_threads[1]->Stop();
+            SetParameters();
+            m_processing_threads[0]->Start();
+            m_processing_threads[1]->Start();
             break;
         }
 
@@ -202,7 +192,6 @@ int SimulatedDigitizer::ParseLine(int line_idx, const std::string &str, std::vec
                         values.push_back(std::stod(str_value));
                     else
                         values.push_back(std::stoi(str_value));
-
                 }
                 catch (const std::invalid_argument &)
                 {
@@ -213,8 +202,71 @@ int SimulatedDigitizer::ParseLine(int line_idx, const std::string &str, std::vec
                     return ADQR_EINVAL;
                 }
             }
+
+            return ADQR_EOK;
         }
         ++idx;
+    }
+
+    return ADQR_EINVAL;
+}
+
+int SimulatedDigitizer::SetParameters()
+{
+    /* FIXME: A very rough implementation. */
+    std::shared_ptr<std::string> parameters_str;
+    std::shared_ptr<std::string> clock_system_parameters_str;
+    if ((ADQR_EOK == m_parameters->Read(parameters_str, 0))
+        && (ADQR_EOK == m_clock_system_parameters->Read(clock_system_parameters_str, 0)))
+    {
+        std::vector<double> frequency;
+        if (ADQR_EOK != ParseLine(1, *parameters_str, frequency))
+            return ADQR_EINVAL;
+
+        std::vector<double> amplitude;
+        if (ADQR_EOK != ParseLine(3, *parameters_str, amplitude))
+            return ADQR_EINVAL;
+
+        std::vector<int> record_length;
+        if (ADQR_EOK != ParseLine(5, *parameters_str, record_length))
+            return ADQR_EINVAL;
+
+        std::vector<double> trigger_frequency;
+        if (ADQR_EOK != ParseLine(7, *parameters_str, trigger_frequency))
+            return ADQR_EINVAL;
+
+        std::vector<int> harmonic_distortion;
+        if (ADQR_EOK != ParseLine(9, *parameters_str, harmonic_distortion))
+            return ADQR_EINVAL;
+
+        std::vector<double> noise_std_dev;
+        if (ADQR_EOK != ParseLine(11, *parameters_str, noise_std_dev))
+            return ADQR_EINVAL;
+
+        std::vector<double> sampling_frequency;
+        if (ADQR_EOK != ParseLine(1, *clock_system_parameters_str, sampling_frequency))
+            return ADQR_EINVAL;
+
+        /* FIXME: Don't do manual unrolling. Also some access checks would probably help. */
+        Generator::Parameters parameters;
+        parameters.record_length = record_length[0];
+        parameters.trigger_frequency = trigger_frequency[0];
+        parameters.sine.frequency = frequency[0];
+        parameters.sine.amplitude = amplitude[0];
+        parameters.sine.harmonic_distortion = harmonic_distortion[0] > 0;
+        parameters.sine.noise_std_dev = noise_std_dev[0];
+        parameters.sine.sampling_frequency = sampling_frequency[0];
+        m_simulator[0]->Initialize(parameters);
+
+        parameters = Generator::Parameters();
+        parameters.record_length = record_length[1];
+        parameters.trigger_frequency = trigger_frequency[1];
+        parameters.sine.frequency = frequency[1];
+        parameters.sine.amplitude = amplitude[1];
+        parameters.sine.harmonic_distortion = harmonic_distortion[1] > 0;
+        parameters.sine.noise_std_dev = noise_std_dev[1];
+        parameters.sine.sampling_frequency = sampling_frequency[1];
+        m_simulator[1]->Initialize(parameters);
     }
 
     return ADQR_EOK;

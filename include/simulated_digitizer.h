@@ -29,6 +29,7 @@ private:
 
     template<typename T>
     int ParseLine(int line_idx, const std::string &str, std::vector<T> &values);
+    int SetParameters();
 };
 
 #endif

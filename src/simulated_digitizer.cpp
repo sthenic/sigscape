@@ -216,58 +216,69 @@ int SimulatedDigitizer::SetParameters()
     /* FIXME: A very rough implementation. */
     std::shared_ptr<std::string> parameters_str;
     std::shared_ptr<std::string> clock_system_parameters_str;
-    if ((ADQR_EOK == m_parameters->Read(parameters_str, 0))
-        && (ADQR_EOK == m_clock_system_parameters->Read(clock_system_parameters_str, 0)))
-    {
-        std::vector<double> frequency;
-        if (ADQR_EOK != ParseLine(1, *parameters_str, frequency))
-            return ADQR_EINVAL;
 
-        std::vector<double> amplitude;
-        if (ADQR_EOK != ParseLine(3, *parameters_str, amplitude))
-            return ADQR_EINVAL;
+    int result = ADQR_ELAST;
+    while (result == ADQR_ELAST)
+        result = m_parameters->Read(parameters_str, 0);
 
-        std::vector<int> record_length;
-        if (ADQR_EOK != ParseLine(5, *parameters_str, record_length))
-            return ADQR_EINVAL;
+    if (result != ADQR_EOK)
+        return ADQR_EINTERNAL;
 
-        std::vector<double> trigger_frequency;
-        if (ADQR_EOK != ParseLine(7, *parameters_str, trigger_frequency))
-            return ADQR_EINVAL;
+    result = ADQR_ELAST;
+    while (result == ADQR_ELAST)
+        result = m_clock_system_parameters->Read(clock_system_parameters_str, 0);
 
-        std::vector<int> harmonic_distortion;
-        if (ADQR_EOK != ParseLine(9, *parameters_str, harmonic_distortion))
-            return ADQR_EINVAL;
+    if (result != ADQR_EOK)
+        return ADQR_EINTERNAL;
 
-        std::vector<double> noise_std_dev;
-        if (ADQR_EOK != ParseLine(11, *parameters_str, noise_std_dev))
-            return ADQR_EINVAL;
+    std::vector<double> frequency;
+    if (ADQR_EOK != ParseLine(1, *parameters_str, frequency))
+        return ADQR_EINVAL;
 
-        std::vector<double> sampling_frequency;
-        if (ADQR_EOK != ParseLine(1, *clock_system_parameters_str, sampling_frequency))
-            return ADQR_EINVAL;
+    std::vector<double> amplitude;
+    if (ADQR_EOK != ParseLine(3, *parameters_str, amplitude))
+        return ADQR_EINVAL;
 
-        /* FIXME: Don't do manual unrolling. Also some access checks would probably help. */
-        Generator::Parameters parameters;
-        parameters.record_length = record_length[0];
-        parameters.trigger_frequency = trigger_frequency[0];
-        parameters.sine.frequency = frequency[0];
-        parameters.sine.amplitude = amplitude[0];
-        parameters.sine.harmonic_distortion = harmonic_distortion[0] > 0;
-        parameters.sine.noise_std_dev = noise_std_dev[0];
-        parameters.sine.sampling_frequency = sampling_frequency[0];
-        m_simulator[0]->Initialize(parameters);
+    std::vector<int> record_length;
+    if (ADQR_EOK != ParseLine(5, *parameters_str, record_length))
+        return ADQR_EINVAL;
 
-        parameters = Generator::Parameters();
-        parameters.record_length = record_length[1];
-        parameters.trigger_frequency = trigger_frequency[1];
-        parameters.sine.frequency = frequency[1];
-        parameters.sine.amplitude = amplitude[1];
-        parameters.sine.harmonic_distortion = harmonic_distortion[1] > 0;
-        parameters.sine.noise_std_dev = noise_std_dev[1];
-        parameters.sine.sampling_frequency = sampling_frequency[1];
-        m_simulator[1]->Initialize(parameters);
-    }
+    std::vector<double> trigger_frequency;
+    if (ADQR_EOK != ParseLine(7, *parameters_str, trigger_frequency))
+        return ADQR_EINVAL;
+
+    std::vector<int> harmonic_distortion;
+    if (ADQR_EOK != ParseLine(9, *parameters_str, harmonic_distortion))
+        return ADQR_EINVAL;
+
+    std::vector<double> noise_std_dev;
+    if (ADQR_EOK != ParseLine(11, *parameters_str, noise_std_dev))
+        return ADQR_EINVAL;
+
+    std::vector<double> sampling_frequency;
+    if (ADQR_EOK != ParseLine(1, *clock_system_parameters_str, sampling_frequency))
+        return ADQR_EINVAL;
+
+    /* FIXME: Don't do manual unrolling. Also some access checks would probably help. */
+    Generator::Parameters parameters;
+    parameters.record_length = record_length[0];
+    parameters.trigger_frequency = trigger_frequency[0];
+    parameters.sine.frequency = frequency[0];
+    parameters.sine.amplitude = amplitude[0];
+    parameters.sine.harmonic_distortion = harmonic_distortion[0] > 0;
+    parameters.sine.noise_std_dev = noise_std_dev[0];
+    parameters.sine.sampling_frequency = sampling_frequency[0];
+    m_simulator[0]->Initialize(parameters);
+
+    parameters = Generator::Parameters();
+    parameters.record_length = record_length[1];
+    parameters.trigger_frequency = trigger_frequency[1];
+    parameters.sine.frequency = frequency[1];
+    parameters.sine.amplitude = amplitude[1];
+    parameters.sine.harmonic_distortion = harmonic_distortion[1] > 0;
+    parameters.sine.noise_std_dev = noise_std_dev[1];
+    parameters.sine.sampling_frequency = sampling_frequency[1];
+    m_simulator[1]->Initialize(parameters);
 
     return ADQR_EOK;
 }

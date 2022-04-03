@@ -29,6 +29,7 @@ struct TimeDomainRecord
         id = TIME_DOMAIN;
         this->count = count;
         capacity = count;
+        estimated_trigger_frequency = 0;
     }
 
     ~TimeDomainRecord()
@@ -45,6 +46,7 @@ struct TimeDomainRecord
         header = other.header;
         count = other.count;
         capacity = other.count;
+        estimated_trigger_frequency = other.estimated_trigger_frequency;
 
         std::copy(other.x, other.x + other.count, x);
         std::copy(other.y, other.y + other.count, y);
@@ -68,6 +70,7 @@ struct TimeDomainRecord
             std::copy(other.y, other.y + other.count, y);
             count = other.count;
             header = other.header;
+            estimated_trigger_frequency = other.estimated_trigger_frequency;
         }
 
         return *this;
@@ -79,6 +82,7 @@ struct TimeDomainRecord
     struct TimeDomainRecordHeader header;
     size_t count;
     size_t capacity;
+    double estimated_trigger_frequency;
 };
 
 struct FrequencyDomainRecordHeader
@@ -162,10 +166,10 @@ struct ProcessedRecord
     {
         time_domain = std::make_shared<TimeDomainRecord>(count);
         frequency_domain = std::make_shared<FrequencyDomainRecord>(count);
-        time_domain_metrics.max_value = std::numeric_limits<double>::lowest();
-        time_domain_metrics.min_value = std::numeric_limits<double>::max();
-        frequency_domain_metrics.max_value = std::numeric_limits<double>::lowest();
-        frequency_domain_metrics.min_value = std::numeric_limits<double>::max();
+        time_domain_metrics.max = std::numeric_limits<double>::lowest();
+        time_domain_metrics.min = std::numeric_limits<double>::max();
+        frequency_domain_metrics.max = std::numeric_limits<double>::lowest();
+        frequency_domain_metrics.min = std::numeric_limits<double>::max();
     }
 
     ProcessedRecord(const ProcessedRecord &other)
@@ -207,14 +211,14 @@ struct ProcessedRecord
 
     struct TimeDomainMetrics
     {
-        double max_value;
-        double min_value;
+        double max;
+        double min;
     } time_domain_metrics;
 
     struct FrequencyDomainMetrics
     {
-        double max_value;
-        double min_value;
+        double max;
+        double min;
     } frequency_domain_metrics;
 };
 

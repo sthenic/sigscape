@@ -103,14 +103,16 @@ void DoPlot(Digitizer &digitizer)
     if (processed_record0 != NULL)
     {
         ImGui::Text("Record number: %" PRIu64, processed_record0->time_domain->header.record_number);
-        ImGui::Text("Maximum value: %.4f", processed_record0->time_domain_metrics.max_value);
-        ImGui::Text("Minimum value: %.4f", processed_record0->time_domain_metrics.min_value);
+        ImGui::Text("Maximum value: %.4f", processed_record0->time_domain_metrics.max);
+        ImGui::Text("Minimum value: %.4f", processed_record0->time_domain_metrics.min);
+        ImGui::Text("Estimated trigger frequency: %.4f Hz", processed_record0->time_domain->estimated_trigger_frequency);
     }
     if (processed_record1 != NULL)
     {
         ImGui::Text("Record number: %" PRIu64, processed_record1->time_domain->header.record_number);
-        ImGui::Text("Maximum value: %.4f", processed_record1->time_domain_metrics.max_value);
-        ImGui::Text("Minimum value: %.4f", processed_record1->time_domain_metrics.min_value);
+        ImGui::Text("Maximum value: %.4f", processed_record1->time_domain_metrics.max);
+        ImGui::Text("Minimum value: %.4f", processed_record1->time_domain_metrics.min);
+        ImGui::Text("Estimated trigger frequency: %.4f Hz", processed_record1->time_domain->estimated_trigger_frequency);
     }
     ImGui::End();
 
@@ -120,14 +122,14 @@ void DoPlot(Digitizer &digitizer)
     if (processed_record0 != NULL)
     {
         ImGui::Text("Record number: %" PRIu64, processed_record0->frequency_domain->header.record_number);
-        ImGui::Text("Maximum value: %.4f", processed_record0->frequency_domain_metrics.max_value);
-        ImGui::Text("Minimum value: %.4f", processed_record0->frequency_domain_metrics.min_value);
+        ImGui::Text("Maximum value: %.4f", processed_record0->frequency_domain_metrics.max);
+        ImGui::Text("Minimum value: %.4f", processed_record0->frequency_domain_metrics.min);
     }
     if (processed_record1 != NULL)
     {
         ImGui::Text("Record number: %" PRIu64, processed_record1->frequency_domain->header.record_number);
-        ImGui::Text("Maximum value: %.4f", processed_record1->frequency_domain_metrics.max_value);
-        ImGui::Text("Minimum value: %.4f", processed_record1->frequency_domain_metrics.min_value);
+        ImGui::Text("Maximum value: %.4f", processed_record1->frequency_domain_metrics.max);
+        ImGui::Text("Minimum value: %.4f", processed_record1->frequency_domain_metrics.min);
     }
     ImGui::End();
 }

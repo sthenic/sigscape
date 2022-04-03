@@ -42,6 +42,8 @@ int DataProcessing::Stop()
 void DataProcessing::MainLoop()
 {
     m_thread_exit_code = ADQR_EOK;
+    auto time_point_last_record = std::chrono::high_resolution_clock::now();
+
     for (;;)
     {
         /* Check if the stop event has been set. */
@@ -63,6 +65,11 @@ void DataProcessing::MainLoop()
             m_thread_exit_code = ADQR_EINTERNAL;
             return;
         }
+
+        auto time_point_this_record = std::chrono::high_resolution_clock::now();
+        auto period = time_point_this_record - time_point_last_record;
+        time_domain->estimated_trigger_frequency = 1e9 / period.count();
+        time_point_last_record = time_point_this_record;
 
         /* We only allocate memory and calculate the FFT if we know that we're
            going to show it, i.e. if the outbound queue has space available. */
@@ -91,20 +98,20 @@ void DataProcessing::MainLoop()
                 processed_record->frequency_domain->x[i] = static_cast<double>(i) / static_cast<double>(fft_size);
                 processed_record->frequency_domain->y[i] = 20 * std::log10(std::abs(processed_record->frequency_domain->yc[i]) / fft_size);
 
-                if (processed_record->frequency_domain->y[i] > processed_record->frequency_domain_metrics.max_value)
-                    processed_record->frequency_domain_metrics.max_value = processed_record->frequency_domain->y[i];
+                if (processed_record->frequency_domain->y[i] > processed_record->frequency_domain_metrics.max)
+                    processed_record->frequency_domain_metrics.max = processed_record->frequency_domain->y[i];
 
-                if (processed_record->frequency_domain->y[i] < processed_record->frequency_domain_metrics.min_value)
-                    processed_record->frequency_domain_metrics.min_value = processed_record->frequency_domain->y[i];
+                if (processed_record->frequency_domain->y[i] < processed_record->frequency_domain_metrics.min)
+                    processed_record->frequency_domain_metrics.min = processed_record->frequency_domain->y[i];
             }
 
             for (size_t i = 0; i < time_domain->count; ++i)
             {
-                if (processed_record->time_domain->y[i] > processed_record->time_domain_metrics.max_value)
-                    processed_record->time_domain_metrics.max_value = processed_record->time_domain->y[i];
+                if (processed_record->time_domain->y[i] > processed_record->time_domain_metrics.max)
+                    processed_record->time_domain_metrics.max = processed_record->time_domain->y[i];
 
-                if (processed_record->time_domain->y[i] < processed_record->time_domain_metrics.min_value)
-                    processed_record->time_domain_metrics.min_value = processed_record->time_domain->y[i];
+                if (processed_record->time_domain->y[i] < processed_record->time_domain_metrics.min)
+                    processed_record->time_domain_metrics.min = processed_record->time_domain->y[i];
             }
 
             m_read_queue.Write(processed_record);

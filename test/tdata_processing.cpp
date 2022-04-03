@@ -25,7 +25,7 @@ TEST_GROUP(DataProcessingGroup)
 
 TEST(DataProcessingGroup, StartStop)
 {
-    LONGS_EQUAL(ADQR_EOK, acquisition.Initialize(1024, 1.0));
+    LONGS_EQUAL(ADQR_EOK, acquisition.Initialize());
     LONGS_EQUAL(ADQR_EOK, processing->Initialize());
     LONGS_EQUAL(ADQR_ENOTREADY, processing->Stop());
     LONGS_EQUAL(ADQR_EOK, processing->Start());
@@ -36,8 +36,13 @@ TEST(DataProcessingGroup, StartStop)
 TEST(DataProcessingGroup, Records)
 {
     constexpr size_t RECORD_LENGTH = 8192;
-    constexpr double TRIGGER_RATE_HZ = 30.0;
-    LONGS_EQUAL(ADQR_EOK, acquisition.Initialize(RECORD_LENGTH, TRIGGER_RATE_HZ));
+    constexpr double TRIGGER_FREQUENCY = 30.0;
+
+    Generator::Parameters parameters;
+    parameters.record_length = RECORD_LENGTH;
+    parameters.trigger_frequency = TRIGGER_FREQUENCY;
+
+    LONGS_EQUAL(ADQR_EOK, acquisition.Initialize(parameters));
     LONGS_EQUAL(ADQR_EOK, processing->Initialize());
 
     LONGS_EQUAL(ADQR_EOK, processing->Start());
@@ -60,11 +65,15 @@ TEST(DataProcessingGroup, Copy)
 TEST(DataProcessingGroup, RepeatedStartStop)
 {
     constexpr size_t RECORD_LENGTH = 8192;
-    constexpr double TRIGGER_RATE_HZ = 100.0;
+    constexpr double TRIGGER_FREQUENCY = 100.0;
     constexpr int NOF_RECORDS = 200;
     constexpr int NOF_LOOPS = 2;
 
-    LONGS_EQUAL(ADQR_EOK, acquisition.Initialize(RECORD_LENGTH, TRIGGER_RATE_HZ));
+    Generator::Parameters parameters;
+    parameters.record_length = RECORD_LENGTH;
+    parameters.trigger_frequency = TRIGGER_FREQUENCY;
+
+    LONGS_EQUAL(ADQR_EOK, acquisition.Initialize(parameters));
     LONGS_EQUAL(ADQR_EOK, processing->Initialize());
 
     for (int i = 0; i < NOF_LOOPS; ++i)

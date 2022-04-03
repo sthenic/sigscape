@@ -20,9 +20,7 @@ TEST_GROUP(Generator)
 
 TEST(Generator, Test0)
 {
-    constexpr size_t RECORD_LENGTH = 1024;
-    constexpr double TRIGGER_RATE_HZ = 4.0;
-    LONGS_EQUAL(ADQR_EOK, simulator.Initialize(RECORD_LENGTH, TRIGGER_RATE_HZ));
+    LONGS_EQUAL(ADQR_EOK, simulator.Initialize());
     LONGS_EQUAL(ADQR_ENOTREADY, simulator.Stop());
     LONGS_EQUAL(ADQR_EOK, simulator.Start());
     LONGS_EQUAL(ADQR_ENOTREADY, simulator.Start());
@@ -32,9 +30,14 @@ TEST(Generator, Test0)
 TEST(Generator, Records)
 {
     constexpr size_t RECORD_LENGTH = 1024;
-    constexpr double TRIGGER_RATE_HZ = 100.0;
+    constexpr double TRIGGER_FREQUENCY = 100.0;
     constexpr int NOF_RECORDS = 200;
-    LONGS_EQUAL(ADQR_EOK, simulator.Initialize(RECORD_LENGTH, TRIGGER_RATE_HZ));
+
+    Generator::Parameters parameters;
+    parameters.record_length = RECORD_LENGTH;
+    parameters.trigger_frequency = TRIGGER_FREQUENCY;
+
+    LONGS_EQUAL(ADQR_EOK, simulator.Initialize(parameters));
     LONGS_EQUAL(ADQR_EOK, simulator.Start());
 
     std::vector<std::shared_ptr<TimeDomainRecord>> records;
@@ -81,13 +84,17 @@ TEST(Generator, Copy)
 TEST(Generator, RepeatedStartStop)
 {
     constexpr size_t RECORD_LENGTH = 8192;
-    constexpr double TRIGGER_RATE_HZ = 1.0;
+    constexpr double TRIGGER_FREQUENCY = 1.0;
     constexpr int NOF_RECORDS = 2;
     constexpr int NOF_LOOPS = 5;
 
+    Generator::Parameters parameters;
+    parameters.record_length = RECORD_LENGTH;
+    parameters.trigger_frequency = TRIGGER_FREQUENCY;
+
     for (int i = 0; i < NOF_LOOPS; ++i)
     {
-        LONGS_EQUAL(ADQR_EOK, simulator.Initialize(RECORD_LENGTH, TRIGGER_RATE_HZ));
+        LONGS_EQUAL(ADQR_EOK, simulator.Initialize(parameters));
         LONGS_EQUAL(ADQR_EOK, simulator.Start());
 
         int nof_records_received = 0;

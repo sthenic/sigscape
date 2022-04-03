@@ -48,7 +48,7 @@ TEST(SimulatedDigitizer, Initialize)
         DigitizerMessage(DigitizerMessageId::STOP_ACQUISITION)
     ));
 
-    LONGS_EQUAL(ADQR_EOK, digitizer.WaitForMessage(msg, 100));
+    LONGS_EQUAL(ADQR_EOK, digitizer.WaitForMessage(msg, 500));
     LONGS_EQUAL(DigitizerMessageId::NEW_STATE, msg.id);
     LONGS_EQUAL(DigitizerState::CONFIGURATION, msg.state);
 

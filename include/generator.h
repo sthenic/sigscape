@@ -13,38 +13,48 @@ class Generator : public BufferThread<Generator, TimeDomainRecord>
 public:
     Generator();
 
-    struct SineWave
+    struct Parameters
     {
-        SineWave()
-            : amplitude(1.0)
-            , offset(0.0)
-            , frequency(1e6)
-            , phase(0.0)
-            , noise_std_dev(0.1)
-            , sampling_frequency(500e6)
-            , harmonic_distortion(false)
-        {};
+        Parameters()
+            : sine()
+            , record_length(32768)
+            , trigger_frequency(5)
+        {}
 
-        double amplitude;
-        double offset;
-        double frequency;
-        double phase;
-        double noise_std_dev;
-        double sampling_frequency;
-        bool harmonic_distortion;
+        struct SineWave
+        {
+            SineWave()
+                : amplitude(1.0)
+                , offset(0.0)
+                , frequency(1e6)
+                , phase(0.0)
+                , noise_std_dev(0.1)
+                , sampling_frequency(500e6)
+                , harmonic_distortion(false)
+            {};
+
+            double amplitude;
+            double offset;
+            double frequency;
+            double phase;
+            double noise_std_dev;
+            double sampling_frequency;
+            bool harmonic_distortion;
+        } sine;
+
+        size_t record_length;
+        double trigger_frequency;
     };
 
-    int Initialize(size_t record_length, double trigger_rate_hz, const struct SineWave &sine = SineWave());
+    int Initialize(const Parameters &parameters);
     int WaitForBuffer(std::shared_ptr<TimeDomainRecord> &buffer, int timeout) override;
     int ReturnBuffer(std::shared_ptr<TimeDomainRecord> buffer) override;
     void MainLoop() override;
 
 private:
-    size_t m_record_length;
-    double m_trigger_rate_hz;
     std::default_random_engine m_random_generator;
     std::normal_distribution<double> m_distribution;
-    struct SineWave m_sine;
+    Parameters m_parameters;
 
     void NoisySine(TimeDomainRecord &record, size_t count);
 };
@@ -56,9 +66,9 @@ public:
     DataAcquisitionSimulator() {};
     ~DataAcquisitionSimulator() {};
 
-    int Initialize(size_t record_length, double trigger_rate_hz, const struct Generator::SineWave &sine = Generator::SineWave())
+    int Initialize(const Generator::Parameters &parameters = Generator::Parameters())
     {
-        return m_generator.Initialize(record_length, trigger_rate_hz, sine);
+        return m_generator.Initialize(parameters);
     }
 
     int Start()

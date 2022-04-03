@@ -8,10 +8,10 @@
 
 #include <random>
 
-class Simulator : public BufferThread<Simulator, TimeDomainRecord>
+class Generator : public BufferThread<Generator, TimeDomainRecord>
 {
 public:
-    Simulator();
+    Generator();
 
     struct SineWave
     {
@@ -56,34 +56,34 @@ public:
     DataAcquisitionSimulator() {};
     ~DataAcquisitionSimulator() {};
 
-    int Initialize(size_t record_length, double trigger_rate_hz, const struct Simulator::SineWave &sine = Simulator::SineWave())
+    int Initialize(size_t record_length, double trigger_rate_hz, const struct Generator::SineWave &sine = Generator::SineWave())
     {
-        return m_simulator.Initialize(record_length, trigger_rate_hz, sine);
+        return m_generator.Initialize(record_length, trigger_rate_hz, sine);
     }
 
     int Start()
     {
-        return m_simulator.Start();
+        return m_generator.Start();
     }
 
     int Stop()
     {
-        return m_simulator.Stop();
+        return m_generator.Stop();
     }
 
     int WaitForBuffer(std::shared_ptr<void> &buffer, int timeout, void *status)
     {
         (void)status;
-        return m_simulator.WaitForBuffer(reinterpret_cast<std::shared_ptr<TimeDomainRecord> &>(buffer), timeout);
+        return m_generator.WaitForBuffer(reinterpret_cast<std::shared_ptr<TimeDomainRecord> &>(buffer), timeout);
     }
 
     int ReturnBuffer(std::shared_ptr<void> buffer)
     {
-        return m_simulator.ReturnBuffer(reinterpret_cast<std::shared_ptr<TimeDomainRecord> &>(buffer));
+        return m_generator.ReturnBuffer(reinterpret_cast<std::shared_ptr<TimeDomainRecord> &>(buffer));
     }
 
 private:
-    Simulator m_simulator;
+    Generator m_generator;
 };
 
 #endif

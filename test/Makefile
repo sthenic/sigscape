@@ -36,12 +36,12 @@ CXXFLAGS += \
 	$(patsubst %,-I%,$(INCLUDE_DIRS))
 
 SOURCES = \
-	src/simulator.cpp \
+	src/generator.cpp \
 	src/data_processing.cpp \
 	src/simulated_digitizer.cpp \
 	src/file_watcher.cpp \
 	tthread_safe_queue.cpp \
-	tsimulator.cpp \
+	tgenerator.cpp \
 	tdata_processing.cpp \
 	tmessage_thread.cpp \
 	tsimulated_digitizer.cpp \

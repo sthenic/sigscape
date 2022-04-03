@@ -1,7 +1,7 @@
 #include <thread>
 #include <chrono>
 #include "data_processing.h"
-#include "simulator.h"
+#include "generator.h"
 
 #include "CppUTest/TestHarness.h"
 

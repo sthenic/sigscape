@@ -79,7 +79,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     ${imgui_SOURCE_DIR}/imgui_demo.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
-    src/simulator.cpp
+    src/generator.cpp
     src/data_processing.cpp
     src/simulated_digitizer.cpp
     src/file_watcher.cpp

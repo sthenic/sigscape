@@ -1,8 +1,8 @@
-#include "simulator.h"
+#include "generator.h"
 
 #include <cmath>
 
-Simulator::Simulator()
+Generator::Generator()
     : m_record_length(32768)
     , m_trigger_rate_hz(5)
     , m_random_generator()
@@ -11,7 +11,7 @@ Simulator::Simulator()
 {
 }
 
-int Simulator::Initialize(size_t record_length, double trigger_rate_hz, const struct SineWave &sine)
+int Generator::Initialize(size_t record_length, double trigger_rate_hz, const struct SineWave &sine)
 {
     m_record_length = record_length;
     m_trigger_rate_hz = trigger_rate_hz;
@@ -20,17 +20,17 @@ int Simulator::Initialize(size_t record_length, double trigger_rate_hz, const st
     return ADQR_EOK;
 }
 
-int Simulator::WaitForBuffer(std::shared_ptr<TimeDomainRecord> &buffer, int timeout)
+int Generator::WaitForBuffer(std::shared_ptr<TimeDomainRecord> &buffer, int timeout)
 {
     return m_read_queue.Read(buffer, timeout);
 }
 
-int Simulator::ReturnBuffer(std::shared_ptr<TimeDomainRecord> buffer)
+int Generator::ReturnBuffer(std::shared_ptr<TimeDomainRecord> buffer)
 {
     return m_write_queue.Write(buffer);
 }
 
-void Simulator::MainLoop()
+void Generator::MainLoop()
 {
     m_thread_exit_code = ADQR_EOK;
     int wait_us = static_cast<int>(1000000.0 / m_trigger_rate_hz);
@@ -65,7 +65,7 @@ void Simulator::MainLoop()
     }
 }
 
-void Simulator::NoisySine(TimeDomainRecord &record, size_t count)
+void Generator::NoisySine(TimeDomainRecord &record, size_t count)
 {
     /* Generate a noisy sine wave of the input length. */
     for (size_t i = 0; i < count; ++i)

@@ -6,7 +6,7 @@
 #define SIMULATED_DIGITIZER_H_QBRXXD
 
 #include "digitizer.h"
-#include "simulator.h"
+#include "generator.h"
 
 class SimulatedDigitizer : public Digitizer
 {

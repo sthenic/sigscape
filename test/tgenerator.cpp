@@ -1,10 +1,10 @@
 #include <thread>
 #include <chrono>
-#include "simulator.h"
+#include "generator.h"
 
 #include "CppUTest/TestHarness.h"
 
-TEST_GROUP(SimulatorGroup)
+TEST_GROUP(Generator)
 {
     DataAcquisitionSimulator simulator;
 
@@ -18,7 +18,7 @@ TEST_GROUP(SimulatorGroup)
     }
 };
 
-TEST(SimulatorGroup, Test0)
+TEST(Generator, Test0)
 {
     constexpr size_t RECORD_LENGTH = 1024;
     constexpr double TRIGGER_RATE_HZ = 4.0;
@@ -29,7 +29,7 @@ TEST(SimulatorGroup, Test0)
     LONGS_EQUAL(ADQR_EOK, simulator.Stop());
 }
 
-TEST(SimulatorGroup, Records)
+TEST(Generator, Records)
 {
     constexpr size_t RECORD_LENGTH = 1024;
     constexpr double TRIGGER_RATE_HZ = 100.0;
@@ -71,15 +71,14 @@ TEST(SimulatorGroup, Records)
     LONGS_EQUAL(ADQR_EOK, simulator.Stop());
 }
 
-TEST(SimulatorGroup, Copy)
+TEST(Generator, Copy)
 {
     TimeDomainRecord r0(100);
     TimeDomainRecord r1(50);
     r1 = r0;
 }
 
-
-TEST(SimulatorGroup, RepeatedStartStop)
+TEST(Generator, RepeatedStartStop)
 {
     constexpr size_t RECORD_LENGTH = 8192;
     constexpr double TRIGGER_RATE_HZ = 1.0;

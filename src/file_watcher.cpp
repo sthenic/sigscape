@@ -14,10 +14,9 @@ void FileWatcher::MainLoop()
     m_thread_exit_code = ADQR_EOK;
     for (;;)
     {
-        std::filesystem::directory_entry file(m_path);
-        if (file.exists())
+        if (std::filesystem::exists(m_path))
         {
-            auto timestamp = std::filesystem::last_write_time(file);
+            auto timestamp = std::filesystem::last_write_time(m_path);
             if (!m_is_watching)
             {
                 /* The file has been created, read the contents in full and emit a message. */

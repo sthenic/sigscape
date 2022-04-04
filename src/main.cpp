@@ -15,6 +15,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cinttypes>
+#include <deque>
 
 static void glfw_error_callback(int error, const char *description)
 {
@@ -36,6 +37,42 @@ static const float THIRD_COLUMN_RELATIVE_WIDTH = 0.2;
 #define SECOND_COLUMN_POSITION (display_w * FIRST_COLUMN_RELATIVE_WIDTH)
 #define THIRD_COLUMN_POSITION (display_w * (FIRST_COLUMN_RELATIVE_WIDTH + SECOND_COLUMN_RELATIVE_WIDTH))
 
+
+void InitializeWaterfall(std::deque<std::shared_ptr<ProcessedRecord>> &waterfall)
+{
+    /* Initialize with 100 rows. */
+    for (int i = 0; i < 100; ++i)
+    {
+        auto record = std::make_shared<ProcessedRecord>(1024);
+        for (int j = 0; j < 1024; ++j)
+            record->frequency_domain->y[j] = -1024 + j;
+        waterfall.push_back(record);
+    }
+}
+
+void MakeWaterfallArray(const std::deque<std::shared_ptr<ProcessedRecord>> &waterfall,
+                        std::unique_ptr<double[]> &waterfall_array, int &rows, int &columns)
+{
+    if ((waterfall.size() > 0) && (waterfall.front()->frequency_domain->count > 0))
+    {
+        /* Assuming all FFTs are of equal length. */
+        size_t elements_to_copy = waterfall.front()->frequency_domain->count / 2;
+        size_t size = waterfall.size() * elements_to_copy;
+        waterfall_array = std::unique_ptr<double[]>( new double[size] );
+
+        size_t idx = 0;
+        for (const auto &record : waterfall)
+        {
+            std::memcpy(waterfall_array.get() + idx, record->frequency_domain->y.get(),
+                        elements_to_copy * sizeof(*waterfall_array.get()));
+            idx += elements_to_copy;
+        }
+
+        rows = waterfall.size();
+        columns = elements_to_copy;
+    }
+}
+
 void DoPlot(Digitizer &digitizer)
 {
     const float FRAME_HEIGHT = ImGui::GetFrameHeight();
@@ -44,7 +81,7 @@ void DoPlot(Digitizer &digitizer)
     /* FIXME: Figure out something other than this manual unrolling. */
     static std::shared_ptr<ProcessedRecord> processed_record0 = NULL;
     static std::shared_ptr<ProcessedRecord> processed_record1 = NULL;
-    digitizer.WaitForProcessedRecord(0, processed_record0);
+    int result0 = digitizer.WaitForProcessedRecord(0, processed_record0);
     digitizer.WaitForProcessedRecord(1, processed_record1);
 
     ImGui::SetNextWindowPos(ImVec2(SECOND_COLUMN_POSITION, FRAME_HEIGHT));
@@ -73,26 +110,64 @@ void DoPlot(Digitizer &digitizer)
     ImGui::SetNextWindowPos(ImVec2(SECOND_COLUMN_POSITION, FRAME_HEIGHT + PLOT_WINDOW_HEIGHT));
     ImGui::SetNextWindowSize(ImVec2(SECOND_COLUMN_SIZE, PLOT_WINDOW_HEIGHT));
     ImGui::Begin("Frequency Domain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-
-    if (ImPlot::BeginPlot("FFT", ImVec2(-1, -1), ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
+    if (ImGui::BeginTabBar("Frequency Domain##tabbar", ImGuiTabBarFlags_None))
     {
-        ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, 0.5);
-        ImPlot::SetupAxisLimits(ImAxis_Y1, -80.0, 0.0);
-        ImPlot::SetupAxis(ImAxis_X1, "Hz");
-        ImPlot::SetupAxis(ImAxis_Y1, "FFT");
-        if (processed_record0 != NULL)
+        /* TODO: The idea here would be to read & copy the parameters from the selected digitizer. */
+        if (ImGui::BeginTabItem("FFT"))
         {
-            ImPlot::PlotLine("CHA", processed_record0->frequency_domain->x.get(),
-                             processed_record0->frequency_domain->y.get(),
-                             processed_record0->frequency_domain->count / 2);
+            if (ImPlot::BeginPlot("FFT##plot", ImVec2(-1, -1), ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
+            {
+                ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, 0.5);
+                ImPlot::SetupAxisLimits(ImAxis_Y1, -80.0, 0.0);
+                ImPlot::SetupAxis(ImAxis_X1, "Hz");
+                ImPlot::SetupAxis(ImAxis_Y1, "FFT");
+                if (processed_record0 != NULL)
+                {
+                    ImPlot::PlotLine("CHA", processed_record0->frequency_domain->x.get(),
+                                     processed_record0->frequency_domain->y.get(),
+                                     processed_record0->frequency_domain->count / 2);
+                }
+                if (processed_record1 != NULL)
+                {
+                    ImPlot::PlotLine("CHB", processed_record1->frequency_domain->x.get(),
+                                     processed_record1->frequency_domain->y.get(),
+                                     processed_record1->frequency_domain->count / 2);
+                }
+                ImPlot::EndPlot();
+            }
+            ImGui::EndTabItem();
         }
-        if (processed_record1 != NULL)
+
+        if (ImGui::BeginTabItem("Waterfall"))
         {
-            ImPlot::PlotLine("CHB", processed_record1->frequency_domain->x.get(),
-                             processed_record1->frequency_domain->y.get(),
-                             processed_record1->frequency_domain->count / 2);
+            /* Concept is ok, need to do this in a thread though... */
+            static std::deque<std::shared_ptr<ProcessedRecord>> waterfall;
+            static std::unique_ptr<double[]> waterfall_array = NULL;
+            static int rows = 0;
+            static int columns = 0;
+
+            /* Initialize */
+            if ((processed_record0 != NULL) && (result0 == ADQR_ELAST))
+            {
+                if (waterfall.size() > 10)
+                    waterfall.pop_front();
+                waterfall.push_back(processed_record0);
+                MakeWaterfallArray(waterfall, waterfall_array, rows, columns);
+            }
+
+            ImPlot::PushColormap("Hot");
+            if (ImPlot::BeginPlot("Waterfall##plot", ImVec2(-1, -1), ImPlotFlags_NoTitle))
+            {
+                if (waterfall_array != NULL)
+                {
+                    ImPlot::PlotHeatmap("heat", waterfall_array.get(), rows, columns, -100, 0, NULL);
+                }
+                ImPlot::EndPlot();
+            }
+            ImPlot::PopColormap();
+            ImGui::EndTabItem();
         }
-        ImPlot::EndPlot();
+        ImGui::EndTabBar();
     }
     ImGui::End();
 

@@ -17,8 +17,8 @@ public:
     {
         Parameters()
             : sine()
-            , record_length(32768)
-            , trigger_frequency(5)
+            , record_length(1024)
+            , trigger_frequency(1)
         {}
 
         struct SineWave

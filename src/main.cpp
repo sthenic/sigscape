@@ -56,14 +56,14 @@ void DoPlot(Digitizer &digitizer)
         ImPlot::SetupAxis(ImAxis_Y1, "f(x)");
         if (processed_record0 != NULL)
         {
-            ImPlot::PlotLine("CHA", processed_record0->time_domain->x,
-                             processed_record0->time_domain->y,
+            ImPlot::PlotLine("CHA", processed_record0->time_domain->x.get(),
+                             processed_record0->time_domain->y.get(),
                              processed_record0->time_domain->count);
         }
         if (processed_record1 != NULL)
         {
-            ImPlot::PlotLine("CHB", processed_record1->time_domain->x,
-                             processed_record1->time_domain->y,
+            ImPlot::PlotLine("CHB", processed_record1->time_domain->x.get(),
+                             processed_record1->time_domain->y.get(),
                              processed_record1->time_domain->count);
         }
         ImPlot::EndPlot();
@@ -82,14 +82,14 @@ void DoPlot(Digitizer &digitizer)
         ImPlot::SetupAxis(ImAxis_Y1, "FFT");
         if (processed_record0 != NULL)
         {
-            ImPlot::PlotLine("CHA", processed_record0->frequency_domain->x,
-                             processed_record0->frequency_domain->y,
+            ImPlot::PlotLine("CHA", processed_record0->frequency_domain->x.get(),
+                             processed_record0->frequency_domain->y.get(),
                              processed_record0->frequency_domain->count / 2);
         }
         if (processed_record1 != NULL)
         {
-            ImPlot::PlotLine("CHB", processed_record1->frequency_domain->x,
-                             processed_record1->frequency_domain->y,
+            ImPlot::PlotLine("CHB", processed_record1->frequency_domain->x.get(),
+                             processed_record1->frequency_domain->y.get(),
                              processed_record1->frequency_domain->count / 2);
         }
         ImPlot::EndPlot();

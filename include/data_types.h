@@ -4,8 +4,8 @@
 #include <cstdint>
 #include <cstddef>
 #include <complex>
-#include <algorithm>
 #include <limits>
+#include <cstring>
 
 enum RecordId
 {
@@ -24,32 +24,28 @@ struct TimeDomainRecord
 {
     TimeDomainRecord(size_t count)
     {
-        x = new double[count];
-        y = new double[count];
+        x = std::shared_ptr<double[]>( new double[count] );
+        y = std::shared_ptr<double[]>( new double[count] );
         id = TIME_DOMAIN;
         this->count = count;
         capacity = count;
         estimated_trigger_frequency = 0;
     }
 
-    ~TimeDomainRecord()
-    {
-        delete[] x;
-        delete[] y;
-    }
-
+    /* We don't share ownership of the data intentionally. All copies
+       are deep copies. */
     TimeDomainRecord(const TimeDomainRecord &other)
     {
-        x = new double[other.count];
-        y = new double[other.count];
         id = TIME_DOMAIN;
         header = other.header;
         count = other.count;
         capacity = other.count;
         estimated_trigger_frequency = other.estimated_trigger_frequency;
 
-        std::copy(other.x, other.x + other.count, x);
-        std::copy(other.y, other.y + other.count, y);
+        x = std::shared_ptr<double[]>( new double[other.count] );
+        y = std::shared_ptr<double[]>( new double[other.count] );
+        std::memcpy(x.get(), other.x.get(), other.count * sizeof(*x.get()));
+        std::memcpy(y.get(), other.y.get(), other.count * sizeof(*y.get()));
     }
 
     TimeDomainRecord &operator=(const TimeDomainRecord &other)
@@ -58,16 +54,14 @@ struct TimeDomainRecord
         {
             if (capacity < other.count)
             {
-                delete[] x;
-                delete[] y;
-                x = new double[other.count];
-                y = new double[other.count];
+                x = std::shared_ptr<double[]>( new double[other.count] );
+                y = std::shared_ptr<double[]>( new double[other.count] );
                 id = TIME_DOMAIN;
                 capacity = other.count;
             }
 
-            std::copy(other.x, other.x + other.count, x);
-            std::copy(other.y, other.y + other.count, y);
+            std::memcpy(x.get(), other.x.get(), other.count * sizeof(*x.get()));
+            std::memcpy(y.get(), other.y.get(), other.count * sizeof(*y.get()));
             count = other.count;
             header = other.header;
             estimated_trigger_frequency = other.estimated_trigger_frequency;
@@ -77,8 +71,8 @@ struct TimeDomainRecord
     }
 
     enum RecordId id;
-    double *x;
-    double *y;
+    std::shared_ptr<double[]> x;
+    std::shared_ptr<double[]> y;
     struct TimeDomainRecordHeader header;
     size_t count;
     size_t capacity;
@@ -95,34 +89,27 @@ struct FrequencyDomainRecord
 {
     FrequencyDomainRecord(size_t count)
     {
-        x = new double[count];
-        y = new double[count];
-        yc = new std::complex<double>[count];
+        x = std::shared_ptr<double[]>( new double[count] );
+        y = std::shared_ptr<double[]>( new double[count] );
+        yc = std::shared_ptr<std::complex<double>[]>( new std::complex<double>[count] );
         id = FREQUENCY_DOMAIN;
         this->count = count;
         capacity = count;
     }
 
-    ~FrequencyDomainRecord()
-    {
-        delete[] x;
-        delete[] y;
-        delete[] yc;
-    }
-
     FrequencyDomainRecord(const FrequencyDomainRecord &other)
     {
-        x = new double[other.count];
-        y = new double[other.count];
-        yc = new std::complex<double>[other.count];
+        x = std::shared_ptr<double[]>( new double[other.count] );
+        y = std::shared_ptr<double[]>( new double[other.count] );
+        yc = std::shared_ptr<std::complex<double>[]>( new std::complex<double>[other.count] );
         id = FREQUENCY_DOMAIN;
         header = other.header;
         count = other.count;
         capacity = other.count;
 
-        std::copy(other.x, other.x + other.count, x);
-        std::copy(other.y, other.y + other.count, y);
-        std::copy(other.yc, other.yc + other.count, yc);
+        std::memcpy(x.get(), other.x.get(), other.count * sizeof(*x.get()));
+        std::memcpy(y.get(), other.y.get(), other.count * sizeof(*y.get()));
+        std::memcpy(yc.get(), other.yc.get(), other.count * sizeof(*yc.get()));
     }
 
     FrequencyDomainRecord &operator=(const FrequencyDomainRecord &other)
@@ -131,19 +118,16 @@ struct FrequencyDomainRecord
         {
             if (capacity < other.count)
             {
-                delete[] x;
-                delete[] y;
-                delete[] yc;
-                x = new double[other.count];
-                y = new double[other.count];
-                yc = new std::complex<double>[other.count];
+                x = std::shared_ptr<double[]>( new double[other.count] );
+                y = std::shared_ptr<double[]>( new double[other.count] );
+                yc = std::shared_ptr<std::complex<double>[]>( new std::complex<double>[other.count] );
                 id = FREQUENCY_DOMAIN;
                 capacity = other.count;
             }
 
-            std::copy(other.x, other.x + other.count, x);
-            std::copy(other.y, other.y + other.count, y);
-            std::copy(other.yc, other.yc + other.count, yc);
+            std::memcpy(x.get(), other.x.get(), other.count * sizeof(*x.get()));
+            std::memcpy(y.get(), other.y.get(), other.count * sizeof(*y.get()));
+            std::memcpy(yc.get(), other.yc.get(), other.count * sizeof(*yc.get()));
             count = other.count;
             header = other.header;
         }
@@ -152,9 +136,9 @@ struct FrequencyDomainRecord
     }
 
     enum RecordId id;
-    double *x;
-    double *y;
-    std::complex<double> *yc;
+    std::shared_ptr<double[]> x;
+    std::shared_ptr<double[]> y;
+    std::shared_ptr<std::complex<double>[]> yc;
     struct FrequencyDomainRecordHeader header;
     size_t count;
     size_t capacity;

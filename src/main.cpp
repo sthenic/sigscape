@@ -150,13 +150,13 @@ void DoPlot(Digitizer &digitizer)
             if ((processed_record0 != NULL) && (result0 == ADQR_ELAST))
             {
                 if (waterfall.size() > 10)
-                    waterfall.pop_front();
-                waterfall.push_back(processed_record0);
+                    waterfall.pop_back();
+                waterfall.push_front(processed_record0);
                 MakeWaterfallArray(waterfall, waterfall_array, rows, columns);
             }
 
             ImPlot::PushColormap("Hot");
-            if (ImPlot::BeginPlot("Waterfall##plot", ImVec2(-1, -1), ImPlotFlags_NoTitle))
+            if (ImPlot::BeginPlot("Waterfall##plot", ImVec2(-1, -1), ImPlotFlags_NoTitle | ImPlotFlags_NoLegend))
             {
                 if (waterfall_array != NULL)
                 {

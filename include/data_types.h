@@ -144,12 +144,106 @@ struct FrequencyDomainRecord
     size_t capacity;
 };
 
+struct Waterfall
+{
+    Waterfall(size_t count)
+    {
+        data = std::shared_ptr<double[]>( new double[count] );
+        this->count = count;
+        capacity = count;
+        rows = 0;
+        columns = 0;
+    }
+
+    Waterfall(const std::deque<std::shared_ptr<FrequencyDomainRecord>> &waterfall)
+    {
+        /* Create a waterfall from a dequeue of frequency domain records. These
+           must be of the same size. Otherwise, we exit without making the copy. */
+
+        bool exit_without_copy = false;
+        if (waterfall.size() == 0)
+        {
+            exit_without_copy = true;
+        }
+        else
+        {
+            columns = waterfall.front()->count / 2;
+            for (const auto &record : waterfall)
+            {
+                if ((record->count / 2) != columns)
+                {
+                    exit_without_copy = true;
+                    break;
+                }
+            }
+        }
+
+        if (exit_without_copy)
+        {
+            data = NULL;
+            count = 0;
+            capacity = 0;
+            rows = 0;
+            columns = 0;
+            return;
+        }
+
+        /* Perform the actual allocation and linear copy of the objects in the deque. */
+        rows = waterfall.size();
+        count = rows * columns;
+        data = std::shared_ptr<double[]>( new double[rows * columns] );
+        capacity = count;
+
+        size_t idx = 0;
+        for (const auto &record : waterfall)
+        {
+            std::memcpy(data.get() + idx, record->y.get(), columns * sizeof(*data.get()));
+            idx += columns;
+        }
+    }
+
+    Waterfall(const Waterfall &other)
+    {
+        data = std::shared_ptr<double[]>( new double[other.count] );
+        count = other.count;
+        capacity = other.count;
+        rows = other.rows;
+        columns = other.columns;
+
+        std::memcpy(data.get(), other.data.get(), other.count * sizeof(*data.get()));
+    }
+
+    Waterfall &operator=(const Waterfall &other)
+    {
+        if (this != &other)
+        {
+            if (capacity < other.count)
+            {
+                data = std::shared_ptr<double[]>( new double[other.count] );
+                capacity = other.count;
+            }
+
+            std::memcpy(data.get(), other.data.get(), other.count * sizeof(*data.get()));
+            count = other.count;
+            rows = other.rows;
+            columns = other.columns;
+        }
+    }
+
+    std::shared_ptr<double[]> data;
+    size_t count;
+    size_t capacity;
+    size_t rows;
+    size_t columns;
+};
+
 struct ProcessedRecord
 {
     ProcessedRecord(size_t count)
     {
         time_domain = std::make_shared<TimeDomainRecord>(count);
-        frequency_domain = std::make_shared<FrequencyDomainRecord>(count);
+        frequency_domain = std::make_shared<FrequencyDomainRecord>(count); /* FIXME: perhaps skip this? */
+        waterfall = NULL;
         time_domain_metrics.max = std::numeric_limits<double>::lowest();
         time_domain_metrics.min = std::numeric_limits<double>::max();
         frequency_domain_metrics.max = std::numeric_limits<double>::lowest();
@@ -164,6 +258,9 @@ struct ProcessedRecord
 
         if (other.frequency_domain != NULL)
             frequency_domain = std::make_shared<FrequencyDomainRecord>(*other.frequency_domain);
+
+        if (other.waterfall != NULL)
+            waterfall = std::make_shared<Waterfall>(*other.waterfall);
 
         time_domain_metrics = other.time_domain_metrics;
         frequency_domain_metrics = other.frequency_domain_metrics;
@@ -183,6 +280,11 @@ struct ProcessedRecord
             else
                 frequency_domain = NULL;
 
+            if (other.waterfall != NULL)
+                waterfall = std::make_shared<Waterfall>(*other.waterfall);
+            else
+                waterfall = NULL;
+
             time_domain_metrics = other.time_domain_metrics;
             frequency_domain_metrics = other.frequency_domain_metrics;
         }
@@ -192,6 +294,7 @@ struct ProcessedRecord
 
     std::shared_ptr<TimeDomainRecord> time_domain;
     std::shared_ptr<FrequencyDomainRecord> frequency_domain;
+    std::shared_ptr<Waterfall> waterfall;
 
     struct TimeDomainMetrics
     {

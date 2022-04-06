@@ -15,7 +15,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <cinttypes>
-#include <deque>
 
 static void glfw_error_callback(int error, const char *description)
 {
@@ -37,42 +36,6 @@ static const float THIRD_COLUMN_RELATIVE_WIDTH = 0.2;
 #define SECOND_COLUMN_POSITION (display_w * FIRST_COLUMN_RELATIVE_WIDTH)
 #define THIRD_COLUMN_POSITION (display_w * (FIRST_COLUMN_RELATIVE_WIDTH + SECOND_COLUMN_RELATIVE_WIDTH))
 
-
-void InitializeWaterfall(std::deque<std::shared_ptr<ProcessedRecord>> &waterfall)
-{
-    /* Initialize with 100 rows. */
-    for (int i = 0; i < 100; ++i)
-    {
-        auto record = std::make_shared<ProcessedRecord>(1024);
-        for (int j = 0; j < 1024; ++j)
-            record->frequency_domain->y[j] = -1024 + j;
-        waterfall.push_back(record);
-    }
-}
-
-void MakeWaterfallArray(const std::deque<std::shared_ptr<ProcessedRecord>> &waterfall,
-                        std::unique_ptr<double[]> &waterfall_array, int &rows, int &columns)
-{
-    if ((waterfall.size() > 0) && (waterfall.front()->frequency_domain->count > 0))
-    {
-        /* Assuming all FFTs are of equal length. */
-        size_t elements_to_copy = waterfall.front()->frequency_domain->count / 2;
-        size_t size = waterfall.size() * elements_to_copy;
-        waterfall_array = std::unique_ptr<double[]>( new double[size] );
-
-        size_t idx = 0;
-        for (const auto &record : waterfall)
-        {
-            std::memcpy(waterfall_array.get() + idx, record->frequency_domain->y.get(),
-                        elements_to_copy * sizeof(*waterfall_array.get()));
-            idx += elements_to_copy;
-        }
-
-        rows = waterfall.size();
-        columns = elements_to_copy;
-    }
-}
-
 void DoPlot(Digitizer &digitizer)
 {
     const float FRAME_HEIGHT = ImGui::GetFrameHeight();
@@ -81,7 +44,7 @@ void DoPlot(Digitizer &digitizer)
     /* FIXME: Figure out something other than this manual unrolling. */
     static std::shared_ptr<ProcessedRecord> processed_record0 = NULL;
     static std::shared_ptr<ProcessedRecord> processed_record1 = NULL;
-    int result0 = digitizer.WaitForProcessedRecord(0, processed_record0);
+    digitizer.WaitForProcessedRecord(0, processed_record0);
     digitizer.WaitForProcessedRecord(1, processed_record1);
 
     ImGui::SetNextWindowPos(ImVec2(SECOND_COLUMN_POSITION, FRAME_HEIGHT));
@@ -140,27 +103,14 @@ void DoPlot(Digitizer &digitizer)
 
         if (ImGui::BeginTabItem("Waterfall"))
         {
-            /* Concept is ok, need to do this in a thread though... */
-            static std::deque<std::shared_ptr<ProcessedRecord>> waterfall;
-            static std::unique_ptr<double[]> waterfall_array = NULL;
-            static int rows = 0;
-            static int columns = 0;
-
-            /* Initialize */
-            if ((processed_record0 != NULL) && (result0 == ADQR_ELAST))
-            {
-                if (waterfall.size() > 10)
-                    waterfall.pop_back();
-                waterfall.push_front(processed_record0);
-                MakeWaterfallArray(waterfall, waterfall_array, rows, columns);
-            }
-
             ImPlot::PushColormap("Hot");
             if (ImPlot::BeginPlot("Waterfall##plot", ImVec2(-1, -1), ImPlotFlags_NoTitle | ImPlotFlags_NoLegend))
             {
-                if (waterfall_array != NULL)
+                if (processed_record0 != NULL)
                 {
-                    ImPlot::PlotHeatmap("heat", waterfall_array.get(), rows, columns, -100, 0, NULL);
+                    ImPlot::PlotHeatmap("heat", processed_record0->waterfall->data.get(),
+                                        processed_record0->waterfall->rows,
+                                        processed_record0->waterfall->columns, -80, 0, NULL);
                 }
                 ImPlot::EndPlot();
             }

@@ -92,6 +92,10 @@ void DataProcessing::MainLoop()
                 return;
             }
 
+            /* TODO: We could probably optimize this and do (time_domain->count - fftsize)
+                     passes of the second loop in the first loop and then just the
+                     remaining passes. */
+
             /* Compute real spectrum. */
             for (int i = 0; i < fft_size; ++i)
             {
@@ -113,6 +117,14 @@ void DataProcessing::MainLoop()
                 if (processed_record->time_domain->y[i] < processed_record->time_domain_metrics.min)
                     processed_record->time_domain_metrics.min = processed_record->time_domain->y[i];
             }
+
+            /* Push the new FFT at the top of the waterfall and construct a
+               row-major array for the plotting. We unfortunately cannot the
+               requirement of this linear layout. */
+            if (m_waterfall.size() > WATERFALL_SIZE)
+                m_waterfall.pop_back();
+            m_waterfall.push_front(processed_record->frequency_domain);
+            processed_record->waterfall = std::make_shared<Waterfall>(m_waterfall);
 
             m_read_queue.Write(processed_record);
         }

@@ -29,7 +29,7 @@ TEST(SimulatedDigitizer, Initialize)
     LONGS_EQUAL(DigitizerState::NOT_ENUMERATED, msg.state);
 
     LONGS_EQUAL(ADQR_EOK, digitizer.WaitForMessage(msg, 100));
-    LONGS_EQUAL(DigitizerMessageId::SETUP_STARTING, msg.id);
+    LONGS_EQUAL(DigitizerMessageId::ENUMERATING, msg.id);
 
     LONGS_EQUAL(ADQR_EOK, digitizer.WaitForMessage(msg, 1000));
     LONGS_EQUAL(DigitizerMessageId::SETUP_OK, msg.id);

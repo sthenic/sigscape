@@ -23,9 +23,6 @@ private:
 
     void MainLoop() override;
     void ProcessMessages();
-    void ProcessWatcherMessages(
-        const std::unique_ptr<FileWatcher> &watcher,
-        const std::unique_ptr<ThreadSafeQueue<std::shared_ptr<std::string>>> &queue);
 
     template<typename T>
     int ParseLine(int line_idx, const std::string &str, std::vector<T> &values);

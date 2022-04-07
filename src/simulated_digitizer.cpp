@@ -34,10 +34,10 @@ SimulatedDigitizer::SimulatedDigitizer()
         m_processing_threads.push_back(std::make_unique<DataProcessing>(*simulator));
     }
 
-    m_watcher_parameters = std::make_unique<FileWatcher>("./simulated_digitizer.txt");
-    m_watcher_clock_system_parameters = std::make_unique<FileWatcher>("./simulated_digitizer_clock_system.txt");
-    m_parameters = std::make_unique<ThreadSafeQueue<std::shared_ptr<std::string>>>(0, true);
-    m_clock_system_parameters = std::make_unique<ThreadSafeQueue<std::shared_ptr<std::string>>>(0, true);
+    m_watchers.top = std::make_unique<FileWatcher>("./simulated_digitizer.txt");
+    m_watchers.clock_system = std::make_unique<FileWatcher>("./simulated_digitizer_clock_system.txt");
+    m_parameters.top = std::make_unique<ThreadSafeQueue<std::shared_ptr<std::string>>>(0, true);
+    m_parameters.clock_system = std::make_unique<ThreadSafeQueue<std::shared_ptr<std::string>>>(0, true);
 }
 
 int SimulatedDigitizer::Initialize()
@@ -48,18 +48,18 @@ int SimulatedDigitizer::Initialize()
 
 void SimulatedDigitizer::MainLoop()
 {
-    m_parameters->Start();
-    m_clock_system_parameters->Start();
+    m_parameters.top->Start();
+    m_parameters.clock_system->Start();
 
-    m_watcher_parameters->Start();
-    m_watcher_clock_system_parameters->Start();
+    m_watchers.top->Start();
+    m_watchers.clock_system->Start();
 
     m_simulator[0]->Initialize();
     m_simulator[1]->Initialize();
 
     m_read_queue.Write(DigitizerMessage(DigitizerMessageId::NEW_STATE,
                                         DigitizerState::NOT_ENUMERATED));
-    m_read_queue.Write(DigitizerMessage(DigitizerMessageId::SETUP_STARTING));
+    m_read_queue.Write(DigitizerMessage(DigitizerMessageId::ENUMERATING));
 
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     m_read_queue.Write(DigitizerMessage(DigitizerMessageId::SETUP_OK));
@@ -68,10 +68,7 @@ void SimulatedDigitizer::MainLoop()
     for (;;)
     {
         ProcessMessages();
-
-        /* FIXME: Probably zip these up in pairs? */
-        ProcessWatcherMessages(m_watcher_parameters, m_parameters);
-        ProcessWatcherMessages(m_watcher_clock_system_parameters, m_clock_system_parameters);
+        ProcessWatcherMessages();
 
         /* We implement the sleep using the stop event to be able to immediately
             react to the event being set. */
@@ -129,40 +126,18 @@ void SimulatedDigitizer::ProcessMessages()
             break;
 
         case DigitizerMessageId::INITIALIZE_PARAMETERS:
-            m_watcher_parameters->PushMessage(
+            m_watchers.top->PushMessage(
                 {FileWatcherMessageId::UPDATE_FILE,
                  std::make_shared<std::string>(DEFAULT_PARAMETERS)});
-            m_watcher_clock_system_parameters->PushMessage(
+            m_watchers.clock_system->PushMessage(
                 {FileWatcherMessageId::UPDATE_FILE,
                  std::make_shared<std::string>(DEFAULT_CLOCK_SYSTEM_PARAMETERS)});
             break;
 
-        case DigitizerMessageId::SETUP_STARTING:
+        case DigitizerMessageId::ENUMERATING:
         case DigitizerMessageId::SETUP_OK:
         case DigitizerMessageId::SETUP_FAILED:
         case DigitizerMessageId::NEW_STATE:
-        default:
-            break;
-        }
-    }
-}
-
-void SimulatedDigitizer::ProcessWatcherMessages(
-    const std::unique_ptr<FileWatcher> &watcher,
-    const std::unique_ptr<ThreadSafeQueue<std::shared_ptr<std::string>>> &queue)
-{
-    FileWatcherMessage message;
-    while (ADQR_EOK == watcher->WaitForMessage(message, 0))
-    {
-        switch (message.id)
-        {
-        case FileWatcherMessageId::FILE_CREATED:
-        case FileWatcherMessageId::FILE_UPDATED:
-        case FileWatcherMessageId::FILE_DELETED:
-            queue->Write(message.contents);
-            break;
-
-        case FileWatcherMessageId::UPDATE_FILE:
         default:
             break;
         }
@@ -219,14 +194,14 @@ int SimulatedDigitizer::SetParameters()
 
     int result = ADQR_ELAST;
     while (result == ADQR_ELAST)
-        result = m_parameters->Read(parameters_str, 0);
+        result = m_parameters.top->Read(parameters_str, 0);
 
     if (result != ADQR_EOK)
         return ADQR_EINTERNAL;
 
     result = ADQR_ELAST;
     while (result == ADQR_ELAST)
-        result = m_clock_system_parameters->Read(clock_system_parameters_str, 0);
+        result = m_parameters.clock_system->Read(clock_system_parameters_str, 0);
 
     if (result != ADQR_EOK)
         return ADQR_EINTERNAL;

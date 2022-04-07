@@ -2,9 +2,12 @@ cmake_minimum_required(VERSION 3.15)
 project(adq-rapid VERSION 1.0)
 add_executable(${PROJECT_NAME})
 
+option(WITH_ADQAPI "Compile without the ADQAPI as a dependency. With this set to OFF, only the simulator mode is available." ON)
+
 if (UNIX)
     if (APPLE)
       target_compile_definitions(${PROJECT_NAME} PRIVATE SIMULATION_ONLY)
+    #   set(WITH_ADQAPI OFF) FIXME: Would this work?
     else()
       find_package(PkgConfig REQUIRED)
       find_package(OpenGL REQUIRED)
@@ -64,6 +67,14 @@ FetchContent_MakeAvailable(imgui)
 add_dependencies(${PROJECT_NAME} gl3w_gen)
 set_property(SOURCE ${gl3w_BINARY_DIR}/src/gl3w.c PROPERTY GENERATED 1)
 
+if(WITH_ADQAPI)
+    target_sources(${PROJECT_NAME} PRIVATE
+        src/gen4_digitizer.cpp)
+else()
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+        SIMULATION_ONLY)
+endif()
+
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 target_sources(${PROJECT_NAME} PRIVATE
     # BINARY_DIR is required here since we want to use the generated code
@@ -111,9 +122,6 @@ elseif(WIN32)
     target_compile_options(${PROJECT_NAME} PRIVATE
         /W4)
 endif()
-
-target_compile_definitions(${PROJECT_NAME} PRIVATE
-    SIMULATION_ONLY)
 
 target_compile_options(${PROJECT_NAME} PRIVATE
     ${ADQ_CFLAGS}

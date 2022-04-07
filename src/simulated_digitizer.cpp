@@ -40,12 +40,6 @@ SimulatedDigitizer::SimulatedDigitizer()
     m_parameters.clock_system = std::make_unique<ThreadSafeQueue<std::shared_ptr<std::string>>>(0, true);
 }
 
-int SimulatedDigitizer::Initialize()
-{
-    /* FIXME: Implement */
-    return ADQR_EOK;
-}
-
 void SimulatedDigitizer::MainLoop()
 {
     m_parameters.top->Start();

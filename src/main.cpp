@@ -7,6 +7,7 @@
 
 #ifndef SIMULATION_ONLY
 #include "ADQAPI.h"
+#include "gen4_digitizer.h"
 #endif
 
 #include "GL/gl3w.h"
@@ -36,7 +37,7 @@ static const float THIRD_COLUMN_RELATIVE_WIDTH = 0.2;
 #define SECOND_COLUMN_POSITION (display_w * FIRST_COLUMN_RELATIVE_WIDTH)
 #define THIRD_COLUMN_POSITION (display_w * (FIRST_COLUMN_RELATIVE_WIDTH + SECOND_COLUMN_RELATIVE_WIDTH))
 
-void DoPlot(Digitizer &digitizer)
+void DoPlot(const std::unique_ptr<Digitizer> &digitizer)
 {
     const float FRAME_HEIGHT = ImGui::GetFrameHeight();
     const float PLOT_WINDOW_HEIGHT = (display_h - 1 * FRAME_HEIGHT) / 2;
@@ -44,8 +45,8 @@ void DoPlot(Digitizer &digitizer)
     /* FIXME: Figure out something other than this manual unrolling. */
     static std::shared_ptr<ProcessedRecord> processed_record0 = NULL;
     static std::shared_ptr<ProcessedRecord> processed_record1 = NULL;
-    digitizer.WaitForProcessedRecord(0, processed_record0);
-    digitizer.WaitForProcessedRecord(1, processed_record1);
+    digitizer->WaitForProcessedRecord(0, processed_record0);
+    digitizer->WaitForProcessedRecord(1, processed_record1);
 
     ImGui::SetNextWindowPos(ImVec2(SECOND_COLUMN_POSITION, FRAME_HEIGHT));
     ImGui::SetNextWindowSize(ImVec2(SECOND_COLUMN_SIZE, PLOT_WINDOW_HEIGHT));
@@ -75,7 +76,7 @@ void DoPlot(Digitizer &digitizer)
     ImGui::Begin("Frequency Domain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
     if (ImGui::BeginTabBar("Frequency Domain##tabbar", ImGuiTabBarFlags_None))
     {
-        /* TODO: The idea here would be to read & copy the parameters from the selected digitizer. */
+        /* TODO: The idea here would be to read & copy the parameters from the selected digitizers[0]-> */
         if (ImGui::BeginTabItem("FFT"))
         {
             if (ImPlot::BeginPlot("FFT##plot", ImVec2(-1, -1), ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
@@ -204,12 +205,13 @@ int main(int, char **)
     bool show_imgui_demo_window = false;
     bool show_implot_demo_window = false;
 
-    SimulatedDigitizer digitizer;
-    digitizer.Initialize();
-    digitizer.Start();
+    std::vector<std::unique_ptr<Digitizer>> digitizers;
+
+    int nof_devices = 0;
+    bool use_simulator = true;
 
 #ifdef SIMULATION_ONLY
-    int nof_devices = 4;
+    nof_devices = 1;
 #else
     void *adq_cu = CreateADQControlUnit();
     if (adq_cu == NULL)
@@ -218,45 +220,54 @@ int main(int, char **)
     }
 
     struct ADQInfoListEntry *adq_list = NULL;
-    int nof_devices = 0;
     if (!ADQControlUnit_ListDevices(adq_cu, &adq_list, (unsigned int *)&nof_devices))
     {
         printf("Failed to list devices.\n");
     }
     printf("Found %d devices.\n", nof_devices);
 
-    struct ADQInfoListEntry dummy_adq_list[4];
-    for (int i = 0; i < sizeof(dummy_adq_list) / sizeof(dummy_adq_list[0]); ++i)
+    /* FIXME: Only set up the first Gen4 digitizer for now. */
+    if (nof_devices > 0)
     {
-        dummy_adq_list[i].ProductID = PID_ADQ3;
-    }
+        int idx = -1;
+        for (int i = 0; i < nof_devices; ++i)
+        {
+            // if ((adq_list[i].ProductID == PID_ADQ32) || adq_list[i].ProductID == PID_ADQ36)
+            if (adq_list[i].ProductID == PID_ADQ3)
+            {
+                idx = i;
+                break;
+            }
+        }
 
-    if (nof_devices == 0)
-    {
-        adq_list = dummy_adq_list;
-        nof_devices = sizeof(dummy_adq_list) / sizeof(dummy_adq_list[0]);
+        if (idx < 0)
+        {
+            printf("No matching PID.\n");
+        }
+        else
+        {
+            int result = ADQControlUnit_OpenDeviceInterface(adq_cu, idx);
+            if (result == 1)
+            {
+                digitizers.push_back(std::make_unique<Gen4Digitizer>(adq_cu, 1));
+                use_simulator = false;
+            }
+            else
+            {
+                printf("Failed to open the device interface.\n");
+            }
+        }
     }
 #endif
 
-    // std::string data_directory = "/home/marcus/.local/share/adq-rapid";
-    // std::filesystem::path data_directory_path(data_directory);
-    // if (std::filesystem::exists(data_directory_path))
-    // {
-    //     printf("Path %s exists!\n", data_directory_path.c_str());
-    // }
-    // else
-    // {
-    //     printf("Path does not exist, creating.\n");
-    //     std::error_code e;
-    //     if (std::filesystem::create_directory(data_directory_path, e))
-    //     {
-    //         printf("Created %s.\n", data_directory_path.c_str());
-    //     }
-    //     else
-    //     {
-    //         printf("Failed to create %s, error code %d.\n", data_directory_path.c_str(), e.value());
-    //     }
-    // }
+    if (use_simulator)
+    {
+        printf("Using simulator\n");
+        nof_devices = 1;
+        digitizers.push_back(std::make_unique<SimulatedDigitizer>());
+    }
+
+    digitizers[0]->Start();
 
     while (!glfwWindowShouldClose(window))
     {
@@ -387,25 +398,25 @@ int main(int, char **)
         if (ImGui::Button("Start", COMMAND_PALETTE_BUTTON_SIZE))
         {
             printf("Start!\n");
-            digitizer.PushMessage(DigitizerMessage(DigitizerMessageId::START_ACQUISITION));
+            digitizers[0]->PushMessage(DigitizerMessage(DigitizerMessageId::START_ACQUISITION));
         }
         ImGui::SameLine();
         if (ImGui::Button("Stop", COMMAND_PALETTE_BUTTON_SIZE))
         {
             printf("Stop!\n");
-            digitizer.PushMessage(DigitizerMessage(DigitizerMessageId::STOP_ACQUISITION));
+            digitizers[0]->PushMessage(DigitizerMessage(DigitizerMessageId::STOP_ACQUISITION));
         }
         ImGui::SameLine();
         if (ImGui::Button("Set", COMMAND_PALETTE_BUTTON_SIZE))
         {
             printf("Set!\n");
-            digitizer.PushMessage(DigitizerMessage(DigitizerMessageId::SET_PARAMETERS));
+            digitizers[0]->PushMessage(DigitizerMessage(DigitizerMessageId::SET_PARAMETERS));
         }
         ImGui::SameLine();
         if (ImGui::Button("Get", COMMAND_PALETTE_BUTTON_SIZE))
         {
             printf("Get!\n");
-            digitizer.PushMessage(DigitizerMessage(DigitizerMessageId::GET_PARAMETERS));
+            digitizers[0]->PushMessage(DigitizerMessage(DigitizerMessageId::GET_PARAMETERS));
         }
         ImGui::BeginDisabled();
         if (ImGui::Button("SetPorts", COMMAND_PALETTE_BUTTON_SIZE))
@@ -422,13 +433,13 @@ int main(int, char **)
         if (ImGui::Button("Initialize", COMMAND_PALETTE_BUTTON_SIZE))
         {
             printf("Initialize!\n");
-            digitizer.PushMessage(DigitizerMessage(DigitizerMessageId::INITIALIZE_PARAMETERS));
+            digitizers[0]->PushMessage(DigitizerMessage(DigitizerMessageId::INITIALIZE_PARAMETERS));
         }
         ImGui::SameLine();
         if (ImGui::Button("Validate", COMMAND_PALETTE_BUTTON_SIZE))
         {
             printf("Validate!\n");
-            digitizer.PushMessage(DigitizerMessage(DigitizerMessageId::VALIDATE_PARAMETERS));
+            digitizers[0]->PushMessage(DigitizerMessage(DigitizerMessageId::VALIDATE_PARAMETERS));
         }
         ImGui::End();
 
@@ -438,7 +449,7 @@ int main(int, char **)
         ImGui::Begin("Configuration", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
         if (ImGui::BeginTabBar("Parameters", ImGuiTabBarFlags_None))
         {
-            /* TODO: The idea here would be to read & copy the parameters from the selected digitizer. */
+            /* TODO: The idea here would be to read & copy the parameters from the selected digitizers[0]-> */
             if (ImGui::BeginTabItem("Parameters"))
             {
                 /* FIXME: Add label w/ path */
@@ -446,7 +457,7 @@ int main(int, char **)
                 /* It's ok with a static pointer here as long as we keep the
                    widget in read only mode. */
                 static auto parameters = std::make_shared<std::string>("");
-                digitizer.WaitForParameters(parameters);
+                digitizers[0]->WaitForParameters(parameters);
                 ImGui::InputTextMultiline("##parameters", parameters->data(), parameters->size(),
                                           ImVec2(-FLT_MIN, -FLT_MIN), ImGuiInputTextFlags_ReadOnly);
                 ImGui::EndTabItem();
@@ -456,7 +467,7 @@ int main(int, char **)
             {
                 /* FIXME: Add label w/ path */
                 static auto parameters = std::make_shared<std::string>("");
-                digitizer.WaitForClockSystemParameters(parameters);
+                digitizers[0]->WaitForClockSystemParameters(parameters);
                 ImGui::InputTextMultiline("##clocksystem", parameters->data(), parameters->size(),
                                           ImVec2(-FLT_MIN, -FLT_MIN), ImGuiInputTextFlags_ReadOnly);
                 ImGui::EndTabItem();
@@ -465,7 +476,7 @@ int main(int, char **)
         }
         ImGui::End();
 
-        DoPlot(digitizer);
+        DoPlot(digitizers[0]);
 
         if (show_imgui_demo_window)
             ImGui::ShowDemoWindow(&show_imgui_demo_window);
@@ -483,9 +494,9 @@ int main(int, char **)
     printf("Stopping\n");
 
     /* FIXME: wait until threads close */
-    digitizer.PushMessage(DigitizerMessage(DigitizerMessageId::STOP_ACQUISITION));
+    digitizers[0]->PushMessage(DigitizerMessage(DigitizerMessageId::STOP_ACQUISITION));
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    digitizer.Stop();
+    digitizers[0]->Stop();
 #ifndef SIMULATION_ONLY
     if (adq_cu != NULL)
     {

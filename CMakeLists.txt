@@ -94,6 +94,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     src/data_processing.cpp
     src/simulated_digitizer.cpp
     src/file_watcher.cpp
+    src/ui.cpp
     src/main.cpp
 )
 

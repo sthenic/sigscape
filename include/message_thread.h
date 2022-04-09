@@ -27,6 +27,10 @@ public:
         Stop();
     };
 
+    /* Delete copy constructors. */
+    MessageThread(const MessageThread &other) = delete;
+    MessageThread &operator=(const MessageThread &other) = delete;
+
     /* Start the thread. */
     virtual int Start()
     {

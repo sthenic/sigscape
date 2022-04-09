@@ -63,9 +63,6 @@ private:
 class DataAcquisitionSimulator : public DataAcquisition
 {
 public:
-    DataAcquisitionSimulator() {};
-    ~DataAcquisitionSimulator() {};
-
     int Initialize(const Generator::Parameters &parameters = Generator::Parameters())
     {
         return m_generator.Initialize(parameters);

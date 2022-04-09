@@ -13,6 +13,8 @@ class DataProcessing : public BufferThread<DataProcessing, ProcessedRecord, 100,
 public:
     DataProcessing(DataAcquisition &acquisition);
     ~DataProcessing();
+    DataProcessing(const DataProcessing &other) = delete;
+    DataProcessing &operator=(const DataProcessing &other) = delete;
 
     int Initialize();
     int Start() override;

@@ -79,6 +79,14 @@ public:
     {
     }
 
+    ~Digitizer()
+    {
+        Stop();
+    }
+
+    Digitizer(const Digitizer &other) = delete;
+    Digitizer &operator=(const Digitizer &other) = delete;
+
     /* Interface to the digitizer's data processing threads, one per channel. */
     int WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedRecord> &record)
     {

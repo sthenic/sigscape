@@ -30,6 +30,10 @@ public:
         Stop();
     }
 
+    /* Delete copy constructors. */
+    BufferThread(const BufferThread &other) = delete;
+    BufferThread &operator=(const BufferThread &other) = delete;
+
     virtual int Start()
     {
         if (m_is_running)

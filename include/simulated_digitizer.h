@@ -11,7 +11,7 @@
 class SimulatedDigitizer : public Digitizer
 {
 public:
-    SimulatedDigitizer();
+    SimulatedDigitizer(int id);
 
 private:
     std::vector<std::shared_ptr<DataAcquisitionSimulator>> m_simulator;

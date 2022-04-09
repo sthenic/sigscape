@@ -23,19 +23,27 @@ R"""(sampling frequency:
     500e6, 500e6
 )""";
 
-SimulatedDigitizer::SimulatedDigitizer()
+SimulatedDigitizer::SimulatedDigitizer(int id)
     : Digitizer()
     , m_simulator{}
 {
-    for (int i = 0; i < ADQ_MAX_NOF_CHANNELS; ++i)
+    /* FIXME: Upper bound */
+    for (int i = 0; i < 2; ++i)
     {
         auto simulator = std::make_shared<DataAcquisitionSimulator>();
         m_simulator.push_back(simulator);
         m_processing_threads.push_back(std::make_unique<DataProcessing>(simulator));
     }
 
-    m_watchers.top = std::make_unique<FileWatcher>("./simulated_digitizer.txt");
-    m_watchers.clock_system = std::make_unique<FileWatcher>("./simulated_digitizer_clock_system.txt");
+    std::stringstream ss;
+    ss << "./simulated_digitizer_" << id << ".txt";
+    m_watchers.top = std::make_unique<FileWatcher>(ss.str().c_str());
+    ss.str("");
+    ss.clear();
+
+    ss << "./simulated_digitizer_clock_system_" << id << ".txt";
+    m_watchers.clock_system = std::make_unique<FileWatcher>(ss.str().c_str());
+
     m_parameters.top = std::make_unique<ThreadSafeQueue<std::shared_ptr<std::string>>>(0, true);
     m_parameters.clock_system = std::make_unique<ThreadSafeQueue<std::shared_ptr<std::string>>>(0, true);
 }

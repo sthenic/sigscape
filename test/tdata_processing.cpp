@@ -7,25 +7,25 @@
 
 TEST_GROUP(DataProcessingGroup)
 {
-    DataAcquisitionSimulator acquisition;
-    DataProcessing *processing;
+    std::shared_ptr<DataAcquisitionSimulator> acquisition;
+    std::unique_ptr<DataProcessing> processing;
 
     void setup()
     {
-        processing = new DataProcessing(acquisition);
+        acquisition = std::make_shared<DataAcquisitionSimulator>();
+        processing = std::make_unique<DataProcessing>(acquisition);
     }
 
     void teardown()
     {
-        acquisition.Stop();
+        acquisition->Stop();
         processing->Stop();
-        delete processing;
     }
 };
 
 TEST(DataProcessingGroup, StartStop)
 {
-    LONGS_EQUAL(ADQR_EOK, acquisition.Initialize());
+    LONGS_EQUAL(ADQR_EOK, acquisition->Initialize());
     LONGS_EQUAL(ADQR_EOK, processing->Initialize());
     LONGS_EQUAL(ADQR_ENOTREADY, processing->Stop());
     LONGS_EQUAL(ADQR_EOK, processing->Start());
@@ -42,7 +42,7 @@ TEST(DataProcessingGroup, Records)
     parameters.record_length = RECORD_LENGTH;
     parameters.trigger_frequency = TRIGGER_FREQUENCY;
 
-    LONGS_EQUAL(ADQR_EOK, acquisition.Initialize(parameters));
+    LONGS_EQUAL(ADQR_EOK, acquisition->Initialize(parameters));
     LONGS_EQUAL(ADQR_EOK, processing->Initialize());
 
     LONGS_EQUAL(ADQR_EOK, processing->Start());
@@ -73,7 +73,7 @@ TEST(DataProcessingGroup, RepeatedStartStop)
     parameters.record_length = RECORD_LENGTH;
     parameters.trigger_frequency = TRIGGER_FREQUENCY;
 
-    LONGS_EQUAL(ADQR_EOK, acquisition.Initialize(parameters));
+    LONGS_EQUAL(ADQR_EOK, acquisition->Initialize(parameters));
     LONGS_EQUAL(ADQR_EOK, processing->Initialize());
 
     for (int i = 0; i < NOF_LOOPS; ++i)

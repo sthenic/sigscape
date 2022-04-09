@@ -31,7 +31,7 @@ SimulatedDigitizer::SimulatedDigitizer()
     {
         auto simulator = std::make_shared<DataAcquisitionSimulator>();
         m_simulator.push_back(simulator);
-        m_processing_threads.push_back(std::make_unique<DataProcessing>(*simulator));
+        m_processing_threads.push_back(std::make_unique<DataProcessing>(simulator));
     }
 
     m_watchers.top = std::make_unique<FileWatcher>("./simulated_digitizer.txt");

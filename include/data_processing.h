@@ -11,7 +11,7 @@
 class DataProcessing : public BufferThread<DataProcessing, ProcessedRecord, 100, true>
 {
 public:
-    DataProcessing(DataAcquisition &acquisition);
+    DataProcessing(std::shared_ptr<DataAcquisition> acquisition);
     ~DataProcessing();
     DataProcessing(const DataProcessing &other) = delete;
     DataProcessing &operator=(const DataProcessing &other) = delete;
@@ -24,7 +24,7 @@ public:
 private:
     static const size_t WATERFALL_SIZE = 20;
 
-    DataAcquisition &m_acquisition;
+    std::shared_ptr<DataAcquisition> m_acquisition;
     std::deque<std::shared_ptr<FrequencyDomainRecord>> m_waterfall;
 
     template <typename T>

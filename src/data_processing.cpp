@@ -5,13 +5,14 @@
 
 #include <cmath>
 
-DataProcessing::DataProcessing(DataAcquisition &acquisition)
+DataProcessing::DataProcessing(std::shared_ptr<DataAcquisition> acquisition)
     : m_acquisition(acquisition)
 {
 }
 
 DataProcessing::~DataProcessing()
 {
+    Stop();
 }
 
 int DataProcessing::Initialize()
@@ -22,7 +23,7 @@ int DataProcessing::Initialize()
 
 int DataProcessing::Start()
 {
-    int result = m_acquisition.Start();
+    int result = m_acquisition->Start();
     if (result != ADQR_EOK)
         return result;
     return BufferThread::Start();
@@ -33,7 +34,7 @@ int DataProcessing::Stop()
     /* Regardless of what happens, we want to send the stop signal to the
        acquisition object too. */
     int processing_result = BufferThread::Stop();
-    int acquisition_result = m_acquisition.Stop();
+    int acquisition_result = m_acquisition->Stop();
     if (processing_result != ADQR_EOK)
         return processing_result;
     return acquisition_result;
@@ -52,7 +53,7 @@ void DataProcessing::MainLoop()
 
         /* FIXME: This is a hardcoded type for now. */
         std::shared_ptr<TimeDomainRecord> time_domain = NULL;
-        int result = m_acquisition.WaitForBuffer((std::shared_ptr<void> &)time_domain, 100, NULL);
+        int result = m_acquisition->WaitForBuffer((std::shared_ptr<void> &)time_domain, 100, NULL);
 
         /* Continue on timeout. */
         if (result == ADQR_EAGAIN)
@@ -134,7 +135,7 @@ void DataProcessing::MainLoop()
             printf("Skipping (no FFT or allocation) since queue is full (%d).\n", nof_discarded++);
         }
 
-        m_acquisition.ReturnBuffer(time_domain);
+        m_acquisition->ReturnBuffer(time_domain);
     }
 }
 

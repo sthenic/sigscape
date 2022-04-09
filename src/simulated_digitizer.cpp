@@ -26,8 +26,7 @@ R"""(sampling frequency:
 SimulatedDigitizer::SimulatedDigitizer(int id)
     : m_simulator{}
 {
-    /* FIXME: Upper bound */
-    for (int i = 0; i < 2; ++i)
+    for (int i = 0; i < ADQ_MAX_NOF_CHANNELS; ++i)
     {
         auto simulator = std::make_shared<DataAcquisitionSimulator>();
         m_simulator.push_back(simulator);

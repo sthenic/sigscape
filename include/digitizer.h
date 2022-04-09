@@ -11,7 +11,7 @@
 #include "file_watcher.h"
 
 #ifdef SIMULATION_ONLY
-#define ADQ_MAX_NOF_CHANNELS 8
+#define ADQ_MAX_NOF_CHANNELS 2
 #else
 #include "ADQAPI.h"
 #endif
@@ -89,7 +89,7 @@ public:
     /* Interface to the digitizer's data processing threads, one per channel. */
     int WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedRecord> &record)
     {
-        if ((channel < 0) || (channel > ADQ_MAX_NOF_CHANNELS))
+        if ((channel < 0) || (channel >= ADQ_MAX_NOF_CHANNELS))
             return ADQR_EINVAL;
 
         return m_processing_threads[channel]->WaitForBuffer(record, 0);

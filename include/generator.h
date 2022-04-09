@@ -81,12 +81,13 @@ public:
     int WaitForBuffer(std::shared_ptr<void> &buffer, int timeout, void *status)
     {
         (void)status;
+        /* FIXME: This void business sucks. I don't think this cast is ok, strictly speaking. */
         return m_generator.WaitForBuffer(reinterpret_cast<std::shared_ptr<TimeDomainRecord> &>(buffer), timeout);
     }
 
     int ReturnBuffer(std::shared_ptr<void> buffer)
     {
-        return m_generator.ReturnBuffer(reinterpret_cast<std::shared_ptr<TimeDomainRecord> &>(buffer));
+        return m_generator.ReturnBuffer(std::static_pointer_cast<TimeDomainRecord>(buffer));
     }
 
 private:

@@ -10,7 +10,7 @@
 
 #include "simulated_digitizer.h"
 
-#ifndef SIMULATOR_ONLY
+#ifndef SIMULATION_ONLY
 #include "gen4_digitizer.h"
 #endif
 
@@ -26,14 +26,17 @@ public:
 
 private:
     std::vector<std::unique_ptr<Digitizer>> m_digitizers;
+    std::vector<std::vector<std::shared_ptr<ProcessedRecord>>> m_records;
     void *m_adq_control_unit;
     bool m_show_imgui_demo_window;
     bool m_show_implot_demo_window;
     std::unique_ptr<bool[]> m_selected;
 
-    /* FIXME: Extremely temporary pointers to the current data. */
-    std::shared_ptr<ProcessedRecord> m_record0;
-    std::shared_ptr<ProcessedRecord> m_record1;
+    void InitializeGen4Digitizers();
+    void InitializeSimulatedDigitizers();
+
+    void UpdateRecords();
+    void HandleMessages();
 
     void RenderMenuBar();
     void RenderRight(float width, float height);
@@ -48,7 +51,6 @@ private:
     void RenderFourierTransformPlot();
     void RenderWaterfallPlot();
 
-    /* FIXME: Try const */
     static constexpr float FIRST_COLUMN_RELATIVE_WIDTH = 0.2f;
     static constexpr float SECOND_COLUMN_RELATIVE_WIDTH = 0.6f;
     static constexpr float THIRD_COLUMN_RELATIVE_WIDTH = 0.2f;

@@ -11,7 +11,7 @@
 #include "file_watcher.h"
 
 #ifdef SIMULATION_ONLY
-#define ADQ_MAX_NOF_CHANNELS 2
+#include "ADQAPI_simulation.h"
 #else
 #include "ADQAPI.h"
 #endif

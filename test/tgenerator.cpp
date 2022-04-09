@@ -59,7 +59,6 @@ TEST(Generator, Records)
 
         LONGS_EQUAL(ADQR_EOK, result);
         CHECK(record != NULL);
-        LONGS_EQUAL(TIME_DOMAIN, record->id);
         LONGS_EQUAL(RECORD_LENGTH, record->header.record_length);
         LONGS_EQUAL(RECORD_LENGTH, record->count);
         LONGS_EQUAL(nof_records_received++, record->header.record_number);
@@ -104,7 +103,6 @@ TEST(Generator, RepeatedStartStop)
             LONGS_EQUAL(ADQR_EOK, simulator.WaitForBuffer((std::shared_ptr<void> &)record, 1000, NULL));
             CHECK(record != NULL);
 
-            LONGS_EQUAL(TIME_DOMAIN, record->id);
             LONGS_EQUAL(nof_records_received, record->header.record_number);
             nof_records_received++;
 

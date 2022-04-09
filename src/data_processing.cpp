@@ -83,7 +83,6 @@ void DataProcessing::MainLoop()
             /* We copy the time domain data in order to return the buffer to the
                acquisition interface ASAP. */
             *processed_record->time_domain = *time_domain;
-            processed_record->frequency_domain->header.record_number = time_domain->header.record_number;
 
             const char *error = NULL;
             if (!simple_fft::FFT(time_domain->y, processed_record->frequency_domain->yc, fft_size, error))

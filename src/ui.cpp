@@ -193,14 +193,14 @@ void Ui::RenderRight(float width, float height)
     ImGui::Begin("Metrics##timedomain", NULL, ImGuiWindowFlags_NoMove);
     if (m_records[0][0] != NULL)
     {
-        ImGui::Text("Record number: %" PRIu64, m_records[0][0]->time_domain->header.record_number);
+        ImGui::Text("Record number: %" PRIu32, m_records[0][0]->time_domain->header.record_number);
         ImGui::Text("Maximum value: %.4f", m_records[0][0]->time_domain_metrics.max);
         ImGui::Text("Minimum value: %.4f", m_records[0][0]->time_domain_metrics.min);
         ImGui::Text("Estimated trigger frequency: %.4f Hz", m_records[0][0]->time_domain->estimated_trigger_frequency);
     }
     if (m_records[0][1] != NULL)
     {
-        ImGui::Text("Record number: %" PRIu64, m_records[0][1]->time_domain->header.record_number);
+        ImGui::Text("Record number: %" PRIu32, m_records[0][1]->time_domain->header.record_number);
         ImGui::Text("Maximum value: %.4f", m_records[0][1]->time_domain_metrics.max);
         ImGui::Text("Minimum value: %.4f", m_records[0][1]->time_domain_metrics.min);
         ImGui::Text("Estimated trigger frequency: %.4f Hz", m_records[0][1]->time_domain->estimated_trigger_frequency);
@@ -212,13 +212,13 @@ void Ui::RenderRight(float width, float height)
     ImGui::Begin("Metrics##frequencydomain", NULL, ImGuiWindowFlags_NoMove);
     if (m_records[0][0] != NULL)
     {
-        ImGui::Text("Record number: %" PRIu64, m_records[0][0]->frequency_domain->header.record_number);
+        ImGui::Text("Record number: %" PRIu32, m_records[0][0]->time_domain->header.record_number);
         ImGui::Text("Maximum value: %.4f", m_records[0][0]->frequency_domain_metrics.max);
         ImGui::Text("Minimum value: %.4f", m_records[0][0]->frequency_domain_metrics.min);
     }
     if (m_records[0][1] != NULL)
     {
-        ImGui::Text("Record number: %" PRIu64, m_records[0][1]->frequency_domain->header.record_number);
+        ImGui::Text("Record number: %" PRIu32, m_records[0][1]->time_domain->header.record_number);
         ImGui::Text("Maximum value: %.4f", m_records[0][1]->frequency_domain_metrics.max);
         ImGui::Text("Minimum value: %.4f", m_records[0][1]->frequency_domain_metrics.min);
     }

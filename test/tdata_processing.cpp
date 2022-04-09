@@ -90,10 +90,7 @@ TEST(DataProcessingGroup, RepeatedStartStop)
 
             if (result == ADQR_ELAST)
             {
-                LONGS_EQUAL(TIME_DOMAIN, record->time_domain->id);
-                LONGS_EQUAL(FREQUENCY_DOMAIN, record->frequency_domain->id);
                 LONGS_EQUAL(nof_records_received, record->time_domain->header.record_number);
-                LONGS_EQUAL(nof_records_received, record->frequency_domain->header.record_number);
                 nof_records_received++;
             }
         }

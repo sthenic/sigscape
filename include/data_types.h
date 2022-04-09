@@ -7,17 +7,11 @@
 #include <limits>
 #include <cstring>
 
-enum RecordId
-{
-    TIME_DOMAIN = 0,
-    FREQUENCY_DOMAIN = 1
-};
-
-struct TimeDomainRecordHeader
-{
-    uint64_t record_number;
-    size_t record_length;
-};
+#ifdef SIMULATION_ONLY
+#include "ADQAPI_simulation.h"
+#else
+#include "ADQAPI.h"
+#endif
 
 /* A time domain record. */
 struct TimeDomainRecord
@@ -26,17 +20,16 @@ struct TimeDomainRecord
     {
         x = std::shared_ptr<double[]>( new double[count] );
         y = std::shared_ptr<double[]>( new double[count] );
-        id = TIME_DOMAIN;
         this->count = count;
         capacity = count;
         estimated_trigger_frequency = 0;
+        header = {};
     }
 
     /* We don't share ownership of the data intentionally. All copies
        are deep copies. */
     TimeDomainRecord(const TimeDomainRecord &other)
     {
-        id = TIME_DOMAIN;
         header = other.header;
         count = other.count;
         capacity = other.count;
@@ -56,7 +49,6 @@ struct TimeDomainRecord
             {
                 x = std::shared_ptr<double[]>( new double[other.count] );
                 y = std::shared_ptr<double[]>( new double[other.count] );
-                id = TIME_DOMAIN;
                 capacity = other.count;
             }
 
@@ -70,19 +62,12 @@ struct TimeDomainRecord
         return *this;
     }
 
-    enum RecordId id;
     std::shared_ptr<double[]> x;
     std::shared_ptr<double[]> y;
-    struct TimeDomainRecordHeader header;
+    struct ADQGen4RecordHeader header;
     size_t count;
     size_t capacity;
     double estimated_trigger_frequency;
-};
-
-struct FrequencyDomainRecordHeader
-{
-    uint64_t record_number;
-    size_t record_length;
 };
 
 struct FrequencyDomainRecord
@@ -92,7 +77,6 @@ struct FrequencyDomainRecord
         x = std::shared_ptr<double[]>( new double[count] );
         y = std::shared_ptr<double[]>( new double[count] );
         yc = std::shared_ptr<std::complex<double>[]>( new std::complex<double>[count] );
-        id = FREQUENCY_DOMAIN;
         this->count = count;
         capacity = count;
     }
@@ -102,8 +86,6 @@ struct FrequencyDomainRecord
         x = std::shared_ptr<double[]>( new double[other.count] );
         y = std::shared_ptr<double[]>( new double[other.count] );
         yc = std::shared_ptr<std::complex<double>[]>( new std::complex<double>[other.count] );
-        id = FREQUENCY_DOMAIN;
-        header = other.header;
         count = other.count;
         capacity = other.count;
 
@@ -121,7 +103,6 @@ struct FrequencyDomainRecord
                 x = std::shared_ptr<double[]>( new double[other.count] );
                 y = std::shared_ptr<double[]>( new double[other.count] );
                 yc = std::shared_ptr<std::complex<double>[]>( new std::complex<double>[other.count] );
-                id = FREQUENCY_DOMAIN;
                 capacity = other.count;
             }
 
@@ -129,17 +110,14 @@ struct FrequencyDomainRecord
             std::memcpy(y.get(), other.y.get(), other.count * sizeof(*y.get()));
             std::memcpy(yc.get(), other.yc.get(), other.count * sizeof(*yc.get()));
             count = other.count;
-            header = other.header;
         }
 
         return *this;
     }
 
-    enum RecordId id;
     std::shared_ptr<double[]> x;
     std::shared_ptr<double[]> y;
     std::shared_ptr<std::complex<double>[]> yc;
-    struct FrequencyDomainRecordHeader header;
     size_t count;
     size_t capacity;
 };

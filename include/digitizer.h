@@ -71,8 +71,7 @@ class Digitizer : public MessageThread<Digitizer, struct DigitizerMessage>
 {
 public:
     Digitizer()
-        : MessageThread()
-        , m_state(DigitizerState::NOT_ENUMERATED)
+        : m_state(DigitizerState::NOT_ENUMERATED)
         , m_watchers{}
         , m_parameters{}
         , m_processing_threads{}

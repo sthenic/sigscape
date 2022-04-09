@@ -1,8 +1,7 @@
 #include "gen4_digitizer.h"
 
 Gen4Digitizer::Gen4Digitizer(void *control_unit, int index)
-    : Digitizer()
-    , m_id(control_unit, index)
+    : m_id(control_unit, index)
 {}
 
 void Gen4Digitizer::MainLoop()

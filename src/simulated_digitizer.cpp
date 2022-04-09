@@ -24,8 +24,7 @@ R"""(sampling frequency:
 )""";
 
 SimulatedDigitizer::SimulatedDigitizer(int id)
-    : Digitizer()
-    , m_simulator{}
+    : m_simulator{}
 {
     /* FIXME: Upper bound */
     for (int i = 0; i < 2; ++i)

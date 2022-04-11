@@ -1,14 +1,14 @@
 #ifndef SIMULATOR_H_69EMSR
 #define SIMULATOR_H_69EMSR
 
-#include "buffer_thread.h"
+#include "smart_buffer_thread.h"
 #include "data_acquisition.h"
 #include "data_types.h"
 #include "error.h"
 
 #include <random>
 
-class Generator : public BufferThread<Generator, TimeDomainRecord>
+class Generator : public SmartBufferThread<Generator, TimeDomainRecord>
 {
 public:
     Generator();

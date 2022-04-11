@@ -26,14 +26,14 @@ int DataProcessing::Start()
     int result = m_acquisition->Start();
     if (result != ADQR_EOK)
         return result;
-    return BufferThread::Start();
+    return SmartBufferThread::Start();
 }
 
 int DataProcessing::Stop()
 {
     /* Regardless of what happens, we want to send the stop signal to the
        acquisition object too. */
-    int processing_result = BufferThread::Stop();
+    int processing_result = SmartBufferThread::Stop();
     int acquisition_result = m_acquisition->Stop();
     if (processing_result != ADQR_EOK)
         return processing_result;

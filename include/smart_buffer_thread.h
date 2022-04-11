@@ -10,10 +10,10 @@
 #include <future>
 
 template <class C, typename T, size_t CAPACITY = 0, bool PERSISTENT = false>
-class BufferThread
+class SmartBufferThread
 {
 public:
-    BufferThread()
+    SmartBufferThread()
         : m_thread()
         , m_signal_stop()
         , m_should_stop()
@@ -25,14 +25,14 @@ public:
         , m_write_queue()
     {};
 
-    virtual ~BufferThread()
+    virtual ~SmartBufferThread()
     {
         Stop();
     }
 
     /* Delete copy constructors. */
-    BufferThread(const BufferThread &other) = delete;
-    BufferThread &operator=(const BufferThread &other) = delete;
+    SmartBufferThread(const SmartBufferThread &other) = delete;
+    SmartBufferThread &operator=(const SmartBufferThread &other) = delete;
 
     virtual int Start()
     {

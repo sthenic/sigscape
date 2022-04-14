@@ -11,7 +11,7 @@
 #include "file_watcher.h"
 
 #ifdef SIMULATION_ONLY
-#include "ADQAPI_simulation.h"
+#include "mock_adqapi.h"
 #else
 #include "ADQAPI.h"
 #endif
@@ -70,8 +70,9 @@ struct DigitizerMessage
 class Digitizer : public MessageThread<Digitizer, struct DigitizerMessage>
 {
 public:
-    Digitizer()
+    Digitizer(void *handle, int index)
         : m_state(DigitizerState::NOT_ENUMERATED)
+        , m_id{handle, index}
         , m_watchers{}
         , m_parameters{}
         , m_processing_threads{}
@@ -83,6 +84,7 @@ public:
         Stop();
     }
 
+    /* Making copies of an object of this type is not allowed. */
     Digitizer(const Digitizer &other) = delete;
     Digitizer &operator=(const Digitizer &other) = delete;
 
@@ -110,6 +112,14 @@ public:
 protected:
     /* The digitizer's state. */
     enum DigitizerState m_state;
+
+    /* The digitizer identification information. This consists of a handle and
+       an index. These values must be known at the time of construction. */
+    const struct Identifier
+    {
+        void *handle;
+        int index;
+    } m_id;
 
     /* File watchers and queues to watch and propagate contents from the
        digitizer's configuration files. Anonymous structs are intentional. */

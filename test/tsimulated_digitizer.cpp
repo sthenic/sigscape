@@ -10,7 +10,7 @@ TEST_GROUP(SimulatedDigitizer)
 
     void setup()
     {
-        digitizer = std::make_unique<SimulatedDigitizer>(0);
+        digitizer = std::make_unique<SimulatedDigitizer>(1);
     }
 
     void teardown()

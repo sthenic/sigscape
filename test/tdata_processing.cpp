@@ -2,31 +2,29 @@
 #include <chrono>
 #include "data_processing.h"
 #include "generator.h"
+#include "mock_adqapi.h"
 
 #include "CppUTest/TestHarness.h"
 
 TEST_GROUP(DataProcessingGroup)
 {
-    std::shared_ptr<DataAcquisitionSimulator> acquisition;
     std::unique_ptr<DataProcessing> processing;
+    MockAdqApi adqapi;
+    static constexpr int index = 1;
+    static constexpr int channel = 0;
 
     void setup()
     {
-        acquisition = std::make_shared<DataAcquisitionSimulator>();
-        processing = std::make_unique<DataProcessing>(acquisition);
+        processing = std::make_unique<DataProcessing>(&adqapi, index, channel);
     }
 
     void teardown()
     {
-        acquisition->Stop();
-        processing->Stop();
     }
 };
 
 TEST(DataProcessingGroup, StartStop)
 {
-    LONGS_EQUAL(ADQR_EOK, acquisition->Initialize());
-    LONGS_EQUAL(ADQR_EOK, processing->Initialize());
     LONGS_EQUAL(ADQR_ENOTREADY, processing->Stop());
     LONGS_EQUAL(ADQR_EOK, processing->Start());
     LONGS_EQUAL(ADQR_ENOTREADY, processing->Start());
@@ -36,30 +34,19 @@ TEST(DataProcessingGroup, StartStop)
 TEST(DataProcessingGroup, Records)
 {
     constexpr size_t RECORD_LENGTH = 8192;
-    constexpr double TRIGGER_FREQUENCY = 30.0;
+    constexpr double TRIGGER_FREQUENCY = 20.0;
 
     Generator::Parameters parameters;
     parameters.record_length = RECORD_LENGTH;
     parameters.trigger_frequency = TRIGGER_FREQUENCY;
 
-    LONGS_EQUAL(ADQR_EOK, acquisition->Initialize(parameters));
-    LONGS_EQUAL(ADQR_EOK, processing->Initialize());
-
+    adqapi.Initialize({parameters});
     LONGS_EQUAL(ADQR_EOK, processing->Start());
+    LONGS_EQUAL(ADQ_EOK, ADQ_StartDataAcquisition(&adqapi, index));
 
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     LONGS_EQUAL(ADQR_EOK, processing->Stop());
-}
-
-TEST(DataProcessingGroup, Copy)
-{
-    FrequencyDomainRecord r0(100);
-    FrequencyDomainRecord r1(25);
-    r1 = r0;
-
-    ProcessedRecord r2(100);
-    ProcessedRecord r3(25);
-    r3 = r2;
+    LONGS_EQUAL(ADQ_EOK, ADQ_StopDataAcquisition(&adqapi, index));
 }
 
 TEST(DataProcessingGroup, RepeatedStartStop)
@@ -73,12 +60,12 @@ TEST(DataProcessingGroup, RepeatedStartStop)
     parameters.record_length = RECORD_LENGTH;
     parameters.trigger_frequency = TRIGGER_FREQUENCY;
 
-    LONGS_EQUAL(ADQR_EOK, acquisition->Initialize(parameters));
-    LONGS_EQUAL(ADQR_EOK, processing->Initialize());
+    adqapi.Initialize({parameters});
 
     for (int i = 0; i < NOF_LOOPS; ++i)
     {
         LONGS_EQUAL(ADQR_EOK, processing->Start());
+        LONGS_EQUAL(ADQ_EOK, ADQ_StartDataAcquisition(&adqapi, 1));
 
         int nof_records_received = 0;
         while (nof_records_received != NOF_RECORDS)
@@ -96,5 +83,6 @@ TEST(DataProcessingGroup, RepeatedStartStop)
         }
 
         LONGS_EQUAL(ADQR_EOK, processing->Stop());
+        LONGS_EQUAL(ADQ_EOK, ADQ_StopDataAcquisition(&adqapi, index));
     }
 }

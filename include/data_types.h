@@ -8,7 +8,7 @@
 #include <cstring>
 
 #ifdef SIMULATION_ONLY
-#include "ADQAPI_simulation.h"
+#include "mock_adqapi_definitions.h"
 #else
 #include "ADQAPI.h"
 #endif
@@ -24,6 +24,30 @@ struct TimeDomainRecord
         capacity = count;
         estimated_trigger_frequency = 0;
         header = {};
+    }
+
+    TimeDomainRecord(const struct ADQGen4Record *raw)
+    {
+        /* FIXME: Can optimize this by giving just the number of bytes used in
+                  the record, raw->size is the buffer capacity. */
+        x = std::shared_ptr<double[]>( new double[raw->header->record_length] );
+        y = std::shared_ptr<double[]>( new double[raw->header->record_length] );
+        this->count = raw->header->record_length;
+        capacity = raw->header->record_length;
+        estimated_trigger_frequency = 0;
+        header = *raw->header;
+
+        /* Assuming two bytes per sample. */
+        /* FIXME: Read from header->data_format */
+        /* FIXME: Keep this as codes? */
+        const int16_t *data = static_cast<const int16_t *>(raw->data);
+        const double sampling_period = static_cast<double>(raw->header->sampling_period) *
+                                       static_cast<double>(raw->header->time_unit);
+        for (size_t i = 0; i < raw->header->record_length; ++i)
+        {
+            x[i] = static_cast<double>(raw->header->record_start) + i * sampling_period;
+            y[i] = static_cast<double>(data[i]) / 32768.0;
+        }
     }
 
     /* We don't share ownership of the data intentionally. All copies
@@ -217,6 +241,17 @@ struct Waterfall
 
 struct ProcessedRecord
 {
+    ProcessedRecord()
+        : time_domain(NULL)
+        , frequency_domain(NULL)
+        , waterfall(NULL)
+    {
+        time_domain_metrics.max = std::numeric_limits<double>::lowest();
+        time_domain_metrics.min = std::numeric_limits<double>::max();
+        frequency_domain_metrics.max = std::numeric_limits<double>::lowest();
+        frequency_domain_metrics.min = std::numeric_limits<double>::max();
+    }
+
     ProcessedRecord(size_t count)
     {
         time_domain = std::make_shared<TimeDomainRecord>(count);

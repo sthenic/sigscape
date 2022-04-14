@@ -1,7 +1,7 @@
 #include "gen4_digitizer.h"
 
-Gen4Digitizer::Gen4Digitizer(void *control_unit, int index)
-    : m_id(control_unit, index)
+Gen4Digitizer::Gen4Digitizer(void *handle, int index)
+    : Digitizer(handle, index)
 {}
 
 void Gen4Digitizer::MainLoop()
@@ -15,7 +15,7 @@ void Gen4Digitizer::MainLoop()
     /* Performing this operation in a thread safe manner requires that
        ADQControlUnit_OpenDeviceInterface() has been called (and returned
        successfully) in a single thread process. */
-    int result = ADQControlUnit_SetupDevice(m_id.control_unit, m_id.index);
+    int result = ADQControlUnit_SetupDevice(m_id.handle, m_id.index);
     if (result != 1)
     {
         m_read_queue.Write({DigitizerMessageId::SETUP_FAILED});

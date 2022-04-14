@@ -11,10 +11,10 @@
 class SimulatedDigitizer : public Digitizer
 {
 public:
-    SimulatedDigitizer(int id);
+    SimulatedDigitizer(int index);
 
 private:
-    std::vector<std::shared_ptr<DataAcquisitionSimulator>> m_simulator;
+    MockAdqApi m_adqapi;
 
     static const std::string DEFAULT_PARAMETERS;
     static const std::string DEFAULT_CLOCK_SYSTEM_PARAMETERS;

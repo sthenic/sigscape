@@ -23,23 +23,24 @@ R"""(sampling frequency:
     500e6, 500e6
 )""";
 
-SimulatedDigitizer::SimulatedDigitizer(int id)
-    : m_simulator{}
+SimulatedDigitizer::SimulatedDigitizer(int index)
+    : Digitizer(&m_adqapi, index)
+    , m_adqapi()
 {
     for (int i = 0; i < ADQ_MAX_NOF_CHANNELS; ++i)
     {
-        auto simulator = std::make_shared<DataAcquisitionSimulator>();
-        m_simulator.push_back(simulator);
-        m_processing_threads.push_back(std::make_unique<DataProcessing>(simulator));
+        m_processing_threads.push_back(std::make_unique<DataProcessing>(&m_adqapi, m_id.index, i));
     }
 
+    /* FIXME: Add X number of digitizers w/ different number of channels. */
+
     std::stringstream ss;
-    ss << "./simulated_digitizer_" << id << ".txt";
+    ss << "./simulated_digitizer_" << m_id.index << ".txt";
     m_watchers.top = std::make_unique<FileWatcher>(ss.str().c_str());
     ss.str("");
     ss.clear();
 
-    ss << "./simulated_digitizer_clock_system_" << id << ".txt";
+    ss << "./simulated_digitizer_clock_system_" << m_id.index << ".txt";
     m_watchers.clock_system = std::make_unique<FileWatcher>(ss.str().c_str());
 
     m_parameters.top = std::make_unique<ThreadSafeQueue<std::shared_ptr<std::string>>>(0, true);
@@ -54,8 +55,10 @@ void SimulatedDigitizer::MainLoop()
     m_watchers.top->Start();
     m_watchers.clock_system->Start();
 
-    m_simulator[0]->Initialize();
-    m_simulator[1]->Initialize();
+    /* Initialize simulators w/ default values. */
+    /* FIXME: two for now */
+    Generator::Parameters parameters;
+    m_adqapi.Initialize({parameters, parameters});
 
     m_read_queue.Write(DigitizerMessage(DigitizerMessageId::NEW_STATE,
                                         DigitizerState::NOT_ENUMERATED));
@@ -87,8 +90,10 @@ void SimulatedDigitizer::ProcessMessages()
         case DigitizerMessageId::START_ACQUISITION:
         {
             printf("Entering acquisition.\n");
-            m_processing_threads[0]->Start();
-            m_processing_threads[1]->Start();
+            for (const auto &t : m_processing_threads)
+                t->Start();
+            ADQ_StartDataAcquisition(m_id.handle, m_id.index);
+
             m_state = DigitizerState::ACQUISITION;
             m_read_queue.Write(DigitizerMessage(DigitizerMessageId::NEW_STATE,
                                                 DigitizerState::ACQUISITION));
@@ -98,8 +103,10 @@ void SimulatedDigitizer::ProcessMessages()
         case DigitizerMessageId::STOP_ACQUISITION:
         {
             printf("Entering configuration.\n");
-            m_processing_threads[0]->Stop();
-            m_processing_threads[1]->Stop();
+            for (const auto &t : m_processing_threads)
+                t->Stop();
+            ADQ_StopDataAcquisition(m_id.handle, m_id.index);
+
             m_state = DigitizerState::CONFIGURATION;
             m_read_queue.Write(DigitizerMessage(DigitizerMessageId::NEW_STATE,
                                                 DigitizerState::CONFIGURATION));
@@ -108,12 +115,12 @@ void SimulatedDigitizer::ProcessMessages()
 
         case DigitizerMessageId::SET_PARAMETERS:
         {
-            /* TODO: We temporarily suspend the  */
-            m_processing_threads[0]->Stop();
-            m_processing_threads[1]->Stop();
+            /* FIXME: Not ideal to stop the threads. */
+            for (const auto &t : m_processing_threads)
+                t->Stop();
             SetParameters();
-            m_processing_threads[0]->Start();
-            m_processing_threads[1]->Start();
+            for (const auto &t : m_processing_threads)
+                t->Start();
             break;
         }
 
@@ -235,25 +242,25 @@ int SimulatedDigitizer::SetParameters()
         return ADQR_EINVAL;
 
     /* FIXME: Don't do manual unrolling. Also some access checks would probably help. */
-    Generator::Parameters parameters;
-    parameters.record_length = record_length[0];
-    parameters.trigger_frequency = trigger_frequency[0];
-    parameters.sine.frequency = frequency[0];
-    parameters.sine.amplitude = amplitude[0];
-    parameters.sine.harmonic_distortion = harmonic_distortion[0] > 0;
-    parameters.sine.noise_std_dev = noise_std_dev[0];
-    parameters.sine.sampling_frequency = sampling_frequency[0];
-    m_simulator[0]->Initialize(parameters);
+    // Generator::Parameters parameters;
+    // parameters.record_length = record_length[0];
+    // parameters.trigger_frequency = trigger_frequency[0];
+    // parameters.sine.frequency = frequency[0];
+    // parameters.sine.amplitude = amplitude[0];
+    // parameters.sine.harmonic_distortion = harmonic_distortion[0] > 0;
+    // parameters.sine.noise_std_dev = noise_std_dev[0];
+    // parameters.sine.sampling_frequency = sampling_frequency[0];
+    // m_simulator[0]->Initialize(parameters);
 
-    parameters = Generator::Parameters();
-    parameters.record_length = record_length[1];
-    parameters.trigger_frequency = trigger_frequency[1];
-    parameters.sine.frequency = frequency[1];
-    parameters.sine.amplitude = amplitude[1];
-    parameters.sine.harmonic_distortion = harmonic_distortion[1] > 0;
-    parameters.sine.noise_std_dev = noise_std_dev[1];
-    parameters.sine.sampling_frequency = sampling_frequency[1];
-    m_simulator[1]->Initialize(parameters);
+    // parameters = Generator::Parameters();
+    // parameters.record_length = record_length[1];
+    // parameters.trigger_frequency = trigger_frequency[1];
+    // parameters.sine.frequency = frequency[1];
+    // parameters.sine.amplitude = amplitude[1];
+    // parameters.sine.harmonic_distortion = harmonic_distortion[1] > 0;
+    // parameters.sine.noise_std_dev = noise_std_dev[1];
+    // parameters.sine.sampling_frequency = sampling_frequency[1];
+    // m_simulator[1]->Initialize(parameters);
 
     return ADQR_EOK;
 }

@@ -73,6 +73,8 @@ if(WITH_ADQAPI)
 else()
     target_compile_definitions(${PROJECT_NAME} PRIVATE
         SIMULATION_ONLY)
+    target_sources(${PROJECT_NAME} PRIVATE
+        src/mock_adqapi.cpp)
 endif()
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)

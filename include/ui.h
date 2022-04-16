@@ -31,6 +31,7 @@ private:
     MockAdqApi m_mock_adqapi;
 #endif
 
+    void InitializeDigitizers();
     void InitializeGen4Digitizers();
     void InitializeSimulatedDigitizers();
 

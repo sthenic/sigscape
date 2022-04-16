@@ -17,6 +17,17 @@
 #define ADQ_EUNSUPPORTED (-8)
 #define ADQ_EINTERNAL (-9)
 
+enum ADQProductID_Enum
+{
+  PID_ADQ32 = 0x0031,
+  PID_ADQ36 = 0x0033
+};
+
+struct ADQInfoListEntry
+{
+  enum ADQProductID_Enum ProductID;
+};
+
 struct ADQGen4RecordHeader
 {
     uint8_t version_major;

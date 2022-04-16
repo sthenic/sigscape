@@ -14,10 +14,12 @@ public:
     MockAdqApi() = default;
 
     /* Mockup control functions. */
-    void AddDigitizer(const std::string &serial_number, int nof_channels);
+    void AddDigitizer(const std::string &serial_number, int nof_channels, enum ADQProductID_Enum pid);
 
     /* Mocked functions. */
     int SetupDevice(int adq_num);
+    int ListDevices(struct ADQInfoListEntry **list, unsigned int *nof_devices);
+    int OpenDeviceInterface(int index);
 
     int StartDataAcquisition(int adq_num);
     int StopDataAcquisition(int adq_num);
@@ -34,10 +36,13 @@ public:
 
 private:
     std::vector<std::unique_ptr<MockDigitizer>> m_digitizers;
+    std::vector<ADQInfoListEntry> m_digitizer_list;
 };
 
 /* The ADQControlUnit_* functions we're mocking. */
 int ADQControlUnit_SetupDevice(void *adq_cu, int adq_num);
+int ADQControlUnit_ListDevices(void *adq_cu, struct ADQInfoListEntry **list, unsigned int *nof_devices);
+int ADQControlUnit_OpenDeviceInterface(void *adq_cu, int index);
 
 /* The ADQ_* functions we're mocking. */
 int ADQ_StartDataAcquisition(void *adq_cu, int adq_num);

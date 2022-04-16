@@ -188,7 +188,6 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
             parameters.back().sine.amplitude = amplitude[i];
             parameters.back().sine.harmonic_distortion = harmonic_distortion[i] > 0;
             parameters.back().sine.noise_std_dev = noise_std_dev[i];
-            printf("Pushed a parameter set\n");
         }
     }
     else if (parameters_str.rfind("CLOCK SYSTEM", 0) == 0)

@@ -1,9 +1,11 @@
 #include "mock_adqapi.h"
 
 /* Mockup control functions */
-void MockAdqApi::AddDigitizer(const std::string &serial_number, int nof_channels)
+void MockAdqApi::AddDigitizer(const std::string &serial_number, int nof_channels,
+                              enum ADQProductID_Enum pid)
 {
     m_digitizers.push_back(std::make_unique<MockDigitizer>(serial_number, nof_channels));
+    m_digitizer_list.push_back({pid});
 }
 
 /* Mocked functions */
@@ -11,8 +13,28 @@ int MockAdqApi::SetupDevice(int adq_num)
 {
     /* -1 to follow the convention of the ADQAPI. */
     if ((adq_num == 0) || (adq_num > static_cast<int>(m_digitizers.size())))
-        return ADQ_EINVAL;
+        return 0;
     return m_digitizers[adq_num - 1]->SetupDevice();
+}
+
+int MockAdqApi::ListDevices(struct ADQInfoListEntry **list, unsigned int *nof_devices)
+{
+    if ((list == NULL) || (nof_devices == NULL))
+        return 0;
+
+    *list = &m_digitizer_list[0];
+    *nof_devices = static_cast<unsigned int>(m_digitizer_list.size());
+    return 1;
+}
+
+int MockAdqApi::OpenDeviceInterface(int index)
+{
+    /* 0-indexed to follow the convention of the ADQAPI. */
+    if ((index < 0) || (index >= static_cast<int>(m_digitizers.size())))
+        return 0;
+
+    /* If the index targets an entry in the vector, we can consider it 'opened'. */
+    return 1;
 }
 
 int MockAdqApi::StartDataAcquisition(int adq_num)
@@ -95,6 +117,20 @@ int ADQControlUnit_SetupDevice(void *adq_cu, int adq_num)
     if (adq_cu == NULL)
         return ADQ_EINVAL;
     return static_cast<MockAdqApi *>(adq_cu)->SetupDevice(adq_num);
+}
+
+int ADQControlUnit_ListDevices(void *adq_cu, struct ADQInfoListEntry **list, unsigned int *nof_devices)
+{
+    if (adq_cu == NULL)
+        return ADQ_EINVAL;
+    return static_cast<MockAdqApi *>(adq_cu)->ListDevices(list, nof_devices);
+}
+
+int ADQControlUnit_OpenDeviceInterface(void *adq_cu, int index)
+{
+    if (adq_cu == NULL)
+        return ADQ_EINVAL;
+    return static_cast<MockAdqApi *>(adq_cu)->OpenDeviceInterface(index);
 }
 
 /* ADQ_ interface */

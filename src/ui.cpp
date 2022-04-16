@@ -13,7 +13,7 @@ Ui::Ui()
 #endif
 {
 #ifdef SIMULATION_ONLY
-    m_mock_adqapi.AddDigitizer("SPD-SIM01", 2);
+    m_mock_adqapi.AddDigitizer("SPD-SIM01", 2, PID_ADQ32);
 #endif
 }
 
@@ -35,12 +35,14 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version)
 #ifndef SIMULATION_ONLY
     m_adq_control_unit = CreateADQControlUnit();
     if (m_adq_control_unit == NULL)
+    {
         printf("Failed to create an ADQControlUnit.\n");
-    InitializeGen4Digitizers();
+        return;
+    }
+#else
+    m_adq_control_unit = &m_mock_adqapi;
 #endif
-
-    if (m_digitizers.size() == 0)
-        InitializeSimulatedDigitizers();
+    InitializeDigitizers();
 
     m_selected = std::unique_ptr<bool[]>( new bool[m_digitizers.size()] );
     memset(&m_selected[0], 0, sizeof(m_selected));
@@ -87,9 +89,8 @@ void Ui::Render(float width, float height)
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-void Ui::InitializeGen4Digitizers()
+void Ui::InitializeDigitizers()
 {
-#ifndef SIMULATION_ONLY
     /* Filter out the Gen4 digitizers and construct a digitizer object for each one. */
     struct ADQInfoListEntry *adq_list = NULL;
     int nof_devices = 0;
@@ -99,28 +100,21 @@ void Ui::InitializeGen4Digitizers()
     int nof_gen4_digitizers = 0;
     for (int i = 0; i < nof_devices; ++i)
     {
-        if (adq_list[i].ProductID == PID_ADQ3)
+        switch (adq_list[i].ProductID)
         {
+        case PID_ADQ32:
+        case PID_ADQ36:
             if (ADQControlUnit_OpenDeviceInterface(m_adq_control_unit, i))
                 nof_gen4_digitizers++;
+            break;
+        default:
+            break;
         }
     }
 
     for (int i = 0; i < nof_gen4_digitizers; ++i)
-        m_digitizers.push_back(std::make_unique<Gen4Digitizer>(m_adq_control_unit, i + 1));
-
-    /* FIXME: Remove */
-    if (m_digitizers.size() == 0)
-        printf("No Gen4 digitizers.\n");
-#endif
-}
-
-void Ui::InitializeSimulatedDigitizers()
-{
-    printf("Using simulator.\n");
-    for (int i = 0; i < 1; ++i)
     {
-        m_digitizers.push_back(std::make_unique<Digitizer>(&m_mock_adqapi, i + 1));
+        m_digitizers.push_back(std::make_unique<Digitizer>(m_adq_control_unit, i + 1));
 
         /* FIXME: array type instead? */
         std::vector<std::shared_ptr<ProcessedRecord>> tmp;
@@ -128,6 +122,9 @@ void Ui::InitializeSimulatedDigitizers()
             tmp.push_back(std::shared_ptr<ProcessedRecord>());
         m_records.push_back(tmp);
     }
+
+    if (m_digitizers.size() == 0)
+        printf("No Gen4 digitizers.\n");
 }
 
 void Ui::UpdateRecords()
@@ -139,6 +136,7 @@ void Ui::UpdateRecords()
     /* Attempt to update the set of processed records for each digitizer. */
     for (size_t i = 0; i < m_digitizers.size(); ++i)
     {
+        /* FIXME: Skip nonexistent channels. */
         for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
             m_digitizers[i]->WaitForProcessedRecord(ch, m_records[i][ch]);
     }
@@ -437,7 +435,6 @@ void Ui::RenderParameters(const ImVec2 &position, const ImVec2 &size)
         ImGui::EndTabBar();
     }
     ImGui::End();
-
 }
 
 void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)

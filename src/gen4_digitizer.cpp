@@ -24,6 +24,8 @@ void Gen4Digitizer::MainLoop()
     }
     m_read_queue.Write({DigitizerMessageId::SETUP_OK});
 
+    /* FIXME: Start file watchers, after reading the digitizer's constant parameters. */
+
     m_thread_exit_code = ADQR_EOK;
     for (;;)
     {

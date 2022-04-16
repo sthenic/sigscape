@@ -20,6 +20,8 @@ private:
     void ProcessMessages();
 
     int SetParameters();
+
+    void InitializeFileWatchers(const struct ADQConstantParameters &constant);
 };
 
 #endif

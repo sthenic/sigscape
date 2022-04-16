@@ -97,6 +97,28 @@ int MockAdqApi::ReturnRecordBuffer(int adq_num, int channel, void *buffer)
     return m_generators[channel]->ReturnBuffer(static_cast<ADQGen4Record *>(buffer));
 }
 
+int MockAdqApi::GetParameters(int adq_num, enum ADQParameterId id, void *const parameters)
+{
+    if (parameters == NULL)
+        return ADQ_EINVAL;
+
+    if (id == ADQ_PARAMETER_ID_CONSTANT)
+    {
+        struct ADQConstantParameters *p = static_cast<struct ADQConstantParameters *>(parameters);
+        std::memset(p, 0, sizeof(*p));
+        p->id = ADQ_PARAMETER_ID_CONSTANT;
+        p->magic = ADQ_PARAMETERS_MAGIC;
+        /* FIXME: Actually read these from the target digitizer. */
+        p->nof_channels = 2;
+        std::snprintf(p->serial_number, sizeof(p->serial_number), "SPD-SIM0%d", adq_num);
+        return sizeof(*p);
+    }
+    else
+    {
+        return ADQ_EUNSUPPORTED;
+    }
+}
+
 int MockAdqApi::InitializeParametersString(int adq_num, enum ADQParameterId id, char *const string, size_t length, int format)
 {
     (void)adq_num;
@@ -217,7 +239,7 @@ int MockAdqApi::SetParametersString(int adq_num, const char *const string, size_
     }
 
     StopDataAcquisition(adq_num); /* TODO: We can quite easily support live updates I think. */
-    for (size_t i = 0; i < parameters.size(); ++i)
+    for (size_t i = 0; (i < parameters.size()) && (i < m_generators.size()); ++i)
         m_generators[i]->Initialize(parameters[i]);
     StartDataAcquisition(adq_num);
 
@@ -315,6 +337,13 @@ int ADQ_ReturnRecordBuffer(void *adq_cu, int adq_num, int channel, void *buffer)
     if (adq_cu == NULL)
         return ADQ_EINVAL;
     return static_cast<MockAdqApi *>(adq_cu)->ReturnRecordBuffer(adq_num, channel, buffer);
+}
+
+int ADQ_GetParameters(void *adq_cu, int adq_num, enum ADQParameterId id, void *const parameters)
+{
+    if (adq_cu == NULL)
+        return ADQ_EINVAL;
+    return static_cast<MockAdqApi *>(adq_cu)->GetParameters(adq_num, id, parameters);
 }
 
 int ADQ_InitializeParametersString(void *adq_cu, int adq_num, enum ADQParameterId id, char *const string, size_t length, int format)

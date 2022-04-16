@@ -1,7 +1,7 @@
 #include "simulated_digitizer.h"
 
 #include <sstream>
-#include <type_traits>
+#include <algorithm>
 
 SimulatedDigitizer::SimulatedDigitizer(int index)
     : Digitizer(&m_adqapi, index)
@@ -11,41 +11,31 @@ SimulatedDigitizer::SimulatedDigitizer(int index)
     {
         m_processing_threads.push_back(std::make_unique<DataProcessing>(&m_adqapi, m_id.index, i));
     }
-
-    /* FIXME: Add X number of digitizers w/ different number of channels. */
-
-    std::stringstream ss;
-    ss << "./simulated_digitizer_" << m_id.index << ".txt";
-    m_watchers.top = std::make_unique<FileWatcher>(ss.str().c_str());
-    ss.str("");
-    ss.clear();
-
-    ss << "./simulated_digitizer_clock_system_" << m_id.index << ".txt";
-    m_watchers.clock_system = std::make_unique<FileWatcher>(ss.str().c_str());
-
-    m_parameters.top = std::make_unique<ThreadSafeQueue<std::shared_ptr<std::string>>>(0, true);
-    m_parameters.clock_system = std::make_unique<ThreadSafeQueue<std::shared_ptr<std::string>>>(0, true);
 }
 
 void SimulatedDigitizer::MainLoop()
 {
-    m_parameters.top->Start();
-    m_parameters.clock_system->Start();
+    m_read_queue.Write({DigitizerMessageId::NEW_STATE, DigitizerState::NOT_ENUMERATED});
+    m_read_queue.Write({DigitizerMessageId::ENUMERATING});
 
-    m_watchers.top->Start();
-    m_watchers.clock_system->Start();
-
-    /* Initialize simulators w/ default values. */
-    /* FIXME: two for now */
+    /* FIXME: add actual setup device call */
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     Generator::Parameters parameters;
     m_adqapi.Initialize({parameters, parameters});
 
-    m_read_queue.Write(DigitizerMessage(DigitizerMessageId::NEW_STATE,
-                                        DigitizerState::NOT_ENUMERATED));
-    m_read_queue.Write(DigitizerMessage(DigitizerMessageId::ENUMERATING));
+    /* FIXME: Start file watchers after reading the digitizer's constant parameters. */
+    struct ADQConstantParameters constant;
+    int result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CONSTANT, &constant);
+    if (result != sizeof(constant))
+    {
+        m_read_queue.Write({DigitizerMessageId::SETUP_FAILED});
+        m_thread_exit_code = ADQR_EINTERNAL;
+        return;
+    }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    m_read_queue.Write(DigitizerMessage(DigitizerMessageId::SETUP_OK));
+    InitializeFileWatchers(constant);
+
+    m_read_queue.Write({DigitizerMessageId::SETUP_OK});
 
     m_thread_exit_code = ADQR_EOK;
     for (;;)
@@ -167,4 +157,29 @@ int SimulatedDigitizer::SetParameters()
 
     ADQ_SetParametersString(m_id.handle, m_id.index, parameters_str->c_str(), parameters_str->size());
     return ADQR_EOK;
+}
+
+void SimulatedDigitizer::InitializeFileWatchers(const struct ADQConstantParameters &constant)
+{
+    std::stringstream ss;
+    ss << "./parameters_top_" << constant.serial_number << ".txt";
+    std::string filename = ss.str();
+    std::transform(filename.begin(), filename.end(), filename.begin(), ::tolower);
+    m_watchers.top = std::make_unique<FileWatcher>(filename);
+    ss.str("");
+    ss.clear();
+
+    ss << "./parameters_clock_system_" << constant.serial_number << ".txt";
+    filename = ss.str();
+    std::transform(filename.begin(), filename.end(), filename.begin(), ::tolower);
+    m_watchers.clock_system = std::make_unique<FileWatcher>(filename);
+
+    m_parameters.top = std::make_unique<ThreadSafeQueue<std::shared_ptr<std::string>>>(0, true);
+    m_parameters.clock_system = std::make_unique<ThreadSafeQueue<std::shared_ptr<std::string>>>(0, true);
+
+    m_parameters.top->Start();
+    m_parameters.clock_system->Start();
+
+    m_watchers.top->Start();
+    m_watchers.clock_system->Start();
 }

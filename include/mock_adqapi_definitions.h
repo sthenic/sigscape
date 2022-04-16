@@ -63,6 +63,7 @@ struct ADQGen4Record
     uint64_t size;
 };
 
+/* FIXME: Slim this down to only contain the ones we use? */
 enum ADQParameterId
 {
   ADQ_PARAMETER_ID_RESERVED = 0,
@@ -107,5 +108,19 @@ enum ADQParameterId
 #endif
   ADQ_PARAMETER_ID_MAX_VAL = INT32_MAX
 };
+
+/* A reduced version of the set of constant parameters. */
+struct ADQConstantParameters
+{
+  enum ADQParameterId id;
+  int32_t nof_channels;
+  char serial_number[16];
+  char product_name[32];
+  char product_options[32];
+  char firmware_name[32];
+  uint64_t magic;
+};
+
+#define ADQ_PARAMETERS_MAGIC (0xAA559977AA559977ull)
 
 #endif

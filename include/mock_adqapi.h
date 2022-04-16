@@ -22,6 +22,8 @@ public:
                                 struct ADQDataReadoutStatus *status);
     int ReturnRecordBuffer(int adq_num, int channel, void *buffer);
 
+    int GetParameters(int adq_num, enum ADQParameterId id, void *const parameters);
+
     int InitializeParametersString(int adq_num, enum ADQParameterId id, char *const string, size_t length, int format);
     int SetParametersString(int adq_num, const char *const string, size_t length);
     int GetParametersString(int adq_num, enum ADQParameterId id, char *const string, size_t length, int format);
@@ -42,6 +44,8 @@ int ADQ_StopDataAcquisition(void *adq_cu, int adq_num);
 int64_t ADQ_WaitForRecordBuffer(void *adq_cu, int adq_num, int *channel, void **buffer, int timeout,
                                 struct ADQDataReadoutStatus *status);
 int ADQ_ReturnRecordBuffer(void *adq_cu, int adq_num, int channel, void *buffer);
+
+int ADQ_GetParameters(void *adq_cu, int adq_num, enum ADQParameterId id, void *const parameters);
 
 int ADQ_InitializeParametersString(void *adq_cu, int adq_num, enum ADQParameterId id, char *const string, size_t length, int format);
 int ADQ_SetParametersString(void *adq_cu, int adq_num, const char *const string, size_t length);

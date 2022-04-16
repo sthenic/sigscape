@@ -91,7 +91,7 @@ public:
     /* Interface to the digitizer's data processing threads, one per channel. */
     int WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedRecord> &record)
     {
-        if ((channel < 0) || (channel >= ADQ_MAX_NOF_CHANNELS))
+        if ((channel < 0) || (channel >= static_cast<int>(m_processing_threads.size())))
             return ADQR_EINVAL;
 
         return m_processing_threads[channel]->WaitForBuffer(record, 0);
@@ -101,11 +101,17 @@ public:
              with a persistent read queue and expose that directly. */
     int WaitForParameters(std::shared_ptr<std::string> &str)
     {
+        if (m_parameters.top == NULL)
+            return ADQR_ENOTREADY;
+
         return m_parameters.top->Read(str, 0);
     }
 
     int WaitForClockSystemParameters(std::shared_ptr<std::string> &str)
     {
+        if (m_parameters.clock_system == NULL)
+            return ADQR_ENOTREADY;
+
         return m_parameters.clock_system->Read(str, 0);
     }
 

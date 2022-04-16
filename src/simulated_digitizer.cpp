@@ -11,6 +11,8 @@ SimulatedDigitizer::SimulatedDigitizer(int index)
     {
         m_processing_threads.push_back(std::make_unique<DataProcessing>(&m_adqapi, m_id.index, i));
     }
+    /* FIXME: very temporary */
+    m_adqapi.AddDigitizer("SPD-SIM01", 2);
 }
 
 void SimulatedDigitizer::MainLoop()

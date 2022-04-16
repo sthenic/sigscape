@@ -114,7 +114,7 @@ void Ui::InitializeSimulatedDigitizers()
     printf("Using simulator.\n");
     for (int i = 0; i < 1; ++i)
     {
-        m_digitizers.push_back(std::make_unique<SimulatedDigitizer>(i));
+        m_digitizers.push_back(std::make_unique<SimulatedDigitizer>(i + 1));
 
         /* FIXME: array type instead? */
         std::vector<std::shared_ptr<ProcessedRecord>> tmp;

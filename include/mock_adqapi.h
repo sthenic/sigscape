@@ -1,19 +1,20 @@
 #ifndef MOCK_ADQAPI_H_5FQFYM
 #define MOCK_ADQAPI_H_5FQFYM
 
-#include "generator.h"
 #include "mock_adqapi_definitions.h"
+#include "mock_digitizer.h"
 #include <vector>
 
 /* This is a tiny mockup of the ADQAPI to allow us to run without the real
    ADQAPI and a digitizer connected to the host system. */
+
 class MockAdqApi
 {
 public:
     MockAdqApi() = default;
 
     /* Mockup control functions. */
-    void Initialize(const std::vector<Generator::Parameters> &parameters);
+    void AddDigitizer(const std::string &serial_number, int nof_channels);
 
     /* Mocked functions. */
     int SetupDevice(int adq_num);
@@ -32,12 +33,7 @@ public:
     int ValidateParametersString(int adq_num,  const char *const string, size_t length);
 
 private:
-    std::vector<std::unique_ptr<Generator>> m_generators;
-    static const std::string DEFAULT_PARAMETERS;
-    static const std::string DEFAULT_CLOCK_SYSTEM_PARAMETERS;
-
-    template<typename T>
-    int ParseLine(int line_idx, const std::string &str, std::vector<T> &values);
+    std::vector<std::unique_ptr<MockDigitizer>> m_digitizers;
 };
 
 /* The ADQControlUnit_* functions we're mocking. */

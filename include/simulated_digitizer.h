@@ -16,14 +16,9 @@ public:
 private:
     MockAdqApi m_adqapi;
 
-    static const std::string DEFAULT_PARAMETERS;
-    static const std::string DEFAULT_CLOCK_SYSTEM_PARAMETERS;
-
     void MainLoop() override;
     void ProcessMessages();
 
-    template<typename T>
-    int ParseLine(int line_idx, const std::string &str, std::vector<T> &values);
     int SetParameters();
 };
 

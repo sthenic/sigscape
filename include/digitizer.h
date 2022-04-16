@@ -70,52 +70,24 @@ struct DigitizerMessage
 class Digitizer : public MessageThread<Digitizer, struct DigitizerMessage>
 {
 public:
-    Digitizer(void *handle, int index)
-        : m_state(DigitizerState::NOT_ENUMERATED)
-        , m_id{handle, index}
-        , m_watchers{}
-        , m_parameters{}
-        , m_processing_threads{}
-    {
-    }
-
-    ~Digitizer()
-    {
-        Stop();
-    }
+    Digitizer(void *handle, int index);
+    ~Digitizer();
 
     /* Making copies of an object of this type is not allowed. */
     Digitizer(const Digitizer &other) = delete;
     Digitizer &operator=(const Digitizer &other) = delete;
 
     /* Interface to the digitizer's data processing threads, one per channel. */
-    int WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedRecord> &record)
-    {
-        if ((channel < 0) || (channel >= static_cast<int>(m_processing_threads.size())))
-            return ADQR_EINVAL;
+    int WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedRecord> &record);
 
-        return m_processing_threads[channel]->WaitForBuffer(record, 0);
-    }
+    /* Interface to the digitizer's parameters represented as strings. */
+    int WaitForParameters(std::shared_ptr<std::string> &str);
+    int WaitForClockSystemParameters(std::shared_ptr<std::string> &str);
 
-    /* TODO: We can probably do the same generalization for the MessageThread
-             with a persistent read queue and expose that directly. */
-    int WaitForParameters(std::shared_ptr<std::string> &str)
-    {
-        if (m_parameters.top == NULL)
-            return ADQR_ENOTREADY;
+    /* The main loop. */
+    void MainLoop() override;
 
-        return m_parameters.top->Read(str, 0);
-    }
-
-    int WaitForClockSystemParameters(std::shared_ptr<std::string> &str)
-    {
-        if (m_parameters.clock_system == NULL)
-            return ADQR_ENOTREADY;
-
-        return m_parameters.clock_system->Read(str, 0);
-    }
-
-protected:
+private:
     /* The digitizer's state. */
     enum DigitizerState m_state;
 
@@ -151,27 +123,12 @@ protected:
     /* The digitizer's data processing threads, one per channel. */
     std::vector<std::unique_ptr<DataProcessing>> m_processing_threads;
 
-private:
+    void ProcessMessages();
     void ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watcher,
-                                const std::unique_ptr<ParameterQueue> &queue)
-    {
-        FileWatcherMessage message;
-        while (ADQR_EOK == watcher->WaitForMessage(message, 0))
-        {
-            switch (message.id)
-            {
-            case FileWatcherMessageId::FILE_CREATED:
-            case FileWatcherMessageId::FILE_UPDATED:
-            case FileWatcherMessageId::FILE_DELETED:
-                queue->Write(message.contents);
-                break;
+                                const std::unique_ptr<ParameterQueue> &queue);
 
-            case FileWatcherMessageId::UPDATE_FILE:
-            default:
-                break;
-            }
-        }
-    }
+    int SetParameters();
+    void InitializeFileWatchers(const struct ADQConstantParameters &constant);
 };
 
 #endif

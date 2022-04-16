@@ -1,21 +1,54 @@
-#include "simulated_digitizer.h"
+#include "digitizer.h"
 
 #include <sstream>
 #include <algorithm>
 
-SimulatedDigitizer::SimulatedDigitizer(int index)
-    : Digitizer(&m_adqapi, index)
-    , m_adqapi()
+Digitizer::Digitizer(void *handle, int index)
+    : m_state(DigitizerState::NOT_ENUMERATED)
+    , m_id{handle, index}
+    , m_watchers{}
+    , m_parameters{}
+    , m_processing_threads{}
 {
+    /* FIXME: Move this to initialization in mainloop */
     for (int i = 0; i < ADQ_MAX_NOF_CHANNELS; ++i)
-    {
-        m_processing_threads.push_back(std::make_unique<DataProcessing>(&m_adqapi, m_id.index, i));
-    }
-    /* FIXME: very temporary */
-    m_adqapi.AddDigitizer("SPD-SIM01", 2);
+        m_processing_threads.push_back(std::make_unique<DataProcessing>(m_id.handle, m_id.index, i));
 }
 
-void SimulatedDigitizer::MainLoop()
+Digitizer::~Digitizer()
+{
+    Stop();
+}
+
+
+/* Interface to the digitizer's data processing threads, one per channel. */
+int Digitizer::WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedRecord> &record)
+{
+    if ((channel < 0) || (channel >= static_cast<int>(m_processing_threads.size())))
+        return ADQR_EINVAL;
+
+    return m_processing_threads[channel]->WaitForBuffer(record, 0);
+}
+
+/* TODO: We can probably do the same generalization for the MessageThread
+          with a persistent read queue and expose that directly. */
+int Digitizer::WaitForParameters(std::shared_ptr<std::string> &str)
+{
+    if (m_parameters.top == NULL)
+        return ADQR_ENOTREADY;
+
+    return m_parameters.top->Read(str, 0);
+}
+
+int Digitizer::WaitForClockSystemParameters(std::shared_ptr<std::string> &str)
+{
+    if (m_parameters.clock_system == NULL)
+        return ADQR_ENOTREADY;
+
+    return m_parameters.clock_system->Read(str, 0);
+}
+
+void Digitizer::MainLoop()
 {
     /* When the main loop is started, we assume ownership of the digitizer with
        the identifier we were given when this object was constructed. We begin
@@ -62,7 +95,7 @@ void SimulatedDigitizer::MainLoop()
     }
 }
 
-void SimulatedDigitizer::ProcessMessages()
+void Digitizer::ProcessMessages()
 {
     DigitizerMessage message;
     while (ADQR_EOK == m_write_queue.Read(message, 0))
@@ -143,9 +176,31 @@ void SimulatedDigitizer::ProcessMessages()
     }
 }
 
-int SimulatedDigitizer::SetParameters()
+void Digitizer::ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watcher,
+                                       const std::unique_ptr<ParameterQueue> &queue)
+{
+    FileWatcherMessage message;
+    while (ADQR_EOK == watcher->WaitForMessage(message, 0))
+    {
+        switch (message.id)
+        {
+        case FileWatcherMessageId::FILE_CREATED:
+        case FileWatcherMessageId::FILE_UPDATED:
+        case FileWatcherMessageId::FILE_DELETED:
+            queue->Write(message.contents);
+            break;
+
+        case FileWatcherMessageId::UPDATE_FILE:
+        default:
+            break;
+        }
+    }
+}
+
+int Digitizer::SetParameters()
 {
     /* FIXME: A very rough implementation. */
+    /* FIXME: Split this up so top/clock systems are set by different functions. */
     std::shared_ptr<std::string> parameters_str;
     std::shared_ptr<std::string> clock_system_parameters_str;
 
@@ -167,7 +222,7 @@ int SimulatedDigitizer::SetParameters()
     return ADQR_EOK;
 }
 
-void SimulatedDigitizer::InitializeFileWatchers(const struct ADQConstantParameters &constant)
+void Digitizer::InitializeFileWatchers(const struct ADQConstantParameters &constant)
 {
     std::stringstream ss;
     ss << "./parameters_top_" << constant.serial_number << ".txt";

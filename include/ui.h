@@ -8,11 +8,7 @@
 #include "GL/gl3w.h"
 #include <GLFW/glfw3.h>
 
-#include "simulated_digitizer.h"
-
-#ifndef SIMULATION_ONLY
-#include "gen4_digitizer.h"
-#endif
+#include "digitizer.h"
 
 class Ui
 {
@@ -31,6 +27,9 @@ private:
     bool m_show_imgui_demo_window;
     bool m_show_implot_demo_window;
     std::unique_ptr<bool[]> m_selected;
+#ifdef SIMULATION_ONLY
+    MockAdqApi m_mock_adqapi;
+#endif
 
     void InitializeGen4Digitizers();
     void InitializeSimulatedDigitizers();

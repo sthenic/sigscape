@@ -8,7 +8,13 @@ Ui::Ui()
     , m_show_imgui_demo_window(false)
     , m_show_implot_demo_window(false)
     , m_selected()
+#ifdef SIMULATION_ONLY
+    , m_mock_adqapi()
+#endif
 {
+#ifdef SIMULATION_ONLY
+    m_mock_adqapi.AddDigitizer("SPD-SIM01", 2);
+#endif
 }
 
 Ui::~Ui()
@@ -114,7 +120,7 @@ void Ui::InitializeSimulatedDigitizers()
     printf("Using simulator.\n");
     for (int i = 0; i < 1; ++i)
     {
-        m_digitizers.push_back(std::make_unique<SimulatedDigitizer>(i + 1));
+        m_digitizers.push_back(std::make_unique<Digitizer>(&m_mock_adqapi, i + 1));
 
         /* FIXME: array type instead? */
         std::vector<std::shared_ptr<ProcessedRecord>> tmp;

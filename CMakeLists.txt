@@ -67,10 +67,7 @@ FetchContent_MakeAvailable(imgui)
 add_dependencies(${PROJECT_NAME} gl3w_gen)
 set_property(SOURCE ${gl3w_BINARY_DIR}/src/gl3w.c PROPERTY GENERATED 1)
 
-if(WITH_ADQAPI)
-    target_sources(${PROJECT_NAME} PRIVATE
-        src/gen4_digitizer.cpp)
-else()
+if(NOT WITH_ADQAPI)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
         SIMULATION_ONLY)
     target_sources(${PROJECT_NAME} PRIVATE
@@ -95,7 +92,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
     src/generator.cpp
     src/data_processing.cpp
-    src/simulated_digitizer.cpp
+    src/digitizer.cpp
     src/file_watcher.cpp
     src/ui.cpp
     src/main.cpp

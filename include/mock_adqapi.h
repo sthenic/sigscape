@@ -16,6 +16,8 @@ public:
     void Initialize(const std::vector<Generator::Parameters> &parameters);
 
     /* Mocked functions. */
+    int SetupDevice(int adq_num);
+
     int StartDataAcquisition(int adq_num);
     int StopDataAcquisition(int adq_num);
     int64_t WaitForRecordBuffer(int adq_num, int *channel, void **buffer, int timeout,
@@ -38,7 +40,10 @@ private:
     int ParseLine(int line_idx, const std::string &str, std::vector<T> &values);
 };
 
-/* The ADQ_* functions. These are what we're after. */
+/* The ADQControlUnit_* functions we're mocking. */
+int ADQControlUnit_SetupDevice(void *adq_cu, int adq_num);
+
+/* The ADQ_* functions we're mocking. */
 int ADQ_StartDataAcquisition(void *adq_cu, int adq_num);
 int ADQ_StopDataAcquisition(void *adq_cu, int adq_num);
 int64_t ADQ_WaitForRecordBuffer(void *adq_cu, int adq_num, int *channel, void **buffer, int timeout,

@@ -15,28 +15,38 @@ SimulatedDigitizer::SimulatedDigitizer(int index)
 
 void SimulatedDigitizer::MainLoop()
 {
+    /* When the main loop is started, we assume ownership of the digitizer with
+       the identifier we were given when this object was constructed. We begin
+       by enumerating the digitizer, completing its initial setup procedure. */
     m_read_queue.Write({DigitizerMessageId::NEW_STATE, DigitizerState::NOT_ENUMERATED});
     m_read_queue.Write({DigitizerMessageId::ENUMERATING});
 
-    /* FIXME: add actual setup device call */
+    /* Performing this operation in a thread safe manner requires that
+       ADQControlUnit_OpenDeviceInterface() has been called (and returned
+       successfully) in a single thread process. */
+    int result = ADQControlUnit_SetupDevice(m_id.handle, m_id.index);
+    if (result != 1)
+    {
+        m_read_queue.Write({DigitizerMessageId::SETUP_FAILED});
+        m_thread_exit_code = ADQR_EINTERNAL;
+        return;
+    }
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    Generator::Parameters parameters;
-    m_adqapi.Initialize({parameters, parameters});
 
-    /* FIXME: Start file watchers after reading the digitizer's constant parameters. */
+    /* Read the digitizer's constant parameters, then start the file watchers
+       for the parameter sets. */
     struct ADQConstantParameters constant;
-    int result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CONSTANT, &constant);
+    result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CONSTANT, &constant);
     if (result != sizeof(constant))
     {
         m_read_queue.Write({DigitizerMessageId::SETUP_FAILED});
         m_thread_exit_code = ADQR_EINTERNAL;
         return;
     }
-
     InitializeFileWatchers(constant);
 
+    /* Signal that the digitizer was set up correctly and enter the main loop. */
     m_read_queue.Write({DigitizerMessageId::SETUP_OK});
-
     m_thread_exit_code = ADQR_EOK;
     for (;;)
     {
@@ -59,27 +69,23 @@ void SimulatedDigitizer::ProcessMessages()
         {
         case DigitizerMessageId::START_ACQUISITION:
         {
-            printf("Entering acquisition.\n");
             for (const auto &t : m_processing_threads)
                 t->Start();
             ADQ_StartDataAcquisition(m_id.handle, m_id.index);
 
             m_state = DigitizerState::ACQUISITION;
-            m_read_queue.Write(DigitizerMessage(DigitizerMessageId::NEW_STATE,
-                                                DigitizerState::ACQUISITION));
+            m_read_queue.Write({DigitizerMessageId::NEW_STATE, DigitizerState::ACQUISITION});
             break;
         }
 
         case DigitizerMessageId::STOP_ACQUISITION:
         {
-            printf("Entering configuration.\n");
             for (const auto &t : m_processing_threads)
                 t->Stop();
             ADQ_StopDataAcquisition(m_id.handle, m_id.index);
 
             m_state = DigitizerState::CONFIGURATION;
-            m_read_queue.Write(DigitizerMessage(DigitizerMessageId::NEW_STATE,
-                                                DigitizerState::CONFIGURATION));
+            m_read_queue.Write({DigitizerMessageId::NEW_STATE, DigitizerState::CONFIGURATION});
             break;
         }
 

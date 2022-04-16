@@ -36,6 +36,15 @@ void MockAdqApi::Initialize(const std::vector<Generator::Parameters> &parameters
     }
 }
 
+int MockAdqApi::SetupDevice(int adq_num)
+{
+    /* FIXME: Implement */
+    (void)adq_num;
+    Generator::Parameters parameters;
+    Initialize({parameters, parameters});
+    return 1;
+}
+
 int MockAdqApi::StartDataAcquisition(int adq_num)
 {
     (void)adq_num;
@@ -306,6 +315,14 @@ int MockAdqApi::ParseLine(int line_idx, const std::string &str, std::vector<T> &
     }
 
     return ADQR_EINVAL;
+}
+
+/* ADQControlUnit_ interface */
+int ADQControlUnit_SetupDevice(void *adq_cu, int adq_num)
+{
+    if (adq_cu == NULL)
+        return ADQ_EINVAL;
+    return static_cast<MockAdqApi *>(adq_cu)->SetupDevice(adq_num);
 }
 
 /* ADQ_ interface */

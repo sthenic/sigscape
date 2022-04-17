@@ -50,9 +50,7 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version)
     memset(&m_selected[0], 0, sizeof(m_selected));
 
     for (const auto &d : m_digitizers)
-    {
         d->Start();
-    }
 }
 
 void Ui::Terminate()
@@ -358,25 +356,25 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
     if (ImGui::Button("Start", COMMAND_PALETTE_BUTTON_SIZE))
     {
         printf("Start!\n");
-        m_digitizers[0]->PushMessage(DigitizerMessage(DigitizerMessageId::START_ACQUISITION));
+        m_digitizers[0]->PushMessage({DigitizerMessageId::START_ACQUISITION});
     }
     ImGui::SameLine();
     if (ImGui::Button("Stop", COMMAND_PALETTE_BUTTON_SIZE))
     {
         printf("Stop!\n");
-        m_digitizers[0]->PushMessage(DigitizerMessage(DigitizerMessageId::STOP_ACQUISITION));
+        m_digitizers[0]->PushMessage({DigitizerMessageId::STOP_ACQUISITION});
     }
     ImGui::SameLine();
     if (ImGui::Button("Set", COMMAND_PALETTE_BUTTON_SIZE))
     {
         printf("Set!\n");
-        m_digitizers[0]->PushMessage(DigitizerMessage(DigitizerMessageId::SET_PARAMETERS));
+        m_digitizers[0]->PushMessage({DigitizerMessageId::SET_PARAMETERS});
     }
     ImGui::SameLine();
     if (ImGui::Button("Get", COMMAND_PALETTE_BUTTON_SIZE))
     {
         printf("Get!\n");
-        m_digitizers[0]->PushMessage(DigitizerMessage(DigitizerMessageId::GET_PARAMETERS));
+        m_digitizers[0]->PushMessage({DigitizerMessageId::GET_PARAMETERS});
     }
     ImGui::BeginDisabled();
     if (ImGui::Button("SetPorts", COMMAND_PALETTE_BUTTON_SIZE))
@@ -393,13 +391,13 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
     if (ImGui::Button("Initialize", COMMAND_PALETTE_BUTTON_SIZE))
     {
         printf("Initialize!\n");
-        m_digitizers[0]->PushMessage(DigitizerMessage(DigitizerMessageId::INITIALIZE_PARAMETERS));
+        m_digitizers[0]->PushMessage({DigitizerMessageId::INITIALIZE_PARAMETERS});
     }
     ImGui::SameLine();
     if (ImGui::Button("Validate", COMMAND_PALETTE_BUTTON_SIZE))
     {
         printf("Validate!\n");
-        m_digitizers[0]->PushMessage(DigitizerMessage(DigitizerMessageId::VALIDATE_PARAMETERS));
+        m_digitizers[0]->PushMessage({DigitizerMessageId::VALIDATE_PARAMETERS});
     }
     ImGui::End();
 }
@@ -408,11 +406,11 @@ void Ui::RenderParameters(const ImVec2 &position, const ImVec2 &size)
 {
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
-    ImGui::Begin("Configuration", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+    ImGui::Begin("Parameters", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
     if (ImGui::BeginTabBar("Parameters", ImGuiTabBarFlags_None))
     {
         /* TODO: The idea here would be to read & copy the parameters from the selected digitizers[0]-> */
-        if (ImGui::BeginTabItem("Parameters"))
+        if (ImGui::BeginTabItem("Top"))
         {
             /* FIXME: Add label w/ path */
             /* FIXME: Could get fancy w/ only copying in ADQR_ELAST -> ADQR_EOK transition. */
@@ -420,8 +418,8 @@ void Ui::RenderParameters(const ImVec2 &position, const ImVec2 &size)
                 widget in read only mode. */
             static auto parameters = std::make_shared<std::string>("");
             m_digitizers[0]->WaitForParameters(parameters);
-            ImGui::InputTextMultiline("##parameters", parameters->data(), parameters->size(),
-                                        ImVec2(-FLT_MIN, -FLT_MIN), ImGuiInputTextFlags_ReadOnly);
+            ImGui::InputTextMultiline("##top", parameters->data(), parameters->size(),
+                                      ImVec2(-FLT_MIN, -FLT_MIN), ImGuiInputTextFlags_ReadOnly);
             ImGui::EndTabItem();
         }
 
@@ -431,7 +429,7 @@ void Ui::RenderParameters(const ImVec2 &position, const ImVec2 &size)
             static auto parameters = std::make_shared<std::string>("");
             m_digitizers[0]->WaitForClockSystemParameters(parameters);
             ImGui::InputTextMultiline("##clocksystem", parameters->data(), parameters->size(),
-                                        ImVec2(-FLT_MIN, -FLT_MIN), ImGuiInputTextFlags_ReadOnly);
+                                      ImVec2(-FLT_MIN, -FLT_MIN), ImGuiInputTextFlags_ReadOnly);
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();

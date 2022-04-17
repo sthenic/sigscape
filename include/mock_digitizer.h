@@ -31,7 +31,7 @@ public:
 private:
     struct ADQConstantParameters m_constant;
     std::vector<std::unique_ptr<Generator>> m_generators;
-    static const std::string DEFAULT_PARAMETERS;
+    static const std::string DEFAULT_TOP_PARAMETERS;
     static const std::string DEFAULT_CLOCK_SYSTEM_PARAMETERS;
 
     template<typename T>

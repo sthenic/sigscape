@@ -4,8 +4,8 @@
 #include <sstream>
 #include <type_traits>
 
-const std::string MockDigitizer::DEFAULT_PARAMETERS =
-R"""(PARAMETERS
+const std::string MockDigitizer::DEFAULT_TOP_PARAMETERS =
+R"""(TOP
 frequency:
     1e6, 9e6
 amplitude:
@@ -125,8 +125,8 @@ int MockDigitizer::InitializeParametersString(enum ADQParameterId id, char *cons
 
     if (id == ADQ_PARAMETER_ID_TOP)
     {
-        std::strncpy(string, DEFAULT_PARAMETERS.c_str(), length);
-        return static_cast<int>(sizeof(DEFAULT_PARAMETERS));
+        std::strncpy(string, DEFAULT_TOP_PARAMETERS.c_str(), length);
+        return static_cast<int>(sizeof(DEFAULT_TOP_PARAMETERS));
     }
     else if (id == ADQ_PARAMETER_ID_CLOCK_SYSTEM)
     {
@@ -147,7 +147,7 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
     std::string parameters_str(string);
     std::vector<Generator::Parameters> parameters;
 
-    if (parameters_str.rfind("PARAMETERS", 0) == 0)
+    if (parameters_str.rfind("TOP", 0) == 0)
     {
         std::vector<double> frequency;
         if (ADQR_EOK != ParseLine(2, parameters_str, frequency))

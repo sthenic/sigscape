@@ -92,6 +92,10 @@ void Digitizer::MainLoop()
         if (m_should_stop.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready)
             break;
     }
+
+    for (const auto &t : m_processing_threads)
+        t->Stop();
+    ADQ_StopDataAcquisition(m_id.handle, m_id.index);
 }
 
 void Digitizer::ProcessMessages()

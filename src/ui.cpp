@@ -19,6 +19,8 @@ Ui::Ui()
 
 Ui::~Ui()
 {
+    for (const auto &d : m_digitizers)
+        d->Stop();
 }
 
 void Ui::Initialize(GLFWwindow *window, const char *glsl_version)

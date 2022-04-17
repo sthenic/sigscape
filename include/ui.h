@@ -27,6 +27,16 @@ private:
     bool m_show_imgui_demo_window;
     bool m_show_implot_demo_window;
     std::unique_ptr<bool[]> m_selected;
+
+    struct DigitizerUiState
+    {
+        std::string identifier;
+        std::string status;
+        std::string extra;
+        ImVec4 color;
+    };
+    std::unique_ptr<DigitizerUiState[]> m_digitizer_ui_state;
+
 #ifdef SIMULATION_ONLY
     MockAdqApi m_mock_adqapi;
 #endif
@@ -36,6 +46,7 @@ private:
     void InitializeSimulatedDigitizers();
 
     void UpdateRecords();
+    void HandleMessage(size_t i, const DigitizerMessage &message);
     void HandleMessages();
 
     void RenderMenuBar();

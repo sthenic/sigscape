@@ -5,7 +5,7 @@ void MockAdqApi::AddDigitizer(const std::string &serial_number, int nof_channels
                               enum ADQProductID_Enum pid)
 {
     m_digitizers.push_back(std::make_unique<MockDigitizer>(serial_number, nof_channels));
-    m_digitizer_list.push_back({pid});
+    m_info_list.push_back({pid});
 }
 
 /* Mocked functions */
@@ -22,8 +22,8 @@ int MockAdqApi::ListDevices(struct ADQInfoListEntry **list, unsigned int *nof_de
     if ((list == NULL) || (nof_devices == NULL))
         return 0;
 
-    *list = &m_digitizer_list[0];
-    *nof_devices = static_cast<unsigned int>(m_digitizer_list.size());
+    *list = &m_info_list[0];
+    *nof_devices = static_cast<unsigned int>(m_info_list.size());
     return 1;
 }
 

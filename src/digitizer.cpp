@@ -65,7 +65,7 @@ void Digitizer::MainLoop()
         m_thread_exit_code = ADQR_EINTERNAL;
         return;
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     /* Read the digitizer's constant parameters, then start the file watchers
        for the parameter sets. */
@@ -80,7 +80,8 @@ void Digitizer::MainLoop()
     InitializeFileWatchers(constant);
 
     /* Signal that the digitizer was set up correctly and enter the main loop. */
-    m_read_queue.Write({DigitizerMessageId::SETUP_OK});
+    m_read_queue.Write({DigitizerMessageId::SETUP_OK,
+                                        std::make_shared<std::string>(constant.serial_number)});
     m_thread_exit_code = ADQR_EOK;
     for (;;)
     {

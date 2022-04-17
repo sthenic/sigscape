@@ -8,12 +8,14 @@ Ui::Ui()
     , m_show_imgui_demo_window(false)
     , m_show_implot_demo_window(false)
     , m_selected()
+    , m_digitizer_ui_state()
 #ifdef SIMULATION_ONLY
     , m_mock_adqapi()
 #endif
 {
 #ifdef SIMULATION_ONLY
     m_mock_adqapi.AddDigitizer("SPD-SIM01", 2, PID_ADQ32);
+    m_mock_adqapi.AddDigitizer("SPD-SIM02", 2, PID_ADQ32);
 #endif
 }
 
@@ -49,6 +51,8 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version)
     m_selected = std::unique_ptr<bool[]>( new bool[m_digitizers.size()] );
     memset(&m_selected[0], 0, sizeof(m_selected));
 
+    m_digitizer_ui_state = std::unique_ptr<DigitizerUiState[]>( new DigitizerUiState[m_digitizers.size()] );
+
     for (const auto &d : m_digitizers)
         d->Start();
 }
@@ -73,6 +77,7 @@ void Ui::Render(float width, float height)
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
+    HandleMessages();
     UpdateRecords();
     RenderMenuBar();
     RenderLeft(width, height);
@@ -142,9 +147,38 @@ void Ui::UpdateRecords()
     }
 }
 
+void Ui::HandleMessage(size_t i, const DigitizerMessage &message)
+{
+    switch (message.id)
+    {
+    case DigitizerMessageId::ENUMERATING:
+        m_digitizer_ui_state[i].identifier = "Enumerating...";
+        break;
+
+    case DigitizerMessageId::SETUP_OK:
+        m_digitizer_ui_state[i].identifier = *message.str;
+        m_digitizer_ui_state[i].status = "OK";
+        m_digitizer_ui_state[i].color = ImVec4(0.0f, 1.0f, 0.5f, 0.6f);
+        break;
+
+    case DigitizerMessageId::SETUP_FAILED:
+        m_digitizer_ui_state[i].identifier = *message.str;
+        m_digitizer_ui_state[i].status = "FAILED";
+        m_digitizer_ui_state[i].color = ImVec4(1.0f, 0.0f, 0.2f, 0.6f);
+        break;
+    }
+}
+
 void Ui::HandleMessages()
 {
     /* FIXME: Implement */
+    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    {
+        DigitizerMessage message;
+        int result = m_digitizers[i]->WaitForMessage(message, 0);
+        if (result == ADQR_EOK)
+            HandleMessage(i, message);
+    }
 }
 
 void Ui::RenderMenuBar()
@@ -300,24 +334,25 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
 
             for (size_t i = 0; i < m_digitizers.size(); ++i)
             {
-                char label[32];
-                std::sprintf(label, "Initializing... %zu", i);
                 ImGui::TableNextColumn();
-                if (ImGui::Selectable(label, m_selected[i], ImGuiSelectableFlags_SpanAllColumns))
+                if (ImGui::Selectable(m_digitizer_ui_state[i].identifier.c_str(), m_selected[i],
+                                      ImGuiSelectableFlags_SpanAllColumns))
                 {
                     if (!ImGui::GetIO().KeyCtrl)
                         memset(&m_selected[0], 0, sizeof(m_selected));
                     m_selected[i] ^= 1;
                 }
+
                 ImGui::TableNextColumn();
-                ImVec4 color(0.0f, 1.0f, 0.5f, 0.6f);
-                ImGui::PushStyleColor(ImGuiCol_Button, color);
-                std::sprintf(label, "OK##%zu", i);
-                if (ImGui::SmallButton(label))
+                if (m_digitizer_ui_state[i].status.size() > 0)
                 {
-                    printf("OK! %zu\n", i);
+                    ImGui::PushStyleColor(ImGuiCol_Button, m_digitizer_ui_state[i].color);
+                    if (ImGui::SmallButton(m_digitizer_ui_state[i].status.c_str()))
+                    {
+                        printf("OK! %zu\n", i);
+                    }
+                    ImGui::PopStyleColor();
                 }
-                ImGui::PopStyleColor();
                 ImGui::TableNextRow();
             }
         }

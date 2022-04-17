@@ -36,7 +36,7 @@ public:
 
 private:
     std::vector<std::unique_ptr<MockDigitizer>> m_digitizers;
-    std::vector<ADQInfoListEntry> m_digitizer_list;
+    std::vector<ADQInfoListEntry> m_info_list;
 };
 
 /* The ADQControlUnit_* functions we're mocking. */

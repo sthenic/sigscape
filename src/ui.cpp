@@ -4,8 +4,8 @@
 const ImVec4 Ui::COLOR_GREEN = {0.0f, 1.0f, 0.5f, 0.6f};
 const ImVec4 Ui::COLOR_RED = {1.0f, 0.0f, 0.2f, 0.6f};
 const ImVec4 Ui::COLOR_YELLOW = {1.0f, 1.0f, 0.3f, 0.8f};
-// const ImVec4 Ui::COLOR_YELLOW = {0.86f, 0.86f, 0.1f, 0.8f};
 const ImVec4 Ui::COLOR_ORANGE = {0.86f, 0.38f, 0.1f, 0.8f};
+const ImVec4 Ui::COLOR_PURPLE = {0.6f, 0.3f, 1.0f, 0.8f};
 
 Ui::Ui()
     : m_digitizers{}
@@ -168,7 +168,9 @@ void Ui::HandleMessage(size_t i, const DigitizerMessage &message)
     switch (message.id)
     {
     case DigitizerMessageId::ENUMERATING:
-        m_digitizer_ui_state[i].identifier = "Enumerating...";
+        m_digitizer_ui_state[i].identifier = "Unknown##" + std::to_string(i);
+        m_digitizer_ui_state[i].status = "ENUMERATING##" + std::to_string(i);
+        m_digitizer_ui_state[i].color = COLOR_PURPLE;
         break;
 
     case DigitizerMessageId::SETUP_OK:
@@ -176,8 +178,8 @@ void Ui::HandleMessage(size_t i, const DigitizerMessage &message)
         break;
 
     case DigitizerMessageId::SETUP_FAILED:
-        m_digitizer_ui_state[i].identifier = *message.str;
-        m_digitizer_ui_state[i].status = "SETUP FAILED";
+        m_digitizer_ui_state[i].identifier = "Unknown##" + std::to_string(i);
+        m_digitizer_ui_state[i].status = "SETUP FAILED##" + std::to_string(i);
         m_digitizer_ui_state[i].color = COLOR_RED;
         break;
 
@@ -205,6 +207,7 @@ void Ui::HandleMessage(size_t i, const DigitizerMessage &message)
     case DigitizerMessageId::GET_PARAMETERS:
     case DigitizerMessageId::VALIDATE_PARAMETERS:
     case DigitizerMessageId::INITIALIZE_PARAMETERS:
+    case DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
         /* These are not expected as a message from a digitizer thread. */
         break;
     }
@@ -429,10 +432,10 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
     if (ImGui::Button("Validate", COMMAND_PALETTE_BUTTON_SIZE))
         PushMessage(DigitizerMessageId::VALIDATE_PARAMETERS);
 
-    ImGui::End();
-
     if (!any_selected)
         ImGui::EndDisabled();
+
+    ImGui::End();
 }
 
 void Ui::RenderParameters(const ImVec2 &position, const ImVec2 &size)
@@ -450,7 +453,15 @@ void Ui::RenderParameters(const ImVec2 &position, const ImVec2 &size)
             /* It's ok with a static pointer here as long as we keep the
                 widget in read only mode. */
             static auto parameters = std::make_shared<std::string>("");
-            m_digitizers[0]->WaitForParameters(parameters);
+            for (size_t i = 0; i < m_digitizers.size(); ++i)
+            {
+                if (m_selected[i])
+                {
+                    m_digitizers[i]->WaitForParameters(parameters);
+                    break;
+                }
+            }
+
             ImGui::InputTextMultiline("##top", parameters->data(), parameters->size(),
                                       ImVec2(-FLT_MIN, -FLT_MIN), ImGuiInputTextFlags_ReadOnly);
             ImGui::EndTabItem();
@@ -460,7 +471,14 @@ void Ui::RenderParameters(const ImVec2 &position, const ImVec2 &size)
         {
             /* FIXME: Add label w/ path */
             static auto parameters = std::make_shared<std::string>("");
-            m_digitizers[0]->WaitForClockSystemParameters(parameters);
+            for (size_t i = 0; i < m_digitizers.size(); ++i)
+            {
+                if (m_selected[i])
+                {
+                    m_digitizers[i]->WaitForClockSystemParameters(parameters);
+                    break;
+                }
+            }
             ImGui::InputTextMultiline("##clocksystem", parameters->data(), parameters->size(),
                                       ImVec2(-FLT_MIN, -FLT_MIN), ImGuiInputTextFlags_ReadOnly);
             ImGui::EndTabItem();

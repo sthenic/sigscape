@@ -63,7 +63,7 @@ void Digitizer::MainLoop()
         m_thread_exit_code = ADQR_EINTERNAL;
         return;
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(700));
 
     /* Read the digitizer's constant parameters, then start the file watchers
        for the parameter sets. */
@@ -120,10 +120,8 @@ void Digitizer::ProcessMessages()
         {
         case DigitizerMessageId::START_ACQUISITION:
         {
-            for (const auto &t : m_processing_threads)
-                t->Start();
-            ADQ_StartDataAcquisition(m_id.handle, m_id.index);
-
+            /* FIXME: Check return value */
+            StartDataAcquisition();
             m_state = DigitizerState::ACQUISITION;
             m_read_queue.Write({DigitizerMessageId::NEW_STATE, DigitizerState::ACQUISITION});
             break;
@@ -131,56 +129,51 @@ void Digitizer::ProcessMessages()
 
         case DigitizerMessageId::STOP_ACQUISITION:
         {
-            for (const auto &t : m_processing_threads)
-                t->Stop();
-            ADQ_StopDataAcquisition(m_id.handle, m_id.index);
-
+            /* FIXME: Check return value */
+            StopDataAcquisition();
             m_state = DigitizerState::IDLE;
             m_read_queue.Write({DigitizerMessageId::NEW_STATE, DigitizerState::IDLE});
             break;
         }
 
         case DigitizerMessageId::SET_PARAMETERS:
-        {
             /* FIXME: Not ideal to stop the threads. */
-            for (const auto &t : m_processing_threads)
-                t->Stop();
-            SetParameters();
-            for (const auto &t : m_processing_threads)
-                t->Start();
+            if (m_state == DigitizerState::ACQUISITION)
+                StopDataAcquisition();
+
+            /* FIXME: Check return value */
+            SetParameters(m_parameters.top);
+
+            if (m_state == DigitizerState::ACQUISITION)
+                StartDataAcquisition();
             break;
-        }
 
         case DigitizerMessageId::VALIDATE_PARAMETERS:
-            /* FIXME: Implement something */
+            /* FIXME: Implement */
             break;
 
         case DigitizerMessageId::GET_PARAMETERS:
-            /* The file holds the state so there's nothing to do. */
+            /* FIXME: Implement */
             break;
 
         case DigitizerMessageId::INITIALIZE_PARAMETERS:
         {
-            char parameters_str[16384];
-            int result = ADQ_InitializeParametersString(m_id.handle, m_id.index,
-                                                        ADQ_PARAMETER_ID_TOP, parameters_str,
-                                                        sizeof(parameters_str), 1);
-            if (result > 0)
-            {
-                m_watchers.top->PushMessage({FileWatcherMessageId::UPDATE_FILE,
-                                             std::make_shared<std::string>(parameters_str)});
-            }
-
-            result = ADQ_InitializeParametersString(m_id.handle, m_id.index,
-                                                    ADQ_PARAMETER_ID_CLOCK_SYSTEM, parameters_str,
-                                                    sizeof(parameters_str), 1);
-            if (result > 0)
-            {
-                m_watchers.clock_system->PushMessage({FileWatcherMessageId::UPDATE_FILE,
-                                                     std::make_shared<std::string>(parameters_str)});
-            }
+            InitializeParameters(ADQ_PARAMETER_ID_TOP, m_watchers.top);
+            InitializeParameters(ADQ_PARAMETER_ID_CLOCK_SYSTEM, m_watchers.clock_system);
             break;
         }
+
+        case DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
+            /* FIXME: Not ideal to stop the threads. */
+            if (m_state == DigitizerState::ACQUISITION)
+                StopDataAcquisition();
+
+            /* FIXME: Check return value */
+            SetParameters(m_parameters.clock_system);
+
+            if (m_state == DigitizerState::ACQUISITION)
+                StartDataAcquisition();
+            break;
 
         case DigitizerMessageId::ENUMERATING:
         case DigitizerMessageId::SETUP_OK:
@@ -213,29 +206,56 @@ void Digitizer::ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watch
     }
 }
 
-int Digitizer::SetParameters()
+int Digitizer::StartDataAcquisition()
 {
-    /* FIXME: A very rough implementation. */
-    /* FIXME: Split this up so top/clock systems are set by different functions. */
+    for (const auto &t : m_processing_threads)
+        t->Start();
+    return ADQ_StartDataAcquisition(m_id.handle, m_id.index);
+}
+
+int Digitizer::StopDataAcquisition()
+{
+    for (const auto &t : m_processing_threads)
+        t->Stop();
+    return ADQ_StopDataAcquisition(m_id.handle, m_id.index);
+}
+
+int Digitizer::SetParameters(const std::unique_ptr<ParameterQueue> &queue)
+{
     std::shared_ptr<std::string> parameters_str;
-    std::shared_ptr<std::string> clock_system_parameters_str;
 
     int result = ADQR_ELAST;
     while (result == ADQR_ELAST)
-        result = m_parameters.top->Read(parameters_str, 0);
-
+        result = queue->Read(parameters_str, 0);
     if (result != ADQR_EOK)
         return ADQR_EINTERNAL;
 
-    result = ADQR_ELAST;
-    while (result == ADQR_ELAST)
-        result = m_parameters.clock_system->Read(clock_system_parameters_str, 0);
+    result = ADQ_SetParametersString(m_id.handle, m_id.index, parameters_str->c_str(),
+                                     parameters_str->size());
+    if (result > 0)
+        return ADQR_EOK;
+    else
+        return result;
+}
 
-    if (result != ADQR_EOK)
-        return ADQR_EINTERNAL;
-
-    ADQ_SetParametersString(m_id.handle, m_id.index, parameters_str->c_str(), parameters_str->size());
-    return ADQR_EOK;
+int Digitizer::InitializeParameters(enum ADQParameterId id,
+                                    const std::unique_ptr<FileWatcher> &watcher)
+{
+    /* Heap allocation */
+    static constexpr size_t SIZE = 16384;
+    auto parameters_str = std::unique_ptr<char[]>( new char[SIZE] );
+    int result = ADQ_InitializeParametersString(m_id.handle, m_id.index, id, parameters_str.get(),
+                                                SIZE, 1);
+    if (result > 0)
+    {
+        watcher->PushMessage({FileWatcherMessageId::UPDATE_FILE,
+                              std::make_shared<std::string>(parameters_str.get())});
+        return ADQR_EOK;
+    }
+    else
+    {
+        return result;
+    }
 }
 
 void Digitizer::InitializeFileWatchers(const struct ADQConstantParameters &constant)

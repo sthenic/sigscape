@@ -25,10 +25,11 @@ enum class DigitizerMessageId
     SETUP_FAILED,
     START_ACQUISITION,
     STOP_ACQUISITION,
-    SET_PARAMETERS,
+    SET_PARAMETERS, /* FIXME: Probably rename this SET_TOP_PARAMETERS */
     GET_PARAMETERS,
     VALIDATE_PARAMETERS,
     INITIALIZE_PARAMETERS,
+    SET_CLOCK_SYSTEM_PARAMETERS,
     NEW_STATE
 };
 
@@ -126,7 +127,11 @@ private:
     void ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watcher,
                                 const std::unique_ptr<ParameterQueue> &queue);
 
-    int SetParameters();
+    int StartDataAcquisition();
+    int StopDataAcquisition();
+
+    int SetParameters(const std::unique_ptr<ParameterQueue> &queue);
+    int InitializeParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher);
     void InitializeFileWatchers(const struct ADQConstantParameters &constant);
 };
 

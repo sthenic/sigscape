@@ -203,10 +203,8 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
         return ADQ_EINVAL;
     }
 
-    StopDataAcquisition(); /* TODO: We can quite easily support live updates I think. */
     for (size_t i = 0; (i < parameters.size()) && (i < m_generators.size()); ++i)
         m_generators[i]->Initialize(parameters[i]);
-    StartDataAcquisition();
 
     return ADQ_EUNSUPPORTED;
 }

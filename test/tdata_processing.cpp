@@ -16,7 +16,7 @@ TEST_GROUP(DataProcessingGroup)
     void setup()
     {
         mock_adqapi.AddDigitizer("SPD-SIM01", 1, PID_ADQ32);
-        processing = std::make_unique<DataProcessing>(&mock_adqapi, index, channel);
+        processing = std::make_unique<DataProcessing>(&mock_adqapi, index, channel, "SPD-SIM01 CHA");
     }
 
     void teardown()

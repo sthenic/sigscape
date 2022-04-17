@@ -79,6 +79,7 @@ private:
     static const ImVec4 COLOR_RED;
     static const ImVec4 COLOR_YELLOW;
     static const ImVec4 COLOR_ORANGE;
+    static const ImVec4 COLOR_PURPLE;
 };
 
 #endif

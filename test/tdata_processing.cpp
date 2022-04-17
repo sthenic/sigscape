@@ -1,21 +1,22 @@
+#include "data_processing.h"
+#include "mock_adqapi.h"
+
 #include <thread>
 #include <chrono>
-#include "data_processing.h"
-#include "generator.h"
-#include "mock_adqapi.h"
 
 #include "CppUTest/TestHarness.h"
 
 TEST_GROUP(DataProcessingGroup)
 {
     std::unique_ptr<DataProcessing> processing;
-    MockAdqApi adqapi;
+    MockAdqApi mock_adqapi;
     static constexpr int index = 1;
     static constexpr int channel = 0;
 
     void setup()
     {
-        processing = std::make_unique<DataProcessing>(&adqapi, index, channel);
+        mock_adqapi.AddDigitizer("SPD-SIM01", 1, PID_ADQ32);
+        processing = std::make_unique<DataProcessing>(&mock_adqapi, index, channel);
     }
 
     void teardown()
@@ -36,17 +37,30 @@ TEST(DataProcessingGroup, Records)
     constexpr size_t RECORD_LENGTH = 8192;
     constexpr double TRIGGER_FREQUENCY = 20.0;
 
-    Generator::Parameters parameters;
-    parameters.record_length = RECORD_LENGTH;
-    parameters.trigger_frequency = TRIGGER_FREQUENCY;
+    std::stringstream ss;
+    ss << R"""(TOP
+    frequency:
+        1e6
+    amplitude:
+        1.0
+    record length:
+    )""" << RECORD_LENGTH << R"""(
+    trigger frequency:
+    )""" << TRIGGER_FREQUENCY << R"""(
+    harmonic distortion:
+        0
+    noise standard deviation:
+        0.1
+    )""";
 
-    adqapi.Initialize({parameters});
+    ADQ_SetParametersString(&mock_adqapi, index, ss.str().c_str(), ss.str().size());
+
     LONGS_EQUAL(ADQR_EOK, processing->Start());
-    LONGS_EQUAL(ADQ_EOK, ADQ_StartDataAcquisition(&adqapi, index));
+    LONGS_EQUAL(ADQ_EOK, ADQ_StartDataAcquisition(&mock_adqapi, index));
 
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     LONGS_EQUAL(ADQR_EOK, processing->Stop());
-    LONGS_EQUAL(ADQ_EOK, ADQ_StopDataAcquisition(&adqapi, index));
+    LONGS_EQUAL(ADQ_EOK, ADQ_StopDataAcquisition(&mock_adqapi, index));
 }
 
 TEST(DataProcessingGroup, RepeatedStartStop)
@@ -56,16 +70,28 @@ TEST(DataProcessingGroup, RepeatedStartStop)
     constexpr int NOF_RECORDS = 200;
     constexpr int NOF_LOOPS = 2;
 
-    Generator::Parameters parameters;
-    parameters.record_length = RECORD_LENGTH;
-    parameters.trigger_frequency = TRIGGER_FREQUENCY;
+    std::stringstream ss;
+    ss << R"""(TOP
+    frequency:
+        1e6
+    amplitude:
+        1.0
+    record length:
+    )""" << RECORD_LENGTH << R"""(
+    trigger frequency:
+    )""" << TRIGGER_FREQUENCY << R"""(
+    harmonic distortion:
+        0
+    noise standard deviation:
+        0.1
+    )""";
 
-    adqapi.Initialize({parameters});
+    ADQ_SetParametersString(&mock_adqapi, index, ss.str().c_str(), ss.str().size());
 
     for (int i = 0; i < NOF_LOOPS; ++i)
     {
         LONGS_EQUAL(ADQR_EOK, processing->Start());
-        LONGS_EQUAL(ADQ_EOK, ADQ_StartDataAcquisition(&adqapi, 1));
+        LONGS_EQUAL(ADQ_EOK, ADQ_StartDataAcquisition(&mock_adqapi, index));
 
         int nof_records_received = 0;
         while (nof_records_received != NOF_RECORDS)
@@ -83,6 +109,6 @@ TEST(DataProcessingGroup, RepeatedStartStop)
         }
 
         LONGS_EQUAL(ADQR_EOK, processing->Stop());
-        LONGS_EQUAL(ADQ_EOK, ADQ_StopDataAcquisition(&adqapi, index));
+        LONGS_EQUAL(ADQ_EOK, ADQ_StopDataAcquisition(&mock_adqapi, index));
     }
 }

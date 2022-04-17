@@ -39,15 +39,16 @@ CXXFLAGS += \
 SOURCES = \
 	src/generator.cpp \
 	src/data_processing.cpp \
- 	src/simulated_digitizer.cpp \
+ 	src/digitizer.cpp \
 	src/mock_adqapi.cpp \
+	src/mock_digitizer.cpp \
  	src/file_watcher.cpp \
 	tgenerator.cpp \
 	tdata_processing.cpp \
  	tthread_safe_queue.cpp \
  	tmessage_thread.cpp \
  	tfile_watcher.cpp \
- 	tsimulated_digitizer.cpp \
+ 	tdigitizer.cpp \
 	main.cpp
 
 OBJECTS = $(patsubst %,$(BUILDDIR)/%,$(SOURCES:.cpp=.o))

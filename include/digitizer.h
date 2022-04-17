@@ -35,8 +35,7 @@ enum class DigitizerMessageId
 enum class DigitizerState
 {
     NOT_ENUMERATED,
-    INITIALIZATION,
-    CONFIGURATION,
+    IDLE,
     ACQUISITION
 };
 

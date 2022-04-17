@@ -79,9 +79,13 @@ void Digitizer::MainLoop()
     }
     InitializeFileWatchers(constant);
 
-    /* Signal that the digitizer was set up correctly and enter the main loop. */
+    /* Signal that the digitizer was set up correctly, that we're entering the
+       IDLE state and enter the main loop. */
     m_read_queue.Write({DigitizerMessageId::SETUP_OK,
-                                        std::make_shared<std::string>(constant.serial_number)});
+                        std::make_shared<std::string>(constant.serial_number)});
+
+    m_read_queue.Write({DigitizerMessageId::NEW_STATE, DigitizerState::IDLE});
+
     m_thread_exit_code = ADQR_EOK;
     for (;;)
     {
@@ -123,8 +127,8 @@ void Digitizer::ProcessMessages()
                 t->Stop();
             ADQ_StopDataAcquisition(m_id.handle, m_id.index);
 
-            m_state = DigitizerState::CONFIGURATION;
-            m_read_queue.Write({DigitizerMessageId::NEW_STATE, DigitizerState::CONFIGURATION});
+            m_state = DigitizerState::IDLE;
+            m_read_queue.Write({DigitizerMessageId::NEW_STATE, DigitizerState::IDLE});
             break;
         }
 

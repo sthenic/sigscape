@@ -1,6 +1,12 @@
 #include "ui.h"
 #include <cinttypes>
 
+const ImVec4 Ui::COLOR_GREEN = {0.0f, 1.0f, 0.5f, 0.6f};
+const ImVec4 Ui::COLOR_RED = {1.0f, 0.0f, 0.2f, 0.6f};
+const ImVec4 Ui::COLOR_YELLOW = {1.0f, 1.0f, 0.3f, 0.8f};
+// const ImVec4 Ui::COLOR_YELLOW = {0.86f, 0.86f, 0.1f, 0.8f};
+const ImVec4 Ui::COLOR_ORANGE = {0.86f, 0.38f, 0.1f, 0.8f};
+
 Ui::Ui()
     : m_digitizers{}
     , m_records{}
@@ -132,6 +138,16 @@ void Ui::InitializeDigitizers()
         printf("No Gen4 digitizers.\n");
 }
 
+void Ui::PushMessage(DigitizerMessageId id, bool selected)
+{
+    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    {
+        if (selected && !m_selected[i])
+            continue;
+        m_digitizers[i]->PushMessage({id});
+    }
+}
+
 void Ui::UpdateRecords()
 {
     /* FIXME: Skip unselected digitizers? We need a different queue then that
@@ -149,6 +165,7 @@ void Ui::UpdateRecords()
 
 void Ui::HandleMessage(size_t i, const DigitizerMessage &message)
 {
+    /* FIXME: Add an IDLE state */
     switch (message.id)
     {
     case DigitizerMessageId::ENUMERATING:
@@ -157,14 +174,39 @@ void Ui::HandleMessage(size_t i, const DigitizerMessage &message)
 
     case DigitizerMessageId::SETUP_OK:
         m_digitizer_ui_state[i].identifier = *message.str;
-        m_digitizer_ui_state[i].status = "OK";
-        m_digitizer_ui_state[i].color = ImVec4(0.0f, 1.0f, 0.5f, 0.6f);
         break;
 
     case DigitizerMessageId::SETUP_FAILED:
         m_digitizer_ui_state[i].identifier = *message.str;
-        m_digitizer_ui_state[i].status = "FAILED";
-        m_digitizer_ui_state[i].color = ImVec4(1.0f, 0.0f, 0.2f, 0.6f);
+        m_digitizer_ui_state[i].status = "SETUP FAILED";
+        m_digitizer_ui_state[i].color = COLOR_RED;
+        break;
+
+    case DigitizerMessageId::NEW_STATE:
+        switch (message.state)
+        {
+        case DigitizerState::NOT_ENUMERATED:
+            m_digitizer_ui_state[i].status = "NOT ENUMERATED";
+            m_digitizer_ui_state[i].color = COLOR_RED;
+            break;
+        case DigitizerState::IDLE:
+            m_digitizer_ui_state[i].status = "IDLE";
+            m_digitizer_ui_state[i].color = COLOR_GREEN;
+            break;
+        case DigitizerState::ACQUISITION:
+            m_digitizer_ui_state[i].status = "ACQUISITION";
+            m_digitizer_ui_state[i].color = COLOR_ORANGE;
+            break;
+        }
+        break;
+
+    case DigitizerMessageId::START_ACQUISITION:
+    case DigitizerMessageId::STOP_ACQUISITION:
+    case DigitizerMessageId::SET_PARAMETERS:
+    case DigitizerMessageId::GET_PARAMETERS:
+    case DigitizerMessageId::VALIDATE_PARAMETERS:
+    case DigitizerMessageId::INITIALIZE_PARAMETERS:
+        /* These are not expected as a message from a digitizer thread. */
         break;
     }
 }
@@ -326,9 +368,9 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
             const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
             ImGui::TableSetupColumn("Identifier",
                                     ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoHide,
-                                    TEXT_BASE_WIDTH * 20.0f);
+                                    TEXT_BASE_WIDTH * 14.0f);
             ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed,
-                                    TEXT_BASE_WIDTH * 12.0f);
+                                    TEXT_BASE_WIDTH * 20.0f);
             ImGui::TableSetupColumn("Extra");
             ImGui::TableHeadersRow();
 
@@ -347,10 +389,7 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
                 if (m_digitizer_ui_state[i].status.size() > 0)
                 {
                     ImGui::PushStyleColor(ImGuiCol_Button, m_digitizer_ui_state[i].color);
-                    if (ImGui::SmallButton(m_digitizer_ui_state[i].status.c_str()))
-                    {
-                        printf("OK! %zu\n", i);
-                    }
+                    ImGui::SmallButton(m_digitizer_ui_state[i].status.c_str());
                     ImGui::PopStyleColor();
                 }
                 ImGui::TableNextRow();
@@ -366,6 +405,8 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
     ImGui::Begin("Command Palette");
+
+    /* FIXME: Maybe this is overkill. */
     std::stringstream ss;
     bool any_selected = false;
     for (size_t i = 0; i < m_digitizers.size(); ++i)
@@ -373,68 +414,59 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
         if (m_selected[i])
         {
             if (!any_selected)
-                ss << "Commands will be applied to device ";
+                ss << "Commands will be applied to ";
             else
                 ss << ", ";
 
-            ss << i;
+            ss << m_digitizer_ui_state[i].identifier;
             any_selected = true;
         }
     }
 
     if (!any_selected)
-        ss << "No digitizer available.";
+        ss << "No digitizer selected.";
 
     ImGui::Text("%s", ss.str().c_str());
 
     const ImVec2 COMMAND_PALETTE_BUTTON_SIZE{85, 50};
+    if (!any_selected)
+        ImGui::BeginDisabled();
+
+    /* First row */
     if (ImGui::Button("Start", COMMAND_PALETTE_BUTTON_SIZE))
-    {
-        printf("Start!\n");
-        m_digitizers[0]->PushMessage({DigitizerMessageId::START_ACQUISITION});
-    }
+        PushMessage(DigitizerMessageId::START_ACQUISITION);
+
     ImGui::SameLine();
     if (ImGui::Button("Stop", COMMAND_PALETTE_BUTTON_SIZE))
-    {
-        printf("Stop!\n");
-        m_digitizers[0]->PushMessage({DigitizerMessageId::STOP_ACQUISITION});
-    }
+        PushMessage(DigitizerMessageId::STOP_ACQUISITION);
+
     ImGui::SameLine();
     if (ImGui::Button("Set", COMMAND_PALETTE_BUTTON_SIZE))
-    {
-        printf("Set!\n");
-        m_digitizers[0]->PushMessage({DigitizerMessageId::SET_PARAMETERS});
-    }
+        PushMessage(DigitizerMessageId::SET_PARAMETERS);
+
     ImGui::SameLine();
     if (ImGui::Button("Get", COMMAND_PALETTE_BUTTON_SIZE))
-    {
-        printf("Get!\n");
-        m_digitizers[0]->PushMessage({DigitizerMessageId::GET_PARAMETERS});
-    }
+        PushMessage(DigitizerMessageId::GET_PARAMETERS);
+
+    /* Second row */
     ImGui::BeginDisabled();
-    if (ImGui::Button("SetPorts", COMMAND_PALETTE_BUTTON_SIZE))
-    {
-        printf("SetPorts!\n");
-    }
+    ImGui::Button("Set Clock\nSystem", COMMAND_PALETTE_BUTTON_SIZE);
     ImGui::SameLine();
-    if (ImGui::Button("Set\nSelection", COMMAND_PALETTE_BUTTON_SIZE))
-    {
-        printf("SetSelection!\n");
-    }
+    ImGui::Button("Set\nSelection", COMMAND_PALETTE_BUTTON_SIZE);
     ImGui::EndDisabled();
+
     ImGui::SameLine();
     if (ImGui::Button("Initialize", COMMAND_PALETTE_BUTTON_SIZE))
-    {
-        printf("Initialize!\n");
-        m_digitizers[0]->PushMessage({DigitizerMessageId::INITIALIZE_PARAMETERS});
-    }
+        PushMessage(DigitizerMessageId::INITIALIZE_PARAMETERS);
+
     ImGui::SameLine();
     if (ImGui::Button("Validate", COMMAND_PALETTE_BUTTON_SIZE))
-    {
-        printf("Validate!\n");
-        m_digitizers[0]->PushMessage({DigitizerMessageId::VALIDATE_PARAMETERS});
-    }
+        PushMessage(DigitizerMessageId::VALIDATE_PARAMETERS);
+
     ImGui::End();
+
+    if (!any_selected)
+        ImGui::EndDisabled();
 }
 
 void Ui::RenderParameters(const ImVec2 &position, const ImVec2 &size)

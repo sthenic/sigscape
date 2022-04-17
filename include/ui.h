@@ -34,6 +34,7 @@ private:
         std::string status;
         std::string extra;
         ImVec4 color;
+        ImVec4 text_color;
     };
     std::unique_ptr<DigitizerUiState[]> m_digitizer_ui_state;
 
@@ -42,8 +43,7 @@ private:
 #endif
 
     void InitializeDigitizers();
-    void InitializeGen4Digitizers();
-    void InitializeSimulatedDigitizers();
+    void PushMessage(DigitizerMessageId id, bool selected = true);
 
     void UpdateRecords();
     void HandleMessage(size_t i, const DigitizerMessage &message);
@@ -65,6 +65,11 @@ private:
     static constexpr float FIRST_COLUMN_RELATIVE_WIDTH = 0.2f;
     static constexpr float SECOND_COLUMN_RELATIVE_WIDTH = 0.6f;
     static constexpr float THIRD_COLUMN_RELATIVE_WIDTH = 0.2f;
+
+    static const ImVec4 COLOR_GREEN;
+    static const ImVec4 COLOR_RED;
+    static const ImVec4 COLOR_YELLOW;
+    static const ImVec4 COLOR_ORANGE;
 };
 
 #endif

@@ -10,13 +10,11 @@ Digitizer::Digitizer(void *handle, int index)
     , m_parameters{}
     , m_processing_threads{}
 {
-    /* FIXME: Move this to initialization in mainloop */
-    for (int i = 0; i < ADQ_MAX_NOF_CHANNELS; ++i)
-        m_processing_threads.push_back(std::make_unique<DataProcessing>(m_id.handle, m_id.index, i));
 }
 
 Digitizer::~Digitizer()
 {
+    /* FIXME: Really needed? */
     Stop();
 }
 
@@ -78,6 +76,16 @@ void Digitizer::MainLoop()
         return;
     }
     InitializeFileWatchers(constant);
+
+    /* Instantiate one data processing thread for each digitizer channel. */
+    for (int ch = 0; ch < constant.nof_channels; ++ch)
+    {
+        std::stringstream ss;
+        ss << constant.serial_number << " CH" << constant.channel[ch].label;
+        m_processing_threads.push_back(
+            std::make_unique<DataProcessing>(m_id.handle, m_id.index, ch, ss.str())
+        );
+    }
 
     /* Signal that the digitizer was set up correctly, that we're entering the
        IDLE state and enter the main loop. */

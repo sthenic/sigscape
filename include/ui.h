@@ -57,10 +57,19 @@ private:
     void RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size);
     void RenderCommandPalette(const ImVec2 &position, const ImVec2 &size);
     void RenderParameters(const ImVec2 &position, const ImVec2 &size);
+
+    void PlotTimeDomainSelected();
     void RenderTimeDomain(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size);
+
+    void PlotFourierTransformSelected();
     void RenderFourierTransformPlot();
+
+    void PlotWaterfallSelected();
     void RenderWaterfallPlot();
+
+    void RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size);
+    void RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size);
 
     static constexpr float FIRST_COLUMN_RELATIVE_WIDTH = 0.2f;
     static constexpr float SECOND_COLUMN_RELATIVE_WIDTH = 0.6f;

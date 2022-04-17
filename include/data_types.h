@@ -245,6 +245,7 @@ struct ProcessedRecord
         : time_domain(NULL)
         , frequency_domain(NULL)
         , waterfall(NULL)
+        , label("")
     {
         time_domain_metrics.max = std::numeric_limits<double>::lowest();
         time_domain_metrics.min = std::numeric_limits<double>::max();
@@ -257,6 +258,7 @@ struct ProcessedRecord
         time_domain = std::make_shared<TimeDomainRecord>(count);
         frequency_domain = std::make_shared<FrequencyDomainRecord>(count); /* FIXME: perhaps skip this? */
         waterfall = NULL;
+        label = "";
         time_domain_metrics.max = std::numeric_limits<double>::lowest();
         time_domain_metrics.min = std::numeric_limits<double>::max();
         frequency_domain_metrics.max = std::numeric_limits<double>::lowest();
@@ -275,6 +277,7 @@ struct ProcessedRecord
         if (other.waterfall != NULL)
             waterfall = std::make_shared<Waterfall>(*other.waterfall);
 
+        label = other.label;
         time_domain_metrics = other.time_domain_metrics;
         frequency_domain_metrics = other.frequency_domain_metrics;
     }
@@ -298,6 +301,7 @@ struct ProcessedRecord
             else
                 waterfall = NULL;
 
+            label = other.label;
             time_domain_metrics = other.time_domain_metrics;
             frequency_domain_metrics = other.frequency_domain_metrics;
         }
@@ -308,6 +312,7 @@ struct ProcessedRecord
     std::shared_ptr<TimeDomainRecord> time_domain;
     std::shared_ptr<FrequencyDomainRecord> frequency_domain;
     std::shared_ptr<Waterfall> waterfall;
+    std::string label;
 
     struct TimeDomainMetrics
     {

@@ -36,8 +36,11 @@ MockDigitizer::MockDigitizer(const std::string &serial_number, int nof_channels)
     std::strncpy(m_constant.serial_number, serial_number.c_str(),
                  std::min(sizeof(m_constant.serial_number), serial_number.size()));
 
-    for (int ch = 0; ch < m_constant.nof_channels; ++ch)
+    for (int ch = 0; ch < nof_channels; ++ch)
+    {
+        m_constant.channel[ch].label[0] = "ABCDEFGH"[ch];
         m_generators.push_back(std::make_unique<Generator>());
+    }
 }
 
 int MockDigitizer::SetupDevice()

@@ -10,7 +10,7 @@
 class DataProcessing : public SmartBufferThread<DataProcessing, ProcessedRecord, 100, true>
 {
 public:
-    DataProcessing(void *control_unit, int index, int channel);
+    DataProcessing(void *control_unit, int index, int channel, const std::string &label);
     ~DataProcessing();
     DataProcessing(const DataProcessing &other) = delete;
     DataProcessing &operator=(const DataProcessing &other) = delete;
@@ -22,6 +22,7 @@ private:
     void *m_control_unit;
     int m_index;
     int m_channel;
+    std::string m_label;
 
     std::deque<std::shared_ptr<FrequencyDomainRecord>> m_waterfall;
 

@@ -165,7 +165,6 @@ void Ui::UpdateRecords()
 
 void Ui::HandleMessage(size_t i, const DigitizerMessage &message)
 {
-    /* FIXME: Add an IDLE state */
     switch (message.id)
     {
     case DigitizerMessageId::ENUMERATING:
@@ -213,7 +212,6 @@ void Ui::HandleMessage(size_t i, const DigitizerMessage &message)
 
 void Ui::HandleMessages()
 {
-    /* FIXME: Implement */
     for (size_t i = 0; i < m_digitizers.size(); ++i)
     {
         DigitizerMessage message;
@@ -267,42 +265,10 @@ void Ui::RenderRight(float width, float height)
     const ImVec2 SIZE(width * SECOND_COLUMN_RELATIVE_WIDTH, PLOT_WINDOW_HEIGHT);
 
     /* In the right column, we show various metrics. */
-    /* FIXME: Move into functions? */
-    ImGui::SetNextWindowPos(POSITION_UPPER);
-    ImGui::SetNextWindowSize(SIZE);
-    ImGui::Begin("Metrics##timedomain", NULL, ImGuiWindowFlags_NoMove);
-    if (m_records[0][0] != NULL)
-    {
-        ImGui::Text("Record number: %" PRIu32, m_records[0][0]->time_domain->header.record_number);
-        ImGui::Text("Maximum value: %.4f", m_records[0][0]->time_domain_metrics.max);
-        ImGui::Text("Minimum value: %.4f", m_records[0][0]->time_domain_metrics.min);
-        ImGui::Text("Estimated trigger frequency: %.4f Hz", m_records[0][0]->time_domain->estimated_trigger_frequency);
-    }
-    if (m_records[0][1] != NULL)
-    {
-        ImGui::Text("Record number: %" PRIu32, m_records[0][1]->time_domain->header.record_number);
-        ImGui::Text("Maximum value: %.4f", m_records[0][1]->time_domain_metrics.max);
-        ImGui::Text("Minimum value: %.4f", m_records[0][1]->time_domain_metrics.min);
-        ImGui::Text("Estimated trigger frequency: %.4f Hz", m_records[0][1]->time_domain->estimated_trigger_frequency);
-    }
-    ImGui::End();
+    RenderTimeDomainMetrics(POSITION_UPPER, SIZE);
 
-    ImGui::SetNextWindowPos(POSITION_LOWER);
-    ImGui::SetNextWindowSize(SIZE);
-    ImGui::Begin("Metrics##frequencydomain", NULL, ImGuiWindowFlags_NoMove);
-    if (m_records[0][0] != NULL)
-    {
-        ImGui::Text("Record number: %" PRIu32, m_records[0][0]->time_domain->header.record_number);
-        ImGui::Text("Maximum value: %.4f", m_records[0][0]->frequency_domain_metrics.max);
-        ImGui::Text("Minimum value: %.4f", m_records[0][0]->frequency_domain_metrics.min);
-    }
-    if (m_records[0][1] != NULL)
-    {
-        ImGui::Text("Record number: %" PRIu32, m_records[0][1]->time_domain->header.record_number);
-        ImGui::Text("Maximum value: %.4f", m_records[0][1]->frequency_domain_metrics.max);
-        ImGui::Text("Minimum value: %.4f", m_records[0][1]->frequency_domain_metrics.min);
-    }
-    ImGui::End();
+    /*  */
+    RenderFrequencyDomainMetrics(POSITION_LOWER, SIZE);
 }
 
 void Ui::RenderCenter(float width, float height)
@@ -504,6 +470,26 @@ void Ui::RenderParameters(const ImVec2 &position, const ImVec2 &size)
     ImGui::End();
 }
 
+void Ui::PlotTimeDomainSelected()
+{
+    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    {
+        if (!m_selected[i])
+            continue;
+
+        for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
+        {
+            if (m_records[i][ch] != NULL)
+            {
+                ImPlot::PlotLine(m_records[i][ch]->label.c_str(),
+                                 m_records[i][ch]->time_domain->x.get(),
+                                 m_records[i][ch]->time_domain->y.get(),
+                                 m_records[i][ch]->time_domain->count);
+            }
+        }
+    }
+}
+
 void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
 {
     ImGui::SetNextWindowPos(position);
@@ -512,18 +498,7 @@ void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
     if (ImPlot::BeginPlot("Time domain", ImVec2(-1, -1), ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
     {
         ImPlot::SetupAxis(ImAxis_X1, "Time");
-        if (m_records[0][0] != NULL)
-        {
-            ImPlot::PlotLine("CHA", m_records[0][0]->time_domain->x.get(),
-                             m_records[0][0]->time_domain->y.get(),
-                             m_records[0][0]->time_domain->count);
-        }
-        if (m_records[0][1] != NULL)
-        {
-            ImPlot::PlotLine("CHB", m_records[0][1]->time_domain->x.get(),
-                             m_records[0][1]->time_domain->y.get(),
-                             m_records[0][1]->time_domain->count);
-        }
+        PlotTimeDomainSelected();
         ImPlot::EndPlot();
     }
     ImGui::End();
@@ -552,6 +527,26 @@ void Ui::RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size)
     ImGui::End();
 }
 
+void Ui::PlotFourierTransformSelected()
+{
+    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    {
+        if (!m_selected[i])
+            continue;
+
+        for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
+        {
+            if (m_records[i][ch] != NULL)
+            {
+                ImPlot::PlotLine(m_records[i][ch]->label.c_str(),
+                                 m_records[i][ch]->frequency_domain->x.get(),
+                                 m_records[i][ch]->frequency_domain->y.get(),
+                                 m_records[i][ch]->frequency_domain->count / 2);
+            }
+        }
+    }
+}
+
 void Ui::RenderFourierTransformPlot()
 {
     if (ImPlot::BeginPlot("FFT##plot", ImVec2(-1, -1), ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
@@ -559,19 +554,32 @@ void Ui::RenderFourierTransformPlot()
         ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, 0.5);
         ImPlot::SetupAxisLimits(ImAxis_Y1, -80.0, 0.0);
         ImPlot::SetupAxis(ImAxis_X1, "Hz");
-        if (m_records[0][0] != NULL)
-        {
-            ImPlot::PlotLine("CHA", m_records[0][0]->frequency_domain->x.get(),
-                             m_records[0][0]->frequency_domain->y.get(),
-                             m_records[0][0]->frequency_domain->count / 2);
-        }
-        if (m_records[0][1] != NULL)
-        {
-            ImPlot::PlotLine("CHB", m_records[0][1]->frequency_domain->x.get(),
-                             m_records[0][1]->frequency_domain->y.get(),
-                             m_records[0][1]->frequency_domain->count / 2);
-        }
+        PlotFourierTransformSelected();
         ImPlot::EndPlot();
+    }
+}
+
+void Ui::PlotWaterfallSelected()
+{
+    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    {
+        if (!m_selected[i])
+            continue;
+
+        /* FIXME: Plot for the first channel for the first selected digitizer.
+                  We have to figure out what to do here since we cannot plot
+                  multiple waterfalls at the same time. */
+
+        for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
+        {
+            if (m_records[i][ch] != NULL)
+            {
+                ImPlot::PlotHeatmap("heat", m_records[i][ch]->waterfall->data.get(),
+                                    m_records[i][ch]->waterfall->rows,
+                                    m_records[i][ch]->waterfall->columns, -80, 0, NULL);
+                return;
+            }
+        }
     }
 }
 
@@ -581,15 +589,74 @@ void Ui::RenderWaterfallPlot()
     if (ImPlot::BeginPlot("Waterfall##plot", ImVec2(-1, -1), ImPlotFlags_NoTitle | ImPlotFlags_NoLegend))
     {
         ImPlot::SetupAxis(ImAxis_X1, "Hz");
-        if (m_records[0][0] != NULL)
-        {
-            ImPlot::PlotHeatmap("heat", m_records[0][0]->waterfall->data.get(),
-                                m_records[0][0]->waterfall->rows,
-                                m_records[0][0]->waterfall->columns, -80, 0, NULL);
-        }
+        PlotWaterfallSelected();
         ImPlot::EndPlot();
     }
     ImPlot::PopColormap();
 }
 
+void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
+{
+    /* FIXME: Move into functions? */
+    ImGui::SetNextWindowPos(position);
+    ImGui::SetNextWindowSize(size);
+    ImGui::Begin("Metrics##timedomain", NULL, ImGuiWindowFlags_NoMove);
+
+    bool has_contents = false;
+    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    {
+        if (!m_selected[i])
+            continue;
+
+        for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
+        {
+            if (m_records[i][ch] != NULL)
+            {
+                if (has_contents)
+                    ImGui::Separator();
+
+                ImGui::Text("%s", m_records[i][ch]->label.c_str());
+                ImGui::Text("Record number: %" PRIu32, m_records[i][ch]->time_domain->header.record_number);
+                ImGui::Text("Maximum value: %.4f", m_records[i][ch]->time_domain_metrics.max);
+                ImGui::Text("Minimum value: %.4f", m_records[i][ch]->time_domain_metrics.min);
+                ImGui::Text("Estimated trigger frequency: %.4f Hz", m_records[i][ch]->time_domain->estimated_trigger_frequency);
+            }
+
+            has_contents = true;
+        }
+    }
+    ImGui::End();
+}
+
+void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size)
+{
+    ImGui::SetNextWindowPos(position);
+    ImGui::SetNextWindowSize(size);
+    ImGui::Begin("Metrics##frequencydomain", NULL, ImGuiWindowFlags_NoMove);
+
+    bool has_contents = false;
+    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    {
+        if (!m_selected[i])
+            continue;
+
+        for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
+        {
+            if (m_records[i][ch] != NULL)
+            {
+                if (has_contents)
+                    ImGui::Separator();
+
+                ImGui::Text("%s", m_records[i][ch]->label.c_str());
+                ImGui::Text("Record number: %" PRIu32, m_records[i][ch]->time_domain->header.record_number);
+                ImGui::Text("Maximum value: %.4f", m_records[i][ch]->frequency_domain_metrics.max);
+                ImGui::Text("Minimum value: %.4f", m_records[i][ch]->frequency_domain_metrics.min);
+            }
+
+            has_contents = true;
+        }
+
+    }
+    ImGui::End();
+}
 

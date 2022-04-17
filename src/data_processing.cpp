@@ -11,10 +11,11 @@
 
 #include <cmath>
 
-DataProcessing::DataProcessing(void *control_unit, int index, int channel)
+DataProcessing::DataProcessing(void *control_unit, int index, int channel, const std::string &label)
     : m_control_unit(control_unit)
     , m_index(index)
     , m_channel(channel)
+    , m_label(label)
 {
 }
 
@@ -67,6 +68,7 @@ void DataProcessing::MainLoop()
             processed_record->time_domain = std::make_shared<TimeDomainRecord>(time_domain);
             processed_record->frequency_domain = std::make_shared<FrequencyDomainRecord>(fft_size);
             processed_record->time_domain->estimated_trigger_frequency = estimated_trigger_frequency;
+            processed_record->label = m_label;
 
             /* Compute FFT */
             const char *error = NULL;

@@ -120,6 +120,11 @@ enum ADQParameterId
   ADQ_PARAMETER_ID_MAX_VAL = INT32_MAX
 };
 
+struct ADQConstantParametersChannel
+{
+    char label[8];
+};
+
 /* A reduced version of the set of constant parameters. */
 struct ADQConstantParameters
 {
@@ -129,6 +134,7 @@ struct ADQConstantParameters
   char product_name[32];
   char product_options[32];
   char firmware_name[32];
+  struct ADQConstantParametersChannel channel[ADQ_MAX_NOF_CHANNELS];
   uint64_t magic;
 };
 

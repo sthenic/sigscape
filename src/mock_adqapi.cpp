@@ -1,5 +1,10 @@
 #include "mock_adqapi.h"
 
+/* A static instance of the mocked ADQAPI. The user can decide whether to
+   instantiate the object themselves or to use the CreateADQControlUnit()
+   interface. We only supports one control unit for now. */
+static MockAdqApi mock_adqapi;
+
 /* Mockup control functions */
 void MockAdqApi::AddDigitizer(const std::string &serial_number, int nof_channels,
                               enum ADQProductID_Enum pid)
@@ -109,6 +114,18 @@ int MockAdqApi::ValidateParametersString(int adq_num,  const char *const string,
     if ((adq_num == 0) || (adq_num > static_cast<int>(m_digitizers.size())))
         return ADQ_EINVAL;
     return m_digitizers[adq_num - 1]->ValidateParametersString(string, length);
+}
+
+void *CreateADQControlUnit()
+{
+    return &mock_adqapi;
+}
+
+void DeleteADQControlUnit(void *adq_cu)
+{
+    /* FIXME: any cleanup? */
+    (void)adq_cu;
+    return;
 }
 
 /* ADQControlUnit_ interface */

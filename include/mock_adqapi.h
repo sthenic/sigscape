@@ -39,6 +39,9 @@ private:
     std::vector<ADQInfoListEntry> m_info_list;
 };
 
+void *CreateADQControlUnit();
+void DeleteADQControlUnit(void *adq_cu);
+
 /* The ADQControlUnit_* functions we're mocking. */
 int ADQControlUnit_SetupDevice(void *adq_cu, int adq_num);
 int ADQControlUnit_ListDevices(void *adq_cu, struct ADQInfoListEntry **list, unsigned int *nof_devices);

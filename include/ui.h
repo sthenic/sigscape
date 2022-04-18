@@ -38,10 +38,6 @@ private:
     };
     std::unique_ptr<DigitizerUiState[]> m_digitizer_ui_state;
 
-#ifdef SIMULATION_ONLY
-    MockAdqApi m_mock_adqapi;
-#endif
-
     void InitializeDigitizers();
     void PushMessage(DigitizerMessageId id, bool selected = true);
 

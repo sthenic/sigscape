@@ -15,15 +15,7 @@ Ui::Ui()
     , m_show_implot_demo_window(false)
     , m_selected()
     , m_digitizer_ui_state()
-#ifdef SIMULATION_ONLY
-    , m_mock_adqapi()
-#endif
-{
-#ifdef SIMULATION_ONLY
-    m_mock_adqapi.AddDigitizer("SPD-SIM01", 2, PID_ADQ32);
-    m_mock_adqapi.AddDigitizer("SPD-SIM02", 2, PID_ADQ32);
-#endif
-}
+{}
 
 Ui::~Ui()
 {
@@ -42,16 +34,18 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version)
     ImGui::StyleColorsDark();
 
     m_digitizers.clear();
-#ifndef SIMULATION_ONLY
     m_adq_control_unit = CreateADQControlUnit();
     if (m_adq_control_unit == NULL)
     {
         printf("Failed to create an ADQControlUnit.\n");
         return;
     }
-#else
-    m_adq_control_unit = &m_mock_adqapi;
+
+#ifdef SIMULATION_ONLY
+    static_cast<MockAdqApi *>(m_adq_control_unit)->AddDigitizer("SPD-SIM01", 2, PID_ADQ32);
+    static_cast<MockAdqApi *>(m_adq_control_unit)->AddDigitizer("SPD-SIM02", 2, PID_ADQ32);
 #endif
+
     InitializeDigitizers();
 
     m_selected = std::unique_ptr<bool[]>( new bool[m_digitizers.size()] );
@@ -65,11 +59,9 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version)
 
 void Ui::Terminate()
 {
-#ifndef SIMULATION_ONLY
     /* FIXME: Close digitizers? */
     if (m_adq_control_unit != NULL)
         DeleteADQControlUnit(m_adq_control_unit);
-#endif
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();

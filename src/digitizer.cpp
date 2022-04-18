@@ -169,6 +169,7 @@ void Digitizer::ProcessMessages()
 
             /* FIXME: Check return value */
             SetParameters(m_parameters.clock_system);
+            SetParameters(m_parameters.top);
 
             if (m_state == DigitizerState::ACQUISITION)
                 StartDataAcquisition();

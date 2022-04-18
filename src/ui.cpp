@@ -293,7 +293,8 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
     }
     else
     {
-        if (ImGui::BeginTable("Digitizers", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings))
+        ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings;
+        if (ImGui::BeginTable("Digitizers", 3, flags))
         {
             const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
             ImGui::TableSetupColumn("Identifier",
@@ -308,7 +309,7 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
             {
                 ImGui::TableNextColumn();
                 if (ImGui::Selectable(m_digitizer_ui_state[i].identifier.c_str(), m_selected[i],
-                                    ImGuiSelectableFlags_SpanAllColumns))
+                                      ImGuiSelectableFlags_SpanAllColumns))
                 {
                     if (!ImGui::GetIO().KeyCtrl)
                         memset(&m_selected[0], 0, sizeof(m_selected));
@@ -380,10 +381,12 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
 
     /* Second row */
     ImGui::BeginDisabled();
-    ImGui::Button("Set Clock\nSystem", COMMAND_PALETTE_BUTTON_SIZE);
-    ImGui::SameLine();
     ImGui::Button("Set\nSelection", COMMAND_PALETTE_BUTTON_SIZE);
     ImGui::EndDisabled();
+
+    ImGui::SameLine();
+    if (ImGui::Button("Set Clock\nSystem", COMMAND_PALETTE_BUTTON_SIZE))
+        PushMessage(DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS);
 
     ImGui::SameLine();
     if (ImGui::Button("Initialize", COMMAND_PALETTE_BUTTON_SIZE))

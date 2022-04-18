@@ -20,7 +20,8 @@ TEST_GROUP(Generator)
 
 TEST(Generator, Test0)
 {
-    LONGS_EQUAL(ADQR_EOK, generator.Initialize());
+    LONGS_EQUAL(ADQR_EOK, generator.SetParameters(Generator::Parameters()));
+    LONGS_EQUAL(ADQR_EOK, generator.SetSamplingFrequency(500e6));
     LONGS_EQUAL(ADQR_ENOTREADY, generator.Stop());
     LONGS_EQUAL(ADQR_EOK, generator.Start());
     LONGS_EQUAL(ADQR_ENOTREADY, generator.Start());
@@ -37,7 +38,8 @@ TEST(Generator, Records)
     parameters.record_length = RECORD_LENGTH;
     parameters.trigger_frequency = TRIGGER_FREQUENCY;
 
-    LONGS_EQUAL(ADQR_EOK, generator.Initialize(parameters));
+    LONGS_EQUAL(ADQR_EOK, generator.SetParameters(parameters));
+    LONGS_EQUAL(ADQR_EOK, generator.SetSamplingFrequency(500e6));
     LONGS_EQUAL(ADQR_EOK, generator.Start());
 
     std::vector<ADQGen4Record *> records;
@@ -86,7 +88,8 @@ TEST(Generator, RepeatedStartStop)
 
     for (int i = 0; i < NOF_LOOPS; ++i)
     {
-        LONGS_EQUAL(ADQR_EOK, generator.Initialize(parameters));
+        LONGS_EQUAL(ADQR_EOK, generator.SetParameters(parameters));
+        LONGS_EQUAL(ADQR_EOK, generator.SetSamplingFrequency(500e6));
         LONGS_EQUAL(ADQR_EOK, generator.Start());
 
         int nof_records_received = 0;

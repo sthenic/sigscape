@@ -35,7 +35,6 @@ public:
                 , frequency(13.12e6)
                 , phase(0.0)
                 , noise_std_dev(0.1)
-                , sampling_frequency(500e6)
                 , harmonic_distortion(true)
             {};
 
@@ -44,7 +43,6 @@ public:
             double frequency;
             double phase;
             double noise_std_dev;
-            double sampling_frequency;
             bool harmonic_distortion;
         } sine;
 
@@ -52,7 +50,8 @@ public:
         double trigger_frequency;
     };
 
-    int Initialize(const Parameters &parameters = Parameters());
+    int SetParameters(const Parameters &parameters);
+    int SetSamplingFrequency(double sampling_frequency);
     int WaitForBuffer(ADQGen4Record *&buffer, int timeout) override;
     int ReturnBuffer(ADQGen4Record *buffer) override;
     void MainLoop() override;
@@ -61,6 +60,7 @@ private:
     std::default_random_engine m_random_generator;
     std::normal_distribution<double> m_distribution;
     Parameters m_parameters;
+    double m_sampling_frequency;
 
     void NoisySine(ADQGen4Record &record, size_t count);
 };

@@ -4,7 +4,7 @@
 #include <cinttypes>
 #include <memory>
 
-#define ADQ_MAX_NOF_CHANNELS 2
+#define ADQ_MAX_NOF_CHANNELS 8
 
 #define ADQ_EOK (0)
 #define ADQ_EINVAL (-1)
@@ -54,14 +54,13 @@ struct ADQGen4Record
 {
     ADQGen4Record(size_t count)
     {
-        data = std::malloc(count); //::operator new(count);
+        data = std::malloc(count);
         header = static_cast<ADQGen4RecordHeader*>(std::malloc(sizeof(struct ADQGen4RecordHeader)));
         size = count;
     }
 
     ~ADQGen4Record()
     {
-        // ::operator delete(data);
         std::free(data);
         std::free(header);
     }

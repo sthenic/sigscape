@@ -12,7 +12,7 @@ void Identification::MainLoop()
 
 #ifdef SIMULATION_ONLY
     static_cast<MockAdqApi *>(handle)->AddDigitizer("SPD-SIM01", 2, PID_ADQ32);
-    static_cast<MockAdqApi *>(handle)->AddDigitizer("SPD-SIM02", 2, PID_ADQ32);
+    static_cast<MockAdqApi *>(handle)->AddDigitizer("SPD-SIM02", 2, PID_ADQ36);
 #endif
 
     /* Filter out the Gen4 digitizers and construct a digitizer object for each one. */

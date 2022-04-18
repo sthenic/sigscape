@@ -148,9 +148,8 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
     /* FIXME: Implement clock system */
     (void)length;
 
+    /* FIXME: Emit 'reconfiguration' message. */
     std::string parameters_str(string);
-    std::vector<Generator::Parameters> parameters;
-
     if (parameters_str.rfind("TOP", 0) == 0)
     {
         std::vector<double> frequency;
@@ -183,6 +182,7 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
             return ADQR_EINVAL;
         nof_generators = std::min(nof_generators, noise_std_dev.size());
 
+        std::vector<Generator::Parameters> parameters;
         for (size_t i = 0; i < nof_generators; ++i)
         {
             parameters.push_back(Generator::Parameters());
@@ -193,10 +193,21 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
             parameters.back().sine.harmonic_distortion = harmonic_distortion[i] > 0;
             parameters.back().sine.noise_std_dev = noise_std_dev[i];
         }
+
+        for (size_t i = 0; (i < parameters.size()) && (i < m_generators.size()); ++i)
+            m_generators[i]->SetParameters(parameters[i]);
     }
     else if (parameters_str.rfind("CLOCK SYSTEM", 0) == 0)
     {
-        /* FIXME: Clock system separately? */
+        std::vector<double> sampling_frequency;
+        if (ADQR_EOK != ParseLine(2, parameters_str, sampling_frequency))
+            return ADQR_EINVAL;
+
+        for (size_t i = 0; (i < sampling_frequency.size()) && (i < m_generators.size()); ++i)
+            m_generators[i]->SetSamplingFrequency(sampling_frequency[i]);
+
+        /* Emulate clock system reconfiguration time. */
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
     else
     {
@@ -204,10 +215,8 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
         return ADQ_EINVAL;
     }
 
-    for (size_t i = 0; (i < parameters.size()) && (i < m_generators.size()); ++i)
-        m_generators[i]->Initialize(parameters[i]);
-
-    return ADQ_EUNSUPPORTED;
+    /* FIXME: Return value */
+    return ADQR_EOK;
 }
 
 int MockDigitizer::GetParametersString(enum ADQParameterId id, char *const string, size_t length, int format)

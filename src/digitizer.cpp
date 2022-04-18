@@ -63,7 +63,6 @@ void Digitizer::MainLoop()
         m_thread_exit_code = ADQR_EINTERNAL;
         return;
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(700));
 
     /* Read the digitizer's constant parameters, then start the file watchers
        for the parameter sets. */

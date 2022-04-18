@@ -46,6 +46,7 @@ MockDigitizer::MockDigitizer(const std::string &serial_number, int nof_channels)
 int MockDigitizer::SetupDevice()
 {
     /* FIXME: Anything here? */
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     return 1;
 }
 

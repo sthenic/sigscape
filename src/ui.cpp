@@ -8,7 +8,8 @@ const ImVec4 Ui::COLOR_ORANGE = {0.86f, 0.38f, 0.1f, 0.8f};
 const ImVec4 Ui::COLOR_PURPLE = {0.6f, 0.3f, 1.0f, 0.8f};
 
 Ui::Ui()
-    : m_digitizers{}
+    : m_identification()
+    , m_digitizers()
     , m_records{}
     , m_adq_control_unit()
     , m_show_imgui_demo_window(false)
@@ -30,31 +31,10 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version)
     ImPlot::CreateContext();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
-
     ImGui::StyleColorsDark();
 
-    m_digitizers.clear();
-    m_adq_control_unit = CreateADQControlUnit();
-    if (m_adq_control_unit == NULL)
-    {
-        printf("Failed to create an ADQControlUnit.\n");
-        return;
-    }
-
-#ifdef SIMULATION_ONLY
-    static_cast<MockAdqApi *>(m_adq_control_unit)->AddDigitizer("SPD-SIM01", 2, PID_ADQ32);
-    static_cast<MockAdqApi *>(m_adq_control_unit)->AddDigitizer("SPD-SIM02", 2, PID_ADQ32);
-#endif
-
-    InitializeDigitizers();
-
-    m_selected = std::unique_ptr<bool[]>( new bool[m_digitizers.size()] );
-    memset(&m_selected[0], 0, sizeof(m_selected));
-
-    m_digitizer_ui_state = std::unique_ptr<DigitizerUiState[]>( new DigitizerUiState[m_digitizers.size()] );
-
-    for (const auto &d : m_digitizers)
-        d->Start();
+    /* Start device identification thread. */
+    m_identification.Start();
 }
 
 void Ui::Terminate()
@@ -92,44 +72,6 @@ void Ui::Render(float width, float height)
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-void Ui::InitializeDigitizers()
-{
-    /* Filter out the Gen4 digitizers and construct a digitizer object for each one. */
-    struct ADQInfoListEntry *adq_list = NULL;
-    int nof_devices = 0;
-    if (!ADQControlUnit_ListDevices(m_adq_control_unit, &adq_list, (unsigned int *)&nof_devices))
-        return;
-
-    int nof_gen4_digitizers = 0;
-    for (int i = 0; i < nof_devices; ++i)
-    {
-        switch (adq_list[i].ProductID)
-        {
-        case PID_ADQ32:
-        case PID_ADQ36:
-            if (ADQControlUnit_OpenDeviceInterface(m_adq_control_unit, i))
-                nof_gen4_digitizers++;
-            break;
-        default:
-            break;
-        }
-    }
-
-    for (int i = 0; i < nof_gen4_digitizers; ++i)
-    {
-        m_digitizers.push_back(std::make_unique<Digitizer>(m_adq_control_unit, i + 1));
-
-        /* FIXME: array type instead? */
-        std::vector<std::shared_ptr<ProcessedRecord>> tmp;
-        for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
-            tmp.push_back(std::shared_ptr<ProcessedRecord>());
-        m_records.push_back(tmp);
-    }
-
-    if (m_digitizers.size() == 0)
-        printf("No Gen4 digitizers.\n");
-}
-
 void Ui::PushMessage(DigitizerMessageId id, bool selected)
 {
     for (size_t i = 0; i < m_digitizers.size(); ++i)
@@ -153,6 +95,31 @@ void Ui::UpdateRecords()
         for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
             m_digitizers[i]->WaitForProcessedRecord(ch, m_records[i][ch]);
     }
+}
+
+void Ui::HandleMessage(const IdentificationMessage &message)
+{
+    /* If we get a message, the identification went well. */
+    for (const auto &d : m_digitizers)
+        d->Stop();
+    m_digitizers.clear();
+
+    m_digitizers = message.digitizers;
+    m_adq_control_unit = message.handle;
+    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    {
+        std::vector<std::shared_ptr<ProcessedRecord>> tmp;
+        for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
+            tmp.push_back(std::shared_ptr<ProcessedRecord>());
+        m_records.push_back(tmp);
+    }
+
+    m_digitizer_ui_state = std::unique_ptr<DigitizerUiState[]>( new DigitizerUiState[m_digitizers.size()] );
+    m_selected = std::unique_ptr<bool[]>( new bool[m_digitizers.size()] );
+    memset(&m_selected[0], 0, sizeof(m_selected));
+
+    for (const auto &d : m_digitizers)
+        d->Start();
 }
 
 void Ui::HandleMessage(size_t i, const DigitizerMessage &message)
@@ -207,12 +174,15 @@ void Ui::HandleMessage(size_t i, const DigitizerMessage &message)
 
 void Ui::HandleMessages()
 {
+    IdentificationMessage identification_message;
+    if (ADQR_EOK == m_identification.WaitForMessage(identification_message, 0))
+        HandleMessage(identification_message);
+
     for (size_t i = 0; i < m_digitizers.size(); ++i)
     {
-        DigitizerMessage message;
-        int result = m_digitizers[i]->WaitForMessage(message, 0);
-        if (result == ADQR_EOK)
-            HandleMessage(i, message);
+        DigitizerMessage digitizer_message;
+        if (ADQR_EOK == m_digitizers[i]->WaitForMessage(digitizer_message, 0))
+            HandleMessage(i, digitizer_message);
     }
 }
 
@@ -317,14 +287,13 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
     }
     ImGui::Separator();
 
-    if (ImGui::BeginTable("Digitizers", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings))
+    if (m_digitizers.size() == 0)
     {
-        if (m_digitizers.size() == 0)
-        {
-            ImGui::TableNextColumn();
-            ImGui::Text("No digitizers found.");
-        }
-        else
+        ImGui::Text("No digitizers found.");
+    }
+    else
+    {
+        if (ImGui::BeginTable("Digitizers", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings))
         {
             const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
             ImGui::TableSetupColumn("Identifier",
@@ -339,7 +308,7 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
             {
                 ImGui::TableNextColumn();
                 if (ImGui::Selectable(m_digitizer_ui_state[i].identifier.c_str(), m_selected[i],
-                                      ImGuiSelectableFlags_SpanAllColumns))
+                                    ImGuiSelectableFlags_SpanAllColumns))
                 {
                     if (!ImGui::GetIO().KeyCtrl)
                         memset(&m_selected[0], 0, sizeof(m_selected));
@@ -355,8 +324,8 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
                 }
                 ImGui::TableNextRow();
             }
+            ImGui::EndTable();
         }
-        ImGui::EndTable();
     }
     ImGui::End();
 }

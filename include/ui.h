@@ -9,6 +9,7 @@
 #include <GLFW/glfw3.h>
 
 #include "digitizer.h"
+#include "identification.h"
 
 class Ui
 {
@@ -21,7 +22,8 @@ public:
     void Terminate();
 
 private:
-    std::vector<std::unique_ptr<Digitizer>> m_digitizers;
+    Identification m_identification;
+    std::vector<std::shared_ptr<Digitizer>> m_digitizers;
     std::vector<std::vector<std::shared_ptr<ProcessedRecord>>> m_records;
     void *m_adq_control_unit;
     bool m_show_imgui_demo_window;
@@ -38,10 +40,10 @@ private:
     };
     std::unique_ptr<DigitizerUiState[]> m_digitizer_ui_state;
 
-    void InitializeDigitizers();
     void PushMessage(DigitizerMessageId id, bool selected = true);
 
     void UpdateRecords();
+    void HandleMessage(const IdentificationMessage &message);
     void HandleMessage(size_t i, const DigitizerMessage &message);
     void HandleMessages();
 

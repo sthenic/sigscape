@@ -39,6 +39,7 @@ int MockAdqApi::OpenDeviceInterface(int index)
         return 0;
 
     /* If the index targets an entry in the vector, we can consider it 'opened'. */
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
     return 1;
 }
 

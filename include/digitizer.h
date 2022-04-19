@@ -10,7 +10,7 @@
 #include "data_processing.h"
 #include "file_watcher.h"
 
-#ifdef SIMULATION_ONLY
+#ifdef NO_ADQAPI
 #include "mock_adqapi.h"
 #else
 #include "ADQAPI.h"

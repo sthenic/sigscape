@@ -2,12 +2,12 @@ cmake_minimum_required(VERSION 3.15)
 project(adq-rapid VERSION 1.0)
 add_executable(${PROJECT_NAME})
 
-option(WITH_ADQAPI "Compile with the ADQAPI as a dependency. With this set to OFF, only the simulator mode is available." ON)
+option(NO_ADQAPI "Compile with the ADQAPI as a dependency. With this set to ON, only the simulator mode is available." OFF)
 
 if (UNIX)
     if (APPLE)
       target_compile_definitions(${PROJECT_NAME} PRIVATE SIMULATION_ONLY)
-    #   set(WITH_ADQAPI OFF) FIXME: Would this work?
+      set(NO_ADQAPI ON)
     else()
       find_package(PkgConfig REQUIRED)
       find_package(OpenGL REQUIRED)
@@ -66,15 +66,6 @@ FetchContent_MakeAvailable(imgui)
 add_dependencies(${PROJECT_NAME} gl3w_gen)
 set_property(SOURCE ${gl3w_BINARY_DIR}/src/gl3w.c PROPERTY GENERATED 1)
 
-if(NOT WITH_ADQAPI)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE
-        SIMULATION_ONLY)
-    target_sources(${PROJECT_NAME} PRIVATE
-        src/mock_adqapi.cpp
-        src/mock_digitizer.cpp
-        src/generator.cpp)
-endif()
-
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 target_sources(${PROJECT_NAME} PRIVATE
     # BINARY_DIR is required here since we want to use the generated code
@@ -110,10 +101,13 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     IMGUI_IMPL_OPENGL_LOADER_GL3W
 )
 
-if(NOT WITH_ADQAPI)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE
-        SIMULATION_ONLY)
-    message(STATUS "Using SIMULATION_ONLY (no ADQAPI dependency).")
+if(NO_ADQAPI)
+    message(STATUS "Using NO_ADQAPI (no ADQAPI dependency).")
+    target_compile_definitions(${PROJECT_NAME} PRIVATE NO_ADQAPI)
+    target_sources(${PROJECT_NAME} PRIVATE
+        src/mock_adqapi.cpp
+        src/mock_digitizer.cpp
+        src/generator.cpp)
 endif()
 
 if (UNIX)
@@ -132,7 +126,7 @@ endif()
 
 # ADQAPI localization
 # FIXME: Add option to build the API as a first-hand choice.
-if (WITH_ADQAPI)
+if (NOT NO_ADQAPI)
     if (UNIX)
         find_library(ADQAPI_LIBRARY
             NAMES libadq libadq.so

@@ -4,7 +4,7 @@
 #include "buffer_thread.h"
 #include "error.h"
 
-#ifdef SIMULATION_ONLY
+#ifdef NO_ADQAPI
 #include "mock_adqapi_definitions.h"
 #else
 #include "ADQAPI.h"

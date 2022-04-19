@@ -7,7 +7,7 @@
 #include <limits>
 #include <cstring>
 
-#ifdef SIMULATION_ONLY
+#ifdef NO_ADQAPI
 #include "mock_adqapi_definitions.h"
 #else
 #include "ADQAPI.h"

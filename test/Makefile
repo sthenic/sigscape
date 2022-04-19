@@ -8,7 +8,7 @@ BUILDDIR = build
 SOURCEDIR = ../src
 
 DEFINES = \
-	SIMULATION_ONLY
+	NO_ADQAPI
 
 CXXFLAGS += \
 	-std=c++17 \

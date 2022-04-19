@@ -37,6 +37,7 @@ enum class DigitizerState
 {
     NOT_ENUMERATED,
     IDLE,
+    CONFIGURATION,
     ACQUISITION
 };
 
@@ -130,6 +131,8 @@ private:
     int StartDataAcquisition();
     int StopDataAcquisition();
 
+    void SetState(DigitizerState state);
+    int SetParameters(bool clock_system = false);
     int SetParameters(const std::unique_ptr<ParameterQueue> &queue);
     int InitializeParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher);
     void InitializeFileWatchers(const struct ADQConstantParameters &constant);

@@ -146,10 +146,7 @@ int MockDigitizer::InitializeParametersString(enum ADQParameterId id, char *cons
 
 int MockDigitizer::SetParametersString(const char *const string, size_t length)
 {
-    /* FIXME: Implement clock system */
     (void)length;
-
-    /* FIXME: Emit 'reconfiguration' message. */
     std::string parameters_str(string);
     if (parameters_str.rfind("TOP", 0) == 0)
     {
@@ -197,6 +194,9 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
 
         for (size_t i = 0; (i < parameters.size()) && (i < m_generators.size()); ++i)
             m_generators[i]->SetParameters(parameters[i]);
+
+        /* Emulate reconfiguration time. */
+        std::this_thread::sleep_for(std::chrono::milliseconds(250));
     }
     else if (parameters_str.rfind("CLOCK SYSTEM", 0) == 0)
     {
@@ -207,8 +207,8 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
         for (size_t i = 0; (i < sampling_frequency.size()) && (i < m_generators.size()); ++i)
             m_generators[i]->SetSamplingFrequency(sampling_frequency[i]);
 
-        /* Emulate clock system reconfiguration time. */
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        /* Emulate reconfiguration time. */
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
     else
     {

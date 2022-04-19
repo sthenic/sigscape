@@ -50,7 +50,7 @@ void Digitizer::MainLoop()
     /* When the main loop is started, we assume ownership of the digitizer with
        the identifier we were given when this object was constructed. We begin
        by enumerating the digitizer, completing its initial setup procedure. */
-    m_read_queue.Write({DigitizerMessageId::NEW_STATE, DigitizerState::NOT_ENUMERATED});
+    SetState(DigitizerState::NOT_ENUMERATED);
     m_read_queue.Write({DigitizerMessageId::ENUMERATING});
 
     /* Performing this operation in a thread safe manner requires that
@@ -90,8 +90,7 @@ void Digitizer::MainLoop()
        IDLE state and enter the main loop. */
     m_read_queue.Write({DigitizerMessageId::SETUP_OK,
                         std::make_shared<std::string>(constant.serial_number)});
-
-    m_read_queue.Write({DigitizerMessageId::NEW_STATE, DigitizerState::IDLE});
+    SetState(DigitizerState::IDLE);
 
     m_thread_exit_code = ADQR_EOK;
     for (;;)
@@ -121,8 +120,6 @@ void Digitizer::ProcessMessages()
         {
             /* FIXME: Check return value */
             StartDataAcquisition();
-            m_state = DigitizerState::ACQUISITION;
-            m_read_queue.Write({DigitizerMessageId::NEW_STATE, DigitizerState::ACQUISITION});
             break;
         }
 
@@ -130,21 +127,11 @@ void Digitizer::ProcessMessages()
         {
             /* FIXME: Check return value */
             StopDataAcquisition();
-            m_state = DigitizerState::IDLE;
-            m_read_queue.Write({DigitizerMessageId::NEW_STATE, DigitizerState::IDLE});
             break;
         }
 
         case DigitizerMessageId::SET_PARAMETERS:
-            /* FIXME: Not ideal to stop the threads. */
-            if (m_state == DigitizerState::ACQUISITION)
-                StopDataAcquisition();
-
-            /* FIXME: Check return value */
-            SetParameters(m_parameters.top);
-
-            if (m_state == DigitizerState::ACQUISITION)
-                StartDataAcquisition();
+            SetParameters(false);
             break;
 
         case DigitizerMessageId::VALIDATE_PARAMETERS:
@@ -163,16 +150,7 @@ void Digitizer::ProcessMessages()
         }
 
         case DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
-            /* FIXME: Not ideal to stop the threads. */
-            if (m_state == DigitizerState::ACQUISITION)
-                StopDataAcquisition();
-
-            /* FIXME: Check return value */
-            SetParameters(m_parameters.clock_system);
-            SetParameters(m_parameters.top);
-
-            if (m_state == DigitizerState::ACQUISITION)
-                StartDataAcquisition();
+            SetParameters(true);
             break;
 
         case DigitizerMessageId::ENUMERATING:
@@ -210,14 +188,54 @@ int Digitizer::StartDataAcquisition()
 {
     for (const auto &t : m_processing_threads)
         t->Start();
-    return ADQ_StartDataAcquisition(m_id.handle, m_id.index);
+
+    /* FIXME: Return value? Probably as a message. */
+    int result = ADQ_StartDataAcquisition(m_id.handle, m_id.index);
+    if (result == ADQ_EOK)
+        SetState(DigitizerState::ACQUISITION);
+    return result;
 }
 
 int Digitizer::StopDataAcquisition()
 {
     for (const auto &t : m_processing_threads)
         t->Stop();
-    return ADQ_StopDataAcquisition(m_id.handle, m_id.index);
+
+    /* FIXME: Return value? Probably as a message. */
+    ADQ_StopDataAcquisition(m_id.handle, m_id.index);
+    SetState(DigitizerState::IDLE);
+    return ADQR_EOK;
+}
+
+void Digitizer::SetState(DigitizerState state)
+{
+    m_state = state;
+    m_read_queue.Write({DigitizerMessageId::NEW_STATE, state});
+}
+
+int Digitizer::SetParameters(bool clock_system)
+{
+    /* If we're in the acquisition state, we temporarily stop when applying the
+       new parameters. */
+    DigitizerState previous_state = m_state;
+
+    if (previous_state == DigitizerState::ACQUISITION)
+        StopDataAcquisition();
+
+    SetState(DigitizerState::CONFIGURATION);
+
+    /* FIXME: Check return value, emit error etc. */
+    if (clock_system)
+        SetParameters(m_parameters.clock_system);
+    SetParameters(m_parameters.top);
+
+    if (previous_state == DigitizerState::ACQUISITION)
+        StartDataAcquisition();
+
+    SetState(previous_state);
+
+    /* FIXME: Probably as a void, errors should propagate via messages. */
+    return ADQR_EOK;
 }
 
 int Digitizer::SetParameters(const std::unique_ptr<ParameterQueue> &queue)

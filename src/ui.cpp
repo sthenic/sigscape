@@ -153,6 +153,10 @@ void Ui::HandleMessage(size_t i, const DigitizerMessage &message)
             m_digitizer_ui_state[i].status = "IDLE";
             m_digitizer_ui_state[i].color = COLOR_GREEN;
             break;
+        case DigitizerState::CONFIGURATION:
+            m_digitizer_ui_state[i].status = "CONFIGURATION";
+            m_digitizer_ui_state[i].color = COLOR_PURPLE;
+            break;
         case DigitizerState::ACQUISITION:
             m_digitizer_ui_state[i].status = "ACQUISITION";
             m_digitizer_ui_state[i].color = COLOR_ORANGE;

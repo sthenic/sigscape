@@ -248,9 +248,9 @@ struct ProcessedRecord
         , label("")
     {
         time_domain_metrics.max = std::numeric_limits<double>::lowest();
-        time_domain_metrics.min = std::numeric_limits<double>::max();
+        time_domain_metrics.min = (std::numeric_limits<double>::max)();
         frequency_domain_metrics.max = std::numeric_limits<double>::lowest();
-        frequency_domain_metrics.min = std::numeric_limits<double>::max();
+        frequency_domain_metrics.min = (std::numeric_limits<double>::max)();
     }
 
     ProcessedRecord(size_t count)
@@ -260,9 +260,9 @@ struct ProcessedRecord
         waterfall = NULL;
         label = "";
         time_domain_metrics.max = std::numeric_limits<double>::lowest();
-        time_domain_metrics.min = std::numeric_limits<double>::max();
+        time_domain_metrics.min = (std::numeric_limits<double>::max)();
         frequency_domain_metrics.max = std::numeric_limits<double>::lowest();
-        frequency_domain_metrics.min = std::numeric_limits<double>::max();
+        frequency_domain_metrics.min = (std::numeric_limits<double>::max)();
     }
 
     ProcessedRecord(const ProcessedRecord &other)

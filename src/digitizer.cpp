@@ -56,7 +56,7 @@ void Digitizer::MainLoop()
     /* Performing this operation in a thread safe manner requires that
        ADQControlUnit_OpenDeviceInterface() has been called (and returned
        successfully) in a single thread process. */
-    int result = ADQControlUnit_SetupDevice(m_id.handle, m_id.index);
+    int result = ADQControlUnit_SetupDevice(m_id.handle, m_id.index - 1);
     if (result != 1)
     {
         m_read_queue.Write({DigitizerMessageId::SETUP_FAILED});
@@ -101,7 +101,7 @@ void Digitizer::MainLoop()
 
         /* We implement the sleep using the stop event to be able to immediately
             react to the event being set. */
-        if (m_should_stop.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready)
+        if (m_should_stop.wait_for(std::chrono::milliseconds(100)) == std::future_status::ready)
             break;
     }
 
@@ -242,7 +242,7 @@ int Digitizer::InitializeParameters(enum ADQParameterId id,
                                     const std::unique_ptr<FileWatcher> &watcher)
 {
     /* Heap allocation */
-    static constexpr size_t SIZE = 16384;
+    static constexpr size_t SIZE = 32768;
     auto parameters_str = std::unique_ptr<char[]>( new char[SIZE] );
     int result = ADQ_InitializeParametersString(m_id.handle, m_id.index, id, parameters_str.get(),
                                                 SIZE, 1);
@@ -261,14 +261,14 @@ int Digitizer::InitializeParameters(enum ADQParameterId id,
 void Digitizer::InitializeFileWatchers(const struct ADQConstantParameters &constant)
 {
     std::stringstream ss;
-    ss << "./parameters_top_" << constant.serial_number << ".txt";
+    ss << "./parameters_top_" << constant.serial_number << ".json";
     std::string filename = ss.str();
     std::transform(filename.begin(), filename.end(), filename.begin(), ::tolower);
     m_watchers.top = std::make_unique<FileWatcher>(filename);
     ss.str("");
     ss.clear();
 
-    ss << "./parameters_clock_system_" << constant.serial_number << ".txt";
+    ss << "./parameters_clock_system_" << constant.serial_number << ".json";
     filename = ss.str();
     std::transform(filename.begin(), filename.end(), filename.begin(), ::tolower);
     m_watchers.clock_system = std::make_unique<FileWatcher>(filename);

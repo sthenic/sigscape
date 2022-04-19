@@ -3,6 +3,7 @@
 #include <cstring>
 #include <sstream>
 #include <type_traits>
+#include <cstring>
 
 const std::string MockDigitizer::DEFAULT_TOP_PARAMETERS =
 R"""(TOP

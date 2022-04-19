@@ -51,7 +51,7 @@ int main(int, char **)
         glClear(GL_COLOR_BUFFER_BIT);
         glfwGetFramebufferSize(window, &display_width, &display_height);
         glViewport(0, 0, display_width, display_height);
-        ui.Render(display_width, display_height);
+        ui.Render(static_cast<float>(display_width), static_cast<float>(display_height));
         glfwSwapBuffers(window);
     }
 

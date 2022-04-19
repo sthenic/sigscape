@@ -14,12 +14,13 @@ void MockAdqApi::AddDigitizer(const std::string &serial_number, int nof_channels
 }
 
 /* Mocked functions */
-int MockAdqApi::SetupDevice(int adq_num)
+int MockAdqApi::SetupDevice(int index)
 {
-    /* -1 to follow the convention of the ADQAPI. */
-    if ((adq_num == 0) || (adq_num > static_cast<int>(m_digitizers.size())))
+    /* 0-indexed to follow the convention of the ADQAPI. */
+    if ((index < 0) || (index >= static_cast<int>(m_digitizers.size())))
         return 0;
-    return m_digitizers[adq_num - 1]->SetupDevice();
+
+    return m_digitizers[index]->SetupDevice();
 }
 
 int MockAdqApi::ListDevices(struct ADQInfoListEntry **list, unsigned int *nof_devices)

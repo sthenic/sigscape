@@ -10,6 +10,7 @@
 #endif
 
 #include <cmath>
+#include <cinttypes>
 
 DataProcessing::DataProcessing(void *control_unit, int index, int channel, const std::string &label)
     : m_control_unit(control_unit)
@@ -37,17 +38,17 @@ void DataProcessing::MainLoop()
 
         struct ADQGen4Record *time_domain = NULL;
         int channel = m_channel;
-        int bytes_received = ADQ_WaitForRecordBuffer(m_control_unit, m_index, &channel,
-                                                     (void **)&time_domain, 0, NULL);
+        int64_t bytes_received = ADQ_WaitForRecordBuffer(m_control_unit, m_index, &channel,
+                                                         (void **)&time_domain, 0, NULL);
 
         /* Continue on timeout. */
-        if ((bytes_received == ADQ_EAGAIN) || (bytes_received == ADQ_ENOTREADY))
+        if ((bytes_received == ADQ_EAGAIN) || (bytes_received == ADQ_ENOTREADY) || (bytes_received == ADQR_EINTERRUPTED))
         {
             continue;
         }
         else if (bytes_received < 0)
         {
-            printf("Failed to get a time domain buffer %d.\n", bytes_received);
+            printf("Failed to get a time domain buffer %" PRId64 ".\n", bytes_received);
             m_thread_exit_code = ADQR_EINTERNAL;
             return;
         }

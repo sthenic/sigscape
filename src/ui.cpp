@@ -20,8 +20,6 @@ Ui::Ui()
 
 Ui::~Ui()
 {
-    for (const auto &d : m_digitizers)
-        d->Stop();
 }
 
 void Ui::Initialize(GLFWwindow *window, const char *glsl_version)
@@ -39,7 +37,9 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version)
 
 void Ui::Terminate()
 {
-    /* FIXME: Close digitizers? */
+    for (const auto &d : m_digitizers)
+        d->Stop();
+
     if (m_adq_control_unit != NULL)
         DeleteADQControlUnit(m_adq_control_unit);
 
@@ -116,7 +116,7 @@ void Ui::HandleMessage(const IdentificationMessage &message)
 
     m_digitizer_ui_state = std::unique_ptr<DigitizerUiState[]>( new DigitizerUiState[m_digitizers.size()] );
     m_selected = std::unique_ptr<bool[]>( new bool[m_digitizers.size()] );
-    memset(&m_selected[0], 0, sizeof(m_selected));
+    memset(&m_selected[0], 0, sizeof(m_selected[0]) * m_digitizers.size());
 
     for (const auto &d : m_digitizers)
         d->Start();
@@ -256,15 +256,15 @@ void Ui::RenderLeft(float width, float height)
 {
     const float FRAME_HEIGHT = ImGui::GetFrameHeight();
     const ImVec2 DIGITIZER_SELECTION_POS(0.0f, FRAME_HEIGHT);
-    const ImVec2 DIGITIZER_SELECTION_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 200.0);
+    const ImVec2 DIGITIZER_SELECTION_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 200.0f);
     RenderDigitizerSelection(DIGITIZER_SELECTION_POS, DIGITIZER_SELECTION_SIZE);
 
-    const ImVec2 COMMAND_PALETTE_POS(0.0f, 200.0 + FRAME_HEIGHT);
-    const ImVec2 COMMAND_PALETTE_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 200.0);
+    const ImVec2 COMMAND_PALETTE_POS(0.0f, 200.0f + FRAME_HEIGHT);
+    const ImVec2 COMMAND_PALETTE_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 200.0f);
     RenderCommandPalette(COMMAND_PALETTE_POS, COMMAND_PALETTE_SIZE);
 
     const ImVec2 PARAMETERS_POS(0.0f, 400.0f + FRAME_HEIGHT);
-    const ImVec2 PARAMETERS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, height - 400.0 - FRAME_HEIGHT);
+    const ImVec2 PARAMETERS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, height - 400.0f - FRAME_HEIGHT);
     RenderParameters(PARAMETERS_POS, PARAMETERS_SIZE);
 }
 
@@ -312,7 +312,7 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
                                       ImGuiSelectableFlags_SpanAllColumns))
                 {
                     if (!ImGui::GetIO().KeyCtrl)
-                        memset(&m_selected[0], 0, sizeof(m_selected));
+                        memset(&m_selected[0], 0, sizeof(m_selected[0]) * m_digitizers.size());
                     m_selected[i] ^= 1;
                 }
 
@@ -466,7 +466,7 @@ void Ui::PlotTimeDomainSelected()
                 ImPlot::PlotLine(m_records[i][ch]->label.c_str(),
                                  m_records[i][ch]->time_domain->x.get(),
                                  m_records[i][ch]->time_domain->y.get(),
-                                 m_records[i][ch]->time_domain->count);
+                                 static_cast<int>(m_records[i][ch]->time_domain->count));
             }
         }
     }
@@ -523,7 +523,7 @@ void Ui::PlotFourierTransformSelected()
                 ImPlot::PlotLine(m_records[i][ch]->label.c_str(),
                                  m_records[i][ch]->frequency_domain->x.get(),
                                  m_records[i][ch]->frequency_domain->y.get(),
-                                 m_records[i][ch]->frequency_domain->count / 2);
+                                 static_cast<int>(m_records[i][ch]->frequency_domain->count / 2));
             }
         }
     }
@@ -557,8 +557,9 @@ void Ui::PlotWaterfallSelected()
             if (m_records[i][ch] != NULL)
             {
                 ImPlot::PlotHeatmap("heat", m_records[i][ch]->waterfall->data.get(),
-                                    m_records[i][ch]->waterfall->rows,
-                                    m_records[i][ch]->waterfall->columns, -80, 0, NULL);
+                                    static_cast<int>(m_records[i][ch]->waterfall->rows),
+                                    static_cast<int>(m_records[i][ch]->waterfall->columns),
+                                    -80, 0, NULL);
                 return;
             }
         }

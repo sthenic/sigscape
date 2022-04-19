@@ -55,10 +55,10 @@ void Generator::MainLoop()
 
         /* Fill in a few header fields. */
         *record->header = {};
-        record->header->record_length = m_parameters.record_length;
+        record->header->record_length = static_cast<uint32_t>(m_parameters.record_length);
         record->header->record_number = record_number;
         record->header->record_start = 0;
-        record->header->time_unit = 25e-12; /* TODO: 25ps steps for now */
+        record->header->time_unit = 25e-12f; /* TODO: 25ps steps for now */
         record->header->sampling_period = static_cast<uint64_t>(
             1.0 / (record->header->time_unit * m_sampling_frequency));
         NoisySine(*record, m_parameters.record_length);
@@ -96,8 +96,8 @@ void Generator::NoisySine(ADQGen4Record &record, size_t count)
         }
 
         if (y > 0)
-            data[i] = static_cast<int16_t>(std::min(32768.0 * y, 32767.0));
+            data[i] = static_cast<int16_t>((std::min)(32768.0 * y, 32767.0));
         else
-            data[i] = static_cast<int16_t>(std::max(32768.0 * y, -32768.0));
+            data[i] = static_cast<int16_t>((std::max)(32768.0 * y, -32768.0));
     }
 }

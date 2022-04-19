@@ -17,7 +17,7 @@ public:
     void AddDigitizer(const std::string &serial_number, int nof_channels, enum ADQProductID_Enum pid);
 
     /* Mocked functions. */
-    int SetupDevice(int adq_num);
+    int SetupDevice(int index);
     int ListDevices(struct ADQInfoListEntry **list, unsigned int *nof_devices);
     int OpenDeviceInterface(int index);
 

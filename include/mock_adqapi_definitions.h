@@ -3,6 +3,7 @@
 
 #include <cinttypes>
 #include <memory>
+#include <cstdlib>
 
 #define ADQ_MAX_NOF_CHANNELS 8
 

@@ -11,7 +11,7 @@
 #include "file_watcher.h"
 
 #ifdef SIMULATION_ONLY
-#include "ADQAPI_simulation.h"
+#include "mock_adqapi.h"
 #else
 #include "ADQAPI.h"
 #endif
@@ -25,17 +25,18 @@ enum class DigitizerMessageId
     SETUP_FAILED,
     START_ACQUISITION,
     STOP_ACQUISITION,
-    SET_PARAMETERS,
+    SET_PARAMETERS, /* FIXME: Probably rename this SET_TOP_PARAMETERS */
     GET_PARAMETERS,
     VALIDATE_PARAMETERS,
     INITIALIZE_PARAMETERS,
+    SET_CLOCK_SYSTEM_PARAMETERS,
     NEW_STATE
 };
 
 enum class DigitizerState
 {
     NOT_ENUMERATED,
-    INITIALIZATION,
+    IDLE,
     CONFIGURATION,
     ACQUISITION
 };
@@ -70,46 +71,34 @@ struct DigitizerMessage
 class Digitizer : public MessageThread<Digitizer, struct DigitizerMessage>
 {
 public:
-    Digitizer()
-        : m_state(DigitizerState::NOT_ENUMERATED)
-        , m_watchers{}
-        , m_parameters{}
-        , m_processing_threads{}
-    {
-    }
+    Digitizer(void *handle, int index);
+    ~Digitizer();
 
-    ~Digitizer()
-    {
-        Stop();
-    }
-
+    /* Making copies of an object of this type is not allowed. */
     Digitizer(const Digitizer &other) = delete;
     Digitizer &operator=(const Digitizer &other) = delete;
 
     /* Interface to the digitizer's data processing threads, one per channel. */
-    int WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedRecord> &record)
-    {
-        if ((channel < 0) || (channel >= ADQ_MAX_NOF_CHANNELS))
-            return ADQR_EINVAL;
+    int WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedRecord> &record);
 
-        return m_processing_threads[channel]->WaitForBuffer(record, 0);
-    }
+    /* Interface to the digitizer's parameters represented as strings. */
+    int WaitForParameters(std::shared_ptr<std::string> &str);
+    int WaitForClockSystemParameters(std::shared_ptr<std::string> &str);
 
-    /* TODO: We can probably do the same generalization for the MessageThread
-             with a persistent read queue and expose that directly. */
-    int WaitForParameters(std::shared_ptr<std::string> &str)
-    {
-        return m_parameters.top->Read(str, 0);
-    }
+    /* The main loop. */
+    void MainLoop() override;
 
-    int WaitForClockSystemParameters(std::shared_ptr<std::string> &str)
-    {
-        return m_parameters.clock_system->Read(str, 0);
-    }
-
-protected:
+private:
     /* The digitizer's state. */
     enum DigitizerState m_state;
+
+    /* The digitizer identification information. This consists of a handle and
+       an index. These values must be known at the time of construction. */
+    const struct Identifier
+    {
+        void *handle;
+        int index;
+    } m_id;
 
     /* File watchers and queues to watch and propagate contents from the
        digitizer's configuration files. Anonymous structs are intentional. */
@@ -135,27 +124,18 @@ protected:
     /* The digitizer's data processing threads, one per channel. */
     std::vector<std::unique_ptr<DataProcessing>> m_processing_threads;
 
-private:
+    void ProcessMessages();
     void ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watcher,
-                                const std::unique_ptr<ParameterQueue> &queue)
-    {
-        FileWatcherMessage message;
-        while (ADQR_EOK == watcher->WaitForMessage(message, 0))
-        {
-            switch (message.id)
-            {
-            case FileWatcherMessageId::FILE_CREATED:
-            case FileWatcherMessageId::FILE_UPDATED:
-            case FileWatcherMessageId::FILE_DELETED:
-                queue->Write(message.contents);
-                break;
+                                const std::unique_ptr<ParameterQueue> &queue);
 
-            case FileWatcherMessageId::UPDATE_FILE:
-            default:
-                break;
-            }
-        }
-    }
+    int StartDataAcquisition();
+    int StopDataAcquisition();
+
+    void SetState(DigitizerState state);
+    int SetParameters(bool clock_system = false);
+    int SetParameters(const std::unique_ptr<ParameterQueue> &queue);
+    int InitializeParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher);
+    void InitializeFileWatchers(const struct ADQConstantParameters &constant);
 };
 
 #endif

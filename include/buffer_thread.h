@@ -1,7 +1,7 @@
 /* This design is based on CRTP (https://en.wikipedia.org/wiki/Curiously_recurring_template_pattern). */
 
-#ifndef SMART_BUFFER_THREAD_H_69EMSR
-#define SMART_BUFFER_THREAD_H_69EMSR
+#ifndef BUFFER_THREAD_H_69EMSR
+#define BUFFER_THREAD_H_69EMSR
 
 #include "thread_safe_queue.h"
 #include "error.h"
@@ -10,29 +10,30 @@
 #include <future>
 
 template <class C, typename T, size_t CAPACITY = 0, bool PERSISTENT = false>
-class SmartBufferThread
+class BufferThread
 {
 public:
-    SmartBufferThread()
+    BufferThread()
         : m_thread()
         , m_signal_stop()
         , m_should_stop()
         , m_is_running(false)
         , m_thread_exit_code(ADQR_EINTERRUPTED)
         , m_nof_buffers_max(100)
-        , m_nof_buffers(0)
+        , m_mutex()
         , m_read_queue(CAPACITY, PERSISTENT)
         , m_write_queue()
+        , m_buffers()
     {};
 
-    virtual ~SmartBufferThread()
+    virtual ~BufferThread()
     {
         Stop();
     }
 
     /* Delete copy constructors. */
-    SmartBufferThread(const SmartBufferThread &other) = delete;
-    SmartBufferThread &operator=(const SmartBufferThread &other) = delete;
+    BufferThread(const BufferThread &other) = delete;
+    BufferThread &operator=(const BufferThread &other) = delete;
 
     virtual int Start()
     {
@@ -57,20 +58,13 @@ public:
         m_read_queue.Stop();
         m_signal_stop.set_value();
         m_thread.join();
+        FreeBuffers();
         m_is_running = false;
         return m_thread_exit_code;
     }
 
-    /* We provide a default implementation of the outward facing queue interface. */
-    virtual int WaitForBuffer(std::shared_ptr<T> &buffer, int timeout)
-    {
-        return m_read_queue.Read(buffer, timeout);
-    }
-
-    virtual int ReturnBuffer(std::shared_ptr<T> buffer)
-    {
-        return m_write_queue.Write(buffer);
-    }
+    virtual int WaitForBuffer(T *&buffer, int timeout) = 0;
+    virtual int ReturnBuffer(T *buffer) = 0;
 
 protected:
     std::thread m_thread;
@@ -79,27 +73,31 @@ protected:
     bool m_is_running;
     int m_thread_exit_code;
     size_t m_nof_buffers_max;
-    size_t m_nof_buffers;
 
-    ThreadSafeQueue<std::shared_ptr<T>> m_read_queue;
-    ThreadSafeQueue<std::shared_ptr<T>> m_write_queue;
+    std::mutex m_mutex;
+    ThreadSafeQueue<T*> m_read_queue;
+    ThreadSafeQueue<T*> m_write_queue;
+    std::vector<T*> m_buffers;
 
-    int AllocateBuffer(std::shared_ptr<T> &buffer, size_t count)
+    int AllocateBuffer(T *&buffer, size_t count)
     {
         try
         {
-            buffer = std::make_shared<T>(count);
+            buffer = new T(count);
         }
         catch (const std::bad_alloc &)
         {
             return ADQR_EINTERNAL;
         }
 
-        ++m_nof_buffers;
+        /* Add a reference to the data storage. */
+        m_mutex.lock();
+        m_buffers.push_back(buffer);
+        m_mutex.unlock();
         return ADQR_EOK;
     }
 
-    int ReuseOrAllocateBuffer(std::shared_ptr<T> &buffer, size_t count)
+    int ReuseOrAllocateBuffer(T *&buffer, size_t count)
     {
         /* We prioritize reusing existing memory over allocating new. */
         if (m_write_queue.Read(buffer, 0) == ADQR_EOK)
@@ -108,11 +106,25 @@ protected:
         }
         else
         {
-            if (m_nof_buffers < m_nof_buffers_max)
+            m_mutex.lock();
+            size_t nof_buffers = m_buffers.size();
+            m_mutex.unlock();
+            if (nof_buffers < m_nof_buffers_max)
                 return AllocateBuffer(buffer, count);
             else
                 return m_write_queue.Read(buffer, -1);
         }
+    }
+
+    void FreeBuffers()
+    {
+        m_mutex.lock();
+        for (auto &b : m_buffers)
+            delete b;
+        // for (auto it = m_buffers.begin(); it != m_buffers.end(); ++it)
+        //     delete *it;
+        m_buffers.clear();
+        m_mutex.unlock();
     }
 
     virtual void MainLoop() = 0;

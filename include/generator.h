@@ -1,14 +1,20 @@
-#ifndef SIMULATOR_H_69EMSR
-#define SIMULATOR_H_69EMSR
+#ifndef GENERATOR_H_69EMSR
+#define GENERATOR_H_69EMSR
 
-#include "smart_buffer_thread.h"
-#include "data_acquisition.h"
-#include "data_types.h"
+#include "buffer_thread.h"
 #include "error.h"
+
+#ifdef SIMULATION_ONLY
+#include "mock_adqapi_definitions.h"
+#else
+#include "ADQAPI.h"
+#endif
 
 #include <random>
 
-class Generator : public SmartBufferThread<Generator, TimeDomainRecord>
+/* We don't use the SmartBufferThread here since we'll end up using this to
+   emulate data emitted through void pointers by the ADQAPI. */
+class Generator : public BufferThread<Generator, ADQGen4Record>
 {
 public:
     Generator();
@@ -18,19 +24,18 @@ public:
         Parameters()
             : sine()
             , record_length(1024)
-            , trigger_frequency(1)
+            , trigger_frequency(30)
         {}
 
         struct SineWave
         {
             SineWave()
-                : amplitude(1.0)
+                : amplitude(0.8)
                 , offset(0.0)
-                , frequency(1e6)
+                , frequency(13.12e6)
                 , phase(0.0)
                 , noise_std_dev(0.1)
-                , sampling_frequency(500e6)
-                , harmonic_distortion(false)
+                , harmonic_distortion(true)
             {};
 
             double amplitude;
@@ -38,7 +43,6 @@ public:
             double frequency;
             double phase;
             double noise_std_dev;
-            double sampling_frequency;
             bool harmonic_distortion;
         } sine;
 
@@ -46,52 +50,19 @@ public:
         double trigger_frequency;
     };
 
-    int Initialize(const Parameters &parameters);
-    int WaitForBuffer(std::shared_ptr<TimeDomainRecord> &buffer, int timeout) override;
-    int ReturnBuffer(std::shared_ptr<TimeDomainRecord> buffer) override;
+    int SetParameters(const Parameters &parameters);
+    int SetSamplingFrequency(double sampling_frequency);
+    int WaitForBuffer(ADQGen4Record *&buffer, int timeout) override;
+    int ReturnBuffer(ADQGen4Record *buffer) override;
     void MainLoop() override;
 
 private:
     std::default_random_engine m_random_generator;
     std::normal_distribution<double> m_distribution;
     Parameters m_parameters;
+    double m_sampling_frequency;
 
-    void NoisySine(TimeDomainRecord &record, size_t count);
-};
-
-/* Thin wrapper around the simulator that implements the interface declared by DataAcquisition. */
-class DataAcquisitionSimulator : public DataAcquisition
-{
-public:
-    int Initialize(const Generator::Parameters &parameters = Generator::Parameters())
-    {
-        return m_generator.Initialize(parameters);
-    }
-
-    int Start()
-    {
-        return m_generator.Start();
-    }
-
-    int Stop()
-    {
-        return m_generator.Stop();
-    }
-
-    int WaitForBuffer(std::shared_ptr<void> &buffer, int timeout, void *status)
-    {
-        (void)status;
-        /* FIXME: This void business sucks. I don't think this cast is ok, strictly speaking. */
-        return m_generator.WaitForBuffer(reinterpret_cast<std::shared_ptr<TimeDomainRecord> &>(buffer), timeout);
-    }
-
-    int ReturnBuffer(std::shared_ptr<void> buffer)
-    {
-        return m_generator.ReturnBuffer(std::static_pointer_cast<TimeDomainRecord>(buffer));
-    }
-
-private:
-    Generator m_generator;
+    void NoisySine(ADQGen4Record &record, size_t count);
 };
 
 #endif

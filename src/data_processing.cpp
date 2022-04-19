@@ -3,41 +3,26 @@
 #include "fft.h"
 #include "fft_settings.h"
 
-#include <cmath>
+#ifdef SIMULATION_ONLY
+#include "mock_adqapi.h"
+#else
+#include "ADQAPI.h"
+#endif
 
-DataProcessing::DataProcessing(std::shared_ptr<DataAcquisition> acquisition)
-    : m_acquisition(acquisition)
+#include <cmath>
+#include <cinttypes>
+
+DataProcessing::DataProcessing(void *control_unit, int index, int channel, const std::string &label)
+    : m_control_unit(control_unit)
+    , m_index(index)
+    , m_channel(channel)
+    , m_label(label)
 {
 }
 
 DataProcessing::~DataProcessing()
 {
     Stop();
-}
-
-int DataProcessing::Initialize()
-{
-    /* TODO: Nothing to initialize right now. */
-    return ADQR_EOK;
-}
-
-int DataProcessing::Start()
-{
-    int result = m_acquisition->Start();
-    if (result != ADQR_EOK)
-        return result;
-    return SmartBufferThread::Start();
-}
-
-int DataProcessing::Stop()
-{
-    /* Regardless of what happens, we want to send the stop signal to the
-       acquisition object too. */
-    int processing_result = SmartBufferThread::Stop();
-    int acquisition_result = m_acquisition->Stop();
-    if (processing_result != ADQR_EOK)
-        return processing_result;
-    return acquisition_result;
 }
 
 void DataProcessing::MainLoop()
@@ -51,41 +36,44 @@ void DataProcessing::MainLoop()
         if (m_should_stop.wait_for(std::chrono::microseconds(0)) == std::future_status::ready)
             break;
 
-        /* FIXME: This is a hardcoded type for now. */
-        std::shared_ptr<TimeDomainRecord> time_domain = NULL;
-        int result = m_acquisition->WaitForBuffer((std::shared_ptr<void> &)time_domain, 100, NULL);
+        struct ADQGen4Record *time_domain = NULL;
+        int channel = m_channel;
+        int64_t bytes_received = ADQ_WaitForRecordBuffer(m_control_unit, m_index, &channel,
+                                                         (void **)&time_domain, 0, NULL);
 
         /* Continue on timeout. */
-        if (result == ADQR_EAGAIN)
+        if ((bytes_received == ADQ_EAGAIN) || (bytes_received == ADQ_ENOTREADY) || (bytes_received == ADQR_EINTERRUPTED))
         {
             continue;
         }
-        else if (result < 0)
+        else if (bytes_received < 0)
         {
-            printf("Failed to get a time domain buffer %d.\n", result);
+            printf("Failed to get a time domain buffer %" PRId64 ".\n", bytes_received);
             m_thread_exit_code = ADQR_EINTERNAL;
             return;
         }
 
         auto time_point_this_record = std::chrono::high_resolution_clock::now();
         auto period = time_point_this_record - time_point_last_record;
-        time_domain->estimated_trigger_frequency = 1e9 / period.count();
+        double estimated_trigger_frequency = 1e9 / period.count();
         time_point_last_record = time_point_this_record;
 
         /* We only allocate memory and calculate the FFT if we know that we're
            going to show it, i.e. if the outbound queue has space available. */
         if (!m_read_queue.IsFull())
         {
-            /* Compute FFT */
-            int fft_size = PreviousPowerOfTwo(time_domain->count);
-            auto processed_record = std::make_shared<ProcessedRecord>(fft_size);
-
             /* We copy the time domain data in order to return the buffer to the
                acquisition interface ASAP. */
-            *processed_record->time_domain = *time_domain;
+            auto processed_record = std::make_shared<ProcessedRecord>();
+            int fft_size = PreviousPowerOfTwo(time_domain->header->record_length);
+            processed_record->time_domain = std::make_shared<TimeDomainRecord>(time_domain);
+            processed_record->frequency_domain = std::make_shared<FrequencyDomainRecord>(fft_size);
+            processed_record->time_domain->estimated_trigger_frequency = estimated_trigger_frequency;
+            processed_record->label = m_label;
 
+            /* Compute FFT */
             const char *error = NULL;
-            if (!simple_fft::FFT(time_domain->y, processed_record->frequency_domain->yc, fft_size, error))
+            if (!simple_fft::FFT(processed_record->time_domain->y, processed_record->frequency_domain->yc, fft_size, error))
             {
                 printf("Failed to compute FFT: %s.\n", error);
                 m_thread_exit_code = ADQR_EINTERNAL;
@@ -97,7 +85,7 @@ void DataProcessing::MainLoop()
                      remaining passes. */
 
             /* Compute real spectrum. */
-            for (int i = 0; i < fft_size; ++i)
+            for (size_t i = 0; i < processed_record->frequency_domain->count; ++i)
             {
                 processed_record->frequency_domain->x[i] = static_cast<double>(i) / static_cast<double>(fft_size);
                 processed_record->frequency_domain->y[i] = 20 * std::log10(std::abs(processed_record->frequency_domain->yc[i]) / fft_size);
@@ -109,7 +97,7 @@ void DataProcessing::MainLoop()
                     processed_record->frequency_domain_metrics.min = processed_record->frequency_domain->y[i];
             }
 
-            for (size_t i = 0; i < time_domain->count; ++i)
+            for (size_t i = 0; i < processed_record->time_domain->count; ++i)
             {
                 if (processed_record->time_domain->y[i] > processed_record->time_domain_metrics.max)
                     processed_record->time_domain_metrics.max = processed_record->time_domain->y[i];
@@ -134,7 +122,7 @@ void DataProcessing::MainLoop()
             printf("Skipping (no FFT or allocation) since queue is full (%d).\n", nof_discarded++);
         }
 
-        m_acquisition->ReturnBuffer(time_domain);
+        ADQ_ReturnRecordBuffer(m_control_unit, m_index, channel, time_domain);
     }
 }
 

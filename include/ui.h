@@ -8,11 +8,8 @@
 #include "GL/gl3w.h"
 #include <GLFW/glfw3.h>
 
-#include "simulated_digitizer.h"
-
-#ifndef SIMULATION_ONLY
-#include "gen4_digitizer.h"
-#endif
+#include "digitizer.h"
+#include "identification.h"
 
 class Ui
 {
@@ -25,17 +22,29 @@ public:
     void Terminate();
 
 private:
-    std::vector<std::unique_ptr<Digitizer>> m_digitizers;
+    Identification m_identification;
+    std::vector<std::shared_ptr<Digitizer>> m_digitizers;
     std::vector<std::vector<std::shared_ptr<ProcessedRecord>>> m_records;
     void *m_adq_control_unit;
     bool m_show_imgui_demo_window;
     bool m_show_implot_demo_window;
     std::unique_ptr<bool[]> m_selected;
 
-    void InitializeGen4Digitizers();
-    void InitializeSimulatedDigitizers();
+    struct DigitizerUiState
+    {
+        std::string identifier;
+        std::string status;
+        std::string extra;
+        ImVec4 color;
+        ImVec4 text_color;
+    };
+    std::unique_ptr<DigitizerUiState[]> m_digitizer_ui_state;
+
+    void PushMessage(DigitizerMessageId id, bool selected = true);
 
     void UpdateRecords();
+    void HandleMessage(const IdentificationMessage &message);
+    void HandleMessage(size_t i, const DigitizerMessage &message);
     void HandleMessages();
 
     void RenderMenuBar();
@@ -46,14 +55,29 @@ private:
     void RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size);
     void RenderCommandPalette(const ImVec2 &position, const ImVec2 &size);
     void RenderParameters(const ImVec2 &position, const ImVec2 &size);
+
+    void PlotTimeDomainSelected();
     void RenderTimeDomain(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size);
+
+    void PlotFourierTransformSelected();
     void RenderFourierTransformPlot();
+
+    void PlotWaterfallSelected();
     void RenderWaterfallPlot();
+
+    void RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size);
+    void RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size);
 
     static constexpr float FIRST_COLUMN_RELATIVE_WIDTH = 0.2f;
     static constexpr float SECOND_COLUMN_RELATIVE_WIDTH = 0.6f;
     static constexpr float THIRD_COLUMN_RELATIVE_WIDTH = 0.2f;
+
+    static const ImVec4 COLOR_GREEN;
+    static const ImVec4 COLOR_RED;
+    static const ImVec4 COLOR_YELLOW;
+    static const ImVec4 COLOR_ORANGE;
+    static const ImVec4 COLOR_PURPLE;
 };
 
 #endif

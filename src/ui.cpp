@@ -1,15 +1,22 @@
 #include "ui.h"
 #include <cinttypes>
 
+const ImVec4 Ui::COLOR_GREEN = {0.0f, 1.0f, 0.5f, 0.6f};
+const ImVec4 Ui::COLOR_RED = {1.0f, 0.0f, 0.2f, 0.6f};
+const ImVec4 Ui::COLOR_YELLOW = {1.0f, 1.0f, 0.3f, 0.8f};
+const ImVec4 Ui::COLOR_ORANGE = {0.86f, 0.38f, 0.1f, 0.8f};
+const ImVec4 Ui::COLOR_PURPLE = {0.6f, 0.3f, 1.0f, 0.8f};
+
 Ui::Ui()
-    : m_digitizers{}
+    : m_identification()
+    , m_digitizers()
     , m_records{}
     , m_adq_control_unit()
     , m_show_imgui_demo_window(false)
     , m_show_implot_demo_window(false)
     , m_selected()
-{
-}
+    , m_digitizer_ui_state()
+{}
 
 Ui::~Ui()
 {
@@ -22,36 +29,19 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version)
     ImPlot::CreateContext();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
-
     ImGui::StyleColorsDark();
 
-    m_digitizers.clear();
-#ifndef SIMULATION_ONLY
-    m_adq_control_unit = CreateADQControlUnit();
-    if (m_adq_control_unit == NULL)
-        printf("Failed to create an ADQControlUnit.\n");
-    InitializeGen4Digitizers();
-#endif
-
-    if (m_digitizers.size() == 0)
-        InitializeSimulatedDigitizers();
-
-    m_selected = std::unique_ptr<bool[]>( new bool[m_digitizers.size()] );
-    memset(&m_selected[0], 0, sizeof(m_selected));
-
-    for (const auto &d : m_digitizers)
-    {
-        d->Start();
-    }
+    /* Start device identification thread. */
+    m_identification.Start();
 }
 
 void Ui::Terminate()
 {
-#ifndef SIMULATION_ONLY
-    /* FIXME: Close digitizers? */
+    for (const auto &d : m_digitizers)
+        d->Stop();
+
     if (m_adq_control_unit != NULL)
         DeleteADQControlUnit(m_adq_control_unit);
-#endif
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
@@ -65,6 +55,7 @@ void Ui::Render(float width, float height)
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
+    HandleMessages();
     UpdateRecords();
     RenderMenuBar();
     RenderLeft(width, height);
@@ -81,46 +72,13 @@ void Ui::Render(float width, float height)
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-void Ui::InitializeGen4Digitizers()
+void Ui::PushMessage(DigitizerMessageId id, bool selected)
 {
-#ifndef SIMULATION_ONLY
-    /* Filter out the Gen4 digitizers and construct a digitizer object for each one. */
-    struct ADQInfoListEntry *adq_list = NULL;
-    int nof_devices = 0;
-    if (!ADQControlUnit_ListDevices(m_adq_control_unit, &adq_list, (unsigned int *)&nof_devices))
-        return;
-
-    int nof_gen4_digitizers = 0;
-    for (int i = 0; i < nof_devices; ++i)
+    for (size_t i = 0; i < m_digitizers.size(); ++i)
     {
-        if (adq_list[i].ProductID == PID_ADQ3)
-        {
-            if (ADQControlUnit_OpenDeviceInterface(m_adq_control_unit, i))
-                nof_gen4_digitizers++;
-        }
-    }
-
-    for (int i = 0; i < nof_gen4_digitizers; ++i)
-        m_digitizers.push_back(std::make_unique<Gen4Digitizer>(m_adq_control_unit, i + 1));
-
-    /* FIXME: Remove */
-    if (m_digitizers.size() == 0)
-        printf("No Gen4 digitizers.\n");
-#endif
-}
-
-void Ui::InitializeSimulatedDigitizers()
-{
-    printf("Using simulator.\n");
-    for (int i = 0; i < 1; ++i)
-    {
-        m_digitizers.push_back(std::make_unique<SimulatedDigitizer>(i));
-
-        /* FIXME: array type instead? */
-        std::vector<std::shared_ptr<ProcessedRecord>> tmp;
-        for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
-            tmp.push_back(std::shared_ptr<ProcessedRecord>());
-        m_records.push_back(tmp);
+        if (selected && !m_selected[i])
+            continue;
+        m_digitizers[i]->PushMessage({id});
     }
 }
 
@@ -133,14 +91,103 @@ void Ui::UpdateRecords()
     /* Attempt to update the set of processed records for each digitizer. */
     for (size_t i = 0; i < m_digitizers.size(); ++i)
     {
+        /* FIXME: Skip nonexistent channels. */
         for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
             m_digitizers[i]->WaitForProcessedRecord(ch, m_records[i][ch]);
     }
 }
 
+void Ui::HandleMessage(const IdentificationMessage &message)
+{
+    /* If we get a message, the identification went well. */
+    for (const auto &d : m_digitizers)
+        d->Stop();
+    m_digitizers.clear();
+
+    m_digitizers = message.digitizers;
+    m_adq_control_unit = message.handle;
+    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    {
+        std::vector<std::shared_ptr<ProcessedRecord>> tmp;
+        for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
+            tmp.push_back(std::shared_ptr<ProcessedRecord>());
+        m_records.push_back(tmp);
+    }
+
+    m_digitizer_ui_state = std::unique_ptr<DigitizerUiState[]>( new DigitizerUiState[m_digitizers.size()] );
+    m_selected = std::unique_ptr<bool[]>( new bool[m_digitizers.size()] );
+    memset(&m_selected[0], 0, sizeof(m_selected[0]) * m_digitizers.size());
+
+    for (const auto &d : m_digitizers)
+        d->Start();
+}
+
+void Ui::HandleMessage(size_t i, const DigitizerMessage &message)
+{
+    switch (message.id)
+    {
+    case DigitizerMessageId::ENUMERATING:
+        m_digitizer_ui_state[i].identifier = "Unknown##" + std::to_string(i);
+        m_digitizer_ui_state[i].status = "ENUMERATING##" + std::to_string(i);
+        m_digitizer_ui_state[i].color = COLOR_PURPLE;
+        break;
+
+    case DigitizerMessageId::SETUP_OK:
+        m_digitizer_ui_state[i].identifier = *message.str;
+        break;
+
+    case DigitizerMessageId::SETUP_FAILED:
+        m_digitizer_ui_state[i].identifier = "Unknown##" + std::to_string(i);
+        m_digitizer_ui_state[i].status = "SETUP FAILED##" + std::to_string(i);
+        m_digitizer_ui_state[i].color = COLOR_RED;
+        break;
+
+    case DigitizerMessageId::NEW_STATE:
+        switch (message.state)
+        {
+        case DigitizerState::NOT_ENUMERATED:
+            m_digitizer_ui_state[i].status = "NOT ENUMERATED";
+            m_digitizer_ui_state[i].color = COLOR_RED;
+            break;
+        case DigitizerState::IDLE:
+            m_digitizer_ui_state[i].status = "IDLE";
+            m_digitizer_ui_state[i].color = COLOR_GREEN;
+            break;
+        case DigitizerState::CONFIGURATION:
+            m_digitizer_ui_state[i].status = "CONFIGURATION";
+            m_digitizer_ui_state[i].color = COLOR_PURPLE;
+            break;
+        case DigitizerState::ACQUISITION:
+            m_digitizer_ui_state[i].status = "ACQUISITION";
+            m_digitizer_ui_state[i].color = COLOR_ORANGE;
+            break;
+        }
+        break;
+
+    case DigitizerMessageId::START_ACQUISITION:
+    case DigitizerMessageId::STOP_ACQUISITION:
+    case DigitizerMessageId::SET_PARAMETERS:
+    case DigitizerMessageId::GET_PARAMETERS:
+    case DigitizerMessageId::VALIDATE_PARAMETERS:
+    case DigitizerMessageId::INITIALIZE_PARAMETERS:
+    case DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
+        /* These are not expected as a message from a digitizer thread. */
+        break;
+    }
+}
+
 void Ui::HandleMessages()
 {
-    /* FIXME: Implement */
+    IdentificationMessage identification_message;
+    if (ADQR_EOK == m_identification.WaitForMessage(identification_message, 0))
+        HandleMessage(identification_message);
+
+    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    {
+        DigitizerMessage digitizer_message;
+        if (ADQR_EOK == m_digitizers[i]->WaitForMessage(digitizer_message, 0))
+            HandleMessage(i, digitizer_message);
+    }
 }
 
 void Ui::RenderMenuBar()
@@ -187,42 +234,10 @@ void Ui::RenderRight(float width, float height)
     const ImVec2 SIZE(width * SECOND_COLUMN_RELATIVE_WIDTH, PLOT_WINDOW_HEIGHT);
 
     /* In the right column, we show various metrics. */
-    /* FIXME: Move into functions? */
-    ImGui::SetNextWindowPos(POSITION_UPPER);
-    ImGui::SetNextWindowSize(SIZE);
-    ImGui::Begin("Metrics##timedomain", NULL, ImGuiWindowFlags_NoMove);
-    if (m_records[0][0] != NULL)
-    {
-        ImGui::Text("Record number: %" PRIu32, m_records[0][0]->time_domain->header.record_number);
-        ImGui::Text("Maximum value: %.4f", m_records[0][0]->time_domain_metrics.max);
-        ImGui::Text("Minimum value: %.4f", m_records[0][0]->time_domain_metrics.min);
-        ImGui::Text("Estimated trigger frequency: %.4f Hz", m_records[0][0]->time_domain->estimated_trigger_frequency);
-    }
-    if (m_records[0][1] != NULL)
-    {
-        ImGui::Text("Record number: %" PRIu32, m_records[0][1]->time_domain->header.record_number);
-        ImGui::Text("Maximum value: %.4f", m_records[0][1]->time_domain_metrics.max);
-        ImGui::Text("Minimum value: %.4f", m_records[0][1]->time_domain_metrics.min);
-        ImGui::Text("Estimated trigger frequency: %.4f Hz", m_records[0][1]->time_domain->estimated_trigger_frequency);
-    }
-    ImGui::End();
+    RenderTimeDomainMetrics(POSITION_UPPER, SIZE);
 
-    ImGui::SetNextWindowPos(POSITION_LOWER);
-    ImGui::SetNextWindowSize(SIZE);
-    ImGui::Begin("Metrics##frequencydomain", NULL, ImGuiWindowFlags_NoMove);
-    if (m_records[0][0] != NULL)
-    {
-        ImGui::Text("Record number: %" PRIu32, m_records[0][0]->time_domain->header.record_number);
-        ImGui::Text("Maximum value: %.4f", m_records[0][0]->frequency_domain_metrics.max);
-        ImGui::Text("Minimum value: %.4f", m_records[0][0]->frequency_domain_metrics.min);
-    }
-    if (m_records[0][1] != NULL)
-    {
-        ImGui::Text("Record number: %" PRIu32, m_records[0][1]->time_domain->header.record_number);
-        ImGui::Text("Maximum value: %.4f", m_records[0][1]->frequency_domain_metrics.max);
-        ImGui::Text("Minimum value: %.4f", m_records[0][1]->frequency_domain_metrics.min);
-    }
-    ImGui::End();
+    /*  */
+    RenderFrequencyDomainMetrics(POSITION_LOWER, SIZE);
 }
 
 void Ui::RenderCenter(float width, float height)
@@ -245,15 +260,15 @@ void Ui::RenderLeft(float width, float height)
 {
     const float FRAME_HEIGHT = ImGui::GetFrameHeight();
     const ImVec2 DIGITIZER_SELECTION_POS(0.0f, FRAME_HEIGHT);
-    const ImVec2 DIGITIZER_SELECTION_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 200.0);
+    const ImVec2 DIGITIZER_SELECTION_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 200.0f);
     RenderDigitizerSelection(DIGITIZER_SELECTION_POS, DIGITIZER_SELECTION_SIZE);
 
-    const ImVec2 COMMAND_PALETTE_POS(0.0f, 200.0 + FRAME_HEIGHT);
-    const ImVec2 COMMAND_PALETTE_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 200.0);
+    const ImVec2 COMMAND_PALETTE_POS(0.0f, 200.0f + FRAME_HEIGHT);
+    const ImVec2 COMMAND_PALETTE_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 200.0f);
     RenderCommandPalette(COMMAND_PALETTE_POS, COMMAND_PALETTE_SIZE);
 
     const ImVec2 PARAMETERS_POS(0.0f, 400.0f + FRAME_HEIGHT);
-    const ImVec2 PARAMETERS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, height - 400.0 - FRAME_HEIGHT);
+    const ImVec2 PARAMETERS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, height - 400.0f - FRAME_HEIGHT);
     RenderParameters(PARAMETERS_POS, PARAMETERS_SIZE);
 }
 
@@ -276,48 +291,46 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
     }
     ImGui::Separator();
 
-    if (ImGui::BeginTable("Digitizers", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings))
+    if (m_digitizers.size() == 0)
     {
-        if (m_digitizers.size() == 0)
-        {
-            ImGui::TableNextColumn();
-            ImGui::Text("No digitizers found.");
-        }
-        else
+        ImGui::Text("No digitizers found.");
+    }
+    else
+    {
+        ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings;
+        if (ImGui::BeginTable("Digitizers", 3, flags))
         {
             const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
             ImGui::TableSetupColumn("Identifier",
                                     ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoHide,
-                                    TEXT_BASE_WIDTH * 20.0f);
+                                    TEXT_BASE_WIDTH * 14.0f);
             ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed,
-                                    TEXT_BASE_WIDTH * 12.0f);
+                                    TEXT_BASE_WIDTH * 20.0f);
             ImGui::TableSetupColumn("Extra");
             ImGui::TableHeadersRow();
 
             for (size_t i = 0; i < m_digitizers.size(); ++i)
             {
-                char label[32];
-                std::sprintf(label, "Initializing... %zu", i);
                 ImGui::TableNextColumn();
-                if (ImGui::Selectable(label, m_selected[i], ImGuiSelectableFlags_SpanAllColumns))
+                if (ImGui::Selectable(m_digitizer_ui_state[i].identifier.c_str(), m_selected[i],
+                                      ImGuiSelectableFlags_SpanAllColumns))
                 {
                     if (!ImGui::GetIO().KeyCtrl)
-                        memset(&m_selected[0], 0, sizeof(m_selected));
+                        memset(&m_selected[0], 0, sizeof(m_selected[0]) * m_digitizers.size());
                     m_selected[i] ^= 1;
                 }
+
                 ImGui::TableNextColumn();
-                ImVec4 color(0.0f, 1.0f, 0.5f, 0.6f);
-                ImGui::PushStyleColor(ImGuiCol_Button, color);
-                std::sprintf(label, "OK##%zu", i);
-                if (ImGui::SmallButton(label))
+                if (m_digitizer_ui_state[i].status.size() > 0)
                 {
-                    printf("OK! %zu\n", i);
+                    ImGui::PushStyleColor(ImGuiCol_Button, m_digitizer_ui_state[i].color);
+                    ImGui::SmallButton(m_digitizer_ui_state[i].status.c_str());
+                    ImGui::PopStyleColor();
                 }
-                ImGui::PopStyleColor();
                 ImGui::TableNextRow();
             }
+            ImGui::EndTable();
         }
-        ImGui::EndTable();
     }
     ImGui::End();
 }
@@ -327,6 +340,8 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
     ImGui::Begin("Command Palette");
+
+    /* FIXME: Maybe this is overkill. */
     std::stringstream ss;
     bool any_selected = false;
     for (size_t i = 0; i < m_digitizers.size(); ++i)
@@ -334,67 +349,60 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
         if (m_selected[i])
         {
             if (!any_selected)
-                ss << "Commands will be applied to device ";
+                ss << "Commands will be applied to ";
             else
                 ss << ", ";
 
-            ss << i;
+            ss << m_digitizer_ui_state[i].identifier;
             any_selected = true;
         }
     }
 
     if (!any_selected)
-        ss << "No digitizer available.";
+        ss << "No digitizer selected.";
 
     ImGui::Text("%s", ss.str().c_str());
 
     const ImVec2 COMMAND_PALETTE_BUTTON_SIZE{85, 50};
+    if (!any_selected)
+        ImGui::BeginDisabled();
+
+    /* First row */
     if (ImGui::Button("Start", COMMAND_PALETTE_BUTTON_SIZE))
-    {
-        printf("Start!\n");
-        m_digitizers[0]->PushMessage(DigitizerMessage(DigitizerMessageId::START_ACQUISITION));
-    }
+        PushMessage(DigitizerMessageId::START_ACQUISITION);
+
     ImGui::SameLine();
     if (ImGui::Button("Stop", COMMAND_PALETTE_BUTTON_SIZE))
-    {
-        printf("Stop!\n");
-        m_digitizers[0]->PushMessage(DigitizerMessage(DigitizerMessageId::STOP_ACQUISITION));
-    }
+        PushMessage(DigitizerMessageId::STOP_ACQUISITION);
+
     ImGui::SameLine();
     if (ImGui::Button("Set", COMMAND_PALETTE_BUTTON_SIZE))
-    {
-        printf("Set!\n");
-        m_digitizers[0]->PushMessage(DigitizerMessage(DigitizerMessageId::SET_PARAMETERS));
-    }
+        PushMessage(DigitizerMessageId::SET_PARAMETERS);
+
     ImGui::SameLine();
     if (ImGui::Button("Get", COMMAND_PALETTE_BUTTON_SIZE))
-    {
-        printf("Get!\n");
-        m_digitizers[0]->PushMessage(DigitizerMessage(DigitizerMessageId::GET_PARAMETERS));
-    }
+        PushMessage(DigitizerMessageId::GET_PARAMETERS);
+
+    /* Second row */
     ImGui::BeginDisabled();
-    if (ImGui::Button("SetPorts", COMMAND_PALETTE_BUTTON_SIZE))
-    {
-        printf("SetPorts!\n");
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Set\nSelection", COMMAND_PALETTE_BUTTON_SIZE))
-    {
-        printf("SetSelection!\n");
-    }
+    ImGui::Button("Set\nSelection", COMMAND_PALETTE_BUTTON_SIZE);
     ImGui::EndDisabled();
+
+    ImGui::SameLine();
+    if (ImGui::Button("Set Clock\nSystem", COMMAND_PALETTE_BUTTON_SIZE))
+        PushMessage(DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS);
+
     ImGui::SameLine();
     if (ImGui::Button("Initialize", COMMAND_PALETTE_BUTTON_SIZE))
-    {
-        printf("Initialize!\n");
-        m_digitizers[0]->PushMessage(DigitizerMessage(DigitizerMessageId::INITIALIZE_PARAMETERS));
-    }
+        PushMessage(DigitizerMessageId::INITIALIZE_PARAMETERS);
+
     ImGui::SameLine();
     if (ImGui::Button("Validate", COMMAND_PALETTE_BUTTON_SIZE))
-    {
-        printf("Validate!\n");
-        m_digitizers[0]->PushMessage(DigitizerMessage(DigitizerMessageId::VALIDATE_PARAMETERS));
-    }
+        PushMessage(DigitizerMessageId::VALIDATE_PARAMETERS);
+
+    if (!any_selected)
+        ImGui::EndDisabled();
+
     ImGui::End();
 }
 
@@ -402,20 +410,28 @@ void Ui::RenderParameters(const ImVec2 &position, const ImVec2 &size)
 {
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
-    ImGui::Begin("Configuration", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+    ImGui::Begin("Parameters", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
     if (ImGui::BeginTabBar("Parameters", ImGuiTabBarFlags_None))
     {
         /* TODO: The idea here would be to read & copy the parameters from the selected digitizers[0]-> */
-        if (ImGui::BeginTabItem("Parameters"))
+        if (ImGui::BeginTabItem("Top"))
         {
             /* FIXME: Add label w/ path */
             /* FIXME: Could get fancy w/ only copying in ADQR_ELAST -> ADQR_EOK transition. */
             /* It's ok with a static pointer here as long as we keep the
                 widget in read only mode. */
             static auto parameters = std::make_shared<std::string>("");
-            m_digitizers[0]->WaitForParameters(parameters);
-            ImGui::InputTextMultiline("##parameters", parameters->data(), parameters->size(),
-                                        ImVec2(-FLT_MIN, -FLT_MIN), ImGuiInputTextFlags_ReadOnly);
+            for (size_t i = 0; i < m_digitizers.size(); ++i)
+            {
+                if (m_selected[i])
+                {
+                    m_digitizers[i]->WaitForParameters(parameters);
+                    break;
+                }
+            }
+
+            ImGui::InputTextMultiline("##top", parameters->data(), parameters->size(),
+                                      ImVec2(-FLT_MIN, -FLT_MIN), ImGuiInputTextFlags_ReadOnly);
             ImGui::EndTabItem();
         }
 
@@ -423,15 +439,41 @@ void Ui::RenderParameters(const ImVec2 &position, const ImVec2 &size)
         {
             /* FIXME: Add label w/ path */
             static auto parameters = std::make_shared<std::string>("");
-            m_digitizers[0]->WaitForClockSystemParameters(parameters);
+            for (size_t i = 0; i < m_digitizers.size(); ++i)
+            {
+                if (m_selected[i])
+                {
+                    m_digitizers[i]->WaitForClockSystemParameters(parameters);
+                    break;
+                }
+            }
             ImGui::InputTextMultiline("##clocksystem", parameters->data(), parameters->size(),
-                                        ImVec2(-FLT_MIN, -FLT_MIN), ImGuiInputTextFlags_ReadOnly);
+                                      ImVec2(-FLT_MIN, -FLT_MIN), ImGuiInputTextFlags_ReadOnly);
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();
     }
     ImGui::End();
+}
 
+void Ui::PlotTimeDomainSelected()
+{
+    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    {
+        if (!m_selected[i])
+            continue;
+
+        for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
+        {
+            if (m_records[i][ch] != NULL)
+            {
+                ImPlot::PlotLine(m_records[i][ch]->label.c_str(),
+                                 m_records[i][ch]->time_domain->x.get(),
+                                 m_records[i][ch]->time_domain->y.get(),
+                                 static_cast<int>(m_records[i][ch]->time_domain->count));
+            }
+        }
+    }
 }
 
 void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
@@ -442,18 +484,7 @@ void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
     if (ImPlot::BeginPlot("Time domain", ImVec2(-1, -1), ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
     {
         ImPlot::SetupAxis(ImAxis_X1, "Time");
-        if (m_records[0][0] != NULL)
-        {
-            ImPlot::PlotLine("CHA", m_records[0][0]->time_domain->x.get(),
-                             m_records[0][0]->time_domain->y.get(),
-                             m_records[0][0]->time_domain->count);
-        }
-        if (m_records[0][1] != NULL)
-        {
-            ImPlot::PlotLine("CHB", m_records[0][1]->time_domain->x.get(),
-                             m_records[0][1]->time_domain->y.get(),
-                             m_records[0][1]->time_domain->count);
-        }
+        PlotTimeDomainSelected();
         ImPlot::EndPlot();
     }
     ImGui::End();
@@ -482,6 +513,26 @@ void Ui::RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size)
     ImGui::End();
 }
 
+void Ui::PlotFourierTransformSelected()
+{
+    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    {
+        if (!m_selected[i])
+            continue;
+
+        for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
+        {
+            if (m_records[i][ch] != NULL)
+            {
+                ImPlot::PlotLine(m_records[i][ch]->label.c_str(),
+                                 m_records[i][ch]->frequency_domain->x.get(),
+                                 m_records[i][ch]->frequency_domain->y.get(),
+                                 static_cast<int>(m_records[i][ch]->frequency_domain->count / 2));
+            }
+        }
+    }
+}
+
 void Ui::RenderFourierTransformPlot()
 {
     if (ImPlot::BeginPlot("FFT##plot", ImVec2(-1, -1), ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
@@ -489,19 +540,33 @@ void Ui::RenderFourierTransformPlot()
         ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, 0.5);
         ImPlot::SetupAxisLimits(ImAxis_Y1, -80.0, 0.0);
         ImPlot::SetupAxis(ImAxis_X1, "Hz");
-        if (m_records[0][0] != NULL)
-        {
-            ImPlot::PlotLine("CHA", m_records[0][0]->frequency_domain->x.get(),
-                             m_records[0][0]->frequency_domain->y.get(),
-                             m_records[0][0]->frequency_domain->count / 2);
-        }
-        if (m_records[0][1] != NULL)
-        {
-            ImPlot::PlotLine("CHB", m_records[0][1]->frequency_domain->x.get(),
-                             m_records[0][1]->frequency_domain->y.get(),
-                             m_records[0][1]->frequency_domain->count / 2);
-        }
+        PlotFourierTransformSelected();
         ImPlot::EndPlot();
+    }
+}
+
+void Ui::PlotWaterfallSelected()
+{
+    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    {
+        if (!m_selected[i])
+            continue;
+
+        /* FIXME: Plot for the first channel for the first selected digitizer.
+                  We have to figure out what to do here since we cannot plot
+                  multiple waterfalls at the same time. */
+
+        for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
+        {
+            if (m_records[i][ch] != NULL)
+            {
+                ImPlot::PlotHeatmap("heat", m_records[i][ch]->waterfall->data.get(),
+                                    static_cast<int>(m_records[i][ch]->waterfall->rows),
+                                    static_cast<int>(m_records[i][ch]->waterfall->columns),
+                                    -80, 0, NULL);
+                return;
+            }
+        }
     }
 }
 
@@ -511,15 +576,74 @@ void Ui::RenderWaterfallPlot()
     if (ImPlot::BeginPlot("Waterfall##plot", ImVec2(-1, -1), ImPlotFlags_NoTitle | ImPlotFlags_NoLegend))
     {
         ImPlot::SetupAxis(ImAxis_X1, "Hz");
-        if (m_records[0][0] != NULL)
-        {
-            ImPlot::PlotHeatmap("heat", m_records[0][0]->waterfall->data.get(),
-                                m_records[0][0]->waterfall->rows,
-                                m_records[0][0]->waterfall->columns, -80, 0, NULL);
-        }
+        PlotWaterfallSelected();
         ImPlot::EndPlot();
     }
     ImPlot::PopColormap();
 }
 
+void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
+{
+    /* FIXME: Move into functions? */
+    ImGui::SetNextWindowPos(position);
+    ImGui::SetNextWindowSize(size);
+    ImGui::Begin("Metrics##timedomain", NULL, ImGuiWindowFlags_NoMove);
+
+    bool has_contents = false;
+    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    {
+        if (!m_selected[i])
+            continue;
+
+        for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
+        {
+            if (m_records[i][ch] != NULL)
+            {
+                if (has_contents)
+                    ImGui::Separator();
+
+                ImGui::Text("%s", m_records[i][ch]->label.c_str());
+                ImGui::Text("Record number: %" PRIu32, m_records[i][ch]->time_domain->header.record_number);
+                ImGui::Text("Maximum value: %.4f", m_records[i][ch]->time_domain_metrics.max);
+                ImGui::Text("Minimum value: %.4f", m_records[i][ch]->time_domain_metrics.min);
+                ImGui::Text("Estimated trigger frequency: %.4f Hz", m_records[i][ch]->time_domain->estimated_trigger_frequency);
+            }
+
+            has_contents = true;
+        }
+    }
+    ImGui::End();
+}
+
+void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size)
+{
+    ImGui::SetNextWindowPos(position);
+    ImGui::SetNextWindowSize(size);
+    ImGui::Begin("Metrics##frequencydomain", NULL, ImGuiWindowFlags_NoMove);
+
+    bool has_contents = false;
+    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    {
+        if (!m_selected[i])
+            continue;
+
+        for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
+        {
+            if (m_records[i][ch] != NULL)
+            {
+                if (has_contents)
+                    ImGui::Separator();
+
+                ImGui::Text("%s", m_records[i][ch]->label.c_str());
+                ImGui::Text("Record number: %" PRIu32, m_records[i][ch]->time_domain->header.record_number);
+                ImGui::Text("Maximum value: %.4f", m_records[i][ch]->frequency_domain_metrics.max);
+                ImGui::Text("Minimum value: %.4f", m_records[i][ch]->frequency_domain_metrics.min);
+            }
+
+            has_contents = true;
+        }
+
+    }
+    ImGui::End();
+}
 

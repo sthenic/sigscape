@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.15)
 project(adq-rapid VERSION 1.0)
 add_executable(${PROJECT_NAME})
 
-option(WITH_ADQAPI "Compile without the ADQAPI as a dependency. With this set to OFF, only the simulator mode is available." ON)
+option(WITH_ADQAPI "Compile with the ADQAPI as a dependency. With this set to OFF, only the simulator mode is available." ON)
 
 if (UNIX)
     if (APPLE)
@@ -11,7 +11,6 @@ if (UNIX)
     else()
       find_package(PkgConfig REQUIRED)
       find_package(OpenGL REQUIRED)
-      pkg_check_modules(ADQ REQUIRED libadq)
     endif()
 elseif(WIN32)
     find_package(OpenGL REQUIRED)
@@ -67,12 +66,13 @@ FetchContent_MakeAvailable(imgui)
 add_dependencies(${PROJECT_NAME} gl3w_gen)
 set_property(SOURCE ${gl3w_BINARY_DIR}/src/gl3w.c PROPERTY GENERATED 1)
 
-if(WITH_ADQAPI)
-    target_sources(${PROJECT_NAME} PRIVATE
-        src/gen4_digitizer.cpp)
-else()
+if(NOT WITH_ADQAPI)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
         SIMULATION_ONLY)
+    target_sources(${PROJECT_NAME} PRIVATE
+        src/mock_adqapi.cpp
+        src/mock_digitizer.cpp
+        src/generator.cpp)
 endif()
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
@@ -90,9 +90,9 @@ target_sources(${PROJECT_NAME} PRIVATE
     ${imgui_SOURCE_DIR}/imgui_demo.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
-    src/generator.cpp
     src/data_processing.cpp
-    src/simulated_digitizer.cpp
+    src/digitizer.cpp
+    src/identification.cpp
     src/file_watcher.cpp
     src/ui.cpp
     src/main.cpp
@@ -110,8 +110,14 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     IMGUI_IMPL_OPENGL_LOADER_GL3W
 )
 
-if (UNIX)
+if(NOT WITH_ADQAPI)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
+        SIMULATION_ONLY)
+    message(STATUS "Using SIMULATION_ONLY (no ADQAPI dependency).")
+endif()
+
+if (UNIX)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC
         LINUX)
     target_compile_options(${PROJECT_NAME} PRIVATE
         -Wall -Wextra -Wswitch -Wswitch-enum -Werror=overflow)
@@ -121,16 +127,68 @@ elseif(WIN32)
         _USE_MATH_DEFINES
         IMGUI_USER_CONFIG="imgui_config.h")
     target_compile_options(${PROJECT_NAME} PRIVATE
-        /W4)
+        /W4) # FIXME: Once we had /WX too
 endif()
 
-target_compile_options(${PROJECT_NAME} PRIVATE
-    ${ADQ_CFLAGS}
-)
+# ADQAPI localization
+# FIXME: Add option to build the API as a first-hand choice.
+if (WITH_ADQAPI)
+    if (UNIX)
+        find_library(ADQAPI_LIBRARY
+            NAMES libadq libadq.so
+            HINTS
+            "${CMAKE_SOURCE_DIR}/../../../source/.libs/"
+            "${CMAKE_SOURCE_DIR}/../../../build/"
+        )
+    else()
+        set (ADQAPI_LOCAL_PATH "") # FIXME:
+        set (ADQAPI_INSTALL_PATH "$ENV{PROGRAMFILES}/SP Devices/ADQAPI_x64/")
+
+        find_library(ADQAPI_LIBRARY
+            NAMES ADQAPI.lib
+            HINTS
+            ${ADQAPI_LOCAL_PATH}/x64/Debug/
+            ${ADQAPI_INSTALL_PATH}
+        )
+
+        find_file(ADQAPI_DLL
+            NAMES ADQAPI.dll
+            HINTS
+            ${ADQAPI_LOCAL_PATH}/x64/Debug/
+            ${ADQAPI_INSTALL_PATH}
+        )
+
+        if(NOT ADQAPI_DLL)
+            message(FATAL_ERROR "ADQAPI.dll not found")
+        endif()
+    endif()
+
+    find_path(ADQAPI_INCLUDE
+        NAMES ADQAPI.h
+        HINTS
+        ${ADQAPI_LOCAL_PATH}/Release
+        "${CMAKE_SOURCE_DIR}/../../../Release/"
+        "${CMAKE_SOURCE_DIR}/../../../build/"
+        ${ADQAPI_INSTALL_PATH}
+    )
+
+    message(STATUS "Using libadq/ADQAPI.lib: ${ADQAPI_LIBRARY}")
+    message(STATUS "Using ADQAPI.h from ${ADQAPI_INCLUDE}/ADQAPI.h")
+    if (ADQAPI_DLL)
+        message(STATUS "Using ADQAPI.dll: ${ADQAPI_DLL}")
+    endif()
+
+    target_include_directories(${PROJECT_NAME} PRIVATE ${ADQAPI_INCLUDE})
+    # FIXME: Copy the DLL somewhere?
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${ADQAPI_DLL}
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>)
+endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     OpenGL::GL
     Threads::Threads
     glfw
-    ${ADQ_LIBRARIES}
+    ${ADQAPI_LIBRARY}
 )

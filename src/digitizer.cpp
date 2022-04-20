@@ -28,24 +28,6 @@ int Digitizer::WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedReco
     return m_processing_threads[channel]->WaitForBuffer(record, 0);
 }
 
-/* TODO: We can probably do the same generalization for the MessageThread
-          with a persistent read queue and expose that directly. */
-int Digitizer::WaitForParameters(std::shared_ptr<std::string> &str)
-{
-    if (m_parameters.top == NULL)
-        return ADQR_ENOTREADY;
-
-    return m_parameters.top->Read(str, 0);
-}
-
-int Digitizer::WaitForClockSystemParameters(std::shared_ptr<std::string> &str)
-{
-    if (m_parameters.clock_system == NULL)
-        return ADQR_ENOTREADY;
-
-    return m_parameters.clock_system->Read(str, 0);
-}
-
 void Digitizer::MainLoop()
 {
     /* When the main loop is started, we assume ownership of the digitizer with
@@ -157,6 +139,10 @@ void Digitizer::ProcessMessages()
         case DigitizerMessageId::ENUMERATING:
         case DigitizerMessageId::SETUP_OK:
         case DigitizerMessageId::SETUP_FAILED:
+        case DigitizerMessageId::DIRTY_TOP_PARAMETERS:
+        case DigitizerMessageId::DIRTY_CLOCK_SYSTEM_PARAMETERS:
+        case DigitizerMessageId::CLEAN_TOP_PARAMETERS:
+        case DigitizerMessageId::CLEAN_CLOCK_SYSTEM_PARAMETERS:
         case DigitizerMessageId::NEW_STATE:
         default:
             break;
@@ -164,8 +150,17 @@ void Digitizer::ProcessMessages()
     }
 }
 
+void Digitizer::ProcessWatcherMessages()
+{
+    ProcessWatcherMessages(m_watchers.top, m_parameters.top,
+                           DigitizerMessageId::DIRTY_TOP_PARAMETERS);
+    ProcessWatcherMessages(m_watchers.clock_system, m_parameters.clock_system,
+                           DigitizerMessageId::DIRTY_CLOCK_SYSTEM_PARAMETERS);
+}
+
 void Digitizer::ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watcher,
-                                       const std::unique_ptr<ParameterQueue> &queue)
+                                       std::shared_ptr<std::string> &str,
+                                       DigitizerMessageId dirty_id)
 {
     FileWatcherMessage message;
     while (ADQR_EOK == watcher->WaitForMessage(message, 0))
@@ -174,8 +169,12 @@ void Digitizer::ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watch
         {
         case FileWatcherMessageId::FILE_CREATED:
         case FileWatcherMessageId::FILE_UPDATED:
+            str = message.contents;
+            m_read_queue.Write({dirty_id});
+            break;
+
         case FileWatcherMessageId::FILE_DELETED:
-            queue->Write(message.contents);
+            /* FIXME: What to do here? */
             break;
 
         case FileWatcherMessageId::UPDATE_FILE:
@@ -227,34 +226,33 @@ int Digitizer::SetParameters(bool clock_system)
 
     /* FIXME: Check return value, emit error etc. */
     if (clock_system)
-        SetParameters(m_parameters.clock_system);
-    SetParameters(m_parameters.top);
+        SetParameters(m_parameters.clock_system, DigitizerMessageId::CLEAN_CLOCK_SYSTEM_PARAMETERS);
+
+    SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
 
     if (previous_state == DigitizerState::ACQUISITION)
         StartDataAcquisition();
 
+    /* Restore the previous state. */
     SetState(previous_state);
 
     /* FIXME: Probably as a void, errors should propagate via messages. */
     return ADQR_EOK;
 }
 
-int Digitizer::SetParameters(const std::unique_ptr<ParameterQueue> &queue)
+int Digitizer::SetParameters(const std::shared_ptr<std::string> &str, DigitizerMessageId clean_id)
 {
-    std::shared_ptr<std::string> parameters_str;
-
-    int result = ADQR_ELAST;
-    while (result == ADQR_ELAST)
-        result = queue->Read(parameters_str, 0);
-    if (result != ADQR_EOK)
-        return ADQR_EINTERNAL;
-
-    result = ADQ_SetParametersString(m_id.handle, m_id.index, parameters_str->c_str(),
-                                     parameters_str->size());
+    int result = ADQ_SetParametersString(m_id.handle, m_id.index, str->c_str(), str->size());
     if (result > 0)
+    {
+        m_read_queue.Write({clean_id});
         return ADQR_EOK;
+    }
     else
+    {
+        /* FIXME: Emit error */
         return result;
+    }
 }
 
 int Digitizer::InitializeParameters(enum ADQParameterId id,
@@ -294,11 +292,8 @@ void Digitizer::InitializeFileWatchers(const struct ADQConstantParameters &const
                    [](unsigned char c){ return static_cast<char>(std::tolower(c)); } );
     m_watchers.clock_system = std::make_unique<FileWatcher>(filename);
 
-    m_parameters.top = std::make_unique<ThreadSafeQueue<std::shared_ptr<std::string>>>(0, true);
-    m_parameters.clock_system = std::make_unique<ThreadSafeQueue<std::shared_ptr<std::string>>>(0, true);
-
-    m_parameters.top->Start();
-    m_parameters.clock_system->Start();
+    m_parameters.top = std::make_shared<std::string>("");
+    m_parameters.clock_system = std::make_shared<std::string>("");
 
     m_watchers.top->Start();
     m_watchers.clock_system->Start();

@@ -217,7 +217,7 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
     }
 
     /* FIXME: Return value */
-    return ADQR_EOK;
+    return static_cast<int>(length);
 }
 
 int MockDigitizer::GetParametersString(enum ADQParameterId id, char *const string, size_t length, int format)

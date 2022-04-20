@@ -129,7 +129,7 @@ void Ui::HandleMessage(size_t i, const DigitizerMessage &message)
     case DigitizerMessageId::ENUMERATING:
         m_digitizer_ui_state[i].identifier = "Unknown##" + std::to_string(i);
         m_digitizer_ui_state[i].status = "ENUMERATING##" + std::to_string(i);
-        m_digitizer_ui_state[i].color = COLOR_PURPLE;
+        m_digitizer_ui_state[i].status_color = COLOR_PURPLE;
         break;
 
     case DigitizerMessageId::SETUP_OK:
@@ -139,7 +139,7 @@ void Ui::HandleMessage(size_t i, const DigitizerMessage &message)
     case DigitizerMessageId::SETUP_FAILED:
         m_digitizer_ui_state[i].identifier = "Unknown##" + std::to_string(i);
         m_digitizer_ui_state[i].status = "SETUP FAILED##" + std::to_string(i);
-        m_digitizer_ui_state[i].color = COLOR_RED;
+        m_digitizer_ui_state[i].status_color = COLOR_RED;
         break;
 
     case DigitizerMessageId::NEW_STATE:
@@ -147,21 +147,37 @@ void Ui::HandleMessage(size_t i, const DigitizerMessage &message)
         {
         case DigitizerState::NOT_ENUMERATED:
             m_digitizer_ui_state[i].status = "NOT ENUMERATED";
-            m_digitizer_ui_state[i].color = COLOR_RED;
+            m_digitizer_ui_state[i].status_color = COLOR_RED;
             break;
         case DigitizerState::IDLE:
             m_digitizer_ui_state[i].status = "IDLE";
-            m_digitizer_ui_state[i].color = COLOR_GREEN;
+            m_digitizer_ui_state[i].status_color = COLOR_GREEN;
             break;
         case DigitizerState::CONFIGURATION:
             m_digitizer_ui_state[i].status = "CONFIGURATION";
-            m_digitizer_ui_state[i].color = COLOR_PURPLE;
+            m_digitizer_ui_state[i].status_color = COLOR_PURPLE;
             break;
         case DigitizerState::ACQUISITION:
             m_digitizer_ui_state[i].status = "ACQUISITION";
-            m_digitizer_ui_state[i].color = COLOR_ORANGE;
+            m_digitizer_ui_state[i].status_color = COLOR_ORANGE;
             break;
         }
+        break;
+
+    case DigitizerMessageId::DIRTY_TOP_PARAMETERS:
+        m_digitizer_ui_state[i].set_top_color = COLOR_ORANGE;
+        break;
+
+    case DigitizerMessageId::DIRTY_CLOCK_SYSTEM_PARAMETERS:
+        m_digitizer_ui_state[i].set_clock_system_color = COLOR_ORANGE;
+        break;
+
+    case DigitizerMessageId::CLEAN_TOP_PARAMETERS:
+        m_digitizer_ui_state[i].set_top_color = COLOR_GREEN;
+        break;
+
+    case DigitizerMessageId::CLEAN_CLOCK_SYSTEM_PARAMETERS:
+        m_digitizer_ui_state[i].set_clock_system_color = COLOR_GREEN;
         break;
 
     case DigitizerMessageId::START_ACQUISITION:
@@ -262,12 +278,8 @@ void Ui::RenderLeft(float width, float height)
     RenderDigitizerSelection(DIGITIZER_SELECTION_POS, DIGITIZER_SELECTION_SIZE);
 
     const ImVec2 COMMAND_PALETTE_POS(0.0f, 200.0f + FRAME_HEIGHT);
-    const ImVec2 COMMAND_PALETTE_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 200.0f);
+    const ImVec2 COMMAND_PALETTE_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, height - 200.0f - 4 * FRAME_HEIGHT);
     RenderCommandPalette(COMMAND_PALETTE_POS, COMMAND_PALETTE_SIZE);
-
-    const ImVec2 PARAMETERS_POS(0.0f, 400.0f + FRAME_HEIGHT);
-    const ImVec2 PARAMETERS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, height - 400.0f - 4 * FRAME_HEIGHT);
-    RenderParameters(PARAMETERS_POS, PARAMETERS_SIZE);
 
     const ImVec2 METRICS_POS(0.0f, height - 3 * FRAME_HEIGHT);
     const ImVec2 METRICS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 3 * FRAME_HEIGHT);
@@ -325,7 +337,7 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
                 ImGui::TableNextColumn();
                 if (m_digitizer_ui_state[i].status.size() > 0)
                 {
-                    ImGui::PushStyleColor(ImGuiCol_Button, m_digitizer_ui_state[i].color);
+                    ImGui::PushStyleColor(ImGuiCol_Button, m_digitizer_ui_state[i].status_color);
                     ImGui::SmallButton(m_digitizer_ui_state[i].status.c_str());
                     ImGui::PopStyleColor();
                 }
@@ -378,8 +390,7 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
         PushMessage(DigitizerMessageId::STOP_ACQUISITION);
 
     ImGui::SameLine();
-    if (ImGui::Button("Set", COMMAND_PALETTE_BUTTON_SIZE))
-        PushMessage(DigitizerMessageId::SET_PARAMETERS);
+    RenderSetTopParametersButton(COMMAND_PALETTE_BUTTON_SIZE);
 
     ImGui::SameLine();
     if (ImGui::Button("Get", COMMAND_PALETTE_BUTTON_SIZE))
@@ -391,8 +402,7 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
     ImGui::EndDisabled();
 
     ImGui::SameLine();
-    if (ImGui::Button("Set Clock\nSystem", COMMAND_PALETTE_BUTTON_SIZE))
-        PushMessage(DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS);
+    RenderSetClockSystemParametersButton(COMMAND_PALETTE_BUTTON_SIZE);
 
     ImGui::SameLine();
     if (ImGui::Button("Initialize", COMMAND_PALETTE_BUTTON_SIZE))
@@ -408,54 +418,46 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
     ImGui::End();
 }
 
-void Ui::RenderParameters(const ImVec2 &position, const ImVec2 &size)
+void Ui::RenderSetTopParametersButton(const ImVec2 &size)
 {
-    ImGui::SetNextWindowPos(position);
-    ImGui::SetNextWindowSize(size);
-    ImGui::Begin("Parameters", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-    if (ImGui::BeginTabBar("Parameters", ImGuiTabBarFlags_None))
+    ImVec4 color = ImGui::GetStyleColorVec4(ImGuiCol_Button);
+    for (size_t i = 0; i < m_digitizers.size(); ++i)
     {
-        /* TODO: The idea here would be to read & copy the parameters from the selected digitizers[0]-> */
-        if (ImGui::BeginTabItem("Top"))
-        {
-            /* FIXME: Add label w/ path */
-            /* FIXME: Could get fancy w/ only copying in ADQR_ELAST -> ADQR_EOK transition. */
-            /* It's ok with a static pointer here as long as we keep the
-                widget in read only mode. */
-            static auto parameters = std::make_shared<std::string>("");
-            for (size_t i = 0; i < m_digitizers.size(); ++i)
-            {
-                if (m_selected[i])
-                {
-                    m_digitizers[i]->WaitForParameters(parameters);
-                    break;
-                }
-            }
+        if (!m_selected[i])
+            continue;
 
-            ImGui::InputTextMultiline("##top", parameters->data(), parameters->size(),
-                                      ImVec2(-FLT_MIN, -FLT_MIN), ImGuiInputTextFlags_ReadOnly);
-            ImGui::EndTabItem();
-        }
-
-        if (ImGui::BeginTabItem("Clock System"))
-        {
-            /* FIXME: Add label w/ path */
-            static auto parameters = std::make_shared<std::string>("");
-            for (size_t i = 0; i < m_digitizers.size(); ++i)
-            {
-                if (m_selected[i])
-                {
-                    m_digitizers[i]->WaitForClockSystemParameters(parameters);
-                    break;
-                }
-            }
-            ImGui::InputTextMultiline("##clocksystem", parameters->data(), parameters->size(),
-                                      ImVec2(-FLT_MIN, -FLT_MIN), ImGuiInputTextFlags_ReadOnly);
-            ImGui::EndTabItem();
-        }
-        ImGui::EndTabBar();
+        /* FIXME: Figure out color when multiple units are selected. Perhaps we
+                  need to store the state... */
+        color = m_digitizer_ui_state[i].set_top_color;
+        break;
     }
-    ImGui::End();
+
+    ImGui::PushStyleColor(ImGuiCol_Button, color);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, color);
+    if (ImGui::Button("Set", size))
+        PushMessage(DigitizerMessageId::SET_PARAMETERS);
+    ImGui::PopStyleColor(2);
+}
+
+void Ui::RenderSetClockSystemParametersButton(const ImVec2 &size)
+{
+    ImVec4 color = ImGui::GetStyleColorVec4(ImGuiCol_Button);
+    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    {
+        if (!m_selected[i])
+            continue;
+
+        /* FIXME: Figure out color when multiple units are selected. Perhaps we
+                  need to store the state... */
+        color = m_digitizer_ui_state[i].set_clock_system_color;
+        break;
+    }
+
+    ImGui::PushStyleColor(ImGuiCol_Button, color);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, color);
+    if (ImGui::Button("Set Clock\nSystem", size))
+        PushMessage(DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS);
+    ImGui::PopStyleColor(2);
 }
 
 void Ui::PlotTimeDomainSelected()

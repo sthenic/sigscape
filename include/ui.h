@@ -35,8 +35,9 @@ private:
         std::string identifier;
         std::string status;
         std::string extra;
-        ImVec4 color;
-        ImVec4 text_color;
+        ImVec4 status_color;
+        ImVec4 set_top_color;
+        ImVec4 set_clock_system_color;
     };
     std::unique_ptr<DigitizerUiState[]> m_digitizer_ui_state;
 
@@ -54,7 +55,8 @@ private:
 
     void RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size);
     void RenderCommandPalette(const ImVec2 &position, const ImVec2 &size);
-    void RenderParameters(const ImVec2 &position, const ImVec2 &size);
+    void RenderSetTopParametersButton(const ImVec2 &size);
+    void RenderSetClockSystemParametersButton(const ImVec2 &size);
 
     void PlotTimeDomainSelected();
     void RenderTimeDomain(const ImVec2 &position, const ImVec2 &size);

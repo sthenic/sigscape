@@ -20,17 +20,23 @@
 
 enum class DigitizerMessageId
 {
+    /* Digitizer -> the world */
     ENUMERATING,
     SETUP_OK,
     SETUP_FAILED,
+    DIRTY_TOP_PARAMETERS,
+    DIRTY_CLOCK_SYSTEM_PARAMETERS,
+    CLEAN_TOP_PARAMETERS,
+    CLEAN_CLOCK_SYSTEM_PARAMETERS,
+    NEW_STATE,
+    /* The world -> digitizer */
     START_ACQUISITION,
     STOP_ACQUISITION,
     SET_PARAMETERS, /* FIXME: Probably rename this SET_TOP_PARAMETERS */
     GET_PARAMETERS,
     VALIDATE_PARAMETERS,
     INITIALIZE_PARAMETERS,
-    SET_CLOCK_SYSTEM_PARAMETERS,
-    NEW_STATE
+    SET_CLOCK_SYSTEM_PARAMETERS
 };
 
 enum class DigitizerState
@@ -81,10 +87,6 @@ public:
     /* Interface to the digitizer's data processing threads, one per channel. */
     int WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedRecord> &record);
 
-    /* Interface to the digitizer's parameters represented as strings. */
-    int WaitForParameters(std::shared_ptr<std::string> &str);
-    int WaitForClockSystemParameters(std::shared_ptr<std::string> &str);
-
     /* The main loop. */
     void MainLoop() override;
 
@@ -108,32 +110,28 @@ private:
         std::unique_ptr<FileWatcher> clock_system;
     } m_watchers;
 
-    typedef ThreadSafeQueue<std::shared_ptr<std::string>> ParameterQueue;
+    // typedef ThreadSafeQueue<std::shared_ptr<std::string>> ParameterQueue;
     struct
     {
-        std::unique_ptr<ParameterQueue> top;
-        std::unique_ptr<ParameterQueue> clock_system;
+        std::shared_ptr<std::string> top;
+        std::shared_ptr<std::string> clock_system;
     } m_parameters;
-
-    void ProcessWatcherMessages()
-    {
-        ProcessWatcherMessages(m_watchers.top, m_parameters.top);
-        ProcessWatcherMessages(m_watchers.clock_system, m_parameters.clock_system);
-    }
 
     /* The digitizer's data processing threads, one per channel. */
     std::vector<std::unique_ptr<DataProcessing>> m_processing_threads;
 
     void ProcessMessages();
+    void ProcessWatcherMessages();
     void ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watcher,
-                                const std::unique_ptr<ParameterQueue> &queue);
+                                std::shared_ptr<std::string> &str,
+                                DigitizerMessageId dirty_id);
 
     int StartDataAcquisition();
     int StopDataAcquisition();
 
     void SetState(DigitizerState state);
     int SetParameters(bool clock_system = false);
-    int SetParameters(const std::unique_ptr<ParameterQueue> &queue);
+    int SetParameters(const std::shared_ptr<std::string> &str, DigitizerMessageId clean_id);
     int InitializeParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher);
     void InitializeFileWatchers(const struct ADQConstantParameters &constant);
 };

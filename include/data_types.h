@@ -43,9 +43,11 @@ struct TimeDomainRecord
         const int16_t *data = static_cast<const int16_t *>(raw->data);
         const double sampling_period = static_cast<double>(raw->header->sampling_period) *
                                        static_cast<double>(raw->header->time_unit);
+        const double record_start = static_cast<double>(raw->header->record_start) *
+                                    static_cast<double>(raw->header->time_unit);
         for (size_t i = 0; i < raw->header->record_length; ++i)
         {
-            x[i] = static_cast<double>(raw->header->record_start) + i * sampling_period;
+            x[i] = record_start + i * sampling_period;
             y[i] = static_cast<double>(data[i]) / 32768.0;
         }
     }

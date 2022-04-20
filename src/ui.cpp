@@ -235,8 +235,6 @@ void Ui::RenderRight(float width, float height)
 
     /* In the right column, we show various metrics. */
     RenderTimeDomainMetrics(POSITION_UPPER, SIZE);
-
-    /*  */
     RenderFrequencyDomainMetrics(POSITION_LOWER, SIZE);
 }
 
@@ -268,8 +266,12 @@ void Ui::RenderLeft(float width, float height)
     RenderCommandPalette(COMMAND_PALETTE_POS, COMMAND_PALETTE_SIZE);
 
     const ImVec2 PARAMETERS_POS(0.0f, 400.0f + FRAME_HEIGHT);
-    const ImVec2 PARAMETERS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, height - 400.0f - FRAME_HEIGHT);
+    const ImVec2 PARAMETERS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, height - 400.0f - 4 * FRAME_HEIGHT);
     RenderParameters(PARAMETERS_POS, PARAMETERS_SIZE);
+
+    const ImVec2 METRICS_POS(0.0f, height - 3 * FRAME_HEIGHT);
+    const ImVec2 METRICS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 3 * FRAME_HEIGHT);
+    RenderApplicationMetrics(METRICS_POS, METRICS_SIZE);
 }
 
 void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
@@ -587,7 +589,7 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
     /* FIXME: Move into functions? */
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
-    ImGui::Begin("Metrics##timedomain", NULL, ImGuiWindowFlags_NoMove);
+    ImGui::Begin("Time Domain Metrics", NULL, ImGuiWindowFlags_NoMove);
 
     bool has_contents = false;
     for (size_t i = 0; i < m_digitizers.size(); ++i)
@@ -619,7 +621,7 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
 {
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
-    ImGui::Begin("Metrics##frequencydomain", NULL, ImGuiWindowFlags_NoMove);
+    ImGui::Begin("Frequency Domain Metrics", NULL, ImGuiWindowFlags_NoMove);
 
     bool has_contents = false;
     for (size_t i = 0; i < m_digitizers.size(); ++i)
@@ -647,3 +649,12 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
     ImGui::End();
 }
 
+void Ui::RenderApplicationMetrics(const ImVec2 &position, const ImVec2 &size)
+{
+    ImGui::SetNextWindowPos(position);
+    ImGui::SetNextWindowSize(size);
+    ImGui::Begin("Application Metrics");
+    const ImGuiIO &io = ImGui::GetIO();
+    ImGui::Text("Average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+    ImGui::End();
+}

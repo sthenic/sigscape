@@ -2,6 +2,7 @@
 
 #include <sstream>
 #include <algorithm>
+#include <cctype>
 
 Digitizer::Digitizer(void *handle, int index)
     : m_state(DigitizerState::NOT_ENUMERATED)
@@ -260,7 +261,7 @@ int Digitizer::InitializeParameters(enum ADQParameterId id,
                                     const std::unique_ptr<FileWatcher> &watcher)
 {
     /* Heap allocation */
-    static constexpr size_t SIZE = 32768;
+    static constexpr size_t SIZE = 64 * 1024;
     auto parameters_str = std::unique_ptr<char[]>( new char[SIZE] );
     int result = ADQ_InitializeParametersString(m_id.handle, m_id.index, id, parameters_str.get(),
                                                 SIZE, 1);
@@ -281,14 +282,16 @@ void Digitizer::InitializeFileWatchers(const struct ADQConstantParameters &const
     std::stringstream ss;
     ss << "./parameters_top_" << constant.serial_number << ".json";
     std::string filename = ss.str();
-    std::transform(filename.begin(), filename.end(), filename.begin(), ::tolower);
+    std::transform(filename.begin(), filename.end(), filename.begin(),
+                   [](unsigned char c){ return static_cast<char>(std::tolower(c)); } );
     m_watchers.top = std::make_unique<FileWatcher>(filename);
     ss.str("");
     ss.clear();
 
     ss << "./parameters_clock_system_" << constant.serial_number << ".json";
     filename = ss.str();
-    std::transform(filename.begin(), filename.end(), filename.begin(), ::tolower);
+    std::transform(filename.begin(), filename.end(), filename.begin(),
+                   [](unsigned char c){ return static_cast<char>(std::tolower(c)); } );
     m_watchers.clock_system = std::make_unique<FileWatcher>(filename);
 
     m_parameters.top = std::make_unique<ThreadSafeQueue<std::shared_ptr<std::string>>>(0, true);

@@ -460,6 +460,27 @@ void Ui::RenderSetClockSystemParametersButton(const ImVec2 &size)
     ImGui::PopStyleColor(2);
 }
 
+void Ui::Reduce(double xsize, double sampling_period, int &count, int &stride)
+{
+    /* Determine how many samples fit in the current view. If this number
+       exceeds MAX_NOF_SAMPLES, repeatedly increase the stride by a factor of
+       two until we're in range. */
+    static const int MAX_NOF_SAMPLES = 32768;
+    const int MAX_NOF_SAMPLES_IN_WINDOW = static_cast<int>(xsize / sampling_period + 0.5);
+
+    stride = 1;
+    if ((count < MAX_NOF_SAMPLES) || (MAX_NOF_SAMPLES_IN_WINDOW < MAX_NOF_SAMPLES))
+        return;
+
+    /* Reduce the number of visible samples. */
+    do
+    {
+        stride += 1;
+    } while ((count / stride) > MAX_NOF_SAMPLES);
+
+    count /= stride;
+}
+
 void Ui::PlotTimeDomainSelected()
 {
     for (size_t i = 0; i < m_digitizers.size(); ++i)
@@ -471,10 +492,16 @@ void Ui::PlotTimeDomainSelected()
         {
             if (m_records[i][ch] != NULL)
             {
+                int stride = 1;
+                int count = static_cast<int>(m_records[i][ch]->time_domain->count);
+                /* FIXME: Precompute this value in the data proc thread. */
+                const double sampling_period = static_cast<double>(m_records[i][ch]->time_domain->header.sampling_period)
+                                               * static_cast<double>(m_records[i][ch]->time_domain->header.time_unit);
+                Reduce(ImPlot::GetPlotLimits().X.Size(), sampling_period, count, stride);
                 ImPlot::PlotLine(m_records[i][ch]->label.c_str(),
                                  m_records[i][ch]->time_domain->x.get(),
                                  m_records[i][ch]->time_domain->y.get(),
-                                 static_cast<int>(m_records[i][ch]->time_domain->count));
+                                 count, 0, sizeof(m_records[i][ch]->time_domain->x[0]) * stride);
             }
         }
     }

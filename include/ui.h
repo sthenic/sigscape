@@ -58,6 +58,7 @@ private:
     void RenderSetTopParametersButton(const ImVec2 &size);
     void RenderSetClockSystemParametersButton(const ImVec2 &size);
 
+    void Reduce(double xsize, double sampling_frequency, int &count, int &stride);
     void PlotTimeDomainSelected();
     void RenderTimeDomain(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size);

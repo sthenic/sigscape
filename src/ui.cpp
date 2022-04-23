@@ -460,6 +460,7 @@ void Ui::RenderSetClockSystemParametersButton(const ImVec2 &size)
     ImGui::PopStyleColor(2);
 }
 
+/* FIXME: Remove */
 void Ui::Reduce(double xsize, double sampling_period, int &count, int &stride)
 {
     /* Determine how many samples fit in the current view. If this number
@@ -481,6 +482,35 @@ void Ui::Reduce(double xsize, double sampling_period, int &count, int &stride)
     count /= stride;
 }
 
+void Ui::MetricFormatter(double value, char *tick_label, int size, void *data)
+{
+    const char *UNIT = (const char *)data;
+    static double LIMITS[] = {1e9, 1e6, 1e3, 1, 1e-3, 1e-6, 1e-9};
+    static const char* PREFIXES[] = {"G","M","k","","m","u","n"};
+    static const size_t NOF_LIMITS = sizeof(LIMITS) / sizeof(LIMITS[0]);
+
+    if (value == 0)
+    {
+        std::snprintf(tick_label, size, "0 %s", UNIT);
+        return;
+    }
+
+    /* Loop through the limits (descending order) checking if the input value is
+       larger than the limit. If it is, we pick the corresponding prefix. If
+       we've exhausted the search, we pick the last entry (smallest prefix). */
+    for (size_t i = 0; i < NOF_LIMITS; ++i)
+    {
+        if (std::fabs(value) >= LIMITS[i])
+        {
+            std::snprintf(tick_label,size,"%g %s%s", value / LIMITS[i], PREFIXES[i], UNIT);
+            return;
+        }
+    }
+
+    std::snprintf(tick_label, size, "%g %s%s", value / LIMITS[NOF_LIMITS - 1],
+                  PREFIXES[NOF_LIMITS - 1], UNIT);
+}
+
 void Ui::PlotTimeDomainSelected()
 {
     for (size_t i = 0; i < m_digitizers.size(); ++i)
@@ -492,16 +522,10 @@ void Ui::PlotTimeDomainSelected()
         {
             if (m_records[i][ch] != NULL)
             {
-                int stride = 1;
                 int count = static_cast<int>(m_records[i][ch]->time_domain->count);
-                /* FIXME: Precompute this value in the data proc thread. */
-                const double sampling_period = static_cast<double>(m_records[i][ch]->time_domain->header.sampling_period)
-                                               * static_cast<double>(m_records[i][ch]->time_domain->header.time_unit);
-                Reduce(ImPlot::GetPlotLimits().X.Size(), sampling_period, count, stride);
                 ImPlot::PlotLine(m_records[i][ch]->label.c_str(),
                                  m_records[i][ch]->time_domain->x.get(),
-                                 m_records[i][ch]->time_domain->y.get(),
-                                 count, 0, sizeof(m_records[i][ch]->time_domain->x[0]) * stride);
+                                 m_records[i][ch]->time_domain->y.get(), count);
             }
         }
     }
@@ -514,7 +538,8 @@ void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
     ImGui::Begin("Time Domain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
     if (ImPlot::BeginPlot("Time domain", ImVec2(-1, -1), ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
     {
-        ImPlot::SetupAxis(ImAxis_X1, "Time");
+        ImPlot::SetupLegend(ImPlotLocation_NorthEast);
+        ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatter, (void *)"s");
         PlotTimeDomainSelected();
         ImPlot::EndPlot();
     }
@@ -555,10 +580,11 @@ void Ui::PlotFourierTransformSelected()
         {
             if (m_records[i][ch] != NULL)
             {
+                /* +1 for the Nyquist bin */
+                int count = static_cast<int>(m_records[i][ch]->frequency_domain->count / 2 + 1);
                 ImPlot::PlotLine(m_records[i][ch]->label.c_str(),
                                  m_records[i][ch]->frequency_domain->x.get(),
-                                 m_records[i][ch]->frequency_domain->y.get(),
-                                 static_cast<int>(m_records[i][ch]->frequency_domain->count / 2));
+                                 m_records[i][ch]->frequency_domain->y.get(), count);
             }
         }
     }
@@ -568,9 +594,9 @@ void Ui::RenderFourierTransformPlot()
 {
     if (ImPlot::BeginPlot("FFT##plot", ImVec2(-1, -1), ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
     {
-        ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, 0.5);
+        ImPlot::SetupLegend(ImPlotLocation_NorthEast);
         ImPlot::SetupAxisLimits(ImAxis_Y1, -80.0, 0.0);
-        ImPlot::SetupAxis(ImAxis_X1, "Hz");
+        ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatter, (void *)"Hz");
         PlotFourierTransformSelected();
         ImPlot::EndPlot();
     }
@@ -591,10 +617,12 @@ void Ui::PlotWaterfallSelected()
         {
             if (m_records[i][ch] != NULL)
             {
+                /* FIXME: Y-axis scale (probably time delta?) */
+                const double TOP_RIGHT = m_records[i][ch]->time_domain->sampling_frequency / 2;
                 ImPlot::PlotHeatmap("heat", m_records[i][ch]->waterfall->data.get(),
                                     static_cast<int>(m_records[i][ch]->waterfall->rows),
                                     static_cast<int>(m_records[i][ch]->waterfall->columns),
-                                    -80, 0, NULL);
+                                    -80, 0, NULL, ImPlotPoint(0,0), ImPlotPoint(TOP_RIGHT, 1));
                 return;
             }
         }
@@ -606,7 +634,9 @@ void Ui::RenderWaterfallPlot()
     ImPlot::PushColormap("Hot");
     if (ImPlot::BeginPlot("Waterfall##plot", ImVec2(-1, -1), ImPlotFlags_NoTitle | ImPlotFlags_NoLegend))
     {
-        ImPlot::SetupAxis(ImAxis_X1, "Hz");
+        static const ImPlotAxisFlags FLAGS = ImPlotAxisFlags_NoGridLines;
+        ImPlot::SetupAxes(NULL, NULL, FLAGS, FLAGS);
+        ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatter, (void *)"Hz");
         PlotWaterfallSelected();
         ImPlot::EndPlot();
     }

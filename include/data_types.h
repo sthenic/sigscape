@@ -23,6 +23,9 @@ struct TimeDomainRecord
         this->count = count;
         capacity = count;
         estimated_trigger_frequency = 0;
+        sampling_frequency = 0;
+        sampling_period = 0;
+        record_start = 0;
         header = {};
     }
 
@@ -41,13 +44,15 @@ struct TimeDomainRecord
         /* FIXME: Read from header->data_format */
         /* FIXME: Keep this as codes? */
         const int16_t *data = static_cast<const int16_t *>(raw->data);
-        const double sampling_period = static_cast<double>(raw->header->sampling_period) *
-                                       static_cast<double>(raw->header->time_unit);
-        const double record_start = static_cast<double>(raw->header->record_start) *
-                                    static_cast<double>(raw->header->time_unit);
+        sampling_period = static_cast<double>(raw->header->sampling_period) *
+                          static_cast<double>(raw->header->time_unit);
+        record_start = static_cast<double>(raw->header->record_start) *
+                       static_cast<double>(raw->header->time_unit);
+
+        sampling_frequency = 1.0 / sampling_period;
         for (size_t i = 0; i < raw->header->record_length; ++i)
         {
-            x[i] = record_start + i * sampling_period;
+            x[i] = record_start + i * sampling_period; /* FIXME: Perhaps not needed */
             y[i] = static_cast<double>(data[i]) / 32768.0;
         }
     }
@@ -60,6 +65,9 @@ struct TimeDomainRecord
         count = other.count;
         capacity = other.count;
         estimated_trigger_frequency = other.estimated_trigger_frequency;
+        sampling_frequency = other.sampling_frequency;
+        sampling_period = other.sampling_period;
+        record_start = other.record_start;
 
         x = std::shared_ptr<double[]>( new double[other.count] );
         y = std::shared_ptr<double[]>( new double[other.count] );
@@ -83,6 +91,9 @@ struct TimeDomainRecord
             count = other.count;
             header = other.header;
             estimated_trigger_frequency = other.estimated_trigger_frequency;
+            sampling_frequency = other.sampling_frequency;
+            sampling_period = other.sampling_period;
+            record_start = other.record_start;
         }
 
         return *this;
@@ -94,6 +105,9 @@ struct TimeDomainRecord
     size_t count;
     size_t capacity;
     double estimated_trigger_frequency;
+    double sampling_frequency;
+    double sampling_period;
+    double record_start;
 };
 
 struct FrequencyDomainRecord
@@ -105,6 +119,7 @@ struct FrequencyDomainRecord
         yc = std::shared_ptr<std::complex<double>[]>( new std::complex<double>[count] );
         this->count = count;
         capacity = count;
+        bin_range = 0;
     }
 
     FrequencyDomainRecord(const FrequencyDomainRecord &other)
@@ -114,6 +129,7 @@ struct FrequencyDomainRecord
         yc = std::shared_ptr<std::complex<double>[]>( new std::complex<double>[other.count] );
         count = other.count;
         capacity = other.count;
+        bin_range = other.bin_range;
 
         std::memcpy(x.get(), other.x.get(), other.count * sizeof(*x.get()));
         std::memcpy(y.get(), other.y.get(), other.count * sizeof(*y.get()));
@@ -136,6 +152,7 @@ struct FrequencyDomainRecord
             std::memcpy(y.get(), other.y.get(), other.count * sizeof(*y.get()));
             std::memcpy(yc.get(), other.yc.get(), other.count * sizeof(*yc.get()));
             count = other.count;
+            bin_range = other.bin_range;
         }
 
         return *this;
@@ -146,6 +163,7 @@ struct FrequencyDomainRecord
     std::shared_ptr<std::complex<double>[]> yc;
     size_t count;
     size_t capacity;
+    double bin_range;
 };
 
 struct Waterfall
@@ -171,10 +189,11 @@ struct Waterfall
         }
         else
         {
-            columns = waterfall.front()->count / 2;
+            /* +1 for the Nyquist bin */
+            columns = waterfall.front()->count / 2 + 1;
             for (const auto &record : waterfall)
             {
-                if ((record->count / 2) != columns)
+                if ((record->count / 2 + 1) != columns)
                 {
                     exit_without_copy = true;
                     break;

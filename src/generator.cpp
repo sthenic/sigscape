@@ -60,7 +60,7 @@ void Generator::MainLoop()
         record->header->record_start = 0;
         record->header->time_unit = 25e-12f; /* TODO: 25ps steps for now */
         record->header->sampling_period = static_cast<uint64_t>(
-            1.0 / (record->header->time_unit * m_sampling_frequency));
+            1.0 / (record->header->time_unit * m_sampling_frequency) + 0.5);
         NoisySine(*record, m_parameters.record_length);
 
         /* Add to the outgoing queue. */

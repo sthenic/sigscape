@@ -59,6 +59,7 @@ private:
     void RenderSetClockSystemParametersButton(const ImVec2 &size);
 
     void Reduce(double xsize, double sampling_frequency, int &count, int &stride);
+    static void MetricFormatter(double value, char *tick_label, int size, void *data);
     void PlotTimeDomainSelected();
     void RenderTimeDomain(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size);

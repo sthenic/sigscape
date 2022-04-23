@@ -14,6 +14,8 @@ Ui::Ui()
     , m_adq_control_unit()
     , m_show_imgui_demo_window(false)
     , m_show_implot_demo_window(false)
+    , m_is_time_domain_collapsed(false)
+    , m_is_frequency_domain_collapsed(false)
     , m_selected()
     , m_digitizer_ui_state()
 {}
@@ -259,15 +261,29 @@ void Ui::RenderCenter(float width, float height)
     /* We show two plots in the center, taking up equal vertical space. */
     const float FRAME_HEIGHT = ImGui::GetFrameHeight();
     const float PLOT_WINDOW_HEIGHT = (height - 1 * FRAME_HEIGHT) / 2;
-    const ImVec2 POSITION_UPPER(width * FIRST_COLUMN_RELATIVE_WIDTH, FRAME_HEIGHT);
-    const ImVec2 POSITION_LOWER(width * FIRST_COLUMN_RELATIVE_WIDTH, FRAME_HEIGHT + PLOT_WINDOW_HEIGHT);
-    const ImVec2 SIZE(width * SECOND_COLUMN_RELATIVE_WIDTH, PLOT_WINDOW_HEIGHT);
+
+    ImVec2 TIME_DOMAIN_POSITION{width * FIRST_COLUMN_RELATIVE_WIDTH, FRAME_HEIGHT};
+    ImVec2 TIME_DOMAIN_SIZE{width * SECOND_COLUMN_RELATIVE_WIDTH, PLOT_WINDOW_HEIGHT};
+    ImVec2 FREQUENCY_DOMAIN_POSITION{width * FIRST_COLUMN_RELATIVE_WIDTH, FRAME_HEIGHT + PLOT_WINDOW_HEIGHT};
+    ImVec2 FREQUENCY_DOMAIN_SIZE{width * SECOND_COLUMN_RELATIVE_WIDTH, PLOT_WINDOW_HEIGHT};
+
+    if (m_is_time_domain_collapsed)
+    {
+        FREQUENCY_DOMAIN_POSITION = ImVec2{width * FIRST_COLUMN_RELATIVE_WIDTH, 2 * FRAME_HEIGHT};
+        FREQUENCY_DOMAIN_SIZE = ImVec2{width * SECOND_COLUMN_RELATIVE_WIDTH, height - 2 * FRAME_HEIGHT};
+    }
+
+    if (m_is_frequency_domain_collapsed)
+        TIME_DOMAIN_SIZE = ImVec2{width * SECOND_COLUMN_RELATIVE_WIDTH, height - 2 * FRAME_HEIGHT};
+
+    if (m_is_frequency_domain_collapsed && !m_is_time_domain_collapsed)
+        FREQUENCY_DOMAIN_POSITION = ImVec2{width * FIRST_COLUMN_RELATIVE_WIDTH, height - FRAME_HEIGHT};
 
     /* The lower plot window, showing time domain data. */
-    RenderTimeDomain(POSITION_UPPER, SIZE);
+    RenderTimeDomain(TIME_DOMAIN_POSITION, TIME_DOMAIN_SIZE);
 
     /* The lower plot window, showing frequency domain data. */
-    RenderFrequencyDomain(POSITION_LOWER, SIZE);
+    RenderFrequencyDomain(FREQUENCY_DOMAIN_POSITION, FREQUENCY_DOMAIN_SIZE);
 }
 
 void Ui::RenderLeft(float width, float height)
@@ -536,6 +552,7 @@ void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
     ImGui::Begin("Time Domain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+    m_is_time_domain_collapsed = ImGui::IsWindowCollapsed();
     if (ImPlot::BeginPlot("Time domain", ImVec2(-1, -1), ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
     {
         ImPlot::SetupLegend(ImPlotLocation_NorthEast);
@@ -551,6 +568,7 @@ void Ui::RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size)
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
     ImGui::Begin("Frequency Domain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+    m_is_frequency_domain_collapsed = ImGui::IsWindowCollapsed();
     if (ImGui::BeginTabBar("Frequency Domain##tabbar", ImGuiTabBarFlags_None))
     {
         if (ImGui::BeginTabItem("FFT"))

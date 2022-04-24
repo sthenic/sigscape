@@ -7,6 +7,15 @@ const ImVec4 Ui::COLOR_YELLOW = {1.0f, 1.0f, 0.3f, 0.8f};
 const ImVec4 Ui::COLOR_ORANGE = {0.86f, 0.38f, 0.1f, 0.8f};
 const ImVec4 Ui::COLOR_PURPLE = {0.6f, 0.3f, 1.0f, 0.8f};
 
+Ui::DigitizerUiState::DigitizerUiState()
+    : identifier("")
+    , status("")
+    , extra("")
+    , status_color(COLOR_GREEN)
+    , set_top_color(ImGui::GetStyleColorVec4(ImGuiCol_Button))
+    , set_clock_system_color(ImGui::GetStyleColorVec4(ImGuiCol_Button))
+{}
+
 Ui::Ui()
     : m_identification()
     , m_digitizers()

@@ -34,6 +34,8 @@ private:
 
     struct DigitizerUiState
     {
+        DigitizerUiState();
+
         std::string identifier;
         std::string status;
         std::string extra;

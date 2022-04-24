@@ -138,6 +138,20 @@ struct ADQConstantParameters
   uint64_t magic;
 };
 
+struct ADQAnalogFrontendParametersChannel
+{
+  double input_range;
+  double dc_offset;
+};
+
+struct ADQAnalogFrontendParameters
+{
+  enum ADQParameterId id;
+  int32_t reserved;
+  struct ADQAnalogFrontendParametersChannel channel[ADQ_MAX_NOF_CHANNELS];
+  uint64_t magic;
+};
+
 #define ADQ_PARAMETERS_MAGIC (0xAA559977AA559977ull)
 
 #endif

@@ -15,6 +15,8 @@ public:
     DataProcessing(const DataProcessing &other) = delete;
     DataProcessing &operator=(const DataProcessing &other) = delete;
 
+    void SetAnalogFrontendParameters(const struct ADQAnalogFrontendParametersChannel &afe);
+
     void MainLoop() override;
 
 private:
@@ -23,6 +25,7 @@ private:
     int m_index;
     int m_channel;
     std::string m_label;
+    struct ADQAnalogFrontendParametersChannel m_afe;
 
     std::deque<std::shared_ptr<FrequencyDomainRecord>> m_waterfall;
 

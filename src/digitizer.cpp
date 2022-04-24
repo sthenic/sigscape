@@ -186,8 +186,14 @@ void Digitizer::ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watch
 
 int Digitizer::StartDataAcquisition()
 {
-    for (const auto &t : m_processing_threads)
-        t->Start();
+    /* FIXME: Return on error */
+    struct ADQAnalogFrontendParameters afe;
+    ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_ANALOG_FRONTEND, &afe);
+    for (size_t i = 0; i < m_processing_threads.size(); ++i)
+    {
+        m_processing_threads[i]->SetAnalogFrontendParameters(afe.channel[i]);
+        m_processing_threads[i]->Start();
+    }
 
     /* FIXME: Return value? Probably as a message. */
     int result = ADQ_StartDataAcquisition(m_id.handle, m_id.index);

@@ -30,6 +30,7 @@ public:
 
 private:
     struct ADQConstantParameters m_constant;
+    struct ADQAnalogFrontendParameters m_afe;
     std::vector<std::unique_ptr<Generator>> m_generators;
     static const std::string DEFAULT_TOP_PARAMETERS;
     static const std::string DEFAULT_CLOCK_SYSTEM_PARAMETERS;

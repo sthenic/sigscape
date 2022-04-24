@@ -29,7 +29,8 @@ struct TimeDomainRecord
         header = {};
     }
 
-    TimeDomainRecord(const struct ADQGen4Record *raw)
+    TimeDomainRecord(const struct ADQGen4Record *raw,
+                     const struct ADQAnalogFrontendParametersChannel &afe)
     {
         /* FIXME: Can optimize this by giving just the number of bytes used in
                   the record, raw->size is the buffer capacity. */
@@ -52,8 +53,8 @@ struct TimeDomainRecord
         sampling_frequency = 1.0 / sampling_period;
         for (size_t i = 0; i < raw->header->record_length; ++i)
         {
-            x[i] = record_start + i * sampling_period; /* FIXME: Perhaps not needed */
-            y[i] = static_cast<double>(data[i]) / 32768.0;
+            x[i] = record_start + i * sampling_period;
+            y[i] = (static_cast<double>(data[i]) / 65536.0 * afe.input_range - afe.dc_offset) / 1000.0;
         }
     }
 

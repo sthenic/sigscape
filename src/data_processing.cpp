@@ -17,12 +17,18 @@ DataProcessing::DataProcessing(void *control_unit, int index, int channel, const
     , m_index(index)
     , m_channel(channel)
     , m_label(label)
+    , m_afe{1000.0, 0.0}
 {
 }
 
 DataProcessing::~DataProcessing()
 {
     Stop();
+}
+
+void DataProcessing::SetAnalogFrontendParameters(const struct ADQAnalogFrontendParametersChannel &afe)
+{
+    m_afe = afe;
 }
 
 void DataProcessing::MainLoop()
@@ -66,7 +72,7 @@ void DataProcessing::MainLoop()
                acquisition interface ASAP. */
             auto processed_record = std::make_shared<ProcessedRecord>();
             int fft_size = PreviousPowerOfTwo(time_domain->header->record_length);
-            processed_record->time_domain = std::make_shared<TimeDomainRecord>(time_domain);
+            processed_record->time_domain = std::make_shared<TimeDomainRecord>(time_domain, m_afe);
             processed_record->frequency_domain = std::make_shared<FrequencyDomainRecord>(fft_size);
             processed_record->time_domain->estimated_trigger_frequency = estimated_trigger_frequency;
             processed_record->label = m_label;

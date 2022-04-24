@@ -29,6 +29,7 @@ sampling frequency:
 
 MockDigitizer::MockDigitizer(const std::string &serial_number, int nof_channels)
     : m_constant{}
+    , m_afe{}
     , m_generators{}
 {
     m_constant.id = ADQ_PARAMETER_ID_CONSTANT;
@@ -37,9 +38,14 @@ MockDigitizer::MockDigitizer(const std::string &serial_number, int nof_channels)
     std::strncpy(m_constant.serial_number, serial_number.c_str(),
                  std::min(sizeof(m_constant.serial_number), serial_number.size()));
 
+    m_afe.id = ADQ_PARAMETER_ID_ANALOG_FRONTEND;
+    m_afe.magic = ADQ_PARAMETERS_MAGIC;
+
     for (int ch = 0; ch < nof_channels; ++ch)
     {
         m_constant.channel[ch].label[0] = "ABCDEFGH"[ch];
+        m_afe.channel[ch].input_range = 500;
+        m_afe.channel[ch].dc_offset = 0;
         m_generators.push_back(std::make_unique<Generator>());
     }
 }
@@ -117,6 +123,11 @@ int MockDigitizer::GetParameters(enum ADQParameterId id, void *const parameters)
     {
         std::memcpy(parameters, &m_constant, sizeof(m_constant));
         return sizeof(m_constant);
+    }
+    else if (id == ADQ_PARAMETER_ID_ANALOG_FRONTEND)
+    {
+        std::memcpy(parameters, &m_afe, sizeof(m_afe));
+        return sizeof(m_afe);
     }
     else
     {

@@ -7,26 +7,34 @@ const ImVec4 Ui::COLOR_YELLOW = {1.0f, 1.0f, 0.3f, 0.8f};
 const ImVec4 Ui::COLOR_ORANGE = {0.86f, 0.38f, 0.1f, 0.8f};
 const ImVec4 Ui::COLOR_PURPLE = {0.6f, 0.3f, 1.0f, 0.8f};
 
-Ui::DigitizerUiState::DigitizerUiState()
+Ui::ChannelUiState::ChannelUiState()
+    : sample_markers(false)
+    , record(NULL)
+{}
+
+Ui::DigitizerUiState::DigitizerUiState(int nof_channels)
     : identifier("")
     , status("")
     , extra("")
     , status_color(COLOR_GREEN)
     , set_top_color(ImGui::GetStyleColorVec4(ImGuiCol_Button))
     , set_clock_system_color(ImGui::GetStyleColorVec4(ImGuiCol_Button))
-{}
+    , channels{}
+{
+    for (int i = 0; i < nof_channels; ++i)
+        channels.push_back(ChannelUiState());
+}
 
 Ui::Ui()
     : m_identification()
     , m_digitizers()
-    , m_records{}
     , m_adq_control_unit()
     , m_show_imgui_demo_window(false)
     , m_show_implot_demo_window(false)
     , m_is_time_domain_collapsed(false)
     , m_is_frequency_domain_collapsed(false)
     , m_selected()
-    , m_digitizer_ui_state()
+    , m_digitizer_ui_state{}
 {}
 
 Ui::~Ui()
@@ -104,7 +112,7 @@ void Ui::UpdateRecords()
     {
         /* FIXME: Skip nonexistent channels. */
         for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
-            m_digitizers[i]->WaitForProcessedRecord(ch, m_records[i][ch]);
+            m_digitizers[i]->WaitForProcessedRecord(ch, m_digitizer_ui_state[i].channels[ch].record);
     }
 }
 
@@ -113,19 +121,14 @@ void Ui::HandleMessage(const IdentificationMessage &message)
     /* If we get a message, the identification went well. */
     for (const auto &d : m_digitizers)
         d->Stop();
-    m_digitizers.clear();
 
     m_digitizers = message.digitizers;
     m_adq_control_unit = message.handle;
-    for (size_t i = 0; i < m_digitizers.size(); ++i)
-    {
-        std::vector<std::shared_ptr<ProcessedRecord>> tmp;
-        for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
-            tmp.push_back(std::shared_ptr<ProcessedRecord>());
-        m_records.push_back(tmp);
-    }
 
-    m_digitizer_ui_state = std::unique_ptr<DigitizerUiState[]>( new DigitizerUiState[m_digitizers.size()] );
+    m_digitizer_ui_state.clear();
+    for (size_t i = 0; i < m_digitizers.size(); ++i)
+        m_digitizer_ui_state.push_back(DigitizerUiState(ADQ_MAX_NOF_CHANNELS));
+
     m_selected = std::unique_ptr<bool[]>( new bool[m_digitizers.size()] );
     memset(&m_selected[0], 0, sizeof(m_selected[0]) * m_digitizers.size());
 
@@ -545,12 +548,20 @@ void Ui::PlotTimeDomainSelected()
 
         for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
         {
-            if (m_records[i][ch] != NULL)
+            auto &state = m_digitizer_ui_state[i].channels[ch];
+            if (state.record != NULL)
             {
-                int count = static_cast<int>(m_records[i][ch]->time_domain->count);
-                ImPlot::PlotLine(m_records[i][ch]->label.c_str(),
-                                 m_records[i][ch]->time_domain->x.get(),
-                                 m_records[i][ch]->time_domain->y.get(), count);
+                int count = static_cast<int>(state.record->time_domain->count);
+                if (state.sample_markers)
+                    ImPlot::SetNextMarkerStyle(ImPlotMarker_Cross);
+                ImPlot::PlotLine(state.record->label.c_str(),
+                                 state.record->time_domain->x.get(),
+                                 state.record->time_domain->y.get(), count);
+                if (ImPlot::BeginLegendPopup(state.record->label.c_str()))
+                {
+                    ImGui::Checkbox("Sample markers", &state.sample_markers);
+                    ImPlot::EndLegendPopup();
+                }
             }
         }
     }
@@ -606,13 +617,14 @@ void Ui::PlotFourierTransformSelected()
 
         for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
         {
-            if (m_records[i][ch] != NULL)
+            const auto &record = m_digitizer_ui_state[i].channels[ch].record;
+            if (record != NULL)
             {
                 /* +1 for the Nyquist bin */
-                int count = static_cast<int>(m_records[i][ch]->frequency_domain->count / 2 + 1);
-                ImPlot::PlotLine(m_records[i][ch]->label.c_str(),
-                                 m_records[i][ch]->frequency_domain->x.get(),
-                                 m_records[i][ch]->frequency_domain->y.get(), count);
+                int count = static_cast<int>(record->frequency_domain->count / 2 + 1);
+                ImPlot::PlotLine(record->label.c_str(),
+                                 record->frequency_domain->x.get(),
+                                 record->frequency_domain->y.get(), count);
             }
         }
     }
@@ -643,13 +655,14 @@ void Ui::PlotWaterfallSelected()
 
         for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
         {
-            if (m_records[i][ch] != NULL)
+            const auto &record = m_digitizer_ui_state[i].channels[ch].record;
+            if (record != NULL)
             {
                 /* FIXME: Y-axis scale (probably time delta?) */
-                const double TOP_RIGHT = m_records[i][ch]->time_domain->sampling_frequency / 2;
-                ImPlot::PlotHeatmap("heat", m_records[i][ch]->waterfall->data.get(),
-                                    static_cast<int>(m_records[i][ch]->waterfall->rows),
-                                    static_cast<int>(m_records[i][ch]->waterfall->columns),
+                const double TOP_RIGHT = record->time_domain->sampling_frequency / 2;
+                ImPlot::PlotHeatmap("heat", record->waterfall->data.get(),
+                                    static_cast<int>(record->waterfall->rows),
+                                    static_cast<int>(record->waterfall->columns),
                                     -80, 0, NULL, ImPlotPoint(0,0), ImPlotPoint(TOP_RIGHT, 1));
                 return;
             }
@@ -686,16 +699,17 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
 
         for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
         {
-            if (m_records[i][ch] != NULL)
+            const auto &record = m_digitizer_ui_state[i].channels[ch].record;
+            if (record != NULL)
             {
                 if (has_contents)
                     ImGui::Separator();
 
-                ImGui::Text("%s", m_records[i][ch]->label.c_str());
-                ImGui::Text("Record number: %" PRIu32, m_records[i][ch]->time_domain->header.record_number);
-                ImGui::Text("Maximum value: %.4f", m_records[i][ch]->time_domain_metrics.max);
-                ImGui::Text("Minimum value: %.4f", m_records[i][ch]->time_domain_metrics.min);
-                ImGui::Text("Estimated trigger frequency: %.4f Hz", m_records[i][ch]->time_domain->estimated_trigger_frequency);
+                ImGui::Text("%s", record->label.c_str());
+                ImGui::Text("Record number: %" PRIu32, record->time_domain->header.record_number);
+                ImGui::Text("Maximum value: %.4f", record->time_domain_metrics.max);
+                ImGui::Text("Minimum value: %.4f", record->time_domain_metrics.min);
+                ImGui::Text("Estimated trigger frequency: %.4f Hz", record->time_domain->estimated_trigger_frequency);
             }
 
             has_contents = true;
@@ -718,15 +732,16 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
 
         for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
         {
-            if (m_records[i][ch] != NULL)
+            const auto &record = m_digitizer_ui_state[i].channels[ch].record;
+            if (record != NULL)
             {
                 if (has_contents)
                     ImGui::Separator();
 
-                ImGui::Text("%s", m_records[i][ch]->label.c_str());
-                ImGui::Text("Record number: %" PRIu32, m_records[i][ch]->time_domain->header.record_number);
-                ImGui::Text("Maximum value: %.4f", m_records[i][ch]->frequency_domain_metrics.max);
-                ImGui::Text("Minimum value: %.4f", m_records[i][ch]->frequency_domain_metrics.min);
+                ImGui::Text("%s", record->label.c_str());
+                ImGui::Text("Record number: %" PRIu32, record->time_domain->header.record_number);
+                ImGui::Text("Maximum value: %.4f", record->frequency_domain_metrics.max);
+                ImGui::Text("Minimum value: %.4f", record->frequency_domain_metrics.min);
             }
 
             has_contents = true;

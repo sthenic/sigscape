@@ -24,7 +24,6 @@ public:
 private:
     Identification m_identification;
     std::vector<std::shared_ptr<Digitizer>> m_digitizers;
-    std::vector<std::vector<std::shared_ptr<ProcessedRecord>>> m_records;
     void *m_adq_control_unit;
     bool m_show_imgui_demo_window;
     bool m_show_implot_demo_window;
@@ -32,9 +31,17 @@ private:
     bool m_is_frequency_domain_collapsed;
     std::unique_ptr<bool[]> m_selected;
 
+    struct ChannelUiState
+    {
+        ChannelUiState();
+
+        bool sample_markers;
+        std::shared_ptr<ProcessedRecord> record;
+    };
+
     struct DigitizerUiState
     {
-        DigitizerUiState();
+        DigitizerUiState(int nof_channels);
 
         std::string identifier;
         std::string status;
@@ -42,8 +49,10 @@ private:
         ImVec4 status_color;
         ImVec4 set_top_color;
         ImVec4 set_clock_system_color;
+
+        std::vector<ChannelUiState> channels;
     };
-    std::unique_ptr<DigitizerUiState[]> m_digitizer_ui_state;
+    std::vector<DigitizerUiState> m_digitizer_ui_state;
 
     void PushMessage(DigitizerMessageId id, bool selected = true);
 

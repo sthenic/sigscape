@@ -45,7 +45,7 @@ void DataProcessing::MainLoop()
         struct ADQGen4Record *time_domain = NULL;
         int channel = m_channel;
         int64_t bytes_received = ADQ_WaitForRecordBuffer(m_control_unit, m_index, &channel,
-                                                         (void **)&time_domain, 0, NULL);
+                                                         (void **)&time_domain, 100, NULL);
 
         /* Continue on timeout. */
         if ((bytes_received == ADQ_EAGAIN) || (bytes_received == ADQ_ENOTREADY) || (bytes_received == ADQR_EINTERRUPTED))

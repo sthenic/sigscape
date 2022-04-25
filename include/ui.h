@@ -96,6 +96,20 @@ private:
     static const ImVec4 COLOR_YELLOW;
     static const ImVec4 COLOR_ORANGE;
     static const ImVec4 COLOR_PURPLE;
+
+    static const ImVec4 COLOR_WOW_RED;
+    static const ImVec4 COLOR_WOW_DARK_MAGENTA;
+    static const ImVec4 COLOR_WOW_ORANGE;
+    static const ImVec4 COLOR_WOW_CHROMOPHOBIA_GREEN;
+    static const ImVec4 COLOR_WOW_GREEN;
+    static const ImVec4 COLOR_WOW_LIGHT_BLUE;
+    static const ImVec4 COLOR_WOW_SPRING_GREEN;
+    static const ImVec4 COLOR_WOW_PINK;
+    static const ImVec4 COLOR_WOW_WHITE;
+    static const ImVec4 COLOR_WOW_YELLOW;
+    static const ImVec4 COLOR_WOW_BLUE;
+    static const ImVec4 COLOR_WOW_PURPLE;
+    static const ImVec4 COLOR_WOW_TAN;
 };
 
 #endif

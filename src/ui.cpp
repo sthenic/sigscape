@@ -1,4 +1,6 @@
 #include "ui.h"
+#include "implot_internal.h" /* To be able to get item visibility status. */
+
 #include <cinttypes>
 
 const ImVec4 Ui::COLOR_GREEN = {0.0f, 1.0f, 0.5f, 0.6f};
@@ -593,7 +595,7 @@ void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
     {
         ImPlot::SetupLegend(ImPlotLocation_NorthEast);
         ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatter, (void *)"s");
-        ImPlot::SetupAxisFormat(ImAxis_Y1, MetricFormatter, (void *)"V");
+        // ImPlot::SetupAxisFormat(ImAxis_Y1, MetricFormatter, (void *)"V");
         PlotTimeDomainSelected();
         ImPlot::EndPlot();
     }
@@ -641,6 +643,19 @@ void Ui::PlotFourierTransformSelected()
                 ImPlot::PlotLine(record->label.c_str(),
                                  record->frequency_domain->x.get(),
                                  record->frequency_domain->y.get(), count);
+
+                /* Here we have to resort to using ImPlot internals to gain
+                   access to whether or not the plot is shown or not. The user
+                   can click the legend entry to change the visibility state. */
+                auto item = ImPlot::GetCurrentContext()->CurrentItems->GetItem(record->label.c_str());
+                if ((item != NULL) && (item->Show))
+                {
+                    const auto &fundamental = record->frequency_domain_metrics.fundamental;
+                    ImPlot::Annotation(fundamental.first, fundamental.second, ImVec4(0, 0, 0, 0),
+                                       ImVec2(0, -5), false, "%.2f", fundamental.second);
+                    ImPlot::Annotation(fundamental.first, fundamental.second, ImVec4(0, 0, 0, 0),
+                                       ImVec2(0, -5 - ImGui::GetTextLineHeight()), false, "%.2f MHz", fundamental.first / 1e6);
+                }
             }
         }
     }

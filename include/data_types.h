@@ -32,6 +32,7 @@ struct TimeDomainRecord
     TimeDomainRecord(const struct ADQGen4Record *raw,
                      const struct ADQAnalogFrontendParametersChannel &afe)
     {
+        (void)afe;
         /* FIXME: Can optimize this by giving just the number of bytes used in
                   the record, raw->size is the buffer capacity. */
         x = std::shared_ptr<double[]>( new double[raw->header->record_length] );
@@ -54,7 +55,7 @@ struct TimeDomainRecord
         for (size_t i = 0; i < raw->header->record_length; ++i)
         {
             x[i] = record_start + i * sampling_period;
-            y[i] = (static_cast<double>(data[i]) / 65536.0 * afe.input_range - afe.dc_offset) / 1000.0;
+            y[i] = static_cast<double>(data[i]) / 32768.0; /* TODO: Use full-scale for now. */
         }
     }
 
@@ -113,6 +114,7 @@ struct TimeDomainRecord
 
 struct FrequencyDomainRecord
 {
+    /* TODO: We could optimize this for size so that x and y are (count / 2 + 1) elements. */
     FrequencyDomainRecord(size_t count)
     {
         x = std::shared_ptr<double[]>( new double[count] );
@@ -346,6 +348,7 @@ struct ProcessedRecord
     {
         double max;
         double min;
+        std::pair<double, double> fundamental;
     } frequency_domain_metrics;
 };
 

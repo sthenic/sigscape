@@ -95,20 +95,27 @@ void DataProcessing::MainLoop()
                      passes of the second loop in the first loop and then just the
                      remaining passes. */
 
-            /* Compute real spectrum. */
-            for (size_t i = 0; i < processed_record->frequency_domain->count; ++i)
+            /* Compute real spectrum */
+            for (int i = 0; i < fft_size / 2 + 1; ++i)
             {
                 processed_record->frequency_domain->x[i] =
                     static_cast<double>(i) * processed_record->frequency_domain->bin_range;
 
+                /* We scale all bins by 2, except for bins 0 and N/2, i.e. DC and fs/2. */
+                const double compensation = ((i == 0) || (i == fft_size / 2)) ? 1.0 : 2.0;
                 processed_record->frequency_domain->y[i] =
-                    20 * std::log10(std::abs(processed_record->frequency_domain->yc[i]) / fft_size);
+                    20 * std::log10(compensation * std::abs(processed_record->frequency_domain->yc[i]) / fft_size);
 
                 if (processed_record->frequency_domain->y[i] > processed_record->frequency_domain_metrics.max)
+                {
                     processed_record->frequency_domain_metrics.max = processed_record->frequency_domain->y[i];
+                    processed_record->frequency_domain_metrics.fundamental = std::make_pair(
+                        processed_record->frequency_domain->x[i], processed_record->frequency_domain->y[i]);
+                }
 
                 if (processed_record->frequency_domain->y[i] < processed_record->frequency_domain_metrics.min)
                     processed_record->frequency_domain_metrics.min = processed_record->frequency_domain->y[i];
+
             }
 
             for (size_t i = 0; i < processed_record->time_domain->count; ++i)

@@ -114,12 +114,10 @@ struct TimeDomainRecord
 
 struct FrequencyDomainRecord
 {
-    /* TODO: We could optimize this for size so that x and y are (count / 2 + 1) elements. */
     FrequencyDomainRecord(size_t count)
     {
         x = std::shared_ptr<double[]>( new double[count] );
         y = std::shared_ptr<double[]>( new double[count] );
-        yc = std::shared_ptr<std::complex<double>[]>( new std::complex<double>[count] );
         this->count = count;
         capacity = count;
         bin_range = 0;
@@ -129,14 +127,12 @@ struct FrequencyDomainRecord
     {
         x = std::shared_ptr<double[]>( new double[other.count] );
         y = std::shared_ptr<double[]>( new double[other.count] );
-        yc = std::shared_ptr<std::complex<double>[]>( new std::complex<double>[other.count] );
         count = other.count;
         capacity = other.count;
         bin_range = other.bin_range;
 
         std::memcpy(x.get(), other.x.get(), other.count * sizeof(*x.get()));
         std::memcpy(y.get(), other.y.get(), other.count * sizeof(*y.get()));
-        std::memcpy(yc.get(), other.yc.get(), other.count * sizeof(*yc.get()));
     }
 
     FrequencyDomainRecord &operator=(const FrequencyDomainRecord &other)
@@ -147,13 +143,11 @@ struct FrequencyDomainRecord
             {
                 x = std::shared_ptr<double[]>( new double[other.count] );
                 y = std::shared_ptr<double[]>( new double[other.count] );
-                yc = std::shared_ptr<std::complex<double>[]>( new std::complex<double>[other.count] );
                 capacity = other.count;
             }
 
             std::memcpy(x.get(), other.x.get(), other.count * sizeof(*x.get()));
             std::memcpy(y.get(), other.y.get(), other.count * sizeof(*y.get()));
-            std::memcpy(yc.get(), other.yc.get(), other.count * sizeof(*yc.get()));
             count = other.count;
             bin_range = other.bin_range;
         }
@@ -163,7 +157,6 @@ struct FrequencyDomainRecord
 
     std::shared_ptr<double[]> x;
     std::shared_ptr<double[]> y;
-    std::shared_ptr<std::complex<double>[]> yc;
     size_t count;
     size_t capacity;
     double bin_range;

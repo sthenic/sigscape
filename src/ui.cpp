@@ -638,8 +638,7 @@ void Ui::PlotFourierTransformSelected()
             const auto &record = m_digitizer_ui_state[i].channels[ch].record;
             if (record != NULL)
             {
-                /* +1 for the Nyquist bin */
-                int count = static_cast<int>(record->frequency_domain->count / 2 + 1);
+                int count = static_cast<int>(record->frequency_domain->count);
                 ImPlot::PlotLine(record->label.c_str(),
                                  record->frequency_domain->x.get(),
                                  record->frequency_domain->y.get(), count);

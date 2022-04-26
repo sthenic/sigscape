@@ -626,6 +626,15 @@ void Ui::RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size)
     ImGui::End();
 }
 
+void Ui::Annotate(const std::pair<double, double> &point)
+{
+    ImPlot::Annotation(point.first, point.second, ImVec4(0, 0, 0, 0),
+                       ImVec2(0, -5), false, "%.2f dBFS", point.second);
+    ImPlot::Annotation(point.first, point.second, ImVec4(0, 0, 0, 0),
+                       ImVec2(0, -5 - ImGui::GetTextLineHeight()), false,
+                       "%.2f MHz", point.first / 1e6);
+}
+
 void Ui::PlotFourierTransformSelected()
 {
     for (size_t i = 0; i < m_digitizers.size(); ++i)
@@ -649,11 +658,8 @@ void Ui::PlotFourierTransformSelected()
                 auto item = ImPlot::GetCurrentContext()->CurrentItems->GetItem(record->label.c_str());
                 if ((item != NULL) && (item->Show))
                 {
-                    const auto &fundamental = record->frequency_domain_metrics.fundamental;
-                    ImPlot::Annotation(fundamental.first, fundamental.second, ImVec4(0, 0, 0, 0),
-                                       ImVec2(0, -5), false, "%.2f", fundamental.second);
-                    ImPlot::Annotation(fundamental.first, fundamental.second, ImVec4(0, 0, 0, 0),
-                                       ImVec2(0, -5 - ImGui::GetTextLineHeight()), false, "%.2f MHz", fundamental.first / 1e6);
+                    Annotate(record->frequency_domain_metrics.fundamental);
+                    Annotate(record->frequency_domain_metrics.sfdr_limiter);
                 }
             }
         }

@@ -71,20 +71,20 @@ void DataProcessing::MainLoop()
             /* We copy the time domain data in order to return the buffer to the
                acquisition interface ASAP. */
             auto processed_record = std::make_shared<ProcessedRecord>();
-            int fft_size = PreviousPowerOfTwo(time_domain->header->record_length);
-            auto yc = std::unique_ptr<std::complex<double>[]>( new std::complex<double>[fft_size] );
+            size_t fft_length = PreviousPowerOfTwo(time_domain->header->record_length);
+            auto yc = std::unique_ptr<std::complex<double>[]>( new std::complex<double>[fft_length] );
 
             processed_record->time_domain = std::make_shared<TimeDomainRecord>(time_domain, m_afe);
-            processed_record->frequency_domain = std::make_shared<FrequencyDomainRecord>(fft_size / 2 + 1);
+            processed_record->frequency_domain = std::make_shared<FrequencyDomainRecord>(fft_length / 2 + 1);
             processed_record->time_domain->estimated_trigger_frequency = estimated_trigger_frequency;
             processed_record->label = m_label;
 
             processed_record->frequency_domain->bin_range =
-                processed_record->time_domain->sampling_frequency / static_cast<double>(fft_size);
+                processed_record->time_domain->sampling_frequency / static_cast<double>(fft_length);
 
             /* Compute FFT */
             const char *error = NULL;
-            if (!simple_fft::FFT(processed_record->time_domain->y, yc, fft_size, error))
+            if (!simple_fft::FFT(processed_record->time_domain->y, yc, fft_length, error))
             {
                 /* FIXME: Perhaps just continue instead? */
                 printf("Failed to compute FFT: %s.\n", error);
@@ -92,39 +92,11 @@ void DataProcessing::MainLoop()
                 return;
             }
 
-            /* TODO: We could probably optimize this and do (time_domain->count - fftsize)
-                     passes of the second loop in the first loop and then just the
-                     remaining passes. */
+            /* Analyze the fourier transform data, scaling the data and extracting key metrics. */
+            AnalyzeFourierTransform(yc.get(), fft_length, processed_record.get());
 
-            /* Compute real spectrum */
-            for (size_t i = 0; i < processed_record->frequency_domain->count; ++i)
-            {
-                processed_record->frequency_domain->x[i] =
-                    static_cast<double>(i) * processed_record->frequency_domain->bin_range;
-
-                processed_record->frequency_domain->y[i] =
-                    20 * std::log10(2.0 * std::abs(yc[i]) / fft_size);
-
-                if (processed_record->frequency_domain->y[i] > processed_record->frequency_domain_metrics.max)
-                {
-                    processed_record->frequency_domain_metrics.max = processed_record->frequency_domain->y[i];
-                    processed_record->frequency_domain_metrics.fundamental = std::make_pair(
-                        processed_record->frequency_domain->x[i], processed_record->frequency_domain->y[i]);
-                }
-
-                if (processed_record->frequency_domain->y[i] < processed_record->frequency_domain_metrics.min)
-                    processed_record->frequency_domain_metrics.min = processed_record->frequency_domain->y[i];
-
-            }
-
-            for (size_t i = 0; i < processed_record->time_domain->count; ++i)
-            {
-                if (processed_record->time_domain->y[i] > processed_record->time_domain_metrics.max)
-                    processed_record->time_domain_metrics.max = processed_record->time_domain->y[i];
-
-                if (processed_record->time_domain->y[i] < processed_record->time_domain_metrics.min)
-                    processed_record->time_domain_metrics.min = processed_record->time_domain->y[i];
-            }
+            /* Analyze the time domain data. */
+            AnalyzeTimeDomain(processed_record.get());
 
             /* Push the new FFT at the top of the waterfall and construct a
                row-major array for the plotting. We unfortunately cannot the
@@ -147,13 +119,57 @@ void DataProcessing::MainLoop()
 }
 
 template <typename T>
-int DataProcessing::NextPowerOfTwo(T i)
+size_t DataProcessing::NextPowerOfTwo(T i)
 {
-    return static_cast<int>(std::pow(2, std::ceil(std::log2(i))));
+    return static_cast<size_t>(std::pow(2, std::ceil(std::log2(i))));
 }
 
 template <typename T>
-int DataProcessing::PreviousPowerOfTwo(T i)
+size_t DataProcessing::PreviousPowerOfTwo(T i)
 {
-    return static_cast<int>(std::pow(2, std::floor(std::log2(i))));
+    return static_cast<size_t>(std::pow(2, std::floor(std::log2(i))));
+}
+
+void DataProcessing::AnalyzeFourierTransform(const std::complex<double> *fft, size_t length,
+                                             ProcessedRecord *record)
+{
+    auto &metrics = record->frequency_domain_metrics;
+    auto &x = record->frequency_domain->x;
+    auto &y = record->frequency_domain->y;
+    const auto &bin_range = record->frequency_domain->bin_range;
+
+    /* The loop upper bound is expected to be N/2 + 1. */
+    for (size_t i = 0; i < record->frequency_domain->count; ++i)
+    {
+        x[i] = static_cast<double>(i) * bin_range;
+        y[i] = 20.0 * std::log10(2.0 * std::abs(fft[i]) / static_cast<double>(length));
+
+        if (y[i] > metrics.max)
+        {
+            metrics.max = y[i];
+            metrics.sfdr_limiter = std::move(metrics.fundamental);
+            metrics.fundamental = std::make_pair(x[i], y[i]);
+        }
+
+        /* The SFDR limiter will be the second highest bin. We exempt the
+           current fundamental index and rely on the fundamental search above to
+           assign its old value to the SFDR limiter if a new maximum is found. */
+        if ((x[i] != metrics.fundamental.first) && (y[i] > metrics.sfdr_limiter.second))
+            metrics.sfdr_limiter = std::make_pair(x[i], y[i]);
+
+        if (y[i] < metrics.min)
+            metrics.min = y[i];
+    }
+}
+
+void DataProcessing::AnalyzeTimeDomain(ProcessedRecord *record)
+{
+    for (size_t i = 0; i < record->time_domain->count; ++i)
+    {
+        if (record->time_domain->y[i] > record->time_domain_metrics.max)
+            record->time_domain_metrics.max = record->time_domain->y[i];
+
+        if (record->time_domain->y[i] < record->time_domain_metrics.min)
+            record->time_domain_metrics.min = record->time_domain->y[i];
+    }
 }

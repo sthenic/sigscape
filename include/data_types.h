@@ -342,6 +342,7 @@ struct ProcessedRecord
         double max;
         double min;
         std::pair<double, double> fundamental;
+        std::pair<double, double> sfdr_limiter;
     } frequency_domain_metrics;
 };
 

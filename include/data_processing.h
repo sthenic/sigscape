@@ -30,10 +30,13 @@ private:
     std::deque<std::shared_ptr<FrequencyDomainRecord>> m_waterfall;
 
     template <typename T>
-    int NextPowerOfTwo(T i);
+    size_t NextPowerOfTwo(T i);
 
     template <typename T>
-    int PreviousPowerOfTwo(T i);
+    size_t PreviousPowerOfTwo(T i);
+
+    void AnalyzeFourierTransform(const std::complex<double> *fft, size_t length, ProcessedRecord *record);
+    void AnalyzeTimeDomain(ProcessedRecord *record);
 };
 
 #endif

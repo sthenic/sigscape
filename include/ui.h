@@ -77,7 +77,7 @@ private:
     void RenderTimeDomain(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size);
 
-    void Annotate(const std::pair<double, double> &point);
+    void Annotate(const std::pair<double, double> &point, const std::string &label = "");
     void PlotFourierTransformSelected();
     void RenderFourierTransformPlot();
 

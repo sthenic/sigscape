@@ -30,11 +30,12 @@ private:
     std::deque<std::shared_ptr<FrequencyDomainRecord>> m_waterfall;
 
     template <typename T>
-    size_t NextPowerOfTwo(T i);
+    static size_t NextPowerOfTwo(T i);
 
     template <typename T>
-    size_t PreviousPowerOfTwo(T i);
+    static size_t PreviousPowerOfTwo(T i);
 
+    static double FoldFrequency(double f, double fs);
     void AnalyzeFourierTransform(const std::complex<double> *fft, size_t length, ProcessedRecord *record);
     void AnalyzeTimeDomain(ProcessedRecord *record);
 };

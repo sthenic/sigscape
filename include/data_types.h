@@ -263,6 +263,8 @@ struct ProcessedRecord
         , frequency_domain(NULL)
         , waterfall(NULL)
         , label("")
+        , time_domain_metrics{}
+        , frequency_domain_metrics{}
     {
         time_domain_metrics.max = std::numeric_limits<double>::lowest();
         time_domain_metrics.min = (std::numeric_limits<double>::max)();
@@ -343,6 +345,7 @@ struct ProcessedRecord
         double min;
         std::pair<double, double> fundamental;
         std::pair<double, double> sfdr_limiter;
+        std::vector<std::pair<double, double>> harmonics;
     } frequency_domain_metrics;
 };
 

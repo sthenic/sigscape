@@ -626,13 +626,19 @@ void Ui::RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size)
     ImGui::End();
 }
 
-void Ui::Annotate(const std::pair<double, double> &point)
+void Ui::Annotate(const std::pair<double, double> &point, const std::string &label)
 {
     ImPlot::Annotation(point.first, point.second, ImVec4(0, 0, 0, 0),
                        ImVec2(0, -5), false, "%.2f dBFS", point.second);
     ImPlot::Annotation(point.first, point.second, ImVec4(0, 0, 0, 0),
                        ImVec2(0, -5 - ImGui::GetTextLineHeight()), false,
                        "%.2f MHz", point.first / 1e6);
+    if (label.size() > 0)
+    {
+        ImPlot::Annotation(point.first, point.second, ImVec4(0, 0, 0, 0),
+                           ImVec2(0, -5 - 2 * ImGui::GetTextLineHeight()), false,
+                           label.c_str());
+    }
 }
 
 void Ui::PlotFourierTransformSelected()
@@ -658,8 +664,13 @@ void Ui::PlotFourierTransformSelected()
                 auto item = ImPlot::GetCurrentContext()->CurrentItems->GetItem(record->label.c_str());
                 if ((item != NULL) && (item->Show))
                 {
-                    Annotate(record->frequency_domain_metrics.fundamental);
+                    Annotate(record->frequency_domain_metrics.fundamental, "Fund.");
                     Annotate(record->frequency_domain_metrics.sfdr_limiter);
+                    for (size_t j = 0; j < record->frequency_domain_metrics.harmonics.size(); ++j)
+                    {
+                        Annotate(record->frequency_domain_metrics.harmonics[j],
+                                 "HD" + std::to_string(j+2));
+                    }
                 }
             }
         }
@@ -699,7 +710,7 @@ void Ui::PlotWaterfallSelected()
                 ImPlot::PlotHeatmap("heat", record->waterfall->data.get(),
                                     static_cast<int>(record->waterfall->rows),
                                     static_cast<int>(record->waterfall->columns),
-                                    -80, 0, NULL, ImPlotPoint(0,0), ImPlotPoint(TOP_RIGHT, 1));
+                                    -100, 0, NULL, ImPlotPoint(0,0), ImPlotPoint(TOP_RIGHT, 1));
                 return;
             }
         }

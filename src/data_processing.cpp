@@ -130,6 +130,19 @@ size_t DataProcessing::PreviousPowerOfTwo(T i)
     return static_cast<size_t>(std::pow(2, std::floor(std::log2(i))));
 }
 
+double DataProcessing::FoldFrequency(double f, double fs)
+{
+    double result = f;
+    while (result > (fs / 2))
+    {
+        if (result > fs)
+            result = result - fs;
+        else if (result > (fs / 2))
+            result = fs - result;
+    }
+    return result;
+}
+
 void DataProcessing::AnalyzeFourierTransform(const std::complex<double> *fft, size_t length,
                                              ProcessedRecord *record)
 {
@@ -151,6 +164,8 @@ void DataProcessing::AnalyzeFourierTransform(const std::complex<double> *fft, si
             metrics.fundamental = std::make_pair(x[i], y[i]);
         }
 
+        /* FIXME: Add skirt bins */
+
         /* The SFDR limiter will be the second highest bin. We exempt the
            current fundamental index and rely on the fundamental search above to
            assign its old value to the SFDR limiter if a new maximum is found. */
@@ -159,6 +174,17 @@ void DataProcessing::AnalyzeFourierTransform(const std::complex<double> *fft, si
 
         if (y[i] < metrics.min)
             metrics.min = y[i];
+    }
+
+    /* Identify harmonics. */
+    /* FIXME: Reset SFDR limiter if this is one of the harmonics? */
+    /* FIXME: Add skirt bins */
+    for (int hd = 2; hd <= 5; ++hd)
+    {
+        double f = FoldFrequency(metrics.fundamental.first * hd,
+                                 record->time_domain->sampling_frequency);
+        int i = static_cast<int>(f / bin_range + 0.5);
+        metrics.harmonics.push_back(std::make_pair(x[i], y[i]));
     }
 }
 

@@ -2,6 +2,7 @@
 #define DATA_PROCESSING_H_J8UO0P
 
 #include "smart_buffer_thread.h"
+#include "window.h"
 #include "data_types.h"
 #include "error.h"
 
@@ -10,7 +11,7 @@
 class DataProcessing : public SmartBufferThread<DataProcessing, ProcessedRecord, 100, true>
 {
 public:
-    DataProcessing(void *control_unit, int index, int channel, const std::string &label);
+    DataProcessing(void *handle, int index, int channel, const std::string &label);
     ~DataProcessing();
     DataProcessing(const DataProcessing &other) = delete;
     DataProcessing &operator=(const DataProcessing &other) = delete;
@@ -21,11 +22,12 @@ public:
 
 private:
     static const size_t WATERFALL_SIZE = 20;
-    void *m_control_unit;
+    void *m_handle;
     int m_index;
     int m_channel;
     std::string m_label;
     struct ADQAnalogFrontendParametersChannel m_afe;
+    WindowCache m_window_cache;
 
     std::deque<std::shared_ptr<FrequencyDomainRecord>> m_waterfall;
 

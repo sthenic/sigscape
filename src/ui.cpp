@@ -637,7 +637,7 @@ void Ui::Annotate(const std::pair<double, double> &point, const std::string &lab
     {
         ImPlot::Annotation(point.first, point.second, ImVec4(0, 0, 0, 0),
                            ImVec2(0, -5 - 2 * ImGui::GetTextLineHeight()), false,
-                           label.c_str());
+                           "%s", label.c_str());
     }
 }
 

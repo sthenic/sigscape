@@ -12,12 +12,13 @@
 #include <cmath>
 #include <cinttypes>
 
-DataProcessing::DataProcessing(void *control_unit, int index, int channel, const std::string &label)
-    : m_control_unit(control_unit)
+DataProcessing::DataProcessing(void *handle, int index, int channel, const std::string &label)
+    : m_handle(handle)
     , m_index(index)
     , m_channel(channel)
     , m_label(label)
     , m_afe{1000.0, 0.0}
+    , m_window_cache()
 {
 }
 
@@ -44,7 +45,7 @@ void DataProcessing::MainLoop()
 
         struct ADQGen4Record *time_domain = NULL;
         int channel = m_channel;
-        int64_t bytes_received = ADQ_WaitForRecordBuffer(m_control_unit, m_index, &channel,
+        int64_t bytes_received = ADQ_WaitForRecordBuffer(m_handle, m_index, &channel,
                                                          (void **)&time_domain, 100, NULL);
 
         /* Continue on timeout. */
@@ -72,19 +73,25 @@ void DataProcessing::MainLoop()
                acquisition interface ASAP. */
             auto processed_record = std::make_shared<ProcessedRecord>();
             size_t fft_length = PreviousPowerOfTwo(time_domain->header->record_length);
+            auto yw = std::unique_ptr<double[]>( new double[fft_length] );
             auto yc = std::unique_ptr<std::complex<double>[]>( new std::complex<double>[fft_length] );
 
+            /* FIXME: Windowing in the time domain struct?  */
             processed_record->time_domain = std::make_shared<TimeDomainRecord>(time_domain, m_afe);
             processed_record->frequency_domain = std::make_shared<FrequencyDomainRecord>(fft_length / 2 + 1);
             processed_record->time_domain->estimated_trigger_frequency = estimated_trigger_frequency;
             processed_record->label = m_label;
+
+            auto window = m_window_cache.GetWindow(WindowType::BLACKMAN_HARRIS, fft_length);
+            for (size_t i = 0; i < fft_length; ++i)
+                yw[i] = processed_record->time_domain->y[i] * window->data[i];
 
             processed_record->frequency_domain->bin_range =
                 processed_record->time_domain->sampling_frequency / static_cast<double>(fft_length);
 
             /* Compute FFT */
             const char *error = NULL;
-            if (!simple_fft::FFT(processed_record->time_domain->y, yc, fft_length, error))
+            if (!simple_fft::FFT(yw, yc, fft_length, error))
             {
                 /* FIXME: Perhaps just continue instead? */
                 printf("Failed to compute FFT: %s.\n", error);
@@ -114,7 +121,7 @@ void DataProcessing::MainLoop()
             printf("Skipping (no FFT or allocation) since queue is full (%d).\n", nof_discarded++);
         }
 
-        ADQ_ReturnRecordBuffer(m_control_unit, m_index, channel, time_domain);
+        ADQ_ReturnRecordBuffer(m_handle, m_index, channel, time_domain);
     }
 }
 

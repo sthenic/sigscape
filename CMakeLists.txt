@@ -86,6 +86,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     src/identification.cpp
     src/file_watcher.cpp
     src/ui.cpp
+    src/window.cpp
     src/main.cpp
 )
 

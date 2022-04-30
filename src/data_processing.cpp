@@ -19,6 +19,7 @@ DataProcessing::DataProcessing(void *handle, int index, int channel, const std::
     , m_label(label)
     , m_afe{1000.0, 0.0}
     , m_window_cache()
+    , m_window_type(WindowType::NONE)
 {
 }
 
@@ -30,6 +31,11 @@ DataProcessing::~DataProcessing()
 void DataProcessing::SetAnalogFrontendParameters(const struct ADQAnalogFrontendParametersChannel &afe)
 {
     m_afe = afe;
+}
+
+void DataProcessing::SetWindowType(WindowType type)
+{
+    m_window_type = type;
 }
 
 void DataProcessing::MainLoop()
@@ -73,7 +79,6 @@ void DataProcessing::MainLoop()
                acquisition interface ASAP. */
             auto processed_record = std::make_shared<ProcessedRecord>();
             size_t fft_length = PreviousPowerOfTwo(time_domain->header->record_length);
-            auto yw = std::unique_ptr<double[]>( new double[fft_length] );
             auto yc = std::unique_ptr<std::complex<double>[]>( new std::complex<double>[fft_length] );
 
             /* FIXME: Windowing in the time domain struct?  */
@@ -82,16 +87,22 @@ void DataProcessing::MainLoop()
             processed_record->time_domain->estimated_trigger_frequency = estimated_trigger_frequency;
             processed_record->label = m_label;
 
-            auto window = m_window_cache.GetWindow(WindowType::BLACKMAN_HARRIS, fft_length);
-            for (size_t i = 0; i < fft_length; ++i)
-                yw[i] = processed_record->time_domain->y[i] * window->data[i];
-
             processed_record->frequency_domain->bin_range =
                 processed_record->time_domain->sampling_frequency / static_cast<double>(fft_length);
 
+            auto y = processed_record->time_domain->y;
+            if (m_window_type != WindowType::NONE)
+            {
+                auto yw = std::unique_ptr<double[]>( new double[fft_length] );
+                auto window = m_window_cache.GetWindow(m_window_type, fft_length);
+                for (size_t i = 0; i < fft_length; ++i)
+                    yw[i] = processed_record->time_domain->y[i] * window->data[i];
+                y = std::move(yw);
+            }
+
             /* Compute FFT */
             const char *error = NULL;
-            if (!simple_fft::FFT(yw, yc, fft_length, error))
+            if (!simple_fft::FFT(y, yc, fft_length, error))
             {
                 /* FIXME: Perhaps just continue instead? */
                 printf("Failed to compute FFT: %s.\n", error);

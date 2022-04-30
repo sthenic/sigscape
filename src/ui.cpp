@@ -107,13 +107,13 @@ void Ui::Render(float width, float height)
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-void Ui::PushMessage(DigitizerMessageId id, bool selected)
+void Ui::PushMessage(const DigitizerMessage &message, bool selected)
 {
     for (size_t i = 0; i < m_digitizers.size(); ++i)
     {
         if (selected && !m_selected[i])
             continue;
-        m_digitizers[i]->PushMessage({id});
+        m_digitizers[i]->PushMessage(message);
     }
 }
 
@@ -217,6 +217,7 @@ void Ui::HandleMessage(size_t i, const DigitizerMessage &message)
     case DigitizerMessageId::VALIDATE_PARAMETERS:
     case DigitizerMessageId::INITIALIZE_PARAMETERS:
     case DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
+    case DigitizerMessageId::SET_WINDOW_TYPE:
         /* These are not expected as a message from a digitizer thread. */
         break;
     }
@@ -322,8 +323,12 @@ void Ui::RenderLeft(float width, float height)
     RenderDigitizerSelection(DIGITIZER_SELECTION_POS, DIGITIZER_SELECTION_SIZE);
 
     const ImVec2 COMMAND_PALETTE_POS(0.0f, 200.0f + FRAME_HEIGHT);
-    const ImVec2 COMMAND_PALETTE_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, height - 200.0f - 4 * FRAME_HEIGHT);
+    const ImVec2 COMMAND_PALETTE_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, height - 400.0f - 4 * FRAME_HEIGHT);
     RenderCommandPalette(COMMAND_PALETTE_POS, COMMAND_PALETTE_SIZE);
+
+    const ImVec2 PROCESSING_OPTIONS_POS(0.0f, height - 200.0f - 3 * FRAME_HEIGHT);
+    const ImVec2 PROCESSING_OPTIONS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 200.0f);
+    RenderProcessingOptions(PROCESSING_OPTIONS_POS, PROCESSING_OPTIONS_SIZE);
 
     const ImVec2 METRICS_POS(0.0f, height - 3 * FRAME_HEIGHT);
     const ImVec2 METRICS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 3 * FRAME_HEIGHT);
@@ -502,6 +507,43 @@ void Ui::RenderSetClockSystemParametersButton(const ImVec2 &size)
     if (ImGui::Button("Set Clock\nSystem", size))
         PushMessage(DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS);
     ImGui::PopStyleColor(2);
+}
+
+void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
+{
+    ImGui::SetNextWindowPos(position);
+    ImGui::SetNextWindowSize(size);
+    ImGui::Begin("Processing Options");
+
+    static int window_idx = 0;
+    static int window_idx_prev = 0;
+    const char *window_labels[] = {"No window", "Blackman-Harris", "Hamming", "Hanning"};
+    ImGui::Combo("Window##window", &window_idx, window_labels, IM_ARRAYSIZE(window_labels));
+
+    if (window_idx != window_idx_prev)
+    {
+        switch (window_idx)
+        {
+        case 0:
+            PushMessage({DigitizerMessageId::SET_WINDOW_TYPE, WindowType::NONE}, false);
+            break;
+
+        case 1:
+            PushMessage({DigitizerMessageId::SET_WINDOW_TYPE, WindowType::BLACKMAN_HARRIS}, false);
+            break;
+
+        case 2:
+            PushMessage({DigitizerMessageId::SET_WINDOW_TYPE, WindowType::HAMMING}, false);
+            break;
+
+        case 3:
+            PushMessage({DigitizerMessageId::SET_WINDOW_TYPE, WindowType::HANNING}, false);
+            break;
+        }
+        window_idx_prev = window_idx;
+    }
+
+    ImGui::End();
 }
 
 /* FIXME: Remove */
@@ -683,6 +725,7 @@ void Ui::RenderFourierTransformPlot()
     {
         ImPlot::SetupLegend(ImPlotLocation_NorthEast);
         ImPlot::SetupAxisLimits(ImAxis_Y1, -80.0, 0.0);
+        ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, 1e9);
         ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatter, (void *)"Hz");
         PlotFourierTransformSelected();
         ImPlot::EndPlot();

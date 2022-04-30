@@ -36,7 +36,8 @@ enum class DigitizerMessageId
     GET_PARAMETERS,
     VALIDATE_PARAMETERS,
     INITIALIZE_PARAMETERS,
-    SET_CLOCK_SYSTEM_PARAMETERS
+    SET_CLOCK_SYSTEM_PARAMETERS,
+    SET_WINDOW_TYPE,
 };
 
 enum class DigitizerState
@@ -69,9 +70,16 @@ struct DigitizerMessage
         , str(str)
     {}
 
+    /* Create a window message. */
+    DigitizerMessage(DigitizerMessageId id, WindowType window_type)
+        : id(id)
+        , window_type(window_type)
+    {}
+
     DigitizerMessageId id;
     DigitizerState state;
     std::shared_ptr<std::string> str;
+    WindowType window_type;
 };
 
 class Digitizer : public MessageThread<Digitizer, struct DigitizerMessage>

@@ -7,6 +7,7 @@
 
 enum class WindowType
 {
+    NONE,
     HAMMING,
     BLACKMAN_HARRIS,
     HANNING

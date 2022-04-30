@@ -17,6 +17,7 @@ public:
     DataProcessing &operator=(const DataProcessing &other) = delete;
 
     void SetAnalogFrontendParameters(const struct ADQAnalogFrontendParametersChannel &afe);
+    void SetWindowType(WindowType type);
 
     void MainLoop() override;
 
@@ -28,6 +29,7 @@ private:
     std::string m_label;
     struct ADQAnalogFrontendParametersChannel m_afe;
     WindowCache m_window_cache;
+    WindowType m_window_type;
 
     std::deque<std::shared_ptr<FrequencyDomainRecord>> m_waterfall;
 

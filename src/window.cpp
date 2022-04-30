@@ -20,6 +20,9 @@ std::shared_ptr<Window> WindowCache::GetWindow(WindowType type, size_t length)
 {
     switch (type)
     {
+    case WindowType::NONE:
+        return NULL;
+
     case WindowType::HAMMING:
         return GetWindow(hamming_windows, length, Hamming);
 

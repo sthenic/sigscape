@@ -54,7 +54,7 @@ private:
     };
     std::vector<DigitizerUiState> m_digitizer_ui_state;
 
-    void PushMessage(DigitizerMessageId id, bool selected = true);
+    void PushMessage(const DigitizerMessage &message, bool selected = true);
 
     void UpdateRecords();
     void HandleMessage(const IdentificationMessage &message);
@@ -70,6 +70,7 @@ private:
     void RenderCommandPalette(const ImVec2 &position, const ImVec2 &size);
     void RenderSetTopParametersButton(const ImVec2 &size);
     void RenderSetClockSystemParametersButton(const ImVec2 &size);
+    void RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size);
 
     void Reduce(double xsize, double sampling_frequency, int &count, int &stride);
     static void MetricFormatter(double value, char *tick_label, int size, void *data);

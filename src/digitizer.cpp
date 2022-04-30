@@ -136,6 +136,11 @@ void Digitizer::ProcessMessages()
             SetParameters(true);
             break;
 
+        case DigitizerMessageId::SET_WINDOW_TYPE:
+            for (const auto &t : m_processing_threads)
+                t->SetWindowType(message.window_type);
+            break;
+
         case DigitizerMessageId::ENUMERATING:
         case DigitizerMessageId::SETUP_OK:
         case DigitizerMessageId::SETUP_FAILED:

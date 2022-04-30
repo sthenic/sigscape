@@ -31,6 +31,9 @@ std::shared_ptr<Window> WindowCache::GetWindow(WindowType type, size_t length)
 
     case WindowType::HANNING:
         return GetWindow(hanning_windows, length, Hanning);
+
+    default:
+        break;
     }
 
     return NULL;

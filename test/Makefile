@@ -43,6 +43,7 @@ SOURCES = \
 	src/mock_adqapi.cpp \
 	src/mock_digitizer.cpp \
  	src/file_watcher.cpp \
+ 	src/window.cpp \
 	tgenerator.cpp \
 	tdata_processing.cpp \
  	tthread_safe_queue.cpp \

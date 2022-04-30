@@ -515,8 +515,8 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
     ImGui::SetNextWindowSize(size);
     ImGui::Begin("Processing Options");
 
-    static int window_idx = 0;
-    static int window_idx_prev = 0;
+    static int window_idx = 1;
+    static int window_idx_prev = 1;
     const char *window_labels[] = {"No window", "Blackman-Harris", "Hamming", "Hanning"};
     ImGui::Combo("Window##window", &window_idx, window_labels, IM_ARRAYSIZE(window_labels));
 
@@ -671,14 +671,14 @@ void Ui::RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size)
 void Ui::Annotate(const std::pair<double, double> &point, const std::string &label)
 {
     ImPlot::Annotation(point.first, point.second, ImVec4(0, 0, 0, 0),
-                       ImVec2(0, -5), false, "%.2f dBFS", point.second);
+                       ImVec2(0, -5), true, "%.2f dBFS", point.second);
     ImPlot::Annotation(point.first, point.second, ImVec4(0, 0, 0, 0),
-                       ImVec2(0, -5 - ImGui::GetTextLineHeight()), false,
+                       ImVec2(0, -5 - ImGui::GetTextLineHeight()), true,
                        "%.2f MHz", point.first / 1e6);
     if (label.size() > 0)
     {
         ImPlot::Annotation(point.first, point.second, ImVec4(0, 0, 0, 0),
-                           ImVec2(0, -5 - 2 * ImGui::GetTextLineHeight()), false,
+                           ImVec2(0, -5 - 2 * ImGui::GetTextLineHeight()), true,
                            "%s", label.c_str());
     }
 }
@@ -707,7 +707,7 @@ void Ui::PlotFourierTransformSelected()
                 if ((item != NULL) && (item->Show))
                 {
                     Annotate(record->frequency_domain_metrics.fundamental, "Fund.");
-                    Annotate(record->frequency_domain_metrics.sfdr_limiter);
+                    // Annotate(record->frequency_domain_metrics.spur, "SFDR limiter");
                     for (size_t j = 0; j < record->frequency_domain_metrics.harmonics.size(); ++j)
                     {
                         Annotate(record->frequency_domain_metrics.harmonics[j],
@@ -830,8 +830,15 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
 
                 ImGui::Text("%s", record->label.c_str());
                 ImGui::Text("Record number: %" PRIu32, record->time_domain->header.record_number);
-                ImGui::Text("Maximum value: %.4f", record->frequency_domain_metrics.max);
-                ImGui::Text("Minimum value: %.4f", record->frequency_domain_metrics.min);
+                ImGui::Text("SNR: %.4f", record->frequency_domain_metrics.snr);
+                ImGui::Text("SINAD: %.4f", record->frequency_domain_metrics.sinad);
+                ImGui::Text("THD: %.4f", record->frequency_domain_metrics.thd);
+                ImGui::Text("ENOB: %.4f", record->frequency_domain_metrics.enob);
+                ImGui::Text("SFDR (dBFS): %.4f", record->frequency_domain_metrics.sfdr_dbfs);
+                ImGui::Text("SFDR (dBc): %.4f", record->frequency_domain_metrics.sfdr_dbc);
+                ImGui::Text("Noise (avg.): %.4f", record->frequency_domain_metrics.noise);
+                if (record->frequency_domain_metrics.overlap)
+                    ImGui::Text("!!! OVERLAP !!!");
             }
 
             has_contents = true;

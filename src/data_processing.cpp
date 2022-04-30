@@ -11,6 +11,7 @@
 
 #include <cmath>
 #include <cinttypes>
+#include <set>
 
 DataProcessing::DataProcessing(void *handle, int index, int channel, const std::string &label)
     : m_handle(handle)
@@ -19,7 +20,9 @@ DataProcessing::DataProcessing(void *handle, int index, int channel, const std::
     , m_label(label)
     , m_afe{1000.0, 0.0}
     , m_window_cache()
-    , m_window_type(WindowType::NONE)
+    , m_window_type(WindowType::BLACKMAN_HARRIS)
+    , m_nof_skirt_bins(NOF_SKIRT_BINS_DEFAULT)
+    , m_waterfall{}
 {
 }
 
@@ -90,6 +93,7 @@ void DataProcessing::MainLoop()
             processed_record->frequency_domain->bin_range =
                 processed_record->time_domain->sampling_frequency / static_cast<double>(fft_length);
 
+            /* Windowing */
             auto y = processed_record->time_domain->y;
             if (m_window_type != WindowType::NONE)
             {
@@ -100,14 +104,13 @@ void DataProcessing::MainLoop()
                 y = std::move(yw);
             }
 
-            /* Compute FFT */
+            /* Calculate the FFT */
             const char *error = NULL;
             if (!simple_fft::FFT(y, yc, fft_length, error))
             {
-                /* FIXME: Perhaps just continue instead? */
                 printf("Failed to compute FFT: %s.\n", error);
-                m_thread_exit_code = ADQR_EINTERNAL;
-                return;
+                ADQ_ReturnRecordBuffer(m_handle, m_index, channel, time_domain);
+                continue;
             }
 
             /* Analyze the fourier transform data, scaling the data and extracting key metrics. */
@@ -161,48 +164,244 @@ double DataProcessing::FoldFrequency(double f, double fs)
     return result;
 }
 
+size_t DataProcessing::FoldIndex(size_t f, size_t fs)
+{
+    size_t result = f;
+    while (result > (fs / 2))
+    {
+        if (result > fs)
+            result = result - fs;
+        else if (result > (fs / 2))
+            result = fs - result;
+    }
+    return result;
+}
+
 void DataProcessing::AnalyzeFourierTransform(const std::complex<double> *fft, size_t length,
                                              ProcessedRecord *record)
 {
+    Tone fundamental{};
+    Tone spur{};
+    Tone dc{};
+    std::vector<Tone> harmonics{};
+    double total_power = 0.0;
     auto &metrics = record->frequency_domain_metrics;
+
+    ProcessAndIdentify(fft, length, record, dc, fundamental, spur, total_power);
+    PlaceHarmonics(fundamental, record, harmonics);
+    ResolveOverlaps(dc, fundamental, harmonics, metrics.overlap);
+
+    /* Remove the power of the fundamental tone from the total noise power. */
+    double harmonic_distortion_power = 0.0;
+    auto &y = record->frequency_domain->y;
+    for (auto &harmonic : harmonics)
+    {
+        harmonic.power = 0.0;
+        for (const auto &v : harmonic.values)
+            harmonic.power += v;
+        harmonic_distortion_power += harmonic.power;
+        metrics.harmonics.push_back(std::make_pair(harmonic.frequency, y[harmonic.idx]));
+    }
+    double noise_power = total_power - fundamental.power - dc.power - harmonic_distortion_power;
+
+    /* FIXME: Linear interpolation? */
+    metrics.fundamental = std::make_pair(fundamental.frequency, y[fundamental.idx]);
+    metrics.spur = std::make_pair(spur.frequency, y[spur.idx]);
+    metrics.snr = 10.0 * std::log10(fundamental.power / noise_power);
+    metrics.thd = 10.0 * std::log10(fundamental.power / harmonic_distortion_power);
+    metrics.sinad = 10.0 * std::log10(fundamental.power / (noise_power + harmonic_distortion_power));
+    metrics.enob = (metrics.sinad - 1.76) / 6.02;
+    metrics.sfdr_dbfs = y[spur.idx];
+    metrics.sfdr_dbc = y[fundamental.idx] - y[spur.idx];
+    metrics.noise = 10.0 * std::log10(noise_power / static_cast<double>(length));
+
+    /* FIXME: Adjust worst spur if it turns out that it's one of the harmonics
+              that ended up within the blind spot? */
+}
+
+void DataProcessing::ProcessAndIdentify(const std::complex<double> *fft, size_t length,
+                                        ProcessedRecord *record, Tone &dc, Tone &fundamental,
+                                        Tone &spur, double &power)
+{
+    /* The loop upper bound is expected to be N/2 + 1. During our pass through
+       the spectrum, our goal is to identify the fundamental, the worst spur and
+       also to accumulate the total power since we're already traversing all the
+       data points.
+
+       We'll use a shift register to implement a cursor that we drag across the
+       spectrum. If the total power contained in the window is a new maximum, we
+       note the new location and mark the old location as the worst spur unless
+       there's an overlap.
+
+       The goal is to only loop over the spectrum once and to not allocate
+       additional memory. We avoid making a copy of the spectrum just for the
+       analysis process. We do this to manage the complexity to stay performant
+       for long FFTs. */
+
     auto &x = record->frequency_domain->x;
     auto &y = record->frequency_domain->y;
     const auto &bin_range = record->frequency_domain->bin_range;
+    std::deque<double> cursor;
 
-    /* The loop upper bound is expected to be N/2 + 1. */
+    dc = {};
+    fundamental = {};
+    spur = {};
+    power = 0.0;
+
+    /* FIXME: Make the fundamental frequency configurable (default to dynamic). */
     for (size_t i = 0; i < record->frequency_domain->count; ++i)
     {
         x[i] = static_cast<double>(i) * bin_range;
-        y[i] = 20.0 * std::log10(2.0 * std::abs(fft[i]) / static_cast<double>(length));
+        y[i] = std::pow(2.0 * std::abs(fft[i]) / static_cast<double>(length), 2.0);
 
-        if (y[i] > metrics.max)
+        if (i <= m_nof_skirt_bins)
         {
-            metrics.max = y[i];
-            metrics.sfdr_limiter = std::move(metrics.fundamental);
-            metrics.fundamental = std::make_pair(x[i], y[i]);
+            dc.power += y[i];
+            dc.idx_high = i;
+            dc.values.push_back(y[i]);
+            power += y[i];
+            y[i] = 10 * std::log10(y[i]);
+            continue;
         }
 
-        /* FIXME: Add skirt bins */
+        if (cursor.size() >= (2 * m_nof_skirt_bins + 1))
+            cursor.pop_front();
+        cursor.push_back(y[i]);
 
-        /* The SFDR limiter will be the second highest bin. We exempt the
-           current fundamental index and rely on the fundamental search above to
-           assign its old value to the SFDR limiter if a new maximum is found. */
-        if ((x[i] != metrics.fundamental.first) && (y[i] > metrics.sfdr_limiter.second))
-            metrics.sfdr_limiter = std::make_pair(x[i], y[i]);
+        double numerator = 0.0;
+        double denominator = 0.0;
+        for (size_t j = 0; j < cursor.size(); ++j)
+        {
+            numerator += static_cast<double>(j) * cursor[j];
+            denominator += cursor[j];
+        }
 
-        if (y[i] < metrics.min)
-            metrics.min = y[i];
+        size_t idx_low = i - cursor.size() + 1;
+        double center_of_mass = static_cast<double>(idx_low) + (numerator / denominator);
+        size_t center_idx = static_cast<size_t>(center_of_mass + 0.5);
+        double center_fraction = center_of_mass - static_cast<double>(center_idx);
+        double center_frequency = bin_range * center_of_mass;
+
+        if (denominator > fundamental.power)
+        {
+            if ((center_idx - fundamental.idx) > (2 * m_nof_skirt_bins))
+                spur = fundamental;
+
+            fundamental.power = denominator;
+            fundamental.frequency = center_frequency;
+            fundamental.idx = center_idx;
+            fundamental.idx_fraction = center_fraction;
+            fundamental.idx_low = idx_low;
+            fundamental.idx_high = i;
+            fundamental.values.clear();
+            for (const auto &c : cursor)
+                fundamental.values.push_back(c);
+        }
+
+        if ((denominator > spur.power) && ((center_idx - fundamental.idx) > (2 * m_nof_skirt_bins)))
+        {
+            spur.power = denominator;
+            spur.frequency = center_frequency;
+            spur.idx = center_idx;
+            spur.idx_fraction = center_fraction;
+            spur.idx_low = idx_low;
+            spur.idx_high = i;
+            spur.values.clear();
+            for (const auto &c : cursor)
+                spur.values.push_back(c);
+        }
+
+        /* Convert to decibels. But not before adding to bin value as a
+           contribution to the total noise power. We'll adjust this value late
+           on. */
+        power += y[i];
+        y[i] = 10.0 * std::log10(y[i]);
     }
+}
 
-    /* Identify harmonics. */
-    /* FIXME: Reset SFDR limiter if this is one of the harmonics? */
-    /* FIXME: Add skirt bins */
+void DataProcessing::PlaceHarmonics(const Tone &fundamental, const ProcessedRecord *record,
+                                    std::vector<Tone> &harmonics)
+{
+    const auto &y = record->frequency_domain->y;
+    const auto &bin_range = record->frequency_domain->bin_range;
+
+    /* Analyze the harmonics where we only look at HD2 to HD5. We use the same
+       approach as for the tone analysis above, with an interpolation. Though we
+       have to reverse the conversion to decibel for the surrounding bins. Still
+       it's more efficient to do it this way than to loop over the entire
+       spectrum again just to convert to decibels. */
+
     for (int hd = 2; hd <= 5; ++hd)
     {
-        double f = FoldFrequency(metrics.fundamental.first * hd,
+        double f = FoldFrequency(fundamental.frequency * hd,
                                  record->time_domain->sampling_frequency);
-        int i = static_cast<int>(f / bin_range + 0.5);
-        metrics.harmonics.push_back(std::make_pair(x[i], y[i]));
+        int idx = static_cast<int>(f / bin_range + 0.5);
+        Tone harmonic{};
+
+        harmonic.idx_low = static_cast<size_t>((std::max)(idx - static_cast<int>(m_nof_skirt_bins), 0));
+        harmonic.idx_high = (std::min)(idx + m_nof_skirt_bins, record->frequency_domain->count - 1);
+
+        double numerator = 0.0;
+        double denominator = 0.0;
+        for (size_t i = harmonic.idx_low; i <= harmonic.idx_high; ++i)
+        {
+            double power = std::pow(10, y[i] / 10);
+            numerator += static_cast<double>(i - harmonic.idx_low) * power;
+            denominator += power;
+            harmonic.values.push_back(power);
+        }
+
+        double center_of_mass = static_cast<double>(harmonic.idx_low) + (numerator / denominator);
+        harmonic.idx = static_cast<size_t>(center_of_mass + 0.5);
+        harmonic.idx_fraction = center_of_mass - static_cast<double>(harmonic.idx);
+        harmonic.frequency = bin_range * center_of_mass;
+        /* We'll determine the total power once we resolve the overlaps. */
+        harmonic.power = 0.0;
+        harmonics.push_back(harmonic);
+    }
+}
+
+void DataProcessing::ResolveOverlaps(const Tone &dc, const Tone &fundamental,
+                                    std::vector<Tone> &harmonics, bool &overlap)
+{
+    /* Now we have to figure out if these tones overlap in any way. If they do,
+       we mark the metrics as 'not trustworthy' but still perform the
+       calculations as best we can. The goal is to only count the energy
+       contribution from a bin _once_, favoring signal energy over distortion
+       energy when there's an overlap. */
+
+    overlap = false;
+    for (size_t i = 0; i < harmonics.size(); ++i)
+    {
+        /* For each harmonic, check for overlap with
+            1. the fundamental tone; and
+            2. other harmonics. */
+
+        /* TODO: Check against worst spur too? */
+        ResolveOverlap(harmonics[i], fundamental, overlap);
+        ResolveOverlap(harmonics[i], dc, overlap);
+
+        /* When we check for overlap with the other harmonics, we swap the order
+           around to prioritize keeping the power for lower index harmonics. */
+        for (size_t j = i + 1; j < harmonics.size(); ++j)
+            ResolveOverlap(harmonics[j], harmonics[i], overlap);
+    }
+}
+
+void DataProcessing::ResolveOverlap(Tone &tone, const Tone &other, bool &overlap)
+{
+    /* Set the overlapping bins to zero for the tone if there's an overlap. */
+    if ((tone.idx_low >= other.idx_low) && (tone.idx_low <= other.idx_high))
+    {
+        for (size_t j = 0; j <= (other.idx_high - tone.idx_low); ++j)
+            tone.values[j] = 0;
+        overlap = true;
+    }
+    else if ((tone.idx_high <= other.idx_high) && (tone.idx_high >= other.idx_low))
+    {
+        for (size_t j = (other.idx_low - tone.idx_low); j < tone.values.size(); ++j)
+            tone.values[j] = 0;
+        overlap = true;
     }
 }
 

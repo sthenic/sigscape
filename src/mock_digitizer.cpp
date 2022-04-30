@@ -201,6 +201,8 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
             parameters.back().sine.amplitude = amplitude[i];
             parameters.back().sine.harmonic_distortion = harmonic_distortion[i] > 0;
             parameters.back().sine.noise_std_dev = noise_std_dev[i];
+            parameters.back().sine.offset = 0.0;
+            parameters.back().sine.phase = 0.1;
         }
 
         for (size_t i = 0; (i < parameters.size()) && (i < m_generators.size()); ++i)

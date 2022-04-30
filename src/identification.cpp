@@ -11,7 +11,7 @@ void Identification::MainLoop()
     }
 
 #ifdef NO_ADQAPI
-    static_cast<MockAdqApi *>(handle)->AddDigitizer("SPD-SIM01", 2, PID_ADQ32);
+    static_cast<MockAdqApi *>(handle)->AddDigitizer("SPD-SIM01", 1, PID_ADQ32);
     static_cast<MockAdqApi *>(handle)->AddDigitizer("SPD-SIM02", 2, PID_ADQ36);
 #endif
 

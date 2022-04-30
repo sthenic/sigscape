@@ -45,13 +45,15 @@ struct TimeDomainRecord
         /* Assuming two bytes per sample. */
         /* FIXME: Read from header->data_format */
         /* FIXME: Keep this as codes? */
+        /* The time unit is specified in picoseconds at most. Given that we're
+           using a 32-bit float, we truncate any information beyond that point. */
+        int time_unit_ps = static_cast<int>(raw->header->time_unit * 1e12);
+        double time_unit = static_cast<double>(time_unit_ps) * 1e-12;
         const int16_t *data = static_cast<const int16_t *>(raw->data);
-        sampling_period = static_cast<double>(raw->header->sampling_period) *
-                          static_cast<double>(raw->header->time_unit);
-        record_start = static_cast<double>(raw->header->record_start) *
-                       static_cast<double>(raw->header->time_unit);
+        sampling_period = static_cast<double>(raw->header->sampling_period) * time_unit;
+        record_start = static_cast<double>(raw->header->record_start) * time_unit;
+        sampling_frequency = std::round(1.0 / sampling_period); /* This will be an integer number of Hz */
 
-        sampling_frequency = 1.0 / sampling_period;
         for (size_t i = 0; i < raw->header->record_length; ++i)
         {
             x[i] = record_start + i * sampling_period;
@@ -186,10 +188,10 @@ struct Waterfall
         else
         {
             /* +1 for the Nyquist bin */
-            columns = waterfall.front()->count / 2 + 1;
+            columns = waterfall.front()->count;
             for (const auto &record : waterfall)
             {
-                if ((record->count / 2 + 1) != columns)
+                if (record->count != columns)
                 {
                     exit_without_copy = true;
                     break;
@@ -268,8 +270,6 @@ struct ProcessedRecord
     {
         time_domain_metrics.max = std::numeric_limits<double>::lowest();
         time_domain_metrics.min = (std::numeric_limits<double>::max)();
-        frequency_domain_metrics.max = std::numeric_limits<double>::lowest();
-        frequency_domain_metrics.min = (std::numeric_limits<double>::max)();
     }
 
     ProcessedRecord(size_t count)
@@ -280,8 +280,6 @@ struct ProcessedRecord
         label = "";
         time_domain_metrics.max = std::numeric_limits<double>::lowest();
         time_domain_metrics.min = (std::numeric_limits<double>::max)();
-        frequency_domain_metrics.max = std::numeric_limits<double>::lowest();
-        frequency_domain_metrics.min = (std::numeric_limits<double>::max)();
     }
 
     ProcessedRecord(const ProcessedRecord &other)
@@ -341,11 +339,17 @@ struct ProcessedRecord
 
     struct FrequencyDomainMetrics
     {
-        double max;
-        double min;
         std::pair<double, double> fundamental;
-        std::pair<double, double> sfdr_limiter;
+        std::pair<double, double> spur;
         std::vector<std::pair<double, double>> harmonics;
+        double snr;
+        double sinad;
+        double enob;
+        double sfdr_dbc;
+        double sfdr_dbfs;
+        double thd;
+        double noise;
+        bool overlap;
     } frequency_domain_metrics;
 };
 

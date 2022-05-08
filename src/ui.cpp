@@ -829,16 +829,46 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
                     ImGui::Separator();
 
                 ImGui::Text("%s", record->label.c_str());
-                ImGui::Text("Record number: %" PRIu32, record->time_domain->header.record_number);
-                ImGui::Text("SNR: %.4f", record->frequency_domain_metrics.snr);
-                ImGui::Text("SINAD: %.4f", record->frequency_domain_metrics.sinad);
-                ImGui::Text("THD: %.4f", record->frequency_domain_metrics.thd);
-                ImGui::Text("ENOB: %.4f", record->frequency_domain_metrics.enob);
-                ImGui::Text("SFDR (dBFS): %.4f", record->frequency_domain_metrics.sfdr_dbfs);
-                ImGui::Text("SFDR (dBc): %.4f", record->frequency_domain_metrics.sfdr_dbc);
-                ImGui::Text("Noise (avg.): %.4f", record->frequency_domain_metrics.noise);
-                if (record->frequency_domain_metrics.overlap)
-                    ImGui::Text("!!! OVERLAP !!!");
+
+                const auto &metrics = record->frequency_domain_metrics;
+                if (metrics.overlap)
+                {
+                    ImGui::PushStyleColor(ImGuiCol_Text, COLOR_ORANGE);
+                    ImGui::SameLine();
+                    ImGui::Text("OVERLAP");
+                }
+
+                ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
+                                        ImGuiTableFlags_BordersInnerV;
+                if (ImGui::BeginTable("Metrics", 2, flags))
+                {
+                    const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
+                    ImGui::TableSetupColumn("Metric", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoHide,
+                                            8.0f * TEXT_BASE_WIDTH);
+                    ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
+
+                    auto Row = [](const std::string &str, double value, const std::string &unit)
+                    {
+                        ImGui::TableNextColumn();
+                        ImGui::Text("%s", str.c_str());
+                        ImGui::TableNextColumn();
+                        ImGui::Text("% 8.3f %s", value, unit.c_str());
+                    };
+
+                    Row("SNR", metrics.snr, "dB");
+                    Row("SINAD", metrics.sinad, "dB");
+                    Row("THD", metrics.thd, "dB");
+                    Row("ENOB", metrics.enob, "bits");
+                    Row("SFDR", metrics.sfdr_dbc, "dBc");
+                    Row("SFDR", metrics.sfdr_dbfs, "dBFS");
+                    Row("Noise", metrics.noise, "dBFS");
+
+                    ImGui::TableNextRow();
+                    ImGui::EndTable();
+                }
+
+                if (metrics.overlap)
+                    ImGui::PopStyleColor();
             }
 
             has_contents = true;

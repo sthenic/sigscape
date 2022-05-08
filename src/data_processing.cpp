@@ -211,7 +211,7 @@ void DataProcessing::AnalyzeFourierTransform(const std::complex<double> *fft, si
     metrics.thd = 10.0 * std::log10(fundamental.power / harmonic_distortion_power);
     metrics.sinad = 10.0 * std::log10(fundamental.power / (noise_power + harmonic_distortion_power));
     metrics.enob = (metrics.sinad - 1.76) / 6.02;
-    metrics.sfdr_dbfs = y[spur.idx];
+    metrics.sfdr_dbfs = -y[spur.idx];
     metrics.sfdr_dbc = y[fundamental.idx] - y[spur.idx];
     metrics.noise = 10.0 * std::log10(noise_power / static_cast<double>(length));
 

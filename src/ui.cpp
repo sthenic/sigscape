@@ -24,9 +24,20 @@ const ImVec4 Ui::COLOR_WOW_PURPLE = {0.53f, 0.53f, 0.93f, 0.8f};
 const ImVec4 Ui::COLOR_WOW_TAN  = {0.78f, 0.61f, 0.43f, 0.8f};
 
 Ui::ChannelUiState::ChannelUiState()
-    : sample_markers(false)
+    : color{}
+    , sample_markers(false)
+    , is_shown(true)
     , record(NULL)
 {}
+
+void Ui::ChannelUiState::ColorSquare() const
+{
+    ImGui::PushStyleColor(ImGuiCol_Button, color);
+    ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+    ImGui::SmallButton(" ");
+    ImGui::PopItemFlag();
+    ImGui::PopStyleColor();
+}
 
 Ui::DigitizerUiState::DigitizerUiState(int nof_channels)
     : identifier("")
@@ -693,21 +704,24 @@ void Ui::PlotFourierTransformSelected()
         for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
         {
             const auto &record = m_digitizer_ui_state[i].channels[ch].record;
+            auto &color = m_digitizer_ui_state[i].channels[ch].color;
+            auto &is_shown = m_digitizer_ui_state[i].channels[ch].is_shown;
             if (record != NULL)
             {
                 int count = static_cast<int>(record->frequency_domain->count);
                 ImPlot::PlotLine(record->label.c_str(),
                                  record->frequency_domain->x.get(),
                                  record->frequency_domain->y.get(), count);
+                color = ImPlot::GetLastItemColor();
 
                 /* Here we have to resort to using ImPlot internals to gain
                    access to whether or not the plot is shown or not. The user
                    can click the legend entry to change the visibility state. */
                 auto item = ImPlot::GetCurrentContext()->CurrentItems->GetItem(record->label.c_str());
-                if ((item != NULL) && (item->Show))
+                is_shown = (item != NULL) && item->Show;
+                if (is_shown)
                 {
                     Annotate(record->frequency_domain_metrics.fundamental, "Fund.");
-                    // Annotate(record->frequency_domain_metrics.spur, "SFDR limiter");
                     for (size_t j = 0; j < record->frequency_domain_metrics.harmonics.size(); ++j)
                     {
                         Annotate(record->frequency_domain_metrics.harmonics[j],
@@ -774,6 +788,15 @@ void Ui::RenderWaterfallPlot()
     ImPlot::PopColormap();
 }
 
+template<typename T>
+void Ui::MetricsRow(const std::string &label, const std::string &str, T value)
+{
+    ImGui::TableNextColumn();
+    ImGui::Text("%s", label.c_str());
+    ImGui::TableNextColumn();
+    ImGui::Text(str.c_str(), value);
+}
+
 void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
 {
     /* FIXME: Move into functions? */
@@ -789,20 +812,36 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
 
         for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
         {
-            const auto &record = m_digitizer_ui_state[i].channels[ch].record;
-            if (record != NULL)
+            const auto &ui = m_digitizer_ui_state[i].channels[ch];
+            if ((ui.record != NULL) && ui.is_shown)
             {
                 if (has_contents)
                     ImGui::Separator();
 
-                ImGui::Text("%s", record->label.c_str());
-                ImGui::Text("Record number: %" PRIu32, record->time_domain->header.record_number);
-                ImGui::Text("Maximum value: %.4f", record->time_domain_metrics.max);
-                ImGui::Text("Minimum value: %.4f", record->time_domain_metrics.min);
-                ImGui::Text("Estimated trigger frequency: %.4f Hz", record->time_domain->estimated_trigger_frequency);
-            }
+                ui.ColorSquare();
+                ImGui::SameLine();
+                ImGui::Text("%s", ui.record->label.c_str());
 
-            has_contents = true;
+                ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
+                                        ImGuiTableFlags_BordersInnerV;
+                if (ImGui::BeginTable("Metrics", 2, flags))
+                {
+                    const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
+                    ImGui::TableSetupColumn("Metric", ImGuiTableColumnFlags_WidthFixed
+                                                      | ImGuiTableColumnFlags_NoHide,
+                                            12.0f * TEXT_BASE_WIDTH);
+                    ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
+
+                    const auto &format = "% 8.3f";
+                    MetricsRow("Record number", "%" PRIu32, ui.record->time_domain->header.record_number);
+                    MetricsRow("Max", format, ui.record->time_domain_metrics.max);
+                    MetricsRow("Min", format, ui.record->time_domain_metrics.min);
+                    MetricsRow("Frequency", format, ui.record->time_domain->estimated_trigger_frequency);
+
+                    ImGui::EndTable();
+                }
+                has_contents = true;
+            }
         }
     }
     ImGui::End();
@@ -822,15 +861,17 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
 
         for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
         {
-            const auto &record = m_digitizer_ui_state[i].channels[ch].record;
-            if (record != NULL)
+            const auto &ui = m_digitizer_ui_state[i].channels[ch];
+            if ((ui.record != NULL) && ui.is_shown)
             {
                 if (has_contents)
                     ImGui::Separator();
 
-                ImGui::Text("%s", record->label.c_str());
+                ui.ColorSquare();
+                ImGui::SameLine();
+                ImGui::Text("%s", ui.record->label.c_str());
 
-                const auto &metrics = record->frequency_domain_metrics;
+                const auto &metrics = ui.record->frequency_domain_metrics;
                 if (metrics.overlap)
                 {
                     ImGui::PushStyleColor(ImGuiCol_Text, COLOR_ORANGE);
@@ -843,25 +884,19 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
                 if (ImGui::BeginTable("Metrics", 2, flags))
                 {
                     const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
-                    ImGui::TableSetupColumn("Metric", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoHide,
+                    ImGui::TableSetupColumn("Metric", ImGuiTableColumnFlags_WidthFixed
+                                                      | ImGuiTableColumnFlags_NoHide,
                                             8.0f * TEXT_BASE_WIDTH);
                     ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
 
-                    auto Row = [](const std::string &str, double value, const std::string &unit)
-                    {
-                        ImGui::TableNextColumn();
-                        ImGui::Text("%s", str.c_str());
-                        ImGui::TableNextColumn();
-                        ImGui::Text("% 8.3f %s", value, unit.c_str());
-                    };
-
-                    Row("SNR", metrics.snr, "dB");
-                    Row("SINAD", metrics.sinad, "dB");
-                    Row("THD", metrics.thd, "dB");
-                    Row("ENOB", metrics.enob, "bits");
-                    Row("SFDR", metrics.sfdr_dbc, "dBc");
-                    Row("SFDR", metrics.sfdr_dbfs, "dBFS");
-                    Row("Noise", metrics.noise, "dBFS");
+                    const std::string format = "% 8.3f";
+                    MetricsRow("SNR", format + " dB", metrics.snr);
+                    MetricsRow("SINAD", format + " dB", metrics.sinad);
+                    MetricsRow("THD", format + " dB", metrics.thd);
+                    MetricsRow("ENOB", format + " bits", metrics.enob);
+                    MetricsRow("SFDR", format + " dBc", metrics.sfdr_dbc);
+                    MetricsRow("SFDR", format + " dBFS", metrics.sfdr_dbfs);
+                    MetricsRow("Noise", format + " dBFS", metrics.noise);
 
                     ImGui::TableNextRow();
                     ImGui::EndTable();
@@ -869,11 +904,10 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
 
                 if (metrics.overlap)
                     ImGui::PopStyleColor();
+
+                has_contents = true;
             }
-
-            has_contents = true;
         }
-
     }
     ImGui::End();
 }

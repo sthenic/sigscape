@@ -35,8 +35,12 @@ private:
     {
         ChannelUiState();
 
+        ImVec4 color;
         bool sample_markers;
+        bool is_shown;
         std::shared_ptr<ProcessedRecord> record;
+
+        void ColorSquare() const;
     };
 
     struct DigitizerUiState
@@ -85,6 +89,8 @@ private:
     void PlotWaterfallSelected();
     void RenderWaterfallPlot();
 
+    template<typename T>
+    void MetricsRow(const std::string &label, const std::string &str, T value);
     void RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size);
     void RenderApplicationMetrics(const ImVec2 &position, const ImVec2 &size);

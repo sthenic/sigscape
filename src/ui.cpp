@@ -682,9 +682,9 @@ void Ui::RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size)
 void Ui::Annotate(const std::pair<double, double> &point, const std::string &label)
 {
     ImPlot::Annotation(point.first, point.second, ImVec4(0, 0, 0, 0),
-                       ImVec2(0, -5), true, "%.2f dBFS", point.second);
+                       ImVec2(0, -5), false, "%.2f dBFS", point.second);
     ImPlot::Annotation(point.first, point.second, ImVec4(0, 0, 0, 0),
-                       ImVec2(0, -5 - ImGui::GetTextLineHeight()), true,
+                       ImVec2(0, -5 - ImGui::GetTextLineHeight()), false,
                        "%.2f MHz", point.first / 1e6);
     if (label.size() > 0)
     {

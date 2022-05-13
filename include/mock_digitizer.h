@@ -34,6 +34,8 @@ private:
     std::vector<std::unique_ptr<Generator>> m_generators;
     static const std::string DEFAULT_TOP_PARAMETERS;
     static const std::string DEFAULT_CLOCK_SYSTEM_PARAMETERS;
+    std::string m_top_parameters;
+    std::string m_clock_system_parameters;
 
     template<typename T>
     int ParseLine(int line_idx, const std::string &str, std::vector<T> &values);

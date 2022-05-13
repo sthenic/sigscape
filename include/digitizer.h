@@ -141,6 +141,7 @@ private:
     int SetParameters(bool clock_system = false);
     int SetParameters(const std::shared_ptr<std::string> &str, DigitizerMessageId clean_id);
     int InitializeParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher);
+    int GetParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher);
     void InitializeFileWatchers(const struct ADQConstantParameters &constant);
 };
 

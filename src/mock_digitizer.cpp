@@ -31,6 +31,8 @@ MockDigitizer::MockDigitizer(const std::string &serial_number, int nof_channels)
     : m_constant{}
     , m_afe{}
     , m_generators{}
+    , m_top_parameters(DEFAULT_TOP_PARAMETERS)
+    , m_clock_system_parameters(DEFAULT_CLOCK_SYSTEM_PARAMETERS)
 {
     m_constant.id = ADQ_PARAMETER_ID_CONSTANT;
     m_constant.magic = ADQ_PARAMETERS_MAGIC;
@@ -142,12 +144,12 @@ int MockDigitizer::InitializeParametersString(enum ADQParameterId id, char *cons
     if (id == ADQ_PARAMETER_ID_TOP)
     {
         std::strncpy(string, DEFAULT_TOP_PARAMETERS.c_str(), length);
-        return static_cast<int>(sizeof(DEFAULT_TOP_PARAMETERS));
+        return static_cast<int>((std::min)(sizeof(DEFAULT_TOP_PARAMETERS), length));
     }
     else if (id == ADQ_PARAMETER_ID_CLOCK_SYSTEM)
     {
         std::strncpy(string, DEFAULT_CLOCK_SYSTEM_PARAMETERS.c_str(), length);
-        return static_cast<int>(sizeof(DEFAULT_CLOCK_SYSTEM_PARAMETERS));
+        return static_cast<int>((std::min)(sizeof(DEFAULT_CLOCK_SYSTEM_PARAMETERS), length));
     }
     else
     {
@@ -208,6 +210,9 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
         for (size_t i = 0; (i < parameters.size()) && (i < m_generators.size()); ++i)
             m_generators[i]->SetParameters(parameters[i]);
 
+        /* Keep track of the string to be able to respond to get requests. */
+        m_top_parameters = string;
+
         /* Emulate reconfiguration time. */
         std::this_thread::sleep_for(std::chrono::milliseconds(250));
     }
@@ -219,6 +224,9 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
 
         for (size_t i = 0; (i < sampling_frequency.size()) && (i < m_generators.size()); ++i)
             m_generators[i]->SetSamplingFrequency(sampling_frequency[i]);
+
+        /* Keep track of the string to be able to respond to get requests. */
+        m_clock_system_parameters = string;
 
         /* Emulate reconfiguration time. */
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
@@ -235,12 +243,21 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
 
 int MockDigitizer::GetParametersString(enum ADQParameterId id, char *const string, size_t length, int format)
 {
-    /* FIXME: Implement */
-    (void)id;
-    (void)string;
-    (void)length;
     (void)format;
-    return ADQ_EUNSUPPORTED;
+    if (id == ADQ_PARAMETER_ID_TOP)
+    {
+        std::strncpy(string, m_top_parameters.c_str(), length);
+        return static_cast<int>((std::min)(m_top_parameters.size() + 1, length));
+    }
+    else if (id == ADQ_PARAMETER_ID_CLOCK_SYSTEM)
+    {
+        std::strncpy(string, m_clock_system_parameters.c_str(), length);
+        return static_cast<int>((std::min)(m_clock_system_parameters.size() + 1, length));
+    }
+    else
+    {
+        return ADQ_EINVAL;
+    }
 }
 
 int MockDigitizer::ValidateParametersString( const char *const string, size_t length)

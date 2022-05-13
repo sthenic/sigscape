@@ -122,8 +122,11 @@ void Digitizer::ProcessMessages()
             break;
 
         case DigitizerMessageId::GET_PARAMETERS:
-            /* FIXME: Implement */
+        {
+            GetParameters(ADQ_PARAMETER_ID_TOP, m_watchers.top);
+            GetParameters(ADQ_PARAMETER_ID_CLOCK_SYSTEM, m_watchers.clock_system);
             break;
+        }
 
         case DigitizerMessageId::INITIALIZE_PARAMETERS:
         {
@@ -272,8 +275,25 @@ int Digitizer::InitializeParameters(enum ADQParameterId id,
     /* Heap allocation */
     static constexpr size_t SIZE = 64 * 1024;
     auto parameters_str = std::unique_ptr<char[]>( new char[SIZE] );
-    int result = ADQ_InitializeParametersString(m_id.handle, m_id.index, id, parameters_str.get(),
-                                                SIZE, 1);
+    int result = ADQ_InitializeParametersString(m_id.handle, m_id.index, id, parameters_str.get(), SIZE, 1);
+    if (result > 0)
+    {
+        watcher->PushMessage({FileWatcherMessageId::UPDATE_FILE,
+                              std::make_shared<std::string>(parameters_str.get())});
+        return ADQR_EOK;
+    }
+    else
+    {
+        return result;
+    }
+}
+
+int Digitizer::GetParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher)
+{
+    /* Heap allocation */
+    static constexpr size_t SIZE = 64 * 1024;
+    auto parameters_str = std::unique_ptr<char[]>( new char[SIZE] );
+    int result = ADQ_GetParametersString(m_id.handle, m_id.index, id, parameters_str.get(), SIZE, 1);
     if (result > 0)
     {
         watcher->PushMessage({FileWatcherMessageId::UPDATE_FILE,

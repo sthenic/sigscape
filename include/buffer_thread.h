@@ -121,8 +121,6 @@ protected:
         m_mutex.lock();
         for (auto &b : m_buffers)
             delete b;
-        // for (auto it = m_buffers.begin(); it != m_buffers.end(); ++it)
-        //     delete *it;
         m_buffers.clear();
         m_mutex.unlock();
     }

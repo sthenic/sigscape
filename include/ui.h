@@ -48,9 +48,10 @@ private:
         DigitizerUiState(int nof_channels);
 
         std::string identifier;
-        std::string status;
-        std::string extra;
-        ImVec4 status_color;
+        std::string state;
+        std::string event;
+        ImVec4 state_color;
+        ImVec4 event_color;
         ImVec4 set_top_color;
         ImVec4 set_clock_system_color;
 

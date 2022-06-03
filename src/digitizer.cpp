@@ -1,8 +1,97 @@
-#include "digitizer.h"
+/* This file implements control of a digitizer. It's essentially a threaded
+   state machine wrapped around a collection of objects that together make up
+   the functionality that we need. These include:
 
-#include <sstream>
+     - Identification information for the digitizer.
+     - Channel-specific threads to read and process data.
+     - Two file watchers, dedicated to observing the top and clock system
+       parameter files for any changes.
+
+   The external world communicates with the digitizer by sending and receiving
+   messages. These messages often correspond to an action initiated by the user,
+   like starting the acquisition or applying a new set of parameters. The
+   messages are processed by a handler that's specific to the current state. */
+
+#include "digitizer.h"
+#include "fmt/core.h"
+#include "fmt/format.h"
+
 #include <algorithm>
 #include <cctype>
+#include <stdexcept>
+
+/* A private exception type that we use for simplified control flow within this class. */
+class DigitizerException : public std::runtime_error
+{
+public:
+    DigitizerException(const std::string &str) : std::runtime_error(str) {};
+};
+
+template<>
+struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
+{
+    template <typename FmtContext>
+    auto format(DigitizerMessageId id, FmtContext &ctx)
+    {
+        string_view name = "unknown";
+        switch (id)
+        {
+        case DigitizerMessageId::DIRTY_TOP_PARAMETERS:
+            name = "DIRTY_TOP_PARAMETERS";
+            break;
+        case DigitizerMessageId::DIRTY_CLOCK_SYSTEM_PARAMETERS:
+            name = "DIRTY_CLOCK_SYSTEM_PARAMETERS";
+            break;
+        case DigitizerMessageId::CLEAN_TOP_PARAMETERS:
+            name = "CLEAN_TOP_PARAMETERS";
+            break;
+        case DigitizerMessageId::CLEAN_CLOCK_SYSTEM_PARAMETERS:
+            name = "CLEAN_CLOCK_SYSTEM_PARAMETERS";
+            break;
+        case DigitizerMessageId::IDENTIFIER:
+            name = "SERIAL_NUMBER";
+            break;
+        case DigitizerMessageId::STATE:
+            name = "STATE";
+            break;
+        case DigitizerMessageId::ERROR:
+            name = "ERROR";
+            break;
+        case DigitizerMessageId::CONFIGURATION:
+            name = "CONFIGURATION";
+            break;
+        case DigitizerMessageId::CLEAR:
+            name = "CLEAR";
+            break;
+        case DigitizerMessageId::START_ACQUISITION:
+            name = "START_ACQUISITION";
+            break;
+        case DigitizerMessageId::STOP_ACQUISITION:
+            name = "STOP_ACQUISITION";
+            break;
+        case DigitizerMessageId::SET_PARAMETERS:
+            name = "SET_PARAMETERS";
+            break;
+        case DigitizerMessageId::GET_PARAMETERS:
+            name = "GET_PARAMETERS";
+            break;
+        case DigitizerMessageId::VALIDATE_PARAMETERS:
+            name = "VALIDATE_PARAMETERS";
+            break;
+        case DigitizerMessageId::INITIALIZE_PARAMETERS:
+            name = "INITIALIZE_PARAMETERS";
+            break;
+        case DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
+            name = "SET_CLOCK_SYSTEM_PARAMETERS";
+            break;
+        case DigitizerMessageId::SET_WINDOW_TYPE:
+            name = "SET_WINDOW_TYPE";
+            break;
+        }
+
+        return fmt::formatter<string_view>::format(name, ctx);
+    }
+};
 
 Digitizer::Digitizer(void *handle, int index)
     : m_state(DigitizerState::NOT_ENUMERATED)
@@ -33,8 +122,8 @@ void Digitizer::MainLoop()
     /* When the main loop is started, we assume ownership of the digitizer with
        the identifier we were given when this object was constructed. We begin
        by enumerating the digitizer, completing its initial setup procedure. */
-    SetState(DigitizerState::NOT_ENUMERATED);
-    m_read_queue.Write({DigitizerMessageId::ENUMERATING});
+    m_read_queue.Write({DigitizerMessageId::IDENTIFIER, std::make_shared<std::string>("Unknown")});
+    SetState(DigitizerState::ENUMERATION);
 
     /* Performing this operation in a thread safe manner requires that
        ADQControlUnit_OpenDeviceInterface() has been called (and returned
@@ -42,8 +131,8 @@ void Digitizer::MainLoop()
     int result = ADQControlUnit_SetupDevice(m_id.handle, m_id.index - 1);
     if (result != 1)
     {
-        m_read_queue.Write({DigitizerMessageId::SETUP_FAILED});
         m_thread_exit_code = ADQR_EINTERNAL;
+        SetState(DigitizerState::NOT_ENUMERATED);
         return;
     }
 
@@ -53,8 +142,8 @@ void Digitizer::MainLoop()
     result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CONSTANT, &constant);
     if (result != sizeof(constant))
     {
-        m_read_queue.Write({DigitizerMessageId::SETUP_FAILED});
         m_thread_exit_code = ADQR_EINTERNAL;
+        SetState(DigitizerState::NOT_ENUMERATED);
         return;
     }
     InitializeFileWatchers(constant);
@@ -62,16 +151,16 @@ void Digitizer::MainLoop()
     /* Instantiate one data processing thread for each digitizer channel. */
     for (int ch = 0; ch < constant.nof_channels; ++ch)
     {
-        std::stringstream ss;
-        ss << constant.serial_number << " CH" << constant.channel[ch].label;
+        std::string label = fmt::format("{} CH{}", constant.serial_number,
+                                                   constant.channel[ch].label);
         m_processing_threads.push_back(
-            std::make_unique<DataProcessing>(m_id.handle, m_id.index, ch, ss.str())
+            std::make_unique<DataProcessing>(m_id.handle, m_id.index, ch, label)
         );
     }
 
     /* Signal that the digitizer was set up correctly, that we're entering the
        IDLE state and enter the main loop. */
-    m_read_queue.Write({DigitizerMessageId::SETUP_OK,
+    m_read_queue.Write({DigitizerMessageId::IDENTIFIER,
                         std::make_shared<std::string>(constant.serial_number)});
     SetState(DigitizerState::IDLE);
 
@@ -87,75 +176,14 @@ void Digitizer::MainLoop()
             break;
     }
 
-    for (const auto &t : m_processing_threads)
-        t->Stop();
-    ADQ_StopDataAcquisition(m_id.handle, m_id.index);
+    StopDataAcquisition();
 }
 
 void Digitizer::ProcessMessages()
 {
     DigitizerMessage message;
     while (ADQR_EOK == m_write_queue.Read(message, 0))
-    {
-        switch (message.id)
-        {
-        case DigitizerMessageId::START_ACQUISITION:
-        {
-            /* FIXME: Check return value */
-            StartDataAcquisition();
-            break;
-        }
-
-        case DigitizerMessageId::STOP_ACQUISITION:
-        {
-            /* FIXME: Check return value */
-            StopDataAcquisition();
-            break;
-        }
-
-        case DigitizerMessageId::SET_PARAMETERS:
-            SetParameters(false);
-            break;
-
-        case DigitizerMessageId::VALIDATE_PARAMETERS:
-            /* FIXME: Implement */
-            break;
-
-        case DigitizerMessageId::GET_PARAMETERS:
-        {
-            GetParameters(ADQ_PARAMETER_ID_TOP, m_watchers.top);
-            GetParameters(ADQ_PARAMETER_ID_CLOCK_SYSTEM, m_watchers.clock_system);
-            break;
-        }
-
-        case DigitizerMessageId::INITIALIZE_PARAMETERS:
-        {
-            InitializeParameters(ADQ_PARAMETER_ID_TOP, m_watchers.top);
-            InitializeParameters(ADQ_PARAMETER_ID_CLOCK_SYSTEM, m_watchers.clock_system);
-            break;
-        }
-
-        case DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
-            SetParameters(true);
-            break;
-
-        case DigitizerMessageId::SET_WINDOW_TYPE:
-            for (const auto &t : m_processing_threads)
-                t->SetWindowType(message.window_type);
-            break;
-
-        case DigitizerMessageId::ENUMERATING:
-        case DigitizerMessageId::SETUP_OK:
-        case DigitizerMessageId::SETUP_FAILED:
-        case DigitizerMessageId::DIRTY_TOP_PARAMETERS:
-        case DigitizerMessageId::DIRTY_CLOCK_SYSTEM_PARAMETERS:
-        case DigitizerMessageId::CLEAN_TOP_PARAMETERS:
-        case DigitizerMessageId::CLEAN_CLOCK_SYSTEM_PARAMETERS:
-        case DigitizerMessageId::NEW_STATE:
-        default:
-            break;
-        }
-    }
+        HandleMessageInState(message);
 }
 
 void Digitizer::ProcessWatcherMessages()
@@ -178,7 +206,7 @@ void Digitizer::ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watch
         case FileWatcherMessageId::FILE_CREATED:
         case FileWatcherMessageId::FILE_UPDATED:
             str = message.contents;
-            m_read_queue.Write({dirty_id});
+            m_read_queue.Write(dirty_id);
             break;
 
         case FileWatcherMessageId::FILE_DELETED:
@@ -192,133 +220,229 @@ void Digitizer::ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watch
     }
 }
 
-int Digitizer::StartDataAcquisition()
+void Digitizer::StartDataAcquisition()
 {
-    /* FIXME: Return on error */
-    struct ADQAnalogFrontendParameters afe;
-    ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_ANALOG_FRONTEND, &afe);
-    for (size_t i = 0; i < m_processing_threads.size(); ++i)
+    try
     {
-        m_processing_threads[i]->SetAnalogFrontendParameters(afe.channel[i]);
-        m_processing_threads[i]->Start();
-    }
+        struct ADQAnalogFrontendParameters afe;
+        int result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_ANALOG_FRONTEND, &afe);
+        if (result != sizeof(afe))
+            throw DigitizerException(fmt::format("ADQ_GetParameters failed, result {}.", result));
 
-    /* FIXME: Return value? Probably as a message. */
-    int result = ADQ_StartDataAcquisition(m_id.handle, m_id.index);
-    if (result == ADQ_EOK)
-        SetState(DigitizerState::ACQUISITION);
-    return result;
+        for (size_t i = 0; i < m_processing_threads.size(); ++i)
+            m_processing_threads[i]->SetAnalogFrontendParameters(afe.channel[i]);
+
+        for (const auto &t : m_processing_threads)
+        {
+            if (ADQR_EOK != t->Start())
+                throw DigitizerException("Failed to start one of the data processing threads.");
+        }
+
+        result = ADQ_StartDataAcquisition(m_id.handle, m_id.index);
+        if (result != ADQ_EOK)
+            throw DigitizerException(fmt::format("ADQ_GetParameters failed, result {}.", result));
+    }
+    catch (const DigitizerException &e)
+    {
+        StopDataAcquisition();
+        throw;
+    }
 }
 
-int Digitizer::StopDataAcquisition()
+void Digitizer::StopDataAcquisition()
 {
+    /* Ignoring the error code here is intentional. We want to attempt to stop
+       all processing threads, regardless of the outcome of the other actions. */
     for (const auto &t : m_processing_threads)
         t->Stop();
-
-    /* FIXME: Return value? Probably as a message. */
     ADQ_StopDataAcquisition(m_id.handle, m_id.index);
-    SetState(DigitizerState::IDLE);
-    return ADQR_EOK;
 }
 
 void Digitizer::SetState(DigitizerState state)
 {
     m_state = state;
-    m_read_queue.Write({DigitizerMessageId::NEW_STATE, state});
+    m_read_queue.Write({DigitizerMessageId::STATE, state});
 }
 
-int Digitizer::SetParameters(bool clock_system)
+void Digitizer::HandleMessageInNotEnumerated(const struct DigitizerMessage &message)
 {
-    /* If we're in the acquisition state, we temporarily stop when applying the
-       new parameters. */
-    DigitizerState previous_state = m_state;
+    /* TODO: Nothing to do? */
+    (void)message;
+}
 
-    if (previous_state == DigitizerState::ACQUISITION)
-        StopDataAcquisition();
+void Digitizer::HandleMessageInEnumeration(const struct DigitizerMessage &message)
+{
+    /* TODO: Nothing to do? */
+    (void)message;
+}
 
-    SetState(DigitizerState::CONFIGURATION);
-
-    /* FIXME: Check return value, emit error etc. */
-    if (clock_system)
-        SetParameters(m_parameters.clock_system, DigitizerMessageId::CLEAN_CLOCK_SYSTEM_PARAMETERS);
-
-    SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
-
-    if (previous_state == DigitizerState::ACQUISITION)
+void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
+{
+    /* In the IDLE state we just let the exceptions propagate to the upper
+       layers to create an error message. */
+    switch (message.id)
+    {
+    case DigitizerMessageId::START_ACQUISITION:
         StartDataAcquisition();
+        SetState(DigitizerState::ACQUISITION);
+        break;
 
-    /* Restore the previous state. */
-    SetState(previous_state);
+    case DigitizerMessageId::SET_PARAMETERS:
+        SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+        break;
 
-    /* FIXME: Probably as a void, errors should propagate via messages. */
-    return ADQR_EOK;
+    case DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
+        SetParameters(m_parameters.clock_system, DigitizerMessageId::CLEAN_CLOCK_SYSTEM_PARAMETERS);
+        SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+        break;
+
+    case DigitizerMessageId::GET_PARAMETERS:
+        GetParameters(ADQ_PARAMETER_ID_TOP, m_watchers.top);
+        GetParameters(ADQ_PARAMETER_ID_CLOCK_SYSTEM, m_watchers.clock_system);
+        break;
+
+    case DigitizerMessageId::INITIALIZE_PARAMETERS:
+        InitializeParameters(ADQ_PARAMETER_ID_TOP, m_watchers.top);
+        InitializeParameters(ADQ_PARAMETER_ID_CLOCK_SYSTEM, m_watchers.clock_system);
+        break;
+
+    case DigitizerMessageId::SET_WINDOW_TYPE:
+        for (const auto &t : m_processing_threads)
+            t->SetWindowType(message.window_type);
+        break;
+
+    default:
+        throw DigitizerException(fmt::format("Unsupported action '{}'.", message.id));
+    }
 }
 
-int Digitizer::SetParameters(const std::shared_ptr<std::string> &str, DigitizerMessageId clean_id)
+void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &message)
 {
+    /* If we encounter an exception in the ACQUISITION state, have to abort and
+       return to the IDLE state. We pass on the exception to the upper layers to
+       create an error message. */
+    switch (message.id)
+    {
+    case DigitizerMessageId::STOP_ACQUISITION:
+        StopDataAcquisition();
+        SetState(DigitizerState::IDLE);
+        break;
+
+    case DigitizerMessageId::SET_PARAMETERS:
+        try
+        {
+            StopDataAcquisition();
+            SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+            StartDataAcquisition();
+        }
+        catch (const DigitizerException &e)
+        {
+            SetState(DigitizerState::IDLE);
+            throw;
+        }
+        break;
+
+    case DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
+        try
+        {
+            StopDataAcquisition();
+            SetParameters(m_parameters.clock_system, DigitizerMessageId::CLEAN_CLOCK_SYSTEM_PARAMETERS);
+            SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+            StartDataAcquisition();
+        }
+        catch (const DigitizerException &e)
+        {
+            SetState(DigitizerState::IDLE);
+            throw;
+        }
+        break;
+
+    case DigitizerMessageId::SET_WINDOW_TYPE:
+        for (const auto &t : m_processing_threads)
+            t->SetWindowType(message.window_type);
+        break;
+
+    default:
+        throw DigitizerException(fmt::format("Unsupported action '{}'.", message.id));
+    }
+}
+
+void Digitizer::HandleMessageInState(const struct DigitizerMessage &message)
+{
+    try
+    {
+        switch (m_state)
+        {
+        case DigitizerState::NOT_ENUMERATED:
+            HandleMessageInNotEnumerated(message);
+            break;
+
+        case DigitizerState::ENUMERATION:
+            HandleMessageInEnumeration(message);
+            break;
+
+        case DigitizerState::IDLE:
+            HandleMessageInIdle(message);
+            break;
+
+        case DigitizerState::ACQUISITION:
+            HandleMessageInAcquisition(message);
+            break;
+        }
+
+        /* If the message was processed successfully, we send the 'all clear'. */
+        m_read_queue.Write(DigitizerMessageId::CLEAR);
+    }
+    catch (const DigitizerException &e)
+    {
+        /* TODO: Propagate message in some other way? We just write it to stderr for now. */
+        fprintf(stderr, "%s", fmt::format("ERROR: {}\n", e.what()).c_str());
+        m_read_queue.Write(DigitizerMessageId::ERROR);
+    }
+}
+
+void Digitizer::SetParameters(const std::shared_ptr<std::string> &str, DigitizerMessageId clean_id)
+{
+    m_read_queue.Write(DigitizerMessageId::CONFIGURATION);
     int result = ADQ_SetParametersString(m_id.handle, m_id.index, str->c_str(), str->size());
     if (result > 0)
-    {
-        m_read_queue.Write({clean_id});
-        return ADQR_EOK;
-    }
+        m_read_queue.Write(clean_id);
     else
-    {
-        /* FIXME: Emit error */
-        return result;
-    }
+        throw DigitizerException(fmt::format("ADQ_SetParametersString() failed, result {}.", result));
 }
 
-int Digitizer::InitializeParameters(enum ADQParameterId id,
-                                    const std::unique_ptr<FileWatcher> &watcher)
+void Digitizer::InitializeParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher)
 {
     /* Heap allocation */
     static constexpr size_t SIZE = 64 * 1024;
     auto parameters_str = std::unique_ptr<char[]>( new char[SIZE] );
     int result = ADQ_InitializeParametersString(m_id.handle, m_id.index, id, parameters_str.get(), SIZE, 1);
     if (result > 0)
-    {
-        watcher->PushMessage({FileWatcherMessageId::UPDATE_FILE,
-                              std::make_shared<std::string>(parameters_str.get())});
-        return ADQR_EOK;
-    }
+        watcher->PushMessage({FileWatcherMessageId::UPDATE_FILE, std::make_shared<std::string>(parameters_str.get())});
     else
-    {
-        return result;
-    }
+        throw DigitizerException(fmt::format("ADQ_InitializeParametersString failed, result {}.", result));
 }
 
-int Digitizer::GetParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher)
+void Digitizer::GetParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher)
 {
     /* Heap allocation */
     static constexpr size_t SIZE = 64 * 1024;
     auto parameters_str = std::unique_ptr<char[]>( new char[SIZE] );
     int result = ADQ_GetParametersString(m_id.handle, m_id.index, id, parameters_str.get(), SIZE, 1);
     if (result > 0)
-    {
-        watcher->PushMessage({FileWatcherMessageId::UPDATE_FILE,
-                              std::make_shared<std::string>(parameters_str.get())});
-        return ADQR_EOK;
-    }
+        watcher->PushMessage({FileWatcherMessageId::UPDATE_FILE, std::make_shared<std::string>(parameters_str.get())});
     else
-    {
-        return result;
-    }
+        throw DigitizerException(fmt::format("ADQ_GetParametersString failed, result {}.", result));
 }
 
 void Digitizer::InitializeFileWatchers(const struct ADQConstantParameters &constant)
 {
-    std::stringstream ss;
-    ss << "./parameters_top_" << constant.serial_number << ".json";
-    std::string filename = ss.str();
+    std::string filename = fmt::format("./parameters_top_{}.json", constant.serial_number);
     std::transform(filename.begin(), filename.end(), filename.begin(),
                    [](unsigned char c){ return static_cast<char>(std::tolower(c)); } );
     m_watchers.top = std::make_unique<FileWatcher>(filename);
-    ss.str("");
-    ss.clear();
 
-    ss << "./parameters_clock_system_" << constant.serial_number << ".json";
-    filename = ss.str();
+    filename = fmt::format("./parameters_clock_system_{}.json", constant.serial_number);
     std::transform(filename.begin(), filename.end(), filename.begin(),
                    [](unsigned char c){ return static_cast<char>(std::tolower(c)); } );
     m_watchers.clock_system = std::make_unique<FileWatcher>(filename);

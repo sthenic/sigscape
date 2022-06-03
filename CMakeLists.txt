@@ -57,6 +57,13 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(imgui)
 
+FetchContent_Declare(
+    fmt
+    GIT_REPOSITORY https://github.com/fmtlib/fmt
+    GIT_TAG 8.1.1
+)
+FetchContent_MakeAvailable(fmt)
+
 # It doesn't work to link directly to gl3w for some reason.
 # Maybe something to do with https://github.com/skaslev/gl3w/issues/66
 # However adding the generation target as a dependency and then
@@ -93,6 +100,7 @@ target_sources(${PROJECT_NAME} PRIVATE
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${implot_SOURCE_DIR}
     ${imgui_SOURCE_DIR}
+    ${fmt_SOURCE_DIR}/include
     simple_fft
     ${gl3w_BINARY_DIR}/include
     include
@@ -115,7 +123,7 @@ if (UNIX)
     target_compile_definitions(${PROJECT_NAME} PUBLIC
         LINUX)
     target_compile_options(${PROJECT_NAME} PRIVATE
-        -Wall -Wextra -Wswitch -Wswitch-enum -Werror=overflow)
+        -Wall -Wextra -Wswitch -Werror=overflow)
 elseif(WIN32)
     # TODO: Maybe this should be behind elsif(MSCV) instead?
     target_compile_definitions(${PROJECT_NAME} PRIVATE
@@ -185,5 +193,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     OpenGL::GL
     Threads::Threads
     glfw
+    fmt
     ${ADQAPI_LIBRARY}
 )

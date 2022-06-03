@@ -1,5 +1,5 @@
 #include "ui.h"
-#include "implot_internal.h" /* To be able to get item visibility status. */
+#include "implot_internal.h" /* To be able to get item visibility state. */
 
 #include <cinttypes>
 
@@ -41,9 +41,10 @@ void Ui::ChannelUiState::ColorSquare() const
 
 Ui::DigitizerUiState::DigitizerUiState(int nof_channels)
     : identifier("")
-    , status("")
-    , extra("")
-    , status_color(COLOR_GREEN)
+    , state("")
+    , event("")
+    , state_color(COLOR_GREEN)
+    , event_color(COLOR_GREEN)
     , set_top_color(ImGui::GetStyleColorVec4(ImGuiCol_Button))
     , set_clock_system_color(ImGui::GetStyleColorVec4(ImGuiCol_Button))
     , channels{}
@@ -167,40 +168,42 @@ void Ui::HandleMessage(size_t i, const DigitizerMessage &message)
 {
     switch (message.id)
     {
-    case DigitizerMessageId::ENUMERATING:
-        m_digitizer_ui_state[i].identifier = "Unknown##" + std::to_string(i);
-        m_digitizer_ui_state[i].status = "ENUMERATING##" + std::to_string(i);
-        m_digitizer_ui_state[i].status_color = COLOR_PURPLE;
-        break;
-
-    case DigitizerMessageId::SETUP_OK:
+    case DigitizerMessageId::IDENTIFIER:
         m_digitizer_ui_state[i].identifier = *message.str;
         break;
 
-    case DigitizerMessageId::SETUP_FAILED:
-        m_digitizer_ui_state[i].identifier = "Unknown##" + std::to_string(i);
-        m_digitizer_ui_state[i].status = "SETUP FAILED##" + std::to_string(i);
-        m_digitizer_ui_state[i].status_color = COLOR_RED;
+    case DigitizerMessageId::CONFIGURATION:
+        m_digitizer_ui_state[i].event = "CONFIGURATION";
+        m_digitizer_ui_state[i].event_color = COLOR_WOW_TAN;
         break;
 
-    case DigitizerMessageId::NEW_STATE:
+    case DigitizerMessageId::CLEAR:
+        m_digitizer_ui_state[i].event = "";
+        break;
+
+    case DigitizerMessageId::ERROR:
+        m_digitizer_ui_state[i].event = "ERROR";
+        m_digitizer_ui_state[i].event_color = COLOR_RED;
+        break;
+
+    case DigitizerMessageId::STATE:
         switch (message.state)
         {
         case DigitizerState::NOT_ENUMERATED:
-            m_digitizer_ui_state[i].status = "NOT ENUMERATED";
-            m_digitizer_ui_state[i].status_color = COLOR_RED;
+            m_digitizer_ui_state[i].state = "NOT ENUMERATED";
+            m_digitizer_ui_state[i].state_color = COLOR_RED;
+            break;
+        case DigitizerState::ENUMERATION:
+            m_digitizer_ui_state[i].state = "ENUMERATION";
+            m_digitizer_ui_state[i].state_color = COLOR_PURPLE;
             break;
         case DigitizerState::IDLE:
-            m_digitizer_ui_state[i].status = "IDLE";
-            m_digitizer_ui_state[i].status_color = COLOR_GREEN;
-            break;
-        case DigitizerState::CONFIGURATION:
-            m_digitizer_ui_state[i].status = "CONFIGURATION";
-            m_digitizer_ui_state[i].status_color = COLOR_PURPLE;
+            m_digitizer_ui_state[i].state = "IDLE";
+            m_digitizer_ui_state[i].state_color = COLOR_GREEN;
             break;
         case DigitizerState::ACQUISITION:
-            m_digitizer_ui_state[i].status = "ACQUISITION";
-            m_digitizer_ui_state[i].status_color = COLOR_ORANGE;
+            m_digitizer_ui_state[i].state = "ACQUISITION";
+            m_digitizer_ui_state[i].state_color = COLOR_ORANGE;
             break;
         }
         break;
@@ -221,14 +224,7 @@ void Ui::HandleMessage(size_t i, const DigitizerMessage &message)
         m_digitizer_ui_state[i].set_clock_system_color = COLOR_GREEN;
         break;
 
-    case DigitizerMessageId::START_ACQUISITION:
-    case DigitizerMessageId::STOP_ACQUISITION:
-    case DigitizerMessageId::SET_PARAMETERS:
-    case DigitizerMessageId::GET_PARAMETERS:
-    case DigitizerMessageId::VALIDATE_PARAMETERS:
-    case DigitizerMessageId::INITIALIZE_PARAMETERS:
-    case DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
-    case DigitizerMessageId::SET_WINDOW_TYPE:
+    default:
         /* These are not expected as a message from a digitizer thread. */
         break;
     }
@@ -378,9 +374,9 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
             ImGui::TableSetupColumn("Identifier",
                                     ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoHide,
                                     TEXT_BASE_WIDTH * 14.0f);
-            ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed,
-                                    TEXT_BASE_WIDTH * 20.0f);
-            ImGui::TableSetupColumn("Extra");
+            ImGui::TableSetupColumn("State", ImGuiTableColumnFlags_WidthFixed,
+                                    TEXT_BASE_WIDTH * 14.0f);
+            ImGui::TableSetupColumn("Event");
             ImGui::TableHeadersRow();
 
             for (size_t i = 0; i < m_digitizers.size(); ++i)
@@ -395,10 +391,18 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
                 }
 
                 ImGui::TableNextColumn();
-                if (m_digitizer_ui_state[i].status.size() > 0)
+                if (m_digitizer_ui_state[i].state.size() > 0)
                 {
-                    ImGui::PushStyleColor(ImGuiCol_Button, m_digitizer_ui_state[i].status_color);
-                    ImGui::SmallButton(m_digitizer_ui_state[i].status.c_str());
+                    ImGui::PushStyleColor(ImGuiCol_Button, m_digitizer_ui_state[i].state_color);
+                    ImGui::SmallButton(m_digitizer_ui_state[i].state.c_str());
+                    ImGui::PopStyleColor();
+                }
+
+                ImGui::TableNextColumn();
+                if (m_digitizer_ui_state[i].event.size() > 0)
+                {
+                    ImGui::PushStyleColor(ImGuiCol_Button, m_digitizer_ui_state[i].event_color);
+                    ImGui::SmallButton(m_digitizer_ui_state[i].event.c_str());
                     ImGui::PopStyleColor();
                 }
                 ImGui::TableNextRow();
@@ -681,6 +685,10 @@ void Ui::RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size)
 
 void Ui::Annotate(const std::pair<double, double> &point, const std::string &label)
 {
+    /* TODO: We need some form of low-pass filter for the y-coordinates. For
+             high update rates (~60 Hz) the annotations jitter quite a lot. Just
+             naively rounding them to the nearest integer remove some of the
+             jitter but can introduce even larger jumps for noisy data. */
     ImPlot::Annotation(point.first, point.second, ImVec4(0, 0, 0, 0),
                        ImVec2(0, -5), false, "%.2f dBFS", point.second);
     ImPlot::Annotation(point.first, point.second, ImVec4(0, 0, 0, 0),
@@ -829,7 +837,7 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                     const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
                     ImGui::TableSetupColumn("Metric", ImGuiTableColumnFlags_WidthFixed
                                                       | ImGuiTableColumnFlags_NoHide,
-                                            12.0f * TEXT_BASE_WIDTH);
+                                            14.0f * TEXT_BASE_WIDTH);
                     ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
 
                     const auto &format = "% 8.3f";

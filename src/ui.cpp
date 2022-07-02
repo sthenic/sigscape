@@ -654,7 +654,7 @@ void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
     {
         ImPlot::SetupLegend(ImPlotLocation_NorthEast);
         ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatter, (void *)"s");
-        // ImPlot::SetupAxisFormat(ImAxis_Y1, MetricFormatter, (void *)"V");
+        ImPlot::SetupAxisFormat(ImAxis_Y1, MetricFormatter, (void *)"V");
         PlotTimeDomainSelected();
         ImPlot::EndPlot();
     }

@@ -32,7 +32,6 @@ struct TimeDomainRecord
     TimeDomainRecord(const struct ADQGen4Record *raw,
                      const struct ADQAnalogFrontendParametersChannel &afe)
     {
-        (void)afe;
         /* FIXME: Can optimize this by giving just the number of bytes used in
                   the record, raw->size is the buffer capacity. */
         x = std::shared_ptr<double[]>( new double[raw->header->record_length] );
@@ -43,8 +42,6 @@ struct TimeDomainRecord
         header = *raw->header;
 
         /* Assuming two bytes per sample. */
-        /* FIXME: Read from header->data_format */
-        /* FIXME: Keep this as codes? */
         /* The time unit is specified in picoseconds at most. Given that we're
            using a 32-bit float, we truncate any information beyond that point. */
         int time_unit_ps = static_cast<int>(raw->header->time_unit * 1e12);
@@ -56,8 +53,9 @@ struct TimeDomainRecord
 
         for (size_t i = 0; i < raw->header->record_length; ++i)
         {
+            /* TODO: Read vertical resolution from header->data_format. */
             x[i] = record_start + i * sampling_period;
-            y[i] = static_cast<double>(data[i]) / 32768.0; /* TODO: Use full-scale for now. */
+            y[i] = static_cast<double>(data[i]) / 65536.0 * afe.input_range / 1e3 - afe.dc_offset;
         }
     }
 

@@ -630,6 +630,8 @@ void Ui::PlotTimeDomainSelected()
                 ImPlot::PlotLine(state.record->label.c_str(),
                                  state.record->time_domain->x.get(),
                                  state.record->time_domain->y.get(), count);
+                state.color = ImPlot::GetLastItemColor();
+
                 if (ImPlot::BeginLegendPopup(state.record->label.c_str()))
                 {
                     ImGui::Text("%s", state.record->label.c_str());

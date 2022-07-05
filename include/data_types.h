@@ -55,7 +55,8 @@ struct TimeDomainRecord
         {
             /* TODO: Read vertical resolution from header->data_format. */
             x[i] = record_start + i * sampling_period;
-            y[i] = static_cast<double>(data[i]) / 65536.0 * afe.input_range / 1e3 - afe.dc_offset;
+            y[i] = static_cast<double>(data[i]) / 65536.0 * afe.input_range - afe.dc_offset;
+            y[i] /= 1e3;
         }
     }
 

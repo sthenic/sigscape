@@ -37,7 +37,8 @@ private:
 
         ImVec4 color;
         bool sample_markers;
-        bool is_shown;
+        bool is_time_domain_visible;
+        bool is_frequency_domain_visible;
         std::shared_ptr<ProcessedRecord> record;
 
         void ColorSquare() const;

@@ -1,6 +1,7 @@
 #include "ui.h"
 #include "implot_internal.h" /* To be able to get item visibility state. */
 
+#include "fmt/format.h"
 #include <cinttypes>
 
 const ImVec4 Ui::COLOR_GREEN = {0.0f, 1.0f, 0.5f, 0.6f};
@@ -26,7 +27,8 @@ const ImVec4 Ui::COLOR_WOW_TAN  = {0.78f, 0.61f, 0.43f, 0.8f};
 Ui::ChannelUiState::ChannelUiState()
     : color{}
     , sample_markers(false)
-    , is_shown(true)
+    , is_time_domain_visible(true)
+    , is_frequency_domain_visible(true)
     , record(NULL)
 {}
 
@@ -621,22 +623,28 @@ void Ui::PlotTimeDomainSelected()
 
         for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
         {
-            auto &state = m_digitizer_ui_state[i].channels[ch];
-            if (state.record != NULL)
+            auto &ui = m_digitizer_ui_state[i].channels[ch];
+            if (ui.record != NULL)
             {
-                int count = static_cast<int>(state.record->time_domain->count);
-                if (state.sample_markers)
+                int count = static_cast<int>(ui.record->time_domain->count);
+                if (ui.sample_markers)
                     ImPlot::SetNextMarkerStyle(ImPlotMarker_Cross);
-                ImPlot::PlotLine(state.record->label.c_str(),
-                                 state.record->time_domain->x.get(),
-                                 state.record->time_domain->y.get(), count);
-                state.color = ImPlot::GetLastItemColor();
+                ImPlot::PlotLine(ui.record->label.c_str(),
+                                 ui.record->time_domain->x.get(),
+                                 ui.record->time_domain->y.get(), count);
+                ui.color = ImPlot::GetLastItemColor();
 
-                if (ImPlot::BeginLegendPopup(state.record->label.c_str()))
+                /* Here we have to resort to using ImPlot internals to gain
+                   access to whether or not the plot is shown or not. The user
+                   can click the legend entry to change the visibility state. */
+                auto item = ImPlot::GetCurrentContext()->CurrentItems->GetItem(ui.record->label.c_str());
+                ui.is_time_domain_visible = (item != NULL) && item->Show;
+
+                if (ImPlot::BeginLegendPopup(ui.record->label.c_str()))
                 {
-                    ImGui::Text("%s", state.record->label.c_str());
+                    ImGui::Text("%s", ui.record->label.c_str());
                     ImGui::Separator();
-                    ImGui::Checkbox("Sample markers", &state.sample_markers);
+                    ImGui::Checkbox("Sample markers", &ui.sample_markers);
                     ImPlot::EndLegendPopup();
                 }
             }
@@ -713,29 +721,28 @@ void Ui::PlotFourierTransformSelected()
 
         for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
         {
-            const auto &record = m_digitizer_ui_state[i].channels[ch].record;
-            auto &color = m_digitizer_ui_state[i].channels[ch].color;
-            auto &is_shown = m_digitizer_ui_state[i].channels[ch].is_shown;
-            if (record != NULL)
+            auto &ui = m_digitizer_ui_state[i].channels[ch];
+            if (ui.record != NULL)
             {
-                int count = static_cast<int>(record->frequency_domain->count);
-                ImPlot::PlotLine(record->label.c_str(),
-                                 record->frequency_domain->x.get(),
-                                 record->frequency_domain->y.get(), count);
-                color = ImPlot::GetLastItemColor();
+                int count = static_cast<int>(ui.record->frequency_domain->count);
+                ImPlot::PlotLine(ui.record->label.c_str(),
+                                 ui.record->frequency_domain->x.get(),
+                                 ui.record->frequency_domain->y.get(), count);
+                ui.color = ImPlot::GetLastItemColor();
 
                 /* Here we have to resort to using ImPlot internals to gain
                    access to whether or not the plot is shown or not. The user
                    can click the legend entry to change the visibility state. */
-                auto item = ImPlot::GetCurrentContext()->CurrentItems->GetItem(record->label.c_str());
-                is_shown = (item != NULL) && item->Show;
-                if (is_shown)
+                auto item = ImPlot::GetCurrentContext()->CurrentItems->GetItem(ui.record->label.c_str());
+                ui.is_frequency_domain_visible = (item != NULL) && item->Show;
+
+                if (ui.is_frequency_domain_visible)
                 {
-                    Annotate(record->frequency_domain_metrics.fundamental, "Fund.");
-                    for (size_t j = 0; j < record->frequency_domain_metrics.harmonics.size(); ++j)
+                    Annotate(ui.record->frequency_domain_metrics.fundamental, "Fund.");
+                    for (size_t j = 0; j < ui.record->frequency_domain_metrics.harmonics.size(); ++j)
                     {
-                        Annotate(record->frequency_domain_metrics.harmonics[j],
-                                 "HD" + std::to_string(j+2));
+                        Annotate(ui.record->frequency_domain_metrics.harmonics[j],
+                                 fmt::format("HD{}", j + 2));
                     }
                 }
             }
@@ -823,7 +830,7 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
         for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
         {
             const auto &ui = m_digitizer_ui_state[i].channels[ch];
-            if ((ui.record != NULL) && ui.is_shown)
+            if ((ui.record != NULL) && ui.is_time_domain_visible)
             {
                 if (has_contents)
                     ImGui::Separator();
@@ -872,7 +879,7 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
         for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
         {
             const auto &ui = m_digitizer_ui_state[i].channels[ch];
-            if ((ui.record != NULL) && ui.is_shown)
+            if ((ui.record != NULL) && ui.is_frequency_domain_visible)
             {
                 if (has_contents)
                     ImGui::Separator();

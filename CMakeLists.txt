@@ -164,6 +164,12 @@ if (NOT NO_ADQAPI)
         if(NOT ADQAPI_DLL)
             message(FATAL_ERROR "ADQAPI.dll not found")
         endif()
+
+        # FIXME: Copy the DLL somewhere?
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${ADQAPI_DLL}
+            $<TARGET_FILE_DIR:${PROJECT_NAME}>)
     endif()
 
     find_path(ADQAPI_INCLUDE
@@ -174,19 +180,13 @@ if (NOT NO_ADQAPI)
         "${CMAKE_SOURCE_DIR}/../../../build/"
         ${ADQAPI_INSTALL_PATH}
     )
+    target_include_directories(${PROJECT_NAME} PRIVATE ${ADQAPI_INCLUDE})
 
     message(STATUS "Using libadq/ADQAPI.lib: ${ADQAPI_LIBRARY}")
     message(STATUS "Using ADQAPI.h from ${ADQAPI_INCLUDE}/ADQAPI.h")
     if (ADQAPI_DLL)
         message(STATUS "Using ADQAPI.dll: ${ADQAPI_DLL}")
     endif()
-
-    target_include_directories(${PROJECT_NAME} PRIVATE ${ADQAPI_INCLUDE})
-    # FIXME: Copy the DLL somewhere?
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${ADQAPI_DLL}
-        $<TARGET_FILE_DIR:${PROJECT_NAME}>)
 endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE

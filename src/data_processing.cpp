@@ -82,7 +82,6 @@ void DataProcessing::MainLoop()
                acquisition interface ASAP. */
             auto processed_record = std::make_shared<ProcessedRecord>();
             size_t fft_length = PreviousPowerOfTwo(time_domain->header->record_length);
-            auto yc = std::unique_ptr<std::complex<double>[]>( new std::complex<double>[fft_length] );
 
             /* FIXME: Windowing in the time domain struct?  */
             processed_record->time_domain = std::make_shared<TimeDomainRecord>(time_domain, m_afe);
@@ -93,19 +92,25 @@ void DataProcessing::MainLoop()
             processed_record->frequency_domain->bin_range =
                 processed_record->time_domain->sampling_frequency / static_cast<double>(fft_length);
 
-            /* Windowing */
-            auto y = processed_record->time_domain->y;
-            if (m_window_type != WindowType::NONE)
+            /* Windowing and scaling to [-1, 1] for the correct FFT values. We
+               use the raw data again since the processed time domain record
+               will have been scaled to Volts with the input range and DC offset
+               taken into account. */
+            auto window = m_window_cache.GetWindow(m_window_type, fft_length);
+            auto y = std::unique_ptr<double[]>( new double[fft_length] );
+            const int16_t *data = static_cast<const int16_t *>(time_domain->data);
+            for (size_t i = 0; i < fft_length; ++i)
             {
-                auto yw = std::unique_ptr<double[]>( new double[fft_length] );
-                auto window = m_window_cache.GetWindow(m_window_type, fft_length);
-                for (size_t i = 0; i < fft_length; ++i)
-                    yw[i] = processed_record->time_domain->y[i] * window->data[i];
-                y = std::move(yw);
+                /* TODO: Read vertical resolution from header->data_format. */
+                if (window != NULL)
+                    y[i] = static_cast<double>(data[i]) / 32768.0 * window->data[i];
+                else
+                    y[i] = static_cast<double>(data[i]) / 32768.0;
             }
 
             /* Calculate the FFT */
             const char *error = NULL;
+            auto yc = std::unique_ptr<std::complex<double>[]>( new std::complex<double>[fft_length] );
             if (!simple_fft::FFT(y, yc, fft_length, error))
             {
                 printf("Failed to compute FFT: %s.\n", error);

@@ -31,6 +31,7 @@ enum class DigitizerMessageId
     CLEAR,
     CONFIGURATION,
     /* The world -> digitizer */
+    DEFAULT_ACQUISITION,
     START_ACQUISITION,
     STOP_ACQUISITION,
     SET_PARAMETERS, /* FIXME: Probably rename this SET_TOP_PARAMETERS */
@@ -146,6 +147,7 @@ private:
     void HandleMessageInAcquisition(const struct DigitizerMessage &message);
     void HandleMessageInState(const struct DigitizerMessage &message);
 
+    void ConfigureDefaultAcquisition();
     void SetParameters(const std::shared_ptr<std::string> &str, DigitizerMessageId clean_id);
     void InitializeParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher);
     void GetParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher);

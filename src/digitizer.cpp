@@ -57,11 +57,14 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
         case DigitizerMessageId::ERROR:
             name = "ERROR";
             break;
+        case DigitizerMessageId::CLEAR:
+            name = "CLEAR";
+            break;
         case DigitizerMessageId::CONFIGURATION:
             name = "CONFIGURATION";
             break;
-        case DigitizerMessageId::CLEAR:
-            name = "CLEAR";
+        case DigitizerMessageId::DEFAULT_ACQUISITION:
+            name = "DEFAULT_ACQUISITION";
             break;
         case DigitizerMessageId::START_ACQUISITION:
             name = "START_ACQUISITION";
@@ -291,6 +294,10 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
         SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
         break;
 
+    case DigitizerMessageId::DEFAULT_ACQUISITION:
+        ConfigureDefaultAcquisition();
+        break;
+
     case DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
         SetParameters(m_parameters.clock_system, DigitizerMessageId::CLEAN_CLOCK_SYSTEM_PARAMETERS);
         SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
@@ -326,6 +333,20 @@ void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &messag
     case DigitizerMessageId::STOP_ACQUISITION:
         StopDataAcquisition();
         SetState(DigitizerState::IDLE);
+        break;
+
+    case DigitizerMessageId::DEFAULT_ACQUISITION:
+        try
+        {
+            StopDataAcquisition();
+            ConfigureDefaultAcquisition();
+            StartDataAcquisition();
+        }
+        catch (const DigitizerException &e)
+        {
+            SetState(DigitizerState::IDLE);
+            throw;
+        }
         break;
 
     case DigitizerMessageId::SET_PARAMETERS:
@@ -399,6 +420,66 @@ void Digitizer::HandleMessageInState(const struct DigitizerMessage &message)
         fprintf(stderr, "%s", fmt::format("ERROR: {}\n", e.what()).c_str());
         m_read_queue.Write(DigitizerMessageId::ERROR);
     }
+}
+
+void Digitizer::ConfigureDefaultAcquisition()
+{
+#ifdef NO_ADQAPI
+    throw DigitizerException("ConfigureDefaultAcquisition() not implemented.");
+#else
+    struct ADQConstantParameters constant;
+    int result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CONSTANT, &constant);
+    if (result != sizeof(constant))
+        throw DigitizerException(fmt::format("Failed to get constant parameters, result {}.", result));
+
+    struct ADQEventSourcePeriodicParameters periodic;
+    result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CONSTANT, &periodic);
+    if (result != sizeof(periodic))
+        throw DigitizerException(fmt::format("Failed to get periodic parameters, result {}.", result));
+
+    struct ADQDataAcquisitionParameters acquisition;
+    result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CONSTANT, &acquisition);
+    if (result != sizeof(acquisition))
+        throw DigitizerException(fmt::format("Failed to get acquisition parameters, result {}.", result));
+
+    struct ADQDataTransferParameters transfer;
+    result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CONSTANT, &transfer);
+    if (result != sizeof(transfer))
+        throw DigitizerException(fmt::format("Failed to get transfer parameters, result {}.", result));
+
+    /* The default acquisition parameters is an infinite stream of records from
+       each available channel triggered by the periodic event generator. */
+    for (int i = 0; i < constant.nof_channels; ++i)
+    {
+        acquisition.channel[i].nof_records = ADQ_INFINITE_NOF_RECORDS;
+        acquisition.channel[i].record_length = 64 * 1024;
+        acquisition.channel[i].horizontal_offset = 0;
+        acquisition.channel[i].trigger_source = ADQ_EVENT_SOURCE_PERIODIC;
+        acquisition.channel[i].trigger_edge = ADQ_EDGE_RISING;
+        acquisition.channel[i].trigger_blocking_source = ADQ_FUNCTION_INVALID;
+
+        transfer.channel[i].metadata_enabled = 1;
+        transfer.channel[i].nof_buffers = ADQ_MAX_NOF_BUFFERS;
+        transfer.channel[i].record_size = 2 * acquisition.channel[i].record_length;
+        transfer.channel[i].record_buffer_size = transfer.channel[i].record_size;
+        transfer.channel[i].metadata_buffer_size = sizeof(ADQGen4RecordHeader);
+    }
+
+    /* Default trigger frequency of 5 Hz. */
+    periodic.frequency = 5.0;
+
+    result = ADQ_SetParameters(m_id.handle, m_id.index, &periodic);
+    if (result != sizeof(periodic))
+        throw DigitizerException(fmt::format("Failed to set periodic parameters, result {}.", result));
+
+    result = ADQ_SetParameters(m_id.handle, m_id.index, &acquisition);
+    if (result != sizeof(acquisition))
+        throw DigitizerException(fmt::format("Failed to set acquisition parameters, result {}.", result));
+
+    result = ADQ_SetParameters(m_id.handle, m_id.index, &transfer);
+    if (result != sizeof(transfer))
+        throw DigitizerException(fmt::format("Failed to set transfer parameters, result {}.", result));
+#endif
 }
 
 void Digitizer::SetParameters(const std::shared_ptr<std::string> &str, DigitizerMessageId clean_id)

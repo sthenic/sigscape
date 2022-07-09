@@ -63,6 +63,15 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
         case DigitizerMessageId::CONFIGURATION:
             name = "CONFIGURATION";
             break;
+        case DigitizerMessageId::SET_INTERNAL_REFERENCE:
+            name = "SET_INTERNAL_REFERENCE";
+            break;
+        case DigitizerMessageId::SET_EXTERNAL_REFERENCE:
+            name = "SET_EXTERNAL_REFERENCE";
+            break;
+        case DigitizerMessageId::SET_EXTERNAL_CLOCK:
+            name = "SET_EXTERNAL_CLOCK";
+            break;
         case DigitizerMessageId::DEFAULT_ACQUISITION:
             name = "DEFAULT_ACQUISITION";
             break;
@@ -294,6 +303,21 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
         SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
         break;
 
+    case DigitizerMessageId::SET_INTERNAL_REFERENCE:
+        ConfigureInternalReference();
+        SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+        break;
+
+    case DigitizerMessageId::SET_EXTERNAL_REFERENCE:
+        ConfigureExternalReference();
+        SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+        break;
+
+    case DigitizerMessageId::SET_EXTERNAL_CLOCK:
+        ConfigureExternalClock();
+        SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+        break;
+
     case DigitizerMessageId::DEFAULT_ACQUISITION:
         ConfigureDefaultAcquisition();
         break;
@@ -420,6 +444,66 @@ void Digitizer::HandleMessageInState(const struct DigitizerMessage &message)
         fprintf(stderr, "%s", fmt::format("ERROR: {}\n", e.what()).c_str());
         m_read_queue.Write(DigitizerMessageId::ERROR);
     }
+}
+
+void Digitizer::ConfigureInternalReference()
+{
+#ifdef NO_ADQAPI
+    throw DigitizerException("ConfigureInternalReference() not implemented.");
+#else
+    struct ADQClockSystemParameters clock_system;
+    int result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CLOCK_SYSTEM,
+                                          &clock_system);
+    if (result != sizeof(clock_system))
+        throw DigitizerException(fmt::format("Failed to initialize clock system parameters, result {}.", result));
+
+    clock_system.clock_generator = ADQ_CLOCK_GENERATOR_INTERNAL_PLL;
+    clock_system.reference_source = ADQ_CLOCK_REFERENCE_SOURCE_INTERNAL;
+
+    result = ADQ_SetParameters(m_id.handle, m_id.index, &clock_system);
+    if (result != sizeof(clock_system))
+        throw DigitizerException(fmt::format("Failed to set clock system parameters, result {}.", result));
+#endif
+}
+
+void Digitizer::ConfigureExternalReference()
+{
+#ifdef NO_ADQAPI
+    throw DigitizerException("ConfigureExternalReference() not implemented.");
+#else
+    struct ADQClockSystemParameters clock_system;
+    int result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CLOCK_SYSTEM,
+                                          &clock_system);
+    if (result != sizeof(clock_system))
+        throw DigitizerException(fmt::format("Failed to initialize clock system parameters, result {}.", result));
+
+    clock_system.clock_generator = ADQ_CLOCK_GENERATOR_INTERNAL_PLL;
+    clock_system.reference_source = ADQ_CLOCK_REFERENCE_SOURCE_PORT_CLK;
+    clock_system.reference_frequency = 10e6;
+    clock_system.low_jitter_mode_enabled = 1;
+
+    result = ADQ_SetParameters(m_id.handle, m_id.index, &clock_system);
+    if (result != sizeof(clock_system))
+        throw DigitizerException(fmt::format("Failed to set clock system parameters, result {}.", result));
+#endif
+}
+void Digitizer::ConfigureExternalClock()
+{
+#ifdef NO_ADQAPI
+    throw DigitizerException("ConfigureExternalClock() not implemented.");
+#else
+    struct ADQClockSystemParameters clock_system;
+    int result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CLOCK_SYSTEM,
+                                          &clock_system);
+    if (result != sizeof(clock_system))
+        throw DigitizerException(fmt::format("Failed to initialize clock system parameters, result {}.", result));
+
+    clock_system.clock_generator = ADQ_CLOCK_GENERATOR_EXTERNAL_CLOCK;
+
+    result = ADQ_SetParameters(m_id.handle, m_id.index, &clock_system);
+    if (result != sizeof(clock_system))
+        throw DigitizerException(fmt::format("Failed to set clock system parameters, result {}.", result));
+#endif
 }
 
 void Digitizer::ConfigureDefaultAcquisition()

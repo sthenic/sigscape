@@ -481,6 +481,18 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
     if (ImGui::Button("64k\n5Hz", COMMAND_PALETTE_BUTTON_SIZE))
         PushMessage(DigitizerMessageId::DEFAULT_ACQUISITION);
 
+    ImGui::SameLine();
+    if (ImGui::Button("Internal\nReference", COMMAND_PALETTE_BUTTON_SIZE))
+        PushMessage(DigitizerMessageId::SET_INTERNAL_REFERENCE);
+
+    ImGui::SameLine();
+    if (ImGui::Button("External\nReference", COMMAND_PALETTE_BUTTON_SIZE))
+        PushMessage(DigitizerMessageId::SET_EXTERNAL_REFERENCE);
+
+    ImGui::SameLine();
+    if (ImGui::Button("External\nClock", COMMAND_PALETTE_BUTTON_SIZE))
+        PushMessage(DigitizerMessageId::SET_EXTERNAL_CLOCK);
+
     if (!any_selected)
         ImGui::EndDisabled();
 

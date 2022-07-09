@@ -31,6 +31,9 @@ enum class DigitizerMessageId
     CLEAR,
     CONFIGURATION,
     /* The world -> digitizer */
+    SET_INTERNAL_REFERENCE,
+    SET_EXTERNAL_REFERENCE,
+    SET_EXTERNAL_CLOCK,
     DEFAULT_ACQUISITION,
     START_ACQUISITION,
     STOP_ACQUISITION,
@@ -147,6 +150,9 @@ private:
     void HandleMessageInAcquisition(const struct DigitizerMessage &message);
     void HandleMessageInState(const struct DigitizerMessage &message);
 
+    void ConfigureInternalReference();
+    void ConfigureExternalReference();
+    void ConfigureExternalClock();
     void ConfigureDefaultAcquisition();
     void SetParameters(const std::shared_ptr<std::string> &str, DigitizerMessageId clean_id);
     void InitializeParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher);

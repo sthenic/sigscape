@@ -673,6 +673,7 @@ void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
     ImGui::SetNextWindowSize(size);
     ImGui::Begin("Time Domain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
     m_is_time_domain_collapsed = ImGui::IsWindowCollapsed();
+    ImPlot::PushStyleVar(ImPlotStyleVar_FitPadding, ImVec2(0.0f, 0.1f));
     if (ImPlot::BeginPlot("Time domain", ImVec2(-1, -1), ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
     {
         ImPlot::SetupLegend(ImPlotLocation_NorthEast);
@@ -681,6 +682,7 @@ void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
         PlotTimeDomainSelected();
         ImPlot::EndPlot();
     }
+    ImPlot::PopStyleVar();
     ImGui::End();
 }
 
@@ -767,15 +769,17 @@ void Ui::PlotFourierTransformSelected()
 
 void Ui::RenderFourierTransformPlot()
 {
+    ImPlot::PushStyleVar(ImPlotStyleVar_FitPadding, ImVec2(0.0f, 0.1f));
     if (ImPlot::BeginPlot("FFT##plot", ImVec2(-1, -1), ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
     {
         ImPlot::SetupLegend(ImPlotLocation_NorthEast);
-        ImPlot::SetupAxisLimits(ImAxis_Y1, -80.0, 0.0);
+        ImPlot::SetupAxisLimits(ImAxis_Y1, -100.0, 10.0);
         ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, 1e9);
         ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatter, (void *)"Hz");
         PlotFourierTransformSelected();
         ImPlot::EndPlot();
     }
+    ImPlot::PopStyleVar();
 }
 
 void Ui::PlotWaterfallSelected()

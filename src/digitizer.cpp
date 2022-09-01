@@ -517,17 +517,17 @@ void Digitizer::ConfigureDefaultAcquisition()
         throw DigitizerException(fmt::format("Failed to get constant parameters, result {}.", result));
 
     struct ADQEventSourcePeriodicParameters periodic;
-    result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CONSTANT, &periodic);
+    result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_EVENT_SOURCE_PERIODIC, &periodic);
     if (result != sizeof(periodic))
         throw DigitizerException(fmt::format("Failed to get periodic parameters, result {}.", result));
 
     struct ADQDataAcquisitionParameters acquisition;
-    result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CONSTANT, &acquisition);
+    result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_DATA_ACQUISITION, &acquisition);
     if (result != sizeof(acquisition))
         throw DigitizerException(fmt::format("Failed to get acquisition parameters, result {}.", result));
 
     struct ADQDataTransferParameters transfer;
-    result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CONSTANT, &transfer);
+    result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_DATA_TRANSFER, &transfer);
     if (result != sizeof(transfer))
         throw DigitizerException(fmt::format("Failed to get transfer parameters, result {}.", result));
 

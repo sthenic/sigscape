@@ -89,9 +89,9 @@ private:
     void RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size);
 
     void Reduce(double xsize, double sampling_frequency, int &count, int &stride);
-    static void MetricFormatterBase(double value, char *tick_label, int size, const char *format,
-                                    const char *unit, double start = 1e9);
-    static void MetricFormatterAxis(double value, char *tick_label, int size, void *data);
+    static std::string MetricFormatter(double value, const std::string &format,
+                                       double highest_prefix = 1e9);
+    static void MetricFormatter(double value, char *tick_label, int size, void *data);
     void PlotTimeDomainSelected();
     int GetFirstVisibleChannel(ChannelUiState *&ui);
     void RenderMarkerX(int id, double *x, ImPlotDragToolFlags flags = 0);
@@ -107,8 +107,7 @@ private:
     void PlotWaterfallSelected();
     void RenderWaterfallPlot();
 
-    template<typename T>
-    void MetricsRow(const std::string &label, const std::string &str, T value);
+    void MetricsRow(const std::string &label, const std::string &str);
     void RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size);
     void RenderApplicationMetrics(const ImVec2 &position, const ImVec2 &size);

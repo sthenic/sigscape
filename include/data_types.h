@@ -23,6 +23,7 @@ struct TimeDomainRecord
         this->count = count;
         capacity = count;
         estimated_trigger_frequency = 0;
+        estimated_throughput = 0;
         sampling_frequency = 0;
         sampling_period = 0;
         record_start = 0;
@@ -39,6 +40,7 @@ struct TimeDomainRecord
         this->count = raw->header->record_length;
         capacity = raw->header->record_length;
         estimated_trigger_frequency = 0;
+        estimated_throughput = 0;
         header = *raw->header;
 
         /* Assuming two bytes per sample. */
@@ -68,6 +70,7 @@ struct TimeDomainRecord
         count = other.count;
         capacity = other.count;
         estimated_trigger_frequency = other.estimated_trigger_frequency;
+        estimated_throughput = other.estimated_throughput;
         sampling_frequency = other.sampling_frequency;
         sampling_period = other.sampling_period;
         record_start = other.record_start;
@@ -94,6 +97,7 @@ struct TimeDomainRecord
             count = other.count;
             header = other.header;
             estimated_trigger_frequency = other.estimated_trigger_frequency;
+            estimated_throughput = other.estimated_throughput;
             sampling_frequency = other.sampling_frequency;
             sampling_period = other.sampling_period;
             record_start = other.record_start;
@@ -108,6 +112,7 @@ struct TimeDomainRecord
     size_t count;
     size_t capacity;
     double estimated_trigger_frequency;
+    double estimated_throughput;
     double sampling_frequency;
     double sampling_period;
     double record_start;

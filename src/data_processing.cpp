@@ -69,9 +69,11 @@ void DataProcessing::MainLoop()
             return;
         }
 
+        /* FIXME: Low-pass filter these values. Average over the last N record should do. */
         auto time_point_this_record = std::chrono::high_resolution_clock::now();
         auto period = time_point_this_record - time_point_last_record;
-        double estimated_trigger_frequency = 1e9 / period.count();
+        const double estimated_trigger_frequency = 1e9 / period.count();
+        const double estimated_throughput = bytes_received * estimated_trigger_frequency;
         time_point_last_record = time_point_this_record;
 
         /* We only allocate memory and calculate the FFT if we know that we're
@@ -87,6 +89,7 @@ void DataProcessing::MainLoop()
             processed_record->time_domain = std::make_shared<TimeDomainRecord>(time_domain, m_afe);
             processed_record->frequency_domain = std::make_shared<FrequencyDomainRecord>(fft_length / 2 + 1);
             processed_record->time_domain->estimated_trigger_frequency = estimated_trigger_frequency;
+            processed_record->time_domain->estimated_throughput = estimated_throughput;
             processed_record->label = m_label;
 
             processed_record->frequency_domain->bin_range =

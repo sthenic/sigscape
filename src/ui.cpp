@@ -613,8 +613,7 @@ void Ui::Reduce(double xsize, double sampling_period, int &count, int &stride)
     count /= stride;
 }
 
-void Ui::MetricFormatterBase(double value, char *tick_label, int size, const char *format,
-                             const char *unit, double start)
+std::string Ui::MetricFormatter(double value, const std::string &format, double highest_prefix)
 {
     static const std::vector<std::pair<double, const char *>> LIMITS = {
         {1e9, "G"},
@@ -627,32 +626,53 @@ void Ui::MetricFormatterBase(double value, char *tick_label, int size, const cha
     };
 
     if (value == 0)
-    {
-        std::snprintf(tick_label, size, "0 %s", unit);
-        return;
-    }
+        return fmt::format(format, 0.0, "");
 
     /* Loop through the limits (descending order) checking if the input value is
        larger than the limit. If it is, we pick the corresponding prefix. If
        we've exhausted the search, we pick the last entry (smallest prefix). */
+
     for (const auto &limit : LIMITS)
     {
-        if (limit.first > start)
+        if (limit.first > highest_prefix)
             continue;
 
         if (std::fabs(value) >= limit.first)
+            return fmt::format(format, value / limit.first, limit.second);
+    }
+
+    return fmt::format(format, value / LIMITS.back().first, LIMITS.back().second);
+}
+
+void Ui::MetricFormatter(double value, char *tick_label, int size, void *data)
+{
+    auto UNIT = static_cast<const char *>(data);
+    static const std::vector<std::pair<double, const char *>> LIMITS = {
+        {1e9, "G"},
+        {1e6, "M"},
+        {1e3, "k"},
+        {1, ""},
+        {1e-3, "m"},
+        {1e-6, "u"},
+        {1e-9, "n"}
+    };
+
+    if (value == 0)
+    {
+        std::snprintf(tick_label, size, "0 %s", UNIT);
+        return;
+    }
+
+    for (const auto &limit : LIMITS)
+    {
+        if (std::fabs(value) >= limit.first)
         {
-            std::snprintf(tick_label, size, format, value / limit.first, limit.second, unit);
+            std::snprintf(tick_label, size, "%g %s%s", value / limit.first, limit.second, UNIT);
             return;
         }
     }
 
-    std::snprintf(tick_label, size, format, value / LIMITS.back().first, LIMITS.back().second, unit);
-}
-
-void Ui::MetricFormatterAxis(double value, char *tick_label, int size, void *data)
-{
-    MetricFormatterBase(value, tick_label, size, "%g %s%s", (const char *)data);
+    std::snprintf(tick_label, size, "%g %s%s", value / LIMITS.back().first, LIMITS.back().second, UNIT);
 }
 
 void SnapHorizontalMarkers(double x1, double x2, const ProcessedRecord *record,
@@ -757,18 +777,14 @@ int Ui::GetFirstVisibleChannel(ChannelUiState *&ui)
 
 void Ui::RenderMarkerX(int id, double *x, ImPlotDragToolFlags flags)
 {
-    char label[32];
     ImPlot::DragLineX(id, x, ImVec4(1, 1, 1, 1), 1.0F, flags);
-    MetricFormatterBase(*x, label, sizeof(label), "%g %s%s", "s");
-    ImPlot::TagX(*x, ImVec4(1, 1, 1, 1), "%s", label);
+    ImPlot::TagX(*x, ImVec4(1, 1, 1, 1), "%s", MetricFormatter(*x, "{:g} {}s").c_str());
 }
 
 void Ui::RenderMarkerY(int id, double *y, ImPlotDragToolFlags flags)
 {
-    char label[32];
     ImPlot::DragLineY(id, y, ImVec4(1, 1, 1, 1), 1.0F, flags);
-    MetricFormatterBase(*y, label, sizeof(label), "% 7.1f %s%s", "V", 1e-3);
-    ImPlot::TagY(*y, ImVec4(1, 1, 1, 1), "%s", label);
+    ImPlot::TagY(*y, ImVec4(1, 1, 1, 1), "%s", MetricFormatter(*y, "{: 7.1f} {}V", 1e-3).c_str());
 }
 
 void Ui::NewMarkers()
@@ -827,8 +843,8 @@ void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
     if (ImPlot::BeginPlot("Time domain", ImVec2(-1, -1), ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
     {
         ImPlot::SetupLegend(ImPlotLocation_NorthEast);
-        ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatterAxis, (void *)"s");
-        ImPlot::SetupAxisFormat(ImAxis_Y1, MetricFormatterAxis, (void *)"V");
+        ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatter, (void *)"s");
+        ImPlot::SetupAxisFormat(ImAxis_Y1, MetricFormatter, (void *)"V");
         PlotTimeDomainSelected();
         NewMarkers();
         ImPlot::EndPlot();
@@ -926,7 +942,7 @@ void Ui::RenderFourierTransformPlot()
         ImPlot::SetupLegend(ImPlotLocation_NorthEast);
         ImPlot::SetupAxisLimits(ImAxis_Y1, -100.0, 10.0);
         ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, 1e9);
-        ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatterAxis, (void *)"Hz");
+        ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatter, (void *)"Hz");
         PlotFourierTransformSelected();
         ImPlot::EndPlot();
     }
@@ -968,20 +984,19 @@ void Ui::RenderWaterfallPlot()
     {
         static const ImPlotAxisFlags FLAGS = ImPlotAxisFlags_NoGridLines;
         ImPlot::SetupAxes(NULL, NULL, FLAGS, FLAGS);
-        ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatterAxis, (void *)"Hz");
+        ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatter, (void *)"Hz");
         PlotWaterfallSelected();
         ImPlot::EndPlot();
     }
     ImPlot::PopColormap();
 }
 
-template<typename T>
-void Ui::MetricsRow(const std::string &label, const std::string &str, T value)
+void Ui::MetricsRow(const std::string &label, const std::string &str)
 {
     ImGui::TableNextColumn();
     ImGui::Text("%s", label.c_str());
     ImGui::TableNextColumn();
-    ImGui::Text(str.c_str(), value);
+    ImGui::Text("%s", str.c_str());
 }
 
 void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
@@ -1019,11 +1034,34 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                                             14.0f * TEXT_BASE_WIDTH);
                     ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
 
-                    const std::string format = "% 8.3f";
-                    MetricsRow("Record number", "%" PRIu32, ui.record->time_domain->header.record_number);
-                    MetricsRow("Max", format + " V", ui.record->time_domain_metrics.max);
-                    MetricsRow("Min", format + " V", ui.record->time_domain_metrics.min);
-                    MetricsRow("Trigger rate", format + " Hz", ui.record->time_domain->estimated_trigger_frequency);
+                    MetricsRow(
+                        "Record number",
+                        fmt::format("{: >6d}", ui.record->time_domain->header.record_number)
+                    );
+                    MetricsRow(
+                        "Maximum value",
+                        MetricFormatter(
+                            ui.record->time_domain_metrics.max, "{: 8.1f} {}V", 1e-3
+                        )
+                    );
+                    MetricsRow(
+                        "Minimum value",
+                        MetricFormatter(
+                            ui.record->time_domain_metrics.min, "{: 8.1f} {}V", 1e-3
+                        )
+                    );
+                    MetricsRow(
+                        "Trigger rate",
+                        MetricFormatter(
+                            ui.record->time_domain->estimated_trigger_frequency, "{: 8.1f} {}Hz", 1e6
+                        )
+                    );
+                    MetricsRow(
+                        "Throughput",
+                        MetricFormatter(
+                            ui.record->time_domain->estimated_throughput, "{: 8.1f} {}B/s", 1e6
+                        )
+                    );
 
                     ImGui::EndTable();
                 }
@@ -1076,14 +1114,13 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
                                             8.0f * TEXT_BASE_WIDTH);
                     ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
 
-                    const std::string format = "% 8.3f";
-                    MetricsRow("SNR", format + " dB", metrics.snr);
-                    MetricsRow("SINAD", format + " dB", metrics.sinad);
-                    MetricsRow("THD", format + " dB", metrics.thd);
-                    MetricsRow("ENOB", format + " bits", metrics.enob);
-                    MetricsRow("SFDR", format + " dBc", metrics.sfdr_dbc);
-                    MetricsRow("SFDR", format + " dBFS", metrics.sfdr_dbfs);
-                    MetricsRow("Noise", format + " dBFS", metrics.noise);
+                    MetricsRow("SNR", fmt::format("{: 8.3f} dB", metrics.snr));
+                    MetricsRow("SINAD", fmt::format("{: 8.3f} dB", metrics.sinad));
+                    MetricsRow("THD", fmt::format("{: 8.3f} dB", metrics.thd));
+                    MetricsRow("ENOB", fmt::format("{: 8.3f} bits", metrics.enob));
+                    MetricsRow("SFDR", fmt::format("{: 8.3f} dBc", metrics.sfdr_dbc));
+                    MetricsRow("SFDR", fmt::format("{: 8.3f} dBFS", metrics.sfdr_dbfs));
+                    MetricsRow("Noise", fmt::format("{: 8.3f} dBFS", metrics.noise));
 
                     ImGui::TableNextRow();
                     ImGui::EndTable();

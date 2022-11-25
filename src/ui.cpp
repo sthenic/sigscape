@@ -24,12 +24,19 @@ const ImVec4 Ui::COLOR_WOW_BLUE = {0.00f, 0.44f, 0.87f, 0.8f};
 const ImVec4 Ui::COLOR_WOW_PURPLE = {0.53f, 0.53f, 0.93f, 0.8f};
 const ImVec4 Ui::COLOR_WOW_TAN  = {0.78f, 0.61f, 0.43f, 0.8f};
 
+// Ui::MarkerPair::MarkerPair()
+//     : direction(HORIZONTAL)
+//     , start(0.0)
+//     , stop(0.0)
+// {}
+
 Ui::ChannelUiState::ChannelUiState()
     : color{}
-    , sample_markers(false)
+    , sample_markers(true)
     , is_time_domain_visible(true)
     , is_frequency_domain_visible(true)
     , record(NULL)
+    , markers{}
 {}
 
 void Ui::ChannelUiState::ColorSquare() const
@@ -128,6 +135,12 @@ void Ui::PushMessage(const DigitizerMessage &message, bool selected)
         if (selected && !m_selected[i])
             continue;
         m_digitizers[i]->PushMessage(message);
+
+        if (message.id == DigitizerMessageId::STOP_ACQUISITION)
+        {
+            for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
+                m_digitizer_ui_state[i].channels[ch].markers.clear();
+        }
     }
 }
 
@@ -600,37 +613,78 @@ void Ui::Reduce(double xsize, double sampling_period, int &count, int &stride)
     count /= stride;
 }
 
-void Ui::MetricFormatter(double value, char *tick_label, int size, void *data)
+void Ui::MetricFormatterBase(double value, char *tick_label, int size, const char *format,
+                             const char *unit, double start)
 {
-    const char *UNIT = (const char *)data;
-    static double LIMITS[] = {1e9, 1e6, 1e3, 1, 1e-3, 1e-6, 1e-9};
-    static const char* PREFIXES[] = {"G","M","k","","m","u","n"};
-    static const size_t NOF_LIMITS = sizeof(LIMITS) / sizeof(LIMITS[0]);
+    static const std::vector<std::pair<double, const char *>> LIMITS = {
+        {1e9, "G"},
+        {1e6, "M"},
+        {1e3, "k"},
+        {1, ""},
+        {1e-3, "m"},
+        {1e-6, "u"},
+        {1e-9, "n"}
+    };
 
     if (value == 0)
     {
-        std::snprintf(tick_label, size, "0 %s", UNIT);
+        std::snprintf(tick_label, size, "0 %s", unit);
         return;
     }
 
     /* Loop through the limits (descending order) checking if the input value is
        larger than the limit. If it is, we pick the corresponding prefix. If
        we've exhausted the search, we pick the last entry (smallest prefix). */
-    for (size_t i = 0; i < NOF_LIMITS; ++i)
+    for (const auto &limit : LIMITS)
     {
-        if (std::fabs(value) >= LIMITS[i])
+        if (limit.first > start)
+            continue;
+
+        if (std::fabs(value) >= limit.first)
         {
-            std::snprintf(tick_label,size,"%g %s%s", value / LIMITS[i], PREFIXES[i], UNIT);
+            std::snprintf(tick_label, size, format, value / limit.first, limit.second, unit);
             return;
         }
     }
 
-    std::snprintf(tick_label, size, "%g %s%s", value / LIMITS[NOF_LIMITS - 1],
-                  PREFIXES[NOF_LIMITS - 1], UNIT);
+    std::snprintf(tick_label, size, format, value / LIMITS.back().first, LIMITS.back().second, unit);
+}
+
+void Ui::MetricFormatterAxis(double value, char *tick_label, int size, void *data)
+{
+    MetricFormatterBase(value, tick_label, size, "%g %s%s", (const char *)data);
+}
+
+void SnapHorizontalMarkers(double x1, double x2, const ProcessedRecord *record,
+                           double &x1_snap, double &x2_snap,
+                           double &y1_snap, double &y2_snap)
+{
+    const double &sampling_period = record->time_domain->sampling_period;
+    double nearest_sample_x1 = std::round(x1 / sampling_period);
+    double nearest_sample_x2 = std::round(x2 / sampling_period);
+
+    if (nearest_sample_x1 < 0.0)
+        nearest_sample_x1 = 0.0;
+    else if (nearest_sample_x1 >= record->time_domain->count)
+        nearest_sample_x1 = record->time_domain->count - 1;
+
+    if (nearest_sample_x2 < 0.0)
+        nearest_sample_x2 = 0.0;
+    else if (nearest_sample_x2 >= record->time_domain->count)
+        nearest_sample_x2 = record->time_domain->count - 1;
+
+    x1_snap = nearest_sample_x1 * sampling_period;
+    x2_snap = nearest_sample_x2 * sampling_period;
+
+    y1_snap = record->time_domain->y[static_cast<size_t>(nearest_sample_x1)];
+    y2_snap = record->time_domain->y[static_cast<size_t>(nearest_sample_x2)];
 }
 
 void Ui::PlotTimeDomainSelected()
 {
+    /* We need a (globally) unique id for each marker. */
+    int marker_id = 0;
+
     for (size_t i = 0; i < m_digitizers.size(); ++i)
     {
         if (!m_selected[i])
@@ -639,31 +693,127 @@ void Ui::PlotTimeDomainSelected()
         for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
         {
             auto &ui = m_digitizer_ui_state[i].channels[ch];
-            if (ui.record != NULL)
+            if (ui.record == NULL)
+                continue;
+
+            int count = static_cast<int>(ui.record->time_domain->count);
+            if (ui.sample_markers)
+                ImPlot::SetNextMarkerStyle(ImPlotMarker_Cross);
+            ImPlot::PlotLine(ui.record->label.c_str(),
+                                ui.record->time_domain->x.get(),
+                                ui.record->time_domain->y.get(), count);
+            ui.color = ImPlot::GetLastItemColor();
+
+            /* Here we have to resort to using ImPlot internals to gain
+                access to whether or not the plot is shown or not. The user
+                can click the legend entry to change the visibility state. */
+            auto item = ImPlot::GetCurrentContext()->CurrentItems->GetItem(ui.record->label.c_str());
+            ui.is_time_domain_visible = (item != NULL) && item->Show;
+
+            if (ImPlot::BeginLegendPopup(ui.record->label.c_str()))
             {
-                int count = static_cast<int>(ui.record->time_domain->count);
-                if (ui.sample_markers)
-                    ImPlot::SetNextMarkerStyle(ImPlotMarker_Cross);
-                ImPlot::PlotLine(ui.record->label.c_str(),
-                                 ui.record->time_domain->x.get(),
-                                 ui.record->time_domain->y.get(), count);
-                ui.color = ImPlot::GetLastItemColor();
+                ImGui::Text("%s", ui.record->label.c_str());
+                ImGui::Separator();
+                ImGui::Checkbox("Sample markers", &ui.sample_markers);
+                ImPlot::EndLegendPopup();
+            }
 
-                /* Here we have to resort to using ImPlot internals to gain
-                   access to whether or not the plot is shown or not. The user
-                   can click the legend entry to change the visibility state. */
-                auto item = ImPlot::GetCurrentContext()->CurrentItems->GetItem(ui.record->label.c_str());
-                ui.is_time_domain_visible = (item != NULL) && item->Show;
-
-                if (ImPlot::BeginLegendPopup(ui.record->label.c_str()))
+            if (ui.is_time_domain_visible)
+            {
+                for (auto &m : ui.markers)
                 {
-                    ImGui::Text("%s", ui.record->label.c_str());
-                    ImGui::Separator();
-                    ImGui::Checkbox("Sample markers", &ui.sample_markers);
-                    ImPlot::EndLegendPopup();
+                    static double y1, y2;
+                    SnapHorizontalMarkers(m.start, m.stop, ui.record.get(), m.start, m.stop, y1, y2);
+                    RenderMarkerX(marker_id++, &m.start);
+                    RenderMarkerX(marker_id++, &m.stop);
+                    RenderMarkerY(marker_id++, &y1, ImPlotDragToolFlags_NoInputs);
+                    RenderMarkerY(marker_id++, &y2, ImPlotDragToolFlags_NoInputs);
                 }
             }
         }
+    }
+}
+
+int Ui::GetFirstVisibleChannel(ChannelUiState *&ui)
+{
+    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    {
+        if (!m_selected[i])
+            continue;
+
+        for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
+        {
+            auto &lui = m_digitizer_ui_state[i].channels[ch];
+            if (lui.record != NULL)
+            {
+                ui = &lui;
+                return ADQR_EOK;
+            }
+        }
+    }
+
+    return ADQR_EAGAIN;
+}
+
+void Ui::RenderMarkerX(int id, double *x, ImPlotDragToolFlags flags)
+{
+    char label[32];
+    ImPlot::DragLineX(id, x, ImVec4(1, 1, 1, 1), 1.0F, flags);
+    MetricFormatterBase(*x, label, sizeof(label), "%g %s%s", "s");
+    ImPlot::TagX(*x, ImVec4(1, 1, 1, 1), "%s", label);
+}
+
+void Ui::RenderMarkerY(int id, double *y, ImPlotDragToolFlags flags)
+{
+    char label[32];
+    ImPlot::DragLineY(id, y, ImVec4(1, 1, 1, 1), 1.0F, flags);
+    MetricFormatterBase(*y, label, sizeof(label), "% 7.1f %s%s", "V", 1e-3);
+    ImPlot::TagY(*y, ImVec4(1, 1, 1, 1), "%s", label);
+}
+
+void Ui::NewMarkers()
+{
+    static std::vector<std::pair<double, double>> markers;
+    static ImPlotPoint start{};
+    static ImPlotPoint stop{};
+
+    /* FIXME: Just as a temporary solution, not the prettiest.  */
+    ChannelUiState *ui;
+    if (ADQR_EOK != GetFirstVisibleChannel(ui))
+        return;
+
+    static bool armed = false;
+    if (ImGui::GetIO().KeyCtrl && ImGui::IsMouseClicked(0))
+    {
+        start = ImPlot::GetPlotMousePos();
+        stop = ImPlot::GetPlotMousePos();
+        armed = true;
+    }
+
+    if (armed && ImGui::IsMouseDragging(0))
+    {
+        stop = ImPlot::GetPlotMousePos();
+    }
+
+    if (armed && ImGui::IsMouseReleased(0))
+    {
+        ui->markers.push_back({Ui::MarkerPair::HORIZONTAL, start.x, stop.x});
+        armed = false;
+    }
+
+    if (armed)
+    {
+        static double snapped_x1 = 0.0;
+        static double snapped_x2 = 0.0;
+        static double snapped_y1 = 0.0;
+        static double snapped_y2 = 0.0;
+        SnapHorizontalMarkers(start.x, stop.x, ui->record.get(), snapped_x1, snapped_x2,
+                              snapped_y1, snapped_y2);
+
+        RenderMarkerX(0, &snapped_x1, ImPlotDragToolFlags_NoInputs);
+        RenderMarkerX(1, &snapped_x2, ImPlotDragToolFlags_NoInputs);
+        RenderMarkerY(1, &snapped_y1, ImPlotDragToolFlags_NoInputs);
+        RenderMarkerY(1, &snapped_y2, ImPlotDragToolFlags_NoInputs);
     }
 }
 
@@ -677,9 +827,10 @@ void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
     if (ImPlot::BeginPlot("Time domain", ImVec2(-1, -1), ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
     {
         ImPlot::SetupLegend(ImPlotLocation_NorthEast);
-        ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatter, (void *)"s");
-        ImPlot::SetupAxisFormat(ImAxis_Y1, MetricFormatter, (void *)"V");
+        ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatterAxis, (void *)"s");
+        ImPlot::SetupAxisFormat(ImAxis_Y1, MetricFormatterAxis, (void *)"V");
         PlotTimeDomainSelected();
+        NewMarkers();
         ImPlot::EndPlot();
     }
     ImPlot::PopStyleVar();
@@ -775,7 +926,7 @@ void Ui::RenderFourierTransformPlot()
         ImPlot::SetupLegend(ImPlotLocation_NorthEast);
         ImPlot::SetupAxisLimits(ImAxis_Y1, -100.0, 10.0);
         ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, 1e9);
-        ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatter, (void *)"Hz");
+        ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatterAxis, (void *)"Hz");
         PlotFourierTransformSelected();
         ImPlot::EndPlot();
     }
@@ -817,7 +968,7 @@ void Ui::RenderWaterfallPlot()
     {
         static const ImPlotAxisFlags FLAGS = ImPlotAxisFlags_NoGridLines;
         ImPlot::SetupAxes(NULL, NULL, FLAGS, FLAGS);
-        ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatter, (void *)"Hz");
+        ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatterAxis, (void *)"Hz");
         PlotWaterfallSelected();
         ImPlot::EndPlot();
     }
@@ -868,11 +1019,11 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                                             14.0f * TEXT_BASE_WIDTH);
                     ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
 
-                    const auto &format = "% 8.3f";
+                    const std::string format = "% 8.3f";
                     MetricsRow("Record number", "%" PRIu32, ui.record->time_domain->header.record_number);
-                    MetricsRow("Max", format, ui.record->time_domain_metrics.max);
-                    MetricsRow("Min", format, ui.record->time_domain_metrics.min);
-                    MetricsRow("Frequency", format, ui.record->time_domain->estimated_trigger_frequency);
+                    MetricsRow("Max", format + " V", ui.record->time_domain_metrics.max);
+                    MetricsRow("Min", format + " V", ui.record->time_domain_metrics.min);
+                    MetricsRow("Trigger rate", format + " Hz", ui.record->time_domain->estimated_trigger_frequency);
 
                     ImGui::EndTable();
                 }

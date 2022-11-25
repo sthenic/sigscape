@@ -31,6 +31,15 @@ private:
     bool m_is_frequency_domain_collapsed;
     std::unique_ptr<bool[]> m_selected;
 
+    struct MarkerPair
+    {
+        MarkerPair() = default;
+
+        enum {VERTICAL, HORIZONTAL} direction;
+        double start;
+        double stop;
+    };
+
     struct ChannelUiState
     {
         ChannelUiState();
@@ -40,6 +49,7 @@ private:
         bool is_time_domain_visible;
         bool is_frequency_domain_visible;
         std::shared_ptr<ProcessedRecord> record;
+        std::vector<MarkerPair> markers;
 
         void ColorSquare() const;
     };
@@ -79,8 +89,14 @@ private:
     void RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size);
 
     void Reduce(double xsize, double sampling_frequency, int &count, int &stride);
-    static void MetricFormatter(double value, char *tick_label, int size, void *data);
+    static void MetricFormatterBase(double value, char *tick_label, int size, const char *format,
+                                    const char *unit, double start = 1e9);
+    static void MetricFormatterAxis(double value, char *tick_label, int size, void *data);
     void PlotTimeDomainSelected();
+    int GetFirstVisibleChannel(ChannelUiState *&ui);
+    void RenderMarkerX(int id, double *x, ImPlotDragToolFlags flags = 0);
+    void RenderMarkerY(int id, double *y, ImPlotDragToolFlags flags = 0);
+    void NewMarkers();
     void RenderTimeDomain(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size);
 

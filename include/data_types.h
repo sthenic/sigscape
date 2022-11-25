@@ -53,7 +53,7 @@ struct TimeDomainRecord
 
         for (size_t i = 0; i < raw->header->record_length; ++i)
         {
-            /* TODO: Read vertical resolution from header->data_format. */
+            /* FIXME: Read vertical resolution from header->data_format. */
             x[i] = record_start + i * sampling_period;
             y[i] = static_cast<double>(data[i]) / 65536.0 * afe.input_range - afe.dc_offset;
             y[i] /= 1e3;

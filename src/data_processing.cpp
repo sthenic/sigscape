@@ -101,7 +101,7 @@ void DataProcessing::MainLoop()
             const int16_t *data = static_cast<const int16_t *>(time_domain->data);
             for (size_t i = 0; i < fft_length; ++i)
             {
-                /* TODO: Read vertical resolution from header->data_format. */
+                /* FIXME: Read vertical resolution from header->data_format. */
                 if (window != NULL)
                     y[i] = static_cast<double>(data[i]) / 32768.0 * window->data[i];
                 else
@@ -281,11 +281,11 @@ void DataProcessing::ProcessAndIdentify(const std::complex<double> *fft, size_t 
             denominator += cursor[j];
         }
 
-        size_t idx_low = i - cursor.size() + 1;
-        double center_of_mass = static_cast<double>(idx_low) + (numerator / denominator);
-        size_t center_idx = static_cast<size_t>(center_of_mass + 0.5);
-        double center_fraction = center_of_mass - static_cast<double>(center_idx);
-        double center_frequency = bin_range * center_of_mass;
+        const size_t idx_low = i - cursor.size() + 1;
+        const double center_of_mass = static_cast<double>(idx_low) + (numerator / denominator);
+        const size_t center_idx = static_cast<size_t>(center_of_mass + 0.5);
+        const double center_fraction = center_of_mass - static_cast<double>(center_idx);
+        const double center_frequency = bin_range * center_of_mass;
 
         if (denominator > fundamental.power)
         {
@@ -303,7 +303,7 @@ void DataProcessing::ProcessAndIdentify(const std::complex<double> *fft, size_t 
                 fundamental.values.push_back(c);
         }
 
-        if ((denominator > spur.power) && ((center_idx - fundamental.idx) > (2 * m_nof_skirt_bins)))
+        if (denominator > spur.power && (center_idx - fundamental.idx) > (2 * m_nof_skirt_bins))
         {
             spur.power = denominator;
             spur.frequency = center_frequency;
@@ -317,7 +317,7 @@ void DataProcessing::ProcessAndIdentify(const std::complex<double> *fft, size_t 
         }
 
         /* Convert to decibels. But not before adding to bin value as a
-           contribution to the total noise power. We'll adjust this value late
+           contribution to the total noise power. We'll adjust this value later
            on. */
         power += y[i];
         y[i] = 10.0 * std::log10(y[i]);
@@ -338,9 +338,9 @@ void DataProcessing::PlaceHarmonics(const Tone &fundamental, const ProcessedReco
 
     for (int hd = 2; hd <= 5; ++hd)
     {
-        double f = FoldFrequency(fundamental.frequency * hd,
-                                 record->time_domain->sampling_frequency);
-        int idx = static_cast<int>(f / bin_range + 0.5);
+        const double f = FoldFrequency(fundamental.frequency * hd,
+                                       record->time_domain->sampling_frequency);
+        const int idx = static_cast<int>(f / bin_range + 0.5);
         Tone harmonic{};
 
         harmonic.idx_low = static_cast<size_t>((std::max)(idx - static_cast<int>(m_nof_skirt_bins), 0));
@@ -350,13 +350,13 @@ void DataProcessing::PlaceHarmonics(const Tone &fundamental, const ProcessedReco
         double denominator = 0.0;
         for (size_t i = harmonic.idx_low; i <= harmonic.idx_high; ++i)
         {
-            double power = std::pow(10, y[i] / 10);
+            const double power = std::pow(10, y[i] / 10);
             numerator += static_cast<double>(i - harmonic.idx_low) * power;
             denominator += power;
             harmonic.values.push_back(power);
         }
 
-        double center_of_mass = static_cast<double>(harmonic.idx_low) + (numerator / denominator);
+        const double center_of_mass = static_cast<double>(harmonic.idx_low) + (numerator / denominator);
         harmonic.idx = static_cast<size_t>(center_of_mass + 0.5);
         harmonic.idx_fraction = center_of_mass - static_cast<double>(harmonic.idx);
         harmonic.frequency = bin_range * center_of_mass;

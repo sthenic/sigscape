@@ -46,7 +46,7 @@ MockDigitizer::MockDigitizer(const std::string &serial_number, int nof_channels)
     for (int ch = 0; ch < nof_channels; ++ch)
     {
         m_constant.channel[ch].label[0] = "ABCDEFGH"[ch];
-        m_afe.channel[ch].input_range = 500;
+        m_afe.channel[ch].input_range = 2500;
         m_afe.channel[ch].dc_offset = 0;
         m_generators.push_back(std::make_unique<Generator>());
     }

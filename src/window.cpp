@@ -7,7 +7,7 @@ Window::Window(WindowType type, size_t length)
     : type(type)
     , length(length)
 {
-    data = std::unique_ptr<double[]>( new double[length] );
+    data = std::vector<double>(length);
 }
 
 WindowCache::WindowCache()

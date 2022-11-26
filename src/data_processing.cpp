@@ -83,26 +83,27 @@ void DataProcessing::MainLoop()
             /* We copy the time domain data in order to return the buffer to the
                acquisition interface ASAP. */
             auto processed_record = std::make_shared<ProcessedRecord>();
-            size_t fft_length = PreviousPowerOfTwo(time_domain->header->record_length);
+            processed_record->label = m_label;
 
             /* FIXME: Windowing in the time domain struct?  */
             processed_record->time_domain = std::make_shared<TimeDomainRecord>(time_domain, m_afe);
-            processed_record->frequency_domain = std::make_shared<FrequencyDomainRecord>(fft_length / 2 + 1);
             processed_record->time_domain->estimated_trigger_frequency = estimated_trigger_frequency;
             processed_record->time_domain->estimated_throughput = estimated_throughput;
-            processed_record->label = m_label;
 
+            const size_t FFT_LENGTH = PreviousPowerOfTwo(time_domain->header->record_length);
+            processed_record->frequency_domain =
+                std::make_shared<FrequencyDomainRecord>(FFT_LENGTH / 2 + 1);
             processed_record->frequency_domain->bin_range =
-                processed_record->time_domain->sampling_frequency / static_cast<double>(fft_length);
+                processed_record->time_domain->sampling_frequency / static_cast<double>(FFT_LENGTH);
 
             /* Windowing and scaling to [-1, 1] for the correct FFT values. We
                use the raw data again since the processed time domain record
                will have been scaled to Volts with the input range and DC offset
                taken into account. */
-            auto window = m_window_cache.GetWindow(m_window_type, fft_length);
-            auto y = std::unique_ptr<double[]>( new double[fft_length] );
+            auto window = m_window_cache.GetWindow(m_window_type, FFT_LENGTH);
+            auto y = std::vector<double>(FFT_LENGTH);
             const int16_t *data = static_cast<const int16_t *>(time_domain->data);
-            for (size_t i = 0; i < fft_length; ++i)
+            for (size_t i = 0; i < FFT_LENGTH; ++i)
             {
                 /* FIXME: Read vertical resolution from header->data_format. */
                 if (window != NULL)
@@ -113,8 +114,8 @@ void DataProcessing::MainLoop()
 
             /* Calculate the FFT */
             const char *error = NULL;
-            auto yc = std::unique_ptr<std::complex<double>[]>( new std::complex<double>[fft_length] );
-            if (!simple_fft::FFT(y, yc, fft_length, error))
+            auto yc = std::vector<std::complex<double>>(FFT_LENGTH);
+            if (!simple_fft::FFT(y, yc, FFT_LENGTH, error))
             {
                 printf("Failed to compute FFT: %s.\n", error);
                 ADQ_ReturnRecordBuffer(m_handle, m_index, channel, time_domain);
@@ -122,7 +123,7 @@ void DataProcessing::MainLoop()
             }
 
             /* Analyze the fourier transform data, scaling the data and extracting key metrics. */
-            AnalyzeFourierTransform(yc.get(), fft_length, processed_record.get());
+            AnalyzeFourierTransform(yc, processed_record.get());
 
             /* Analyze the time domain data. */
             AnalyzeTimeDomain(processed_record.get());
@@ -185,7 +186,7 @@ size_t DataProcessing::FoldIndex(size_t f, size_t fs)
     return result;
 }
 
-void DataProcessing::AnalyzeFourierTransform(const std::complex<double> *fft, size_t length,
+void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<double>> &fft,
                                              ProcessedRecord *record)
 {
     Tone fundamental{};
@@ -195,7 +196,7 @@ void DataProcessing::AnalyzeFourierTransform(const std::complex<double> *fft, si
     double total_power = 0.0;
     auto &metrics = record->frequency_domain_metrics;
 
-    ProcessAndIdentify(fft, length, record, dc, fundamental, spur, total_power);
+    ProcessAndIdentify(fft, record, dc, fundamental, spur, total_power);
     PlaceHarmonics(fundamental, record, harmonics);
     ResolveOverlaps(dc, fundamental, harmonics, metrics.overlap);
 
@@ -221,20 +222,21 @@ void DataProcessing::AnalyzeFourierTransform(const std::complex<double> *fft, si
     metrics.enob = (metrics.sinad - 1.76) / 6.02;
     metrics.sfdr_dbfs = -y[spur.idx];
     metrics.sfdr_dbc = y[fundamental.idx] - y[spur.idx];
-    metrics.noise = 10.0 * std::log10(noise_power / static_cast<double>(length));
+    metrics.noise = 10.0 * std::log10(noise_power / static_cast<double>(fft.size()));
 
     /* FIXME: Adjust worst spur if it turns out that it's one of the harmonics
               that ended up within the blind spot? */
 }
 
-void DataProcessing::ProcessAndIdentify(const std::complex<double> *fft, size_t length,
+void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> &fft,
                                         ProcessedRecord *record, Tone &dc, Tone &fundamental,
                                         Tone &spur, double &power)
 {
-    /* The loop upper bound is expected to be N/2 + 1. During our pass through
-       the spectrum, our goal is to identify the fundamental, the worst spur and
-       also to accumulate the total power since we're already traversing all the
-       data points.
+    /* The loop upper bound is expected to be N/2 + 1 where N is the length of
+       the transform, i.e. fft.size(). During our pass through the spectrum, our
+       goal is to identify the fundamental, the worst spur and also to
+       accumulate the total power since we're already traversing all the data
+       points.
 
        We'll use a shift register to implement a cursor that we drag across the
        spectrum. If the total power contained in the window is a new maximum, we
@@ -257,10 +259,10 @@ void DataProcessing::ProcessAndIdentify(const std::complex<double> *fft, size_t 
     power = 0.0;
 
     /* FIXME: Make the fundamental frequency configurable (default to dynamic). */
-    for (size_t i = 0; i < record->frequency_domain->count; ++i)
+    for (size_t i = 0; i < record->frequency_domain->x.size(); ++i)
     {
         x[i] = static_cast<double>(i) * bin_range;
-        y[i] = std::pow(2.0 * std::abs(fft[i]) / static_cast<double>(length), 2.0);
+        y[i] = std::pow(2.0 * std::abs(fft[i]) / static_cast<double>(fft.size()), 2.0);
 
         if (i <= m_nof_skirt_bins)
         {
@@ -347,7 +349,7 @@ void DataProcessing::PlaceHarmonics(const Tone &fundamental, const ProcessedReco
         Tone harmonic{};
 
         harmonic.idx_low = static_cast<size_t>((std::max)(idx - static_cast<int>(m_nof_skirt_bins), 0));
-        harmonic.idx_high = (std::min)(idx + m_nof_skirt_bins, record->frequency_domain->count - 1);
+        harmonic.idx_high = (std::min)(idx + m_nof_skirt_bins, record->frequency_domain->x.size() - 1);
 
         double numerator = 0.0;
         double denominator = 0.0;
@@ -415,12 +417,12 @@ void DataProcessing::ResolveOverlap(Tone &tone, const Tone &other, bool &overlap
 
 void DataProcessing::AnalyzeTimeDomain(ProcessedRecord *record)
 {
-    for (size_t i = 0; i < record->time_domain->count; ++i)
+    for (const auto &y : record->time_domain->y)
     {
-        if (record->time_domain->y[i] > record->time_domain_metrics.max)
-            record->time_domain_metrics.max = record->time_domain->y[i];
+        if (y > record->time_domain_metrics.max)
+            record->time_domain_metrics.max = y;
 
-        if (record->time_domain->y[i] < record->time_domain_metrics.min)
-            record->time_domain_metrics.min = record->time_domain->y[i];
+        if (y < record->time_domain_metrics.min)
+            record->time_domain_metrics.min = y;
     }
 }

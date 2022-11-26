@@ -16,42 +16,30 @@
 /* A time domain record. */
 struct TimeDomainRecord
 {
-    TimeDomainRecord(size_t count)
-    {
-        x = std::shared_ptr<double[]>( new double[count] );
-        y = std::shared_ptr<double[]>( new double[count] );
-        this->count = count;
-        capacity = count;
-        estimated_trigger_frequency = 0;
-        estimated_throughput = 0;
-        sampling_frequency = 0;
-        sampling_period = 0;
-        record_start = 0;
-        header = {};
-    }
-
     TimeDomainRecord(const struct ADQGen4Record *raw,
                      const struct ADQAnalogFrontendParametersChannel &afe)
+        : x(raw->header->record_length)
+        , y(raw->header->record_length)
+        , header(*raw->header)
+        , estimated_trigger_frequency(0)
+        , estimated_throughput(0)
+        , sampling_frequency(0)
+        , sampling_period(0)
+        , record_start(0.0)
     {
-        /* FIXME: Can optimize this by giving just the number of bytes used in
-                  the record, raw->size is the buffer capacity. */
-        x = std::shared_ptr<double[]>( new double[raw->header->record_length] );
-        y = std::shared_ptr<double[]>( new double[raw->header->record_length] );
-        this->count = raw->header->record_length;
-        capacity = raw->header->record_length;
-        estimated_trigger_frequency = 0;
-        estimated_throughput = 0;
-        header = *raw->header;
+        /* FIXME: Assuming two bytes per sample. */
 
-        /* Assuming two bytes per sample. */
         /* The time unit is specified in picoseconds at most. Given that we're
            using a 32-bit float, we truncate any information beyond that point. */
+
         int time_unit_ps = static_cast<int>(raw->header->time_unit * 1e12);
         double time_unit = static_cast<double>(time_unit_ps) * 1e-12;
         const int16_t *data = static_cast<const int16_t *>(raw->data);
         sampling_period = static_cast<double>(raw->header->sampling_period) * time_unit;
         record_start = static_cast<double>(raw->header->record_start) * time_unit;
-        sampling_frequency = std::round(1.0 / sampling_period); /* This will be an integer number of Hz */
+
+        /* This will be an integer number of Hz */
+        sampling_frequency = std::round(1.0 / sampling_period);
 
         for (size_t i = 0; i < raw->header->record_length; ++i)
         {
@@ -62,55 +50,13 @@ struct TimeDomainRecord
         }
     }
 
-    /* We don't share ownership of the data intentionally. All copies
-       are deep copies. */
-    TimeDomainRecord(const TimeDomainRecord &other)
-    {
-        header = other.header;
-        count = other.count;
-        capacity = other.count;
-        estimated_trigger_frequency = other.estimated_trigger_frequency;
-        estimated_throughput = other.estimated_throughput;
-        sampling_frequency = other.sampling_frequency;
-        sampling_period = other.sampling_period;
-        record_start = other.record_start;
+    /* Delete copy constructors until we need them. */
+    TimeDomainRecord(const TimeDomainRecord &other) = delete;
+    TimeDomainRecord &operator=(const TimeDomainRecord &other) = delete;
 
-        x = std::shared_ptr<double[]>( new double[other.count] );
-        y = std::shared_ptr<double[]>( new double[other.count] );
-        std::memcpy(x.get(), other.x.get(), other.count * sizeof(*x.get()));
-        std::memcpy(y.get(), other.y.get(), other.count * sizeof(*y.get()));
-    }
-
-    TimeDomainRecord &operator=(const TimeDomainRecord &other)
-    {
-        if (this != &other)
-        {
-            if (capacity < other.count)
-            {
-                x = std::shared_ptr<double[]>( new double[other.count] );
-                y = std::shared_ptr<double[]>( new double[other.count] );
-                capacity = other.count;
-            }
-
-            std::memcpy(x.get(), other.x.get(), other.count * sizeof(*x.get()));
-            std::memcpy(y.get(), other.y.get(), other.count * sizeof(*y.get()));
-            count = other.count;
-            header = other.header;
-            estimated_trigger_frequency = other.estimated_trigger_frequency;
-            estimated_throughput = other.estimated_throughput;
-            sampling_frequency = other.sampling_frequency;
-            sampling_period = other.sampling_period;
-            record_start = other.record_start;
-        }
-
-        return *this;
-    }
-
-    std::shared_ptr<double[]> x;
-    std::shared_ptr<double[]> y;
+    std::vector<double> x;
+    std::vector<double> y;
     struct ADQGen4RecordHeader header;
-    size_t count;
-    size_t capacity;
     double estimated_trigger_frequency;
     double estimated_throughput;
     double sampling_frequency;
@@ -121,65 +67,27 @@ struct TimeDomainRecord
 struct FrequencyDomainRecord
 {
     FrequencyDomainRecord(size_t count)
+        : x(count)
+        , y(count)
+        , bin_range(0)
     {
-        x = std::shared_ptr<double[]>( new double[count] );
-        y = std::shared_ptr<double[]>( new double[count] );
-        this->count = count;
-        capacity = count;
-        bin_range = 0;
     }
 
-    FrequencyDomainRecord(const FrequencyDomainRecord &other)
-    {
-        x = std::shared_ptr<double[]>( new double[other.count] );
-        y = std::shared_ptr<double[]>( new double[other.count] );
-        count = other.count;
-        capacity = other.count;
-        bin_range = other.bin_range;
+    /* Delete copy constructors until we need them. */
+    FrequencyDomainRecord(const FrequencyDomainRecord &other) = delete;
+    FrequencyDomainRecord &operator=(const FrequencyDomainRecord &other) = delete;
 
-        std::memcpy(x.get(), other.x.get(), other.count * sizeof(*x.get()));
-        std::memcpy(y.get(), other.y.get(), other.count * sizeof(*y.get()));
-    }
-
-    FrequencyDomainRecord &operator=(const FrequencyDomainRecord &other)
-    {
-        if (this != &other)
-        {
-            if (capacity < other.count)
-            {
-                x = std::shared_ptr<double[]>( new double[other.count] );
-                y = std::shared_ptr<double[]>( new double[other.count] );
-                capacity = other.count;
-            }
-
-            std::memcpy(x.get(), other.x.get(), other.count * sizeof(*x.get()));
-            std::memcpy(y.get(), other.y.get(), other.count * sizeof(*y.get()));
-            count = other.count;
-            bin_range = other.bin_range;
-        }
-
-        return *this;
-    }
-
-    std::shared_ptr<double[]> x;
-    std::shared_ptr<double[]> y;
-    size_t count;
-    size_t capacity;
+    std::vector<double> x;
+    std::vector<double> y;
     double bin_range;
 };
 
 struct Waterfall
 {
-    Waterfall(size_t count)
-    {
-        data = std::shared_ptr<double[]>( new double[count] );
-        this->count = count;
-        capacity = count;
-        rows = 0;
-        columns = 0;
-    }
-
     Waterfall(const std::deque<std::shared_ptr<FrequencyDomainRecord>> &waterfall)
+        : data{}
+        , rows(0)
+        , columns(0)
     {
         /* Create a waterfall from a dequeue of frequency domain records. These
            must be of the same size. Otherwise, we exit without making the copy. */
@@ -192,10 +100,9 @@ struct Waterfall
         else
         {
             /* +1 for the Nyquist bin */
-            columns = waterfall.front()->count;
             for (const auto &record : waterfall)
             {
-                if (record->count != columns)
+                if (record->x.size() != waterfall.front()->x.size())
                 {
                     exit_without_copy = true;
                     break;
@@ -204,60 +111,26 @@ struct Waterfall
         }
 
         if (exit_without_copy)
-        {
-            data = NULL;
-            count = 0;
-            capacity = 0;
-            rows = 0;
-            columns = 0;
             return;
-        }
 
         /* Perform the actual allocation and linear copy of the objects in the deque. */
+        columns = waterfall.front()->x.size();
         rows = waterfall.size();
-        count = rows * columns;
-        data = std::shared_ptr<double[]>( new double[rows * columns] );
-        capacity = count;
+        data.resize(rows * columns);
 
         size_t idx = 0;
         for (const auto &record : waterfall)
         {
-            std::memcpy(data.get() + idx, record->y.get(), columns * sizeof(*data.get()));
+            std::memcpy(data.data() + idx, record->y.data(), columns * sizeof(*data.data()));
             idx += columns;
         }
     }
 
-    Waterfall(const Waterfall &other)
-    {
-        data = std::shared_ptr<double[]>( new double[other.count] );
-        count = other.count;
-        capacity = other.count;
-        rows = other.rows;
-        columns = other.columns;
+    /* Delete copy constructors until we need them. */
+    Waterfall(const Waterfall &other) = delete;
+    Waterfall &operator=(const Waterfall &other) = delete;
 
-        std::memcpy(data.get(), other.data.get(), other.count * sizeof(*data.get()));
-    }
-
-    Waterfall &operator=(const Waterfall &other)
-    {
-        if (this != &other)
-        {
-            if (capacity < other.count)
-            {
-                data = std::shared_ptr<double[]>( new double[other.count] );
-                capacity = other.count;
-            }
-
-            std::memcpy(data.get(), other.data.get(), other.count * sizeof(*data.get()));
-            count = other.count;
-            rows = other.rows;
-            columns = other.columns;
-        }
-    }
-
-    std::shared_ptr<double[]> data;
-    size_t count;
-    size_t capacity;
+    std::vector<double> data;
     size_t rows;
     size_t columns;
 };
@@ -276,59 +149,9 @@ struct ProcessedRecord
         time_domain_metrics.min = (std::numeric_limits<double>::max)();
     }
 
-    ProcessedRecord(size_t count)
-    {
-        time_domain = std::make_shared<TimeDomainRecord>(count);
-        frequency_domain = std::make_shared<FrequencyDomainRecord>(count); /* FIXME: perhaps skip this? */
-        waterfall = NULL;
-        label = "";
-        time_domain_metrics.max = std::numeric_limits<double>::lowest();
-        time_domain_metrics.min = (std::numeric_limits<double>::max)();
-    }
-
-    ProcessedRecord(const ProcessedRecord &other)
-    {
-        /* We make a deep copy of the other object and create new shared pointers. */
-        if (other.time_domain != NULL)
-            time_domain = std::make_shared<TimeDomainRecord>(*other.time_domain);
-
-        if (other.frequency_domain != NULL)
-            frequency_domain = std::make_shared<FrequencyDomainRecord>(*other.frequency_domain);
-
-        if (other.waterfall != NULL)
-            waterfall = std::make_shared<Waterfall>(*other.waterfall);
-
-        label = other.label;
-        time_domain_metrics = other.time_domain_metrics;
-        frequency_domain_metrics = other.frequency_domain_metrics;
-    }
-
-    ProcessedRecord &operator=(const ProcessedRecord &other)
-    {
-        if (this != &other)
-        {
-            if (other.time_domain != NULL)
-                time_domain = std::make_shared<TimeDomainRecord>(*other.time_domain);
-            else
-                time_domain = NULL;
-
-            if (other.frequency_domain != NULL)
-                frequency_domain = std::make_shared<FrequencyDomainRecord>(*other.frequency_domain);
-            else
-                frequency_domain = NULL;
-
-            if (other.waterfall != NULL)
-                waterfall = std::make_shared<Waterfall>(*other.waterfall);
-            else
-                waterfall = NULL;
-
-            label = other.label;
-            time_domain_metrics = other.time_domain_metrics;
-            frequency_domain_metrics = other.frequency_domain_metrics;
-        }
-
-        return *this;
-    }
+    /* Delete copy constructors until we need them. */
+    ProcessedRecord(const ProcessedRecord &other) = delete;
+    ProcessedRecord &operator=(const ProcessedRecord &other) = delete;
 
     std::shared_ptr<TimeDomainRecord> time_domain;
     std::shared_ptr<FrequencyDomainRecord> frequency_domain;

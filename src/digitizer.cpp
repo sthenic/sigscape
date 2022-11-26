@@ -592,27 +592,40 @@ void Digitizer::SetParameters(const std::shared_ptr<std::string> &str, Digitizer
 
 void Digitizer::InitializeParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher)
 {
-    printf("Initializing!\n");
-    /* Heap allocation */
-    static constexpr size_t SIZE = 64 * 1024;
-    auto parameters_str = std::unique_ptr<char[]>( new char[SIZE] );
-    int result = ADQ_InitializeParametersString(m_id.handle, m_id.index, id, parameters_str.get(), SIZE, 1);
+    auto parameters = std::make_shared<std::string>();
+    parameters->resize(64 * 1024);
+    int result = ADQ_InitializeParametersString(m_id.handle, m_id.index, id, parameters->data(),
+                                                parameters->size(), 1);
     if (result > 0)
-        watcher->PushMessage({FileWatcherMessageId::UPDATE_FILE, std::make_shared<std::string>(parameters_str.get())});
+    {
+        /* The return value includes the null terminator so we have to remove it from the string. */
+        parameters->resize(result - 1);
+        watcher->PushMessage({FileWatcherMessageId::UPDATE_FILE, parameters});
+    }
     else
-        throw DigitizerException(fmt::format("ADQ_InitializeParametersString failed, result {}.", result));
+    {
+        throw DigitizerException(
+            fmt::format("ADQ_InitializeParametersString failed, result {}.", result));
+    }
 }
 
 void Digitizer::GetParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher)
 {
-    /* Heap allocation */
-    static constexpr size_t SIZE = 64 * 1024;
-    auto parameters_str = std::unique_ptr<char[]>( new char[SIZE] );
-    int result = ADQ_GetParametersString(m_id.handle, m_id.index, id, parameters_str.get(), SIZE, 1);
+    /* Write directly to a std::string. */
+    auto parameters = std::make_shared<std::string>();
+    parameters->resize(64 * 1024);
+    int result = ADQ_GetParametersString(m_id.handle, m_id.index, id, parameters->data(),
+                                         parameters->size(), 1);
     if (result > 0)
-        watcher->PushMessage({FileWatcherMessageId::UPDATE_FILE, std::make_shared<std::string>(parameters_str.get())});
+    {
+        /* The return value includes the null terminator so we have to remove it from the string. */
+        parameters->resize(result - 1);
+        watcher->PushMessage({FileWatcherMessageId::UPDATE_FILE, parameters});
+    }
     else
+    {
         throw DigitizerException(fmt::format("ADQ_GetParametersString failed, result {}.", result));
+    }
 }
 
 void Digitizer::InitializeFileWatchers(const struct ADQConstantParameters &constant)

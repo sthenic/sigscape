@@ -101,7 +101,8 @@ private:
     void RenderMarkerX(int id, double *x, ImPlotDragToolFlags flags = 0);
     void RenderMarkerY(int id, double *y, ImPlotDragToolFlags flags = 0);
     void NewMarkers(ChannelUiState &ui);
-    static void SnapX(double x, const double y[], size_t size, double step, double &snap_x, double &snap_y);
+    static void SnapX(double x, double step, const std::vector<double> &y, double &snap_x,
+                      double &snap_y);
     void RenderTimeDomain(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size);
 

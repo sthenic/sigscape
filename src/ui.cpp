@@ -715,17 +715,26 @@ void Ui::MetricFormatter(double value, char *tick_label, int size, void *data)
     std::snprintf(tick_label, size, "%g %s%s", value / LIMITS.back().first, LIMITS.back().second, UNIT);
 }
 
-void Ui::SnapX(double x, const double y[], size_t size, double step, double &snap_x, double &snap_y)
+void Ui::SnapX(double x, double step, const std::vector<double> &y, double &snap_x, double &snap_y)
 {
     double nearest = std::round(x / step);
 
     if (nearest < 0.0)
-        nearest = 0.0;
-    else if (nearest >= size)
-        nearest = size - 1;
+    {
+        snap_x = 0;
+        snap_y = y.front();
+    }
+    else if (nearest >= y.size())
+    {
+        snap_x = (y.size() - 1) * step;
+        snap_y = y.back();
+    }
+    else
+    {
+        snap_x = nearest * step;
+        snap_y = y[static_cast<size_t>(nearest)];
+    }
 
-    snap_x = nearest * step;
-    snap_y = y[static_cast<size_t>(nearest)];
 }
 
 void Ui::PlotTimeDomainSelected()
@@ -744,12 +753,12 @@ void Ui::PlotTimeDomainSelected()
             if (ui.record == NULL)
                 continue;
 
-            int count = static_cast<int>(ui.record->time_domain->count);
+            int count = static_cast<int>(ui.record->time_domain->x.size());
             if (ui.sample_markers)
                 ImPlot::SetNextMarkerStyle(ImPlotMarker_Cross);
             ImPlot::PlotLine(ui.record->label.c_str(),
-                                ui.record->time_domain->x.get(),
-                                ui.record->time_domain->y.get(), count);
+                             ui.record->time_domain->x.data(),
+                             ui.record->time_domain->y.data(), count);
             ui.color = ImPlot::GetLastItemColor();
 
             /* Here we have to resort to using ImPlot internals to gain
@@ -771,10 +780,10 @@ void Ui::PlotTimeDomainSelected()
                 for (auto &m : ui.time_domain_markers)
                 {
                     static double y1, y2;
-                    SnapX(m.start, ui.record->time_domain->y.get(), ui.record->time_domain->count,
-                          ui.record->time_domain->sampling_period, m.start, y1);
-                    SnapX(m.stop, ui.record->time_domain->y.get(), ui.record->time_domain->count,
-                          ui.record->time_domain->sampling_period, m.stop, y2);
+                    SnapX(m.start, ui.record->time_domain->sampling_period,
+                          ui.record->time_domain->y, m.start, y1);
+                    SnapX(m.stop, ui.record->time_domain->sampling_period,
+                          ui.record->time_domain->y, m.stop, y2);
                     RenderMarkerX(marker_id++, &m.start);
                     RenderMarkerX(marker_id++, &m.stop);
                     RenderMarkerY(marker_id++, &y1, ImPlotDragToolFlags_NoInputs);
@@ -849,10 +858,10 @@ void Ui::NewMarkers(ChannelUiState &ui)
         static double snapped_y1 = 0.0;
         static double snapped_y2 = 0.0;
 
-        SnapX(start.x, ui.record->time_domain->y.get(), ui.record->time_domain->count,
-              ui.record->time_domain->sampling_period, snapped_x1, snapped_y1);
-        SnapX(stop.x, ui.record->time_domain->y.get(), ui.record->time_domain->count,
-              ui.record->time_domain->sampling_period, snapped_x2, snapped_y2);
+        SnapX(start.x, ui.record->time_domain->sampling_period, ui.record->time_domain->y,
+              snapped_x1, snapped_y1);
+        SnapX(stop.x, ui.record->time_domain->sampling_period, ui.record->time_domain->y,
+              snapped_x2, snapped_y2);
 
         RenderMarkerX(0, &snapped_x1, ImPlotDragToolFlags_NoInputs);
         RenderMarkerX(1, &snapped_x2, ImPlotDragToolFlags_NoInputs);
@@ -941,10 +950,10 @@ void Ui::PlotFourierTransformSelected()
             auto &ui = m_digitizer_ui_state[i].channels[ch];
             if (ui.record != NULL)
             {
-                int count = static_cast<int>(ui.record->frequency_domain->count);
+                int count = static_cast<int>(ui.record->frequency_domain->x.size());
                 ImPlot::PlotLine(ui.record->label.c_str(),
-                                 ui.record->frequency_domain->x.get(),
-                                 ui.record->frequency_domain->y.get(), count);
+                                 ui.record->frequency_domain->x.data(),
+                                 ui.record->frequency_domain->y.data(), count);
                 ui.color = ImPlot::GetLastItemColor();
 
                 /* Here we have to resort to using ImPlot internals to gain
@@ -1000,7 +1009,7 @@ void Ui::PlotWaterfallSelected()
             {
                 /* FIXME: Y-axis scale (probably time delta?) */
                 const double TOP_RIGHT = record->time_domain->sampling_frequency / 2;
-                ImPlot::PlotHeatmap("heat", record->waterfall->data.get(),
+                ImPlot::PlotHeatmap("heat", record->waterfall->data.data(),
                                     static_cast<int>(record->waterfall->rows),
                                     static_cast<int>(record->waterfall->columns),
                                     -100, 0, NULL, ImPlotPoint(0,0), ImPlotPoint(TOP_RIGHT, 1));

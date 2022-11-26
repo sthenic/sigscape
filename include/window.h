@@ -19,7 +19,7 @@ struct Window
     Window(WindowType type, size_t length);
 
     WindowType type;
-    std::unique_ptr<double[]> data;
+    std::vector<double> data;
     size_t length;
 };
 

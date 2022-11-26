@@ -61,11 +61,12 @@ private:
 
     /* Analyze the fourier transform contained in `fft` of and store the results
        in the processed `record`. */
-    void AnalyzeFourierTransform(const std::complex<double> *fft, size_t length, ProcessedRecord *record);
+    void AnalyzeFourierTransform(const std::vector<std::complex<double>> &fft,
+                                 ProcessedRecord *record);
 
     /* Identify the fundamental tone and the worst spur. The spectrum is
        converted into decibels (in place). */
-    void ProcessAndIdentify(const std::complex<double> *fft, size_t length, ProcessedRecord *record,
+    void ProcessAndIdentify(const std::vector<std::complex<double>> &fft, ProcessedRecord *record,
                             Tone &dc, Tone &fundamental, Tone &spur, double &power);
 
     /* Given a fundamental tone, place the harmonic overtones into the spectrum. */

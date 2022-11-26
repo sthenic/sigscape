@@ -144,12 +144,12 @@ int MockDigitizer::InitializeParametersString(enum ADQParameterId id, char *cons
     if (id == ADQ_PARAMETER_ID_TOP)
     {
         std::strncpy(string, DEFAULT_TOP_PARAMETERS.c_str(), length);
-        return static_cast<int>((std::min)(sizeof(DEFAULT_TOP_PARAMETERS), length));
+        return static_cast<int>((std::min)(DEFAULT_TOP_PARAMETERS.size() + 1, length));
     }
     else if (id == ADQ_PARAMETER_ID_CLOCK_SYSTEM)
     {
         std::strncpy(string, DEFAULT_CLOCK_SYSTEM_PARAMETERS.c_str(), length);
-        return static_cast<int>((std::min)(sizeof(DEFAULT_CLOCK_SYSTEM_PARAMETERS), length));
+        return static_cast<int>((std::min)(DEFAULT_CLOCK_SYSTEM_PARAMETERS.size() + 1, length));
     }
     else
     {

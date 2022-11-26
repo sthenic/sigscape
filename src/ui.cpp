@@ -779,15 +779,11 @@ void Ui::PlotTimeDomainSelected()
             {
                 for (auto &m : ui.time_domain_markers)
                 {
-                    static double y1, y2;
-                    SnapX(m.start, ui.record->time_domain->sampling_period,
-                          ui.record->time_domain->y, m.start, y1);
-                    SnapX(m.stop, ui.record->time_domain->sampling_period,
-                          ui.record->time_domain->y, m.stop, y2);
-                    RenderMarkerX(marker_id++, &m.start);
-                    RenderMarkerX(marker_id++, &m.stop);
-                    RenderMarkerY(marker_id++, &y1, ImPlotDragToolFlags_NoInputs);
-                    RenderMarkerY(marker_id++, &y2, ImPlotDragToolFlags_NoInputs);
+                    static double y1;
+                    SnapX(m.x, ui.record->time_domain->sampling_period, ui.record->time_domain->y,
+                          m.x, m.y);
+                    RenderMarkerX(marker_id++, &m.x);
+                    RenderMarkerY(marker_id++, &m.y, ImPlotDragToolFlags_NoInputs);
                 }
             }
         }
@@ -829,44 +825,36 @@ void Ui::RenderMarkerY(int id, double *y, ImPlotDragToolFlags flags)
 
 void Ui::NewMarkers(ChannelUiState &ui)
 {
-    static ImPlotPoint start{};
-    static ImPlotPoint stop{};
+    static ImPlotPoint point{};
     static bool armed = false;
 
     if (ImPlot::IsPlotHovered() && ImGui::GetIO().KeyCtrl && ImGui::IsMouseClicked(0))
     {
-        start = ImPlot::GetPlotMousePos();
-        stop = ImPlot::GetPlotMousePos();
+        point = ImPlot::GetPlotMousePos();
         armed = true;
     }
 
     if (armed && ImGui::IsMouseDragging(0))
     {
-        stop = ImPlot::GetPlotMousePos();
+        point = ImPlot::GetPlotMousePos();
     }
 
     if (armed && ImGui::IsMouseReleased(0))
     {
-        ui.time_domain_markers.push_back({Ui::MarkerPair::HORIZONTAL, start.x, stop.x});
+        ui.time_domain_markers.push_back({point.x, 0.0});
         armed = false;
     }
 
     if (armed)
     {
-        static double snapped_x1 = 0.0;
-        static double snapped_x2 = 0.0;
-        static double snapped_y1 = 0.0;
-        static double snapped_y2 = 0.0;
+        static double snap_x = 0.0;
+        static double snap_y = 0.0;
 
-        SnapX(start.x, ui.record->time_domain->sampling_period, ui.record->time_domain->y,
-              snapped_x1, snapped_y1);
-        SnapX(stop.x, ui.record->time_domain->sampling_period, ui.record->time_domain->y,
-              snapped_x2, snapped_y2);
+        SnapX(point.x, ui.record->time_domain->sampling_period, ui.record->time_domain->y,
+              snap_x, snap_y);
 
-        RenderMarkerX(0, &snapped_x1, ImPlotDragToolFlags_NoInputs);
-        RenderMarkerX(1, &snapped_x2, ImPlotDragToolFlags_NoInputs);
-        RenderMarkerY(1, &snapped_y1, ImPlotDragToolFlags_NoInputs);
-        RenderMarkerY(1, &snapped_y2, ImPlotDragToolFlags_NoInputs);
+        RenderMarkerX(0, &snap_x, ImPlotDragToolFlags_NoInputs);
+        RenderMarkerY(1, &snap_y, ImPlotDragToolFlags_NoInputs);
     }
 }
 

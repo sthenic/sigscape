@@ -31,13 +31,10 @@ private:
     bool m_is_frequency_domain_collapsed;
     std::unique_ptr<bool[]> m_selected;
 
-    struct MarkerPair
+    struct Marker
     {
-        MarkerPair() = default;
-
-        enum {VERTICAL, HORIZONTAL} direction;
-        double start;
-        double stop;
+        double x;
+        double y;
     };
 
     struct ChannelUiState
@@ -49,8 +46,8 @@ private:
         bool is_time_domain_visible;
         bool is_frequency_domain_visible;
         std::shared_ptr<ProcessedRecord> record;
-        std::vector<MarkerPair> time_domain_markers;
-        std::vector<MarkerPair> frequency_domain_markers;
+        std::vector<Marker> time_domain_markers;
+        std::vector<Marker> frequency_domain_markers;
 
         void ColorSquare() const;
     };

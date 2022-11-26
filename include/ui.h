@@ -97,7 +97,7 @@ private:
     int GetFirstVisibleChannel(ChannelUiState *&ui);
     void RenderMarkerX(int id, double *x, ImPlotDragToolFlags flags = 0);
     void RenderMarkerY(int id, double *y, ImPlotDragToolFlags flags = 0);
-    void NewMarkers(ChannelUiState &ui);
+    void NewMarkers(const std::vector<double> &y, double step, std::vector<Marker> &markers);
     static void SnapX(double x, double step, const std::vector<double> &y, double &snap_x,
                       double &snap_y);
     void RenderTimeDomain(const ImVec2 &position, const ImVec2 &size);

@@ -779,7 +779,6 @@ void Ui::PlotTimeDomainSelected()
             {
                 for (auto &m : ui.time_domain_markers)
                 {
-                    static double y1;
                     SnapX(m.x, ui.record->time_domain->sampling_period, ui.record->time_domain->y,
                           m.x, m.y);
                     RenderMarkerX(marker_id++, &m.x);
@@ -823,7 +822,7 @@ void Ui::RenderMarkerY(int id, double *y, ImPlotDragToolFlags flags)
     ImPlot::TagY(*y, ImVec4(1, 1, 1, 1), "%s", MetricFormatter(*y, "{: 7.1f} {}V", 1e-3).c_str());
 }
 
-void Ui::NewMarkers(ChannelUiState &ui)
+void Ui::NewMarkers(const std::vector<double> &y, double step, std::vector<Marker> &markers)
 {
     static ImPlotPoint point{};
     static bool armed = false;
@@ -841,7 +840,7 @@ void Ui::NewMarkers(ChannelUiState &ui)
 
     if (armed && ImGui::IsMouseReleased(0))
     {
-        ui.time_domain_markers.push_back({point.x, 0.0});
+        markers.push_back({point.x, 0.0});
         armed = false;
     }
 
@@ -850,9 +849,7 @@ void Ui::NewMarkers(ChannelUiState &ui)
         static double snap_x = 0.0;
         static double snap_y = 0.0;
 
-        SnapX(point.x, ui.record->time_domain->sampling_period, ui.record->time_domain->y,
-              snap_x, snap_y);
-
+        SnapX(point.x, step, y, snap_x, snap_y);
         RenderMarkerX(0, &snap_x, ImPlotDragToolFlags_NoInputs);
         RenderMarkerY(1, &snap_y, ImPlotDragToolFlags_NoInputs);
     }
@@ -875,7 +872,10 @@ void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
         /* FIXME: Just as a temporary solution, not the prettiest. */
         ChannelUiState *ui;
         if (ADQR_EOK == GetFirstVisibleChannel(ui))
-            NewMarkers(*ui);
+        {
+            NewMarkers(ui->record->time_domain->y, ui->record->time_domain->sampling_period,
+                       ui->time_domain_markers);
+        }
 
         ImPlot::EndPlot();
     }

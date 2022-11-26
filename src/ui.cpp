@@ -29,8 +29,11 @@ Ui::ChannelUiState::ChannelUiState()
     , sample_markers(true)
     , is_time_domain_visible(true)
     , is_frequency_domain_visible(true)
+    , is_adding_time_domain_marker(false)
+    , is_adding_frequency_domain_marker(false)
     , record(NULL)
     , time_domain_markers{}
+    , frequency_domain_markers{}
 {}
 
 void Ui::ChannelUiState::ColorSquare() const
@@ -781,15 +784,15 @@ void Ui::PlotTimeDomainSelected()
                 {
                     SnapX(m.x, ui.record->time_domain->sampling_period, ui.record->time_domain->y,
                           m.x, m.y);
-                    RenderMarkerX(marker_id++, &m.x);
-                    RenderMarkerY(marker_id++, &m.y, ImPlotDragToolFlags_NoInputs);
+                    RenderMarkerX(marker_id++, &m.x, "{:g} {}s", 1e-9);
+                    RenderMarkerY(marker_id++, &m.y, "{: 7.1f} {}V", 1e-3, ImPlotDragToolFlags_NoInputs);
                 }
             }
         }
     }
 }
 
-int Ui::GetFirstVisibleChannel(ChannelUiState *&ui)
+int Ui::GetFirstChannelWithData(ChannelUiState *&ui)
 {
     for (size_t i = 0; i < m_digitizers.size(); ++i)
     {
@@ -810,48 +813,36 @@ int Ui::GetFirstVisibleChannel(ChannelUiState *&ui)
     return ADQR_EAGAIN;
 }
 
-void Ui::RenderMarkerX(int id, double *x, ImPlotDragToolFlags flags)
+void Ui::RenderMarkerX(int id, double *x, const std::string &format, double highest_prefix,
+                       ImPlotDragToolFlags flags)
 {
     ImPlot::DragLineX(id, x, ImVec4(1, 1, 1, 1), 1.0F, flags);
-    ImPlot::TagX(*x, ImVec4(1, 1, 1, 1), "%s", MetricFormatter(*x, "{:g} {}s", 1e-9).c_str());
+    ImPlot::TagX(*x, ImVec4(1, 1, 1, 1), "%s", MetricFormatter(*x, format, highest_prefix).c_str());
 }
 
-void Ui::RenderMarkerY(int id, double *y, ImPlotDragToolFlags flags)
+void Ui::RenderMarkerY(int id, double *y, const std::string &format, double highest_prefix,
+                       ImPlotDragToolFlags flags)
 {
     ImPlot::DragLineY(id, y, ImVec4(1, 1, 1, 1), 1.0F, flags);
-    ImPlot::TagY(*y, ImVec4(1, 1, 1, 1), "%s", MetricFormatter(*y, "{: 7.1f} {}V", 1e-3).c_str());
+    ImPlot::TagY(*y, ImVec4(1, 1, 1, 1), "%s", MetricFormatter(*y, format, highest_prefix).c_str());
 }
 
-void Ui::NewMarkers(const std::vector<double> &y, double step, std::vector<Marker> &markers)
+void Ui::MaybeAddMarker(std::vector<Marker> &markers, bool &is_adding_marker)
 {
-    static ImPlotPoint point{};
-    static bool armed = false;
-
     if (ImPlot::IsPlotHovered() && ImGui::GetIO().KeyCtrl && ImGui::IsMouseClicked(0))
     {
-        point = ImPlot::GetPlotMousePos();
-        armed = true;
+        markers.push_back({ImPlot::GetPlotMousePos().x, 0.0});
+        is_adding_marker = true;
     }
 
-    if (armed && ImGui::IsMouseDragging(0))
+    if (is_adding_marker && ImGui::IsMouseDragging(0))
     {
-        point = ImPlot::GetPlotMousePos();
+        markers.back().x = ImPlot::GetPlotMousePos().x;
     }
 
-    if (armed && ImGui::IsMouseReleased(0))
+    if (is_adding_marker && ImGui::IsMouseReleased(0))
     {
-        markers.push_back({point.x, 0.0});
-        armed = false;
-    }
-
-    if (armed)
-    {
-        static double snap_x = 0.0;
-        static double snap_y = 0.0;
-
-        SnapX(point.x, step, y, snap_x, snap_y);
-        RenderMarkerX(0, &snap_x, ImPlotDragToolFlags_NoInputs);
-        RenderMarkerY(1, &snap_y, ImPlotDragToolFlags_NoInputs);
+        is_adding_marker = false;
     }
 }
 
@@ -871,11 +862,8 @@ void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
 
         /* FIXME: Just as a temporary solution, not the prettiest. */
         ChannelUiState *ui;
-        if (ADQR_EOK == GetFirstVisibleChannel(ui))
-        {
-            NewMarkers(ui->record->time_domain->y, ui->record->time_domain->sampling_period,
-                       ui->time_domain_markers);
-        }
+        if (ADQR_EOK == GetFirstChannelWithData(ui) && ui->is_time_domain_visible)
+            MaybeAddMarker(ui->time_domain_markers, ui->is_adding_time_domain_marker);
 
         ImPlot::EndPlot();
     }
@@ -928,6 +916,9 @@ void Ui::Annotate(const std::pair<double, double> &point, const std::string &lab
 
 void Ui::PlotFourierTransformSelected()
 {
+    /* We need a (globally) unique id for each marker. */
+    int marker_id = 0;
+
     for (size_t i = 0; i < m_digitizers.size(); ++i)
     {
         if (!m_selected[i])
@@ -958,6 +949,14 @@ void Ui::PlotFourierTransformSelected()
                         Annotate(ui.record->frequency_domain_metrics.harmonics[j],
                                  fmt::format("HD{}", j + 2));
                     }
+
+                    for (auto &m : ui.frequency_domain_markers)
+                    {
+                        SnapX(m.x, ui.record->frequency_domain->bin_range,
+                              ui.record->frequency_domain->y, m.x, m.y);
+                        RenderMarkerX(marker_id++, &m.x, "{:.2f} {}Hz", 1e6);
+                        RenderMarkerY(marker_id++, &m.y, "{: 8.2f} {}dBFS", 1, ImPlotDragToolFlags_NoInputs);
+                    }
                 }
             }
         }
@@ -974,6 +973,12 @@ void Ui::RenderFourierTransformPlot()
         ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, 1e9);
         ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatter, (void *)"Hz");
         PlotFourierTransformSelected();
+
+        /* FIXME: Just as a temporary solution, not the prettiest. */
+        ChannelUiState *ui;
+        if (ADQR_EOK == GetFirstChannelWithData(ui) && ui->is_frequency_domain_visible)
+            MaybeAddMarker(ui->frequency_domain_markers, ui->is_adding_frequency_domain_marker);
+
         ImPlot::EndPlot();
     }
     ImPlot::PopStyleVar();

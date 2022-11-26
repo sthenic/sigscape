@@ -45,6 +45,8 @@ private:
         bool sample_markers;
         bool is_time_domain_visible;
         bool is_frequency_domain_visible;
+        bool is_adding_time_domain_marker;
+        bool is_adding_frequency_domain_marker;
         std::shared_ptr<ProcessedRecord> record;
         std::vector<Marker> time_domain_markers;
         std::vector<Marker> frequency_domain_markers;
@@ -94,10 +96,12 @@ private:
                                        double highest_prefix = 1e9);
     static void MetricFormatter(double value, char *tick_label, int size, void *data);
     void PlotTimeDomainSelected();
-    int GetFirstVisibleChannel(ChannelUiState *&ui);
-    void RenderMarkerX(int id, double *x, ImPlotDragToolFlags flags = 0);
-    void RenderMarkerY(int id, double *y, ImPlotDragToolFlags flags = 0);
-    void NewMarkers(const std::vector<double> &y, double step, std::vector<Marker> &markers);
+    int GetFirstChannelWithData(ChannelUiState *&ui);
+    void RenderMarkerX(int id, double *x, const std::string &format, double highest_prefix,
+                       ImPlotDragToolFlags flags = 0);
+    void RenderMarkerY(int id, double *y, const std::string &format, double highest_prefix,
+                       ImPlotDragToolFlags flags = 0);
+    void MaybeAddMarker(std::vector<Marker> &markers, bool &is_adding_marker);
     static void SnapX(double x, double step, const std::vector<double> &y, double &snap_x,
                       double &snap_y);
     void RenderTimeDomain(const ImVec2 &position, const ImVec2 &size);

@@ -63,6 +63,9 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
         case DigitizerMessageId::CONFIGURATION:
             name = "CONFIGURATION";
             break;
+        case DigitizerMessageId::INITIALIZE_WOULD_OVERWRITE:
+            name = "INITIALIZE_WOULD_OVERWRITE";
+            break;
         case DigitizerMessageId::SET_INTERNAL_REFERENCE:
             name = "SET_INTERNAL_REFERENCE";
             break;
@@ -92,6 +95,9 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
             break;
         case DigitizerMessageId::INITIALIZE_PARAMETERS:
             name = "INITIALIZE_PARAMETERS";
+            break;
+        case DigitizerMessageId::INITIALIZE_PARAMETERS_FORCE:
+            name = "INITIALIZE_PARAMETERS_FORCE";
             break;
         case DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
             name = "SET_CLOCK_SYSTEM_PARAMETERS";
@@ -333,6 +339,13 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
         break;
 
     case DigitizerMessageId::INITIALIZE_PARAMETERS:
+        if (m_parameters.top->size() != 0 || m_parameters.clock_system->size() != 0)
+        {
+            m_read_queue.Write(DigitizerMessageId::INITIALIZE_WOULD_OVERWRITE);
+            break;
+        }
+        /* FALLTHROUGH */
+    case DigitizerMessageId::INITIALIZE_PARAMETERS_FORCE:
         InitializeParameters(ADQ_PARAMETER_ID_TOP, m_watchers.top);
         InitializeParameters(ADQ_PARAMETER_ID_CLOCK_SYSTEM, m_watchers.clock_system);
         break;
@@ -487,6 +500,7 @@ void Digitizer::ConfigureExternalReference()
         throw DigitizerException(fmt::format("Failed to set clock system parameters, result {}.", result));
 #endif
 }
+
 void Digitizer::ConfigureExternalClock()
 {
 #ifdef NO_ADQAPI
@@ -578,6 +592,7 @@ void Digitizer::SetParameters(const std::shared_ptr<std::string> &str, Digitizer
 
 void Digitizer::InitializeParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher)
 {
+    printf("Initializing!\n");
     /* Heap allocation */
     static constexpr size_t SIZE = 64 * 1024;
     auto parameters_str = std::unique_ptr<char[]>( new char[SIZE] );
@@ -602,14 +617,14 @@ void Digitizer::GetParameters(enum ADQParameterId id, const std::unique_ptr<File
 
 void Digitizer::InitializeFileWatchers(const struct ADQConstantParameters &constant)
 {
+    auto MakeLowercase = [](unsigned char c){ return static_cast<char>(std::tolower(c)); };
+
     std::string filename = fmt::format("./parameters_top_{}.json", constant.serial_number);
-    std::transform(filename.begin(), filename.end(), filename.begin(),
-                   [](unsigned char c){ return static_cast<char>(std::tolower(c)); } );
+    std::transform(filename.begin(), filename.end(), filename.begin(), MakeLowercase);
     m_watchers.top = std::make_unique<FileWatcher>(filename);
 
     filename = fmt::format("./parameters_clock_system_{}.json", constant.serial_number);
-    std::transform(filename.begin(), filename.end(), filename.begin(),
-                   [](unsigned char c){ return static_cast<char>(std::tolower(c)); } );
+    std::transform(filename.begin(), filename.end(), filename.begin(), MakeLowercase);
     m_watchers.clock_system = std::make_unique<FileWatcher>(filename);
 
     m_parameters.top = std::make_shared<std::string>("");

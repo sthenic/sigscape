@@ -4,3 +4,4 @@ imgui/misc/
 imgui.ini
 *.code-workspace
 .vscode/
+*.json

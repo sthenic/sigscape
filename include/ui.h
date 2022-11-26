@@ -65,6 +65,7 @@ private:
         ImVec4 event_color;
         ImVec4 set_top_color;
         ImVec4 set_clock_system_color;
+        bool popup_initialize_would_overwrite;
 
         std::vector<ChannelUiState> channels;
     };
@@ -81,7 +82,9 @@ private:
     void RenderRight(float width, float height);
     void RenderCenter(float width, float height);
     void RenderLeft(float width, float height);
+    void RenderPopups();
 
+    void RenderPopupInitializeWouldOverwrite(size_t idx);
     void RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size);
     void RenderCommandPalette(const ImVec2 &position, const ImVec2 &size);
     void RenderSetTopParametersButton(const ImVec2 &size);

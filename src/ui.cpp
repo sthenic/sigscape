@@ -24,12 +24,6 @@ const ImVec4 Ui::COLOR_WOW_BLUE = {0.00f, 0.44f, 0.87f, 0.8f};
 const ImVec4 Ui::COLOR_WOW_PURPLE = {0.53f, 0.53f, 0.93f, 0.8f};
 const ImVec4 Ui::COLOR_WOW_TAN  = {0.78f, 0.61f, 0.43f, 0.8f};
 
-// Ui::MarkerPair::MarkerPair()
-//     : direction(HORIZONTAL)
-//     , start(0.0)
-//     , stop(0.0)
-// {}
-
 Ui::ChannelUiState::ChannelUiState()
     : color{}
     , sample_markers(true)
@@ -56,6 +50,7 @@ Ui::DigitizerUiState::DigitizerUiState(int nof_channels)
     , event_color(COLOR_GREEN)
     , set_top_color(ImGui::GetStyleColorVec4(ImGuiCol_Button))
     , set_clock_system_color(ImGui::GetStyleColorVec4(ImGuiCol_Button))
+    , popup_initialize_would_overwrite(false)
     , channels{}
 {
     for (int i = 0; i < nof_channels; ++i)
@@ -117,6 +112,7 @@ void Ui::Render(float width, float height)
     RenderLeft(width, height);
     RenderCenter(width, height);
     RenderRight(width, height);
+    RenderPopups();
 
     if (m_show_imgui_demo_window)
         ImGui::ShowDemoWindow();
@@ -239,6 +235,11 @@ void Ui::HandleMessage(size_t i, const DigitizerMessage &message)
         m_digitizer_ui_state[i].set_clock_system_color = COLOR_GREEN;
         break;
 
+    case DigitizerMessageId::INITIALIZE_WOULD_OVERWRITE:
+        m_digitizer_ui_state[i].popup_initialize_would_overwrite = true;
+        ImGui::OpenPopup("InitializeWouldOverwrite");
+        break;
+
     default:
         /* These are not expected as a message from a digitizer thread. */
         break;
@@ -355,6 +356,45 @@ void Ui::RenderLeft(float width, float height)
     const ImVec2 METRICS_POS(0.0f, height - 3 * FRAME_HEIGHT);
     const ImVec2 METRICS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 3 * FRAME_HEIGHT);
     RenderApplicationMetrics(METRICS_POS, METRICS_SIZE);
+}
+
+void Ui::RenderPopups()
+{
+    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    {
+        if (m_digitizer_ui_state[i].popup_initialize_would_overwrite)
+            RenderPopupInitializeWouldOverwrite(i);
+    }
+}
+
+void Ui::RenderPopupInitializeWouldOverwrite(size_t idx)
+{
+    ImGui::OpenPopup("##initializewouldoverwrite");
+    if (ImGui::BeginPopupModal("##initializewouldoverwrite", NULL,
+                               ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::Text("Initializing parameters for %s would\n"
+                    "overwrite (reset) the existing parameters.\n\n"
+                    "Proceed?\n\n",
+                    m_digitizer_ui_state[idx].identifier.c_str());
+        ImGui::Separator();
+
+        if (ImGui::Button("Yes"))
+        {
+            m_digitizers[idx]->PushMessage(DigitizerMessageId::INITIALIZE_PARAMETERS_FORCE);
+            m_digitizer_ui_state[idx].popup_initialize_would_overwrite = false;
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("No"))
+        {
+            m_digitizer_ui_state[idx].popup_initialize_would_overwrite = false;
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
 }
 
 void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
@@ -778,7 +818,7 @@ int Ui::GetFirstVisibleChannel(ChannelUiState *&ui)
 void Ui::RenderMarkerX(int id, double *x, ImPlotDragToolFlags flags)
 {
     ImPlot::DragLineX(id, x, ImVec4(1, 1, 1, 1), 1.0F, flags);
-    ImPlot::TagX(*x, ImVec4(1, 1, 1, 1), "%s", MetricFormatter(*x, "{:g} {}s").c_str());
+    ImPlot::TagX(*x, ImVec4(1, 1, 1, 1), "%s", MetricFormatter(*x, "{:g} {}s", 1e-9).c_str());
 }
 
 void Ui::RenderMarkerY(int id, double *y, ImPlotDragToolFlags flags)

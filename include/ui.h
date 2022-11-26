@@ -49,7 +49,8 @@ private:
         bool is_time_domain_visible;
         bool is_frequency_domain_visible;
         std::shared_ptr<ProcessedRecord> record;
-        std::vector<MarkerPair> markers;
+        std::vector<MarkerPair> time_domain_markers;
+        std::vector<MarkerPair> frequency_domain_markers;
 
         void ColorSquare() const;
     };
@@ -99,7 +100,8 @@ private:
     int GetFirstVisibleChannel(ChannelUiState *&ui);
     void RenderMarkerX(int id, double *x, ImPlotDragToolFlags flags = 0);
     void RenderMarkerY(int id, double *y, ImPlotDragToolFlags flags = 0);
-    void NewMarkers();
+    void NewMarkers(ChannelUiState &ui);
+    static void SnapX(double x, const double y[], size_t size, double step, double &snap_x, double &snap_y);
     void RenderTimeDomain(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size);
 

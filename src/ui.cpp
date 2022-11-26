@@ -30,7 +30,7 @@ Ui::ChannelUiState::ChannelUiState()
     , is_time_domain_visible(true)
     , is_frequency_domain_visible(true)
     , record(NULL)
-    , markers{}
+    , time_domain_markers{}
 {}
 
 void Ui::ChannelUiState::ColorSquare() const
@@ -135,7 +135,7 @@ void Ui::PushMessage(const DigitizerMessage &message, bool selected)
         if (message.id == DigitizerMessageId::STOP_ACQUISITION)
         {
             for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
-                m_digitizer_ui_state[i].channels[ch].markers.clear();
+                m_digitizer_ui_state[i].channels[ch].time_domain_markers.clear();
         }
     }
 }
@@ -715,29 +715,17 @@ void Ui::MetricFormatter(double value, char *tick_label, int size, void *data)
     std::snprintf(tick_label, size, "%g %s%s", value / LIMITS.back().first, LIMITS.back().second, UNIT);
 }
 
-void SnapHorizontalMarkers(double x1, double x2, const ProcessedRecord *record,
-                           double &x1_snap, double &x2_snap,
-                           double &y1_snap, double &y2_snap)
+void Ui::SnapX(double x, const double y[], size_t size, double step, double &snap_x, double &snap_y)
 {
-    const double &sampling_period = record->time_domain->sampling_period;
-    double nearest_sample_x1 = std::round(x1 / sampling_period);
-    double nearest_sample_x2 = std::round(x2 / sampling_period);
+    double nearest = std::round(x / step);
 
-    if (nearest_sample_x1 < 0.0)
-        nearest_sample_x1 = 0.0;
-    else if (nearest_sample_x1 >= record->time_domain->count)
-        nearest_sample_x1 = record->time_domain->count - 1;
+    if (nearest < 0.0)
+        nearest = 0.0;
+    else if (nearest >= size)
+        nearest = size - 1;
 
-    if (nearest_sample_x2 < 0.0)
-        nearest_sample_x2 = 0.0;
-    else if (nearest_sample_x2 >= record->time_domain->count)
-        nearest_sample_x2 = record->time_domain->count - 1;
-
-    x1_snap = nearest_sample_x1 * sampling_period;
-    x2_snap = nearest_sample_x2 * sampling_period;
-
-    y1_snap = record->time_domain->y[static_cast<size_t>(nearest_sample_x1)];
-    y2_snap = record->time_domain->y[static_cast<size_t>(nearest_sample_x2)];
+    snap_x = nearest * step;
+    snap_y = y[static_cast<size_t>(nearest)];
 }
 
 void Ui::PlotTimeDomainSelected()
@@ -780,10 +768,13 @@ void Ui::PlotTimeDomainSelected()
 
             if (ui.is_time_domain_visible)
             {
-                for (auto &m : ui.markers)
+                for (auto &m : ui.time_domain_markers)
                 {
                     static double y1, y2;
-                    SnapHorizontalMarkers(m.start, m.stop, ui.record.get(), m.start, m.stop, y1, y2);
+                    SnapX(m.start, ui.record->time_domain->y.get(), ui.record->time_domain->count,
+                          ui.record->time_domain->sampling_period, m.start, y1);
+                    SnapX(m.stop, ui.record->time_domain->y.get(), ui.record->time_domain->count,
+                          ui.record->time_domain->sampling_period, m.stop, y2);
                     RenderMarkerX(marker_id++, &m.start);
                     RenderMarkerX(marker_id++, &m.stop);
                     RenderMarkerY(marker_id++, &y1, ImPlotDragToolFlags_NoInputs);
@@ -827,19 +818,13 @@ void Ui::RenderMarkerY(int id, double *y, ImPlotDragToolFlags flags)
     ImPlot::TagY(*y, ImVec4(1, 1, 1, 1), "%s", MetricFormatter(*y, "{: 7.1f} {}V", 1e-3).c_str());
 }
 
-void Ui::NewMarkers()
+void Ui::NewMarkers(ChannelUiState &ui)
 {
-    static std::vector<std::pair<double, double>> markers;
     static ImPlotPoint start{};
     static ImPlotPoint stop{};
-
-    /* FIXME: Just as a temporary solution, not the prettiest.  */
-    ChannelUiState *ui;
-    if (ADQR_EOK != GetFirstVisibleChannel(ui))
-        return;
-
     static bool armed = false;
-    if (ImGui::GetIO().KeyCtrl && ImGui::IsMouseClicked(0))
+
+    if (ImPlot::IsPlotHovered() && ImGui::GetIO().KeyCtrl && ImGui::IsMouseClicked(0))
     {
         start = ImPlot::GetPlotMousePos();
         stop = ImPlot::GetPlotMousePos();
@@ -853,7 +838,7 @@ void Ui::NewMarkers()
 
     if (armed && ImGui::IsMouseReleased(0))
     {
-        ui->markers.push_back({Ui::MarkerPair::HORIZONTAL, start.x, stop.x});
+        ui.time_domain_markers.push_back({Ui::MarkerPair::HORIZONTAL, start.x, stop.x});
         armed = false;
     }
 
@@ -863,8 +848,11 @@ void Ui::NewMarkers()
         static double snapped_x2 = 0.0;
         static double snapped_y1 = 0.0;
         static double snapped_y2 = 0.0;
-        SnapHorizontalMarkers(start.x, stop.x, ui->record.get(), snapped_x1, snapped_x2,
-                              snapped_y1, snapped_y2);
+
+        SnapX(start.x, ui.record->time_domain->y.get(), ui.record->time_domain->count,
+              ui.record->time_domain->sampling_period, snapped_x1, snapped_y1);
+        SnapX(stop.x, ui.record->time_domain->y.get(), ui.record->time_domain->count,
+              ui.record->time_domain->sampling_period, snapped_x2, snapped_y2);
 
         RenderMarkerX(0, &snapped_x1, ImPlotDragToolFlags_NoInputs);
         RenderMarkerX(1, &snapped_x2, ImPlotDragToolFlags_NoInputs);
@@ -886,7 +874,12 @@ void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
         ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatter, (void *)"s");
         ImPlot::SetupAxisFormat(ImAxis_Y1, MetricFormatter, (void *)"V");
         PlotTimeDomainSelected();
-        NewMarkers();
+
+        /* FIXME: Just as a temporary solution, not the prettiest. */
+        ChannelUiState *ui;
+        if (ADQR_EOK == GetFirstVisibleChannel(ui))
+            NewMarkers(*ui);
+
         ImPlot::EndPlot();
     }
     ImPlot::PopStyleVar();

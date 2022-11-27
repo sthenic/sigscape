@@ -424,5 +424,9 @@ void DataProcessing::AnalyzeTimeDomain(ProcessedRecord *record)
 
         if (y < record->time_domain_metrics.min)
             record->time_domain_metrics.min = y;
+
+        record->time_domain_metrics.mean += y;
     }
+
+    record->time_domain_metrics.mean /= static_cast<double>(record->time_domain->y.size());
 }

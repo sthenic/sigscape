@@ -162,6 +162,7 @@ struct ProcessedRecord
     {
         double max;
         double min;
+        double mean;
     } time_domain_metrics;
 
     struct FrequencyDomainMetrics

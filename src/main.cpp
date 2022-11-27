@@ -27,7 +27,7 @@ int main(int, char **)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 #endif
 
-    GLFWwindow *window = glfwCreateWindow(1920, 1200, "ADQ Rapid", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(2140, 1200, "ADQ Rapid", NULL, NULL);
     if (window == NULL)
         return 1;
     glfwMakeContextCurrent(window);

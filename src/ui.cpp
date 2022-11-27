@@ -143,15 +143,6 @@ void Ui::PushMessage(const DigitizerMessage &message, bool selected)
         if (selected && !m_selected[i])
             continue;
         m_digitizers[i]->PushMessage(message);
-
-        if (message.id == DigitizerMessageId::STOP_ACQUISITION)
-        {
-            for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
-            {
-                m_digitizer_ui_state[i].channels[ch].time_domain_markers.clear();
-                m_digitizer_ui_state[i].channels[ch].frequency_domain_markers.clear();
-            }
-        }
     }
 }
 
@@ -796,13 +787,19 @@ void Ui::PlotTimeDomainSelected()
 
             if (ui.is_time_domain_visible)
             {
-                for (auto &m : ui.time_domain_markers)
+                auto &markers = ui.time_domain_markers;
+                for (auto &m : markers)
                 {
                     SnapX(m.x, ui.record->time_domain->sampling_period, ui.record->time_domain->y,
                           m.x, m.y);
                     RenderMarkerX(marker_id++, &m.x, "{:g} {}s", 1e-9);
                     RenderMarkerY(marker_id++, &m.y, "{: 7.1f} {}V", 1e-3, ImPlotDragToolFlags_NoInputs);
+                    ImPlot::DragPoint(0, &m.x, &m.y, ImVec4(1, 1, 1, 1), 5.0f, ImPlotDragToolFlags_NoInputs);
                 }
+
+                markers.erase(std::remove_if(markers.begin(), markers.end(),
+                                             IsHoveredAndDoubleClicked),
+                              markers.end());
             }
         }
     }
@@ -860,6 +857,27 @@ void Ui::MaybeAddMarker(std::vector<Marker> &markers, bool &is_adding_marker)
     {
         is_adding_marker = false;
     }
+}
+
+bool Ui::IsHoveredAndDoubleClicked(const Marker &marker)
+{
+    /* Construct a rect that covers the markers. If the mouse is double clicked
+       while inside these limits, we remove the marker. This needs to be called
+       within a current plot that also contains the provided marker. */
+
+    const auto lmarker = ImPlot::PlotToPixels(marker.x, marker.y);
+    const auto limits = ImPlot::GetPlotLimits();
+    const auto upper_left = ImPlot::PlotToPixels(limits.X.Min, limits.Y.Max);
+    const auto lower_right = ImPlot::PlotToPixels(limits.X.Max, limits.Y.Min);
+
+    const ImVec2 marker_x_upper_left{std::round(lmarker.x) - 4.0f, upper_left.y};
+    const ImVec2 marker_x_lower_right{std::round(lmarker.x) + 4.0f, lower_right.y};
+    const ImVec2 marker_y_upper_left{upper_left.x, std::round(lmarker.y) - 4.0f};
+    const ImVec2 marker_y_lower_right{lower_right.x, std::round(lmarker.y) + 4.0f};
+
+    return ImGui::IsMouseDoubleClicked(0) &&
+           (ImGui::IsMouseHoveringRect(marker_x_upper_left, marker_x_lower_right) ||
+            ImGui::IsMouseHoveringRect(marker_y_upper_left, marker_y_lower_right));
 }
 
 void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
@@ -966,13 +984,19 @@ void Ui::PlotFourierTransformSelected()
                                  fmt::format("HD{}", j + 2));
                     }
 
-                    for (auto &m : ui.frequency_domain_markers)
+                    auto &markers = ui.frequency_domain_markers;
+                    for (auto &m : markers)
                     {
                         SnapX(m.x, ui.record->frequency_domain->bin_range,
                               ui.record->frequency_domain->y, m.x, m.y);
                         RenderMarkerX(marker_id++, &m.x, "{:.2f} {}Hz", 1e6);
                         RenderMarkerY(marker_id++, &m.y, "{: 8.2f} {}dBFS", 1, ImPlotDragToolFlags_NoInputs);
+                        ImPlot::DragPoint(0, &m.x, &m.y, ImVec4(1, 1, 1, 1), 5.0f, ImPlotDragToolFlags_NoInputs);
                     }
+
+                    markers.erase(std::remove_if(markers.begin(), markers.end(),
+                                                 IsHoveredAndDoubleClicked),
+                                  markers.end());
                 }
             }
         }
@@ -1260,7 +1284,7 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
                     ImGui::TableNextColumn();
                     ImGui::Text(MetricFormatter(record->bin_range, "{: 7.2f} {}Hz", 1e6));
                     ImGui::TableNextColumn();
-                    ImGui::Text(fmt::format("{:8}", (record->x.size() - 1) * 2));
+                    ImGui::Text(fmt::format("{:8} pts", (record->x.size() - 1) * 2));
 
                     ImGui::EndTable();
                 }

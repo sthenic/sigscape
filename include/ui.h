@@ -102,6 +102,7 @@ private:
     void RenderMarkerY(int id, double *y, const std::string &format, double highest_prefix,
                        ImPlotDragToolFlags flags = 0);
     void MaybeAddMarker(std::vector<Marker> &markers, bool &is_adding_marker);
+    static bool IsHoveredAndDoubleClicked(const Marker &marker);
     static void SnapX(double x, double step, const std::vector<double> &y, double &snap_x,
                       double &snap_y);
     void RenderTimeDomain(const ImVec2 &position, const ImVec2 &size);

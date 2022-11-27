@@ -114,7 +114,8 @@ private:
     void PlotWaterfallSelected();
     void RenderWaterfallPlot();
 
-    void MetricsRow(const std::string &label, const std::string &str);
+    void MetricsEntry(const std::string &label, const std::string &value_first,
+                      const std::string &value_second = "", bool end_row = true);
     void RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size);
     void RenderApplicationMetrics(const ImVec2 &position, const ImVec2 &size);

@@ -26,7 +26,7 @@ const ImVec4 Ui::COLOR_WOW_TAN  = {0.78f, 0.61f, 0.43f, 0.8f};
 
 Ui::ChannelUiState::ChannelUiState()
     : color{}
-    , sample_markers(true)
+    , sample_markers(false)
     , is_time_domain_visible(true)
     , is_frequency_domain_visible(true)
     , is_adding_time_domain_marker(false)
@@ -138,7 +138,10 @@ void Ui::PushMessage(const DigitizerMessage &message, bool selected)
         if (message.id == DigitizerMessageId::STOP_ACQUISITION)
         {
             for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
+            {
                 m_digitizer_ui_state[i].channels[ch].time_domain_markers.clear();
+                m_digitizer_ui_state[i].channels[ch].frequency_domain_markers.clear();
+            }
         }
     }
 }
@@ -1026,12 +1029,23 @@ void Ui::RenderWaterfallPlot()
     ImPlot::PopColormap();
 }
 
-void Ui::MetricsRow(const std::string &label, const std::string &str)
+void Ui::MetricsEntry(const std::string &label, const std::string &value_first,
+                    const std::string &value_second, bool end_row)
 {
     ImGui::TableNextColumn();
     ImGui::Text("%s", label.c_str());
+
     ImGui::TableNextColumn();
-    ImGui::Text("%s", str.c_str());
+    ImGui::Text("%s", value_first.c_str());
+
+    if (!value_second.empty())
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text("%s", value_second.c_str());
+    }
+
+    if (end_row)
+        ImGui::TableNextRow();
 }
 
 void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
@@ -1069,29 +1083,29 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                                             14.0f * TEXT_BASE_WIDTH);
                     ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
 
-                    MetricsRow(
+                    MetricsEntry(
                         "Record number",
                         fmt::format("{: >6d}", ui.record->time_domain->header.record_number)
                     );
-                    MetricsRow(
+                    MetricsEntry(
                         "Maximum value",
                         MetricFormatter(
                             ui.record->time_domain_metrics.max, "{: 8.1f} {}V", 1e-3
                         )
                     );
-                    MetricsRow(
+                    MetricsEntry(
                         "Minimum value",
                         MetricFormatter(
                             ui.record->time_domain_metrics.min, "{: 8.1f} {}V", 1e-3
                         )
                     );
-                    MetricsRow(
+                    MetricsEntry(
                         "Trigger rate",
                         MetricFormatter(
                             ui.record->time_domain->estimated_trigger_frequency, "{: 8.1f} {}Hz", 1e6
                         )
                     );
-                    MetricsRow(
+                    MetricsEntry(
                         "Throughput",
                         MetricFormatter(
                             ui.record->time_domain->estimated_throughput, "{: 8.1f} {}B/s", 1e6
@@ -1141,23 +1155,54 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
 
                 ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
                                         ImGuiTableFlags_BordersInnerV;
-                if (ImGui::BeginTable("Metrics", 2, flags))
+                if (ImGui::BeginTable("Metrics", 5, flags))
                 {
                     const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
-                    ImGui::TableSetupColumn("Metric", ImGuiTableColumnFlags_WidthFixed
-                                                      | ImGuiTableColumnFlags_NoHide,
-                                            8.0f * TEXT_BASE_WIDTH);
-                    ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
+                    const auto METRIC_FLAGS =
+                        ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoHide;
+                    ImGui::TableSetupColumn("Metric0", METRIC_FLAGS, 6.0f * TEXT_BASE_WIDTH);
+                    ImGui::TableSetupColumn("Value0", ImGuiTableColumnFlags_WidthFixed);
+                    ImGui::TableSetupColumn("Metric1", METRIC_FLAGS, 6.0f * TEXT_BASE_WIDTH);
+                    ImGui::TableSetupColumn("Value1", ImGuiTableColumnFlags_WidthFixed);
+                    ImGui::TableSetupColumn("Value2", ImGuiTableColumnFlags_WidthFixed);
 
-                    MetricsRow("SNR", fmt::format("{: 8.3f} dB", metrics.snr));
-                    MetricsRow("SINAD", fmt::format("{: 8.3f} dB", metrics.sinad));
-                    MetricsRow("THD", fmt::format("{: 8.3f} dB", metrics.thd));
-                    MetricsRow("ENOB", fmt::format("{: 8.3f} bits", metrics.enob));
-                    MetricsRow("SFDR", fmt::format("{: 8.3f} dBc", metrics.sfdr_dbc));
-                    MetricsRow("SFDR", fmt::format("{: 8.3f} dBFS", metrics.sfdr_dbfs));
-                    MetricsRow("Noise", fmt::format("{: 8.3f} dBFS", metrics.noise));
+                    MetricsEntry("SNR", fmt::format("{: 8.2f} dB", metrics.snr), "", false);
+                    MetricsEntry("Fund.",
+                                 MetricFormatter(metrics.fundamental.first, "{: 6.2f} {}Hz", 1e6),
+                                 fmt::format("{: 8.2f} dBFS", metrics.fundamental.second), true);
 
-                    ImGui::TableNextRow();
+                    MetricsEntry("SINAD", fmt::format("{: 8.2f} dB", metrics.sinad), "", false);
+                    MetricsEntry("HD2",
+                                 MetricFormatter(metrics.harmonics[0].first, "{: 6.2f} {}Hz", 1e6),
+                                 fmt::format("{: 8.2f} dBFS", metrics.harmonics[0].second), true);
+
+                    MetricsEntry("THD", fmt::format("{: 8.2f} dB", metrics.thd), "", false);
+                    MetricsEntry("HD3",
+                                 MetricFormatter(metrics.harmonics[1].first, "{: 6.2f} {}Hz", 1e6),
+                                 fmt::format("{: 8.2f} dBFS", metrics.harmonics[1].second), true);
+
+                    MetricsEntry("ENOB", fmt::format("{: 8.2f} bits", metrics.enob), "", false);
+                    MetricsEntry("HD4",
+                                 MetricFormatter(metrics.harmonics[2].first, "{: 6.2f} {}Hz", 1e6),
+                                 fmt::format("{: 8.2f} dBFS", metrics.harmonics[2].second), true);
+
+                    MetricsEntry("SFDR", fmt::format("{: 8.2f} dBc", metrics.sfdr_dbc), "", false);
+                    MetricsEntry("HD5",
+                                 MetricFormatter(metrics.harmonics[3].first, "{: 6.2f} {}Hz", 1e6),
+                                 fmt::format("{: 8.2f} dBFS", metrics.harmonics[3].second), true);
+
+                    MetricsEntry("SFDR", fmt::format("{: 8.2f} dBFS", metrics.sfdr_dbfs), "", false);
+                    MetricsEntry("Worst",
+                                 MetricFormatter(metrics.spur.first, "{: 6.2f} {}Hz", 1e6),
+                                 fmt::format("{: 8.2f} dBFS", metrics.spur.second), true);
+
+                    MetricsEntry("Noise", fmt::format("{: 8.2f} dBFS", metrics.noise), "", false);
+                    MetricsEntry("Bin",
+                                 MetricFormatter(ui.record->frequency_domain->bin_range,
+                                                 "{: 6.2f} {}Hz", 1e6),
+                                 fmt::format("{:8}",
+                                             (ui.record->frequency_domain->x.size() - 1) * 2));
+
                     ImGui::EndTable();
                 }
 

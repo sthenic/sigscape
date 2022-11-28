@@ -97,10 +97,8 @@ private:
     static void MetricFormatter(double value, char *tick_label, int size, void *data);
     void PlotTimeDomainSelected();
     int GetFirstChannelWithData(ChannelUiState *&ui);
-    void RenderMarkerX(int id, double *x, const std::string &format, double highest_prefix,
-                       ImPlotDragToolFlags flags = 0);
-    void RenderMarkerY(int id, double *y, const std::string &format, double highest_prefix,
-                       ImPlotDragToolFlags flags = 0);
+    void RenderMarkerX(int id, double *x, const std::string &format, ImPlotDragToolFlags flags = 0);
+    void RenderMarkerY(int id, double *y, const std::string &format, ImPlotDragToolFlags flags = 0);
     void MaybeAddMarker(std::vector<Marker> &markers, bool &is_adding_marker);
     static bool IsHoveredAndDoubleClicked(const Marker &marker);
     static void SnapX(double x, double step, const std::vector<double> &y, double &snap_x,

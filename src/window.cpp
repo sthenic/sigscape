@@ -14,6 +14,7 @@ WindowCache::WindowCache()
     : hamming_windows{}
     , blackman_harris_windows{}
     , hanning_windows{}
+    , flat_top_windows{}
 {}
 
 std::shared_ptr<Window> WindowCache::GetWindow(WindowType type, size_t length)
@@ -31,6 +32,9 @@ std::shared_ptr<Window> WindowCache::GetWindow(WindowType type, size_t length)
 
     case WindowType::HANNING:
         return GetWindow(hanning_windows, length, Hanning);
+
+    case WindowType::FLAT_TOP:
+        return GetWindow(flat_top_windows, length, FlatTop);
 
     default:
         break;
@@ -79,4 +83,12 @@ double WindowCache::BlackmanHarris(size_t i, size_t length)
 double WindowCache::Hanning(size_t i, size_t length)
 {
     return 0.5 * (1.0 - std::cos(2.0 * M_PI * i / length));
+}
+
+double WindowCache::FlatTop(size_t i, size_t length)
+{
+    return 0.21557895 - 0.416631580 * std::cos(2.0 * M_PI * i / length)
+                      + 0.277263158 * std::cos(4.0 * M_PI * i / length)
+                      - 0.083578947 * std::cos(6.0 * M_PI * i / length)
+                      + 0.006947368 * std::cos(8.0 * M_PI * i / length);
 }

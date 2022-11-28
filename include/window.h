@@ -10,6 +10,7 @@ enum class WindowType
     NONE,
     HAMMING,
     BLACKMAN_HARRIS,
+    FLAT_TOP,
     HANNING
 };
 
@@ -36,10 +37,12 @@ private:
     static double Hamming(size_t i, size_t length);
     static double BlackmanHarris(size_t i, size_t length);
     static double Hanning(size_t i, size_t length);
+    static double FlatTop(size_t i, size_t length);
 
     std::map<size_t, std::shared_ptr<Window>> hamming_windows;
     std::map<size_t, std::shared_ptr<Window>> blackman_harris_windows;
     std::map<size_t, std::shared_ptr<Window>> hanning_windows;
+    std::map<size_t, std::shared_ptr<Window>> flat_top_windows;
 };
 
 #endif

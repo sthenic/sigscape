@@ -608,7 +608,7 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
 
     static int window_idx = 1;
     static int window_idx_prev = 1;
-    const char *window_labels[] = {"No window", "Blackman-Harris", "Hamming", "Hanning"};
+    const char *window_labels[] = {"No window", "Blackman-Harris", "Flat top", "Hamming", "Hanning"};
     ImGui::Combo("Window##window", &window_idx, window_labels, IM_ARRAYSIZE(window_labels));
 
     if (window_idx != window_idx_prev)
@@ -624,10 +624,14 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
             break;
 
         case 2:
-            PushMessage({DigitizerMessageId::SET_WINDOW_TYPE, WindowType::HAMMING}, false);
+            PushMessage({DigitizerMessageId::SET_WINDOW_TYPE, WindowType::FLAT_TOP}, false);
             break;
 
         case 3:
+            PushMessage({DigitizerMessageId::SET_WINDOW_TYPE, WindowType::HAMMING}, false);
+            break;
+
+        case 4:
             PushMessage({DigitizerMessageId::SET_WINDOW_TYPE, WindowType::HANNING}, false);
             break;
         }
@@ -792,8 +796,9 @@ void Ui::PlotTimeDomainSelected()
                 {
                     SnapX(m.x, ui.record->time_domain->sampling_period, ui.record->time_domain->y,
                           m.x, m.y);
-                    RenderMarkerX(marker_id++, &m.x, "{:g} {}s", 1e-9);
-                    RenderMarkerY(marker_id++, &m.y, "{: 7.1f} {}V", 1e-3, ImPlotDragToolFlags_NoInputs);
+                    RenderMarkerX(marker_id++, &m.x, MetricFormatter(m.x, "{:g} {}s", 1e-9));
+                    RenderMarkerY(marker_id++, &m.y, MetricFormatter(m.y, "{: 7.1f} {}V", 1e-3),
+                                  ImPlotDragToolFlags_NoInputs);
                     ImPlot::DragPoint(0, &m.x, &m.y, ImVec4(1, 1, 1, 1), 5.0f, ImPlotDragToolFlags_NoInputs);
                 }
 
@@ -826,18 +831,16 @@ int Ui::GetFirstChannelWithData(ChannelUiState *&ui)
     return ADQR_EAGAIN;
 }
 
-void Ui::RenderMarkerX(int id, double *x, const std::string &format, double highest_prefix,
-                       ImPlotDragToolFlags flags)
+void Ui::RenderMarkerX(int id, double *x, const std::string &tag, ImPlotDragToolFlags flags)
 {
     ImPlot::DragLineX(id, x, ImVec4(1, 1, 1, 1), 1.0F, flags);
-    ImPlot::TagX(*x, ImVec4(1, 1, 1, 1), "%s", MetricFormatter(*x, format, highest_prefix).c_str());
+    ImPlot::TagX(*x, ImVec4(1, 1, 1, 1), "%s", tag.c_str());
 }
 
-void Ui::RenderMarkerY(int id, double *y, const std::string &format, double highest_prefix,
-                       ImPlotDragToolFlags flags)
+void Ui::RenderMarkerY(int id, double *y, const std::string &tag, ImPlotDragToolFlags flags)
 {
     ImPlot::DragLineY(id, y, ImVec4(1, 1, 1, 1), 1.0F, flags);
-    ImPlot::TagY(*y, ImVec4(1, 1, 1, 1), "%s", MetricFormatter(*y, format, highest_prefix).c_str());
+    ImPlot::TagY(*y, ImVec4(1, 1, 1, 1), "%s", tag.c_str());
 }
 
 void Ui::MaybeAddMarker(std::vector<Marker> &markers, bool &is_adding_marker)
@@ -939,7 +942,7 @@ void Ui::Annotate(const std::pair<double, double> &point, const std::string &lab
                        ImVec2(0, -5), false, "%.2f dBFS", point.second);
     ImPlot::Annotation(point.first, point.second, ImVec4(0, 0, 0, 0),
                        ImVec2(0, -5 - ImGui::GetTextLineHeight()), false,
-                       "%.2f MHz", point.first / 1e6);
+                       "%s", MetricFormatter(point.first, "{:.2f} {}Hz", 1e6).c_str());
     if (label.size() > 0)
     {
         ImPlot::Annotation(point.first, point.second, ImVec4(0, 0, 0, 0),
@@ -989,8 +992,9 @@ void Ui::PlotFourierTransformSelected()
                     {
                         SnapX(m.x, ui.record->frequency_domain->bin_range,
                               ui.record->frequency_domain->y, m.x, m.y);
-                        RenderMarkerX(marker_id++, &m.x, "{:.2f} {}Hz", 1e6);
-                        RenderMarkerY(marker_id++, &m.y, "{: 8.2f} {}dBFS", 1, ImPlotDragToolFlags_NoInputs);
+                        RenderMarkerX(marker_id++, &m.x, MetricFormatter(m.x, "{:.2f} {}Hz", 1e6));
+                        RenderMarkerY(marker_id++, &m.y, fmt::format("{: 8.2f} dBFS", m.y),
+                                      ImPlotDragToolFlags_NoInputs);
                         ImPlot::DragPoint(0, &m.x, &m.y, ImVec4(1, 1, 1, 1), 5.0f, ImPlotDragToolFlags_NoInputs);
                     }
 

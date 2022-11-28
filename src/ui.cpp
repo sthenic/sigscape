@@ -1208,7 +1208,7 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
                     ImGui::Text(fmt::format("{: 8.2f} dB", metrics.snr));
                     ImGui::TableNextColumn();
                     ImGui::TableNextColumn();
-                    ImGui::Text("f");
+                    ImGui::Text("Fund.");
                     ImGui::TableNextColumn();
                     ImGui::Text(MetricFormatter(metrics.fundamental.first, "{: 7.2f} {}Hz", 1e6));
                     ImGui::TableNextColumn();

@@ -54,7 +54,7 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
         case DigitizerMessageId::STATE:
             name = "STATE";
             break;
-        case DigitizerMessageId::ERROR:
+        case DigitizerMessageId::ERR:
             name = "ERROR";
             break;
         case DigitizerMessageId::CLEAR:
@@ -455,7 +455,7 @@ void Digitizer::HandleMessageInState(const struct DigitizerMessage &message)
     {
         /* TODO: Propagate message in some other way? We just write it to stderr for now. */
         fprintf(stderr, "%s", fmt::format("ERROR: {}\n", e.what()).c_str());
-        m_read_queue.Write(DigitizerMessageId::ERROR);
+        m_read_queue.Write(DigitizerMessageId::ERR);
     }
 }
 

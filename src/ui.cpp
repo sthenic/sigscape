@@ -198,7 +198,7 @@ void Ui::HandleMessage(size_t i, const DigitizerMessage &message)
         m_digitizer_ui_state[i].event = "";
         break;
 
-    case DigitizerMessageId::ERROR:
+    case DigitizerMessageId::ERR:
         m_digitizer_ui_state[i].event = "ERROR";
         m_digitizer_ui_state[i].event_color = COLOR_RED;
         break;

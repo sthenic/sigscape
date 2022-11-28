@@ -27,7 +27,7 @@ enum class DigitizerMessageId
     CLEAN_CLOCK_SYSTEM_PARAMETERS,
     IDENTIFIER,
     STATE,
-    ERROR,
+    ERR,
     CLEAR,
     CONFIGURATION,
     INITIALIZE_WOULD_OVERWRITE,

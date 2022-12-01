@@ -808,14 +808,6 @@ void Ui::PlotTimeDomainSelected()
             auto item = ImPlot::GetCurrentContext()->CurrentItems->GetItem(ui.record->label.c_str());
             ui.is_time_domain_visible = (item != NULL) && item->Show;
 
-            if (ImPlot::BeginLegendPopup(ui.record->label.c_str()))
-            {
-                ImGui::Text("%s", ui.record->label.c_str());
-                ImGui::Separator();
-                ImGui::Checkbox("Sample markers", &ui.sample_markers);
-                ImPlot::EndLegendPopup();
-            }
-
             if (ui.is_time_domain_visible)
             {
                 auto &markers = ui.time_domain_markers;
@@ -1153,19 +1145,25 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
             ImGui::ColorEdit4((ui.record->label + "##TimeDomain").c_str(), (float *)&ui.color,
                                 ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
             ImGui::SameLine();
-            ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
 
             int flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnDoubleClick |
                         ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
             if (ui.is_time_domain_selected)
                 flags |= ImGuiTreeNodeFlags_Selected;
 
+            ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
             bool node_open = ImGui::TreeNodeEx(ui.record->label.c_str(), flags);
 
             if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
             {
                 ClearTimeDomainSelection();
                 ui.is_time_domain_selected = !ui.is_time_domain_selected;
+            }
+
+            if (ImGui::BeginPopupContextItem())
+            {
+                ImGui::MenuItem("Sample markers", "", &ui.sample_markers);
+                ImGui::EndPopup();
             }
 
             if (node_open)

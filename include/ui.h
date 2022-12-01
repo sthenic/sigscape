@@ -102,7 +102,8 @@ private:
                                        double highest_prefix = 1e9);
     static void MetricFormatter(double value, char *tick_label, int size, void *data);
     void PlotTimeDomainSelected();
-    int GetFirstChannelWithData(ChannelUiState *&ui);
+    int GetSelectedTimeDomainChannel(ChannelUiState *&ui);
+    int GetSelectedFrequencyDomainChannel(ChannelUiState *&ui);
     void RenderMarkerX(int id, double *x, const std::string &format, ImPlotDragToolFlags flags = 0);
     void RenderMarkerY(int id, double *y, const std::string &format, ImPlotDragToolFlags flags = 0);
     void MaybeAddMarker(std::vector<Marker> &markers, bool &is_adding_marker);
@@ -119,7 +120,7 @@ private:
     void PlotWaterfallSelected();
     void RenderWaterfallPlot();
 
-    void MarkerTable(const std::vector<Marker> &markers);
+    void MarkerNodes(const std::vector<Marker> &markers);
     void RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size);
     void RenderApplicationMetrics(const ImVec2 &position, const ImVec2 &size);

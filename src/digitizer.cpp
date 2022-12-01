@@ -49,7 +49,10 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
             name = "CLEAN_CLOCK_SYSTEM_PARAMETERS";
             break;
         case DigitizerMessageId::IDENTIFIER:
-            name = "SERIAL_NUMBER";
+            name = "IDENTIFIER";
+            break;
+        case DigitizerMessageId::NOF_CHANNELS:
+            name = "NOF_CHANNELS";
             break;
         case DigitizerMessageId::STATE:
             name = "STATE";
@@ -180,6 +183,7 @@ void Digitizer::MainLoop()
        IDLE state and enter the main loop. */
     m_read_queue.Write({DigitizerMessageId::IDENTIFIER,
                         std::make_shared<std::string>(constant.serial_number)});
+    m_read_queue.Write({DigitizerMessageId::NOF_CHANNELS, constant.nof_channels});
     SetState(DigitizerState::IDLE);
 
     m_thread_exit_code = ADQR_EOK;

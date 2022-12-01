@@ -30,6 +30,7 @@ private:
     bool m_is_time_domain_collapsed;
     bool m_is_frequency_domain_collapsed;
     std::unique_ptr<bool[]> m_selected;
+    int m_nof_channels_total;
 
     struct Marker
     {
@@ -39,12 +40,14 @@ private:
 
     struct ChannelUiState
     {
-        ChannelUiState();
+        ChannelUiState(int &nof_channels_total);
 
         ImVec4 color;
         bool sample_markers;
         bool is_time_domain_visible;
+        bool is_time_domain_selected;
         bool is_frequency_domain_visible;
+        bool is_frequency_domain_selected;
         bool is_adding_time_domain_marker;
         bool is_adding_frequency_domain_marker;
         std::shared_ptr<ProcessedRecord> record;
@@ -56,7 +59,7 @@ private:
 
     struct DigitizerUiState
     {
-        DigitizerUiState(int nof_channels);
+        DigitizerUiState();
 
         std::string identifier;
         std::string state;
@@ -70,6 +73,9 @@ private:
         std::vector<ChannelUiState> channels;
     };
     std::vector<DigitizerUiState> m_digitizer_ui_state;
+
+    void ClearTimeDomainSelection();
+    void ClearFrequencyDomainSelection();
 
     void PushMessage(const DigitizerMessage &message, bool selected = true);
 
@@ -113,6 +119,7 @@ private:
     void PlotWaterfallSelected();
     void RenderWaterfallPlot();
 
+    void MarkerTable(const std::vector<Marker> &markers);
     void RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size);
     void RenderApplicationMetrics(const ImVec2 &position, const ImVec2 &size);

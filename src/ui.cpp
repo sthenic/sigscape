@@ -33,17 +33,21 @@ static inline void Text(const std::string &str)
 }
 }
 
-Ui::ChannelUiState::ChannelUiState()
+Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     : color{}
     , sample_markers(false)
     , is_time_domain_visible(true)
+    , is_time_domain_selected(false)
     , is_frequency_domain_visible(true)
+    , is_frequency_domain_selected(false)
     , is_adding_time_domain_marker(false)
     , is_adding_frequency_domain_marker(false)
     , record(NULL)
     , time_domain_markers{}
     , frequency_domain_markers{}
-{}
+{
+    color = ImPlot::GetColormapColor(nof_channels_total++);
+}
 
 void Ui::ChannelUiState::ColorSquare() const
 {
@@ -54,7 +58,7 @@ void Ui::ChannelUiState::ColorSquare() const
     ImGui::PopStyleColor();
 }
 
-Ui::DigitizerUiState::DigitizerUiState(int nof_channels)
+Ui::DigitizerUiState::DigitizerUiState()
     : identifier("")
     , state("")
     , event("")
@@ -65,8 +69,6 @@ Ui::DigitizerUiState::DigitizerUiState(int nof_channels)
     , popup_initialize_would_overwrite(false)
     , channels{}
 {
-    for (int i = 0; i < nof_channels; ++i)
-        channels.push_back(ChannelUiState());
 }
 
 Ui::Ui()
@@ -78,6 +80,7 @@ Ui::Ui()
     , m_is_time_domain_collapsed(false)
     , m_is_frequency_domain_collapsed(false)
     , m_selected()
+    , m_nof_channels_total(0)
     , m_digitizer_ui_state{}
 {}
 
@@ -136,6 +139,24 @@ void Ui::Render(float width, float height)
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
+void Ui::ClearTimeDomainSelection()
+{
+    for (auto &ui : m_digitizer_ui_state)
+    {
+        for (auto &ch : ui.channels)
+            ch.is_time_domain_selected = false;
+    }
+}
+
+void Ui::ClearFrequencyDomainSelection()
+{
+    for (auto &ui : m_digitizer_ui_state)
+    {
+        for (auto &ch : ui.channels)
+            ch.is_frequency_domain_selected = false;
+    }
+}
+
 void Ui::PushMessage(const DigitizerMessage &message, bool selected)
 {
     for (size_t i = 0; i < m_digitizers.size(); ++i)
@@ -155,8 +176,7 @@ void Ui::UpdateRecords()
     /* Attempt to update the set of processed records for each digitizer. */
     for (size_t i = 0; i < m_digitizers.size(); ++i)
     {
-        /* FIXME: Skip nonexistent channels. */
-        for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
+        for (size_t ch = 0; ch < m_digitizer_ui_state[i].channels.size(); ++ch)
             m_digitizers[i]->WaitForProcessedRecord(ch, m_digitizer_ui_state[i].channels[ch].record);
     }
 }
@@ -172,7 +192,7 @@ void Ui::HandleMessage(const IdentificationMessage &message)
 
     m_digitizer_ui_state.clear();
     for (size_t i = 0; i < m_digitizers.size(); ++i)
-        m_digitizer_ui_state.push_back(DigitizerUiState(ADQ_MAX_NOF_CHANNELS));
+        m_digitizer_ui_state.emplace_back();
 
     m_selected = std::unique_ptr<bool[]>( new bool[m_digitizers.size()] );
     memset(&m_selected[0], 0, sizeof(m_selected[0]) * m_digitizers.size());
@@ -187,6 +207,12 @@ void Ui::HandleMessage(size_t i, const DigitizerMessage &message)
     {
     case DigitizerMessageId::IDENTIFIER:
         m_digitizer_ui_state[i].identifier = *message.str;
+        break;
+
+    case DigitizerMessageId::NOF_CHANNELS:
+        m_digitizer_ui_state[i].channels.clear();
+        for (int ch = 0; ch < message.ivalue; ++ch)
+            m_digitizer_ui_state[i].channels.emplace_back(m_nof_channels_total);
         break;
 
     case DigitizerMessageId::CONFIGURATION:
@@ -761,19 +787,20 @@ void Ui::PlotTimeDomainSelected()
         if (!m_selected[i])
             continue;
 
-        for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
+        for (auto &ui : m_digitizer_ui_state[i].channels)
         {
-            auto &ui = m_digitizer_ui_state[i].channels[ch];
             if (ui.record == NULL)
                 continue;
 
             int count = static_cast<int>(ui.record->time_domain->x.size());
             if (ui.sample_markers)
                 ImPlot::SetNextMarkerStyle(ImPlotMarker_Cross);
+
+            ImPlot::PushStyleColor(ImPlotCol_Line, ui.color);
             ImPlot::PlotLine(ui.record->label.c_str(),
                              ui.record->time_domain->x.data(),
                              ui.record->time_domain->y.data(), count);
-            ui.color = ImPlot::GetLastItemColor();
+            ImPlot::PopStyleColor();
 
             /* Here we have to resort to using ImPlot internals to gain
                 access to whether or not the plot is shown or not. The user
@@ -817,9 +844,8 @@ int Ui::GetFirstChannelWithData(ChannelUiState *&ui)
         if (!m_selected[i])
             continue;
 
-        for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
+        for (auto &lui : m_digitizer_ui_state[i].channels)
         {
-            auto &lui = m_digitizer_ui_state[i].channels[ch];
             if (lui.record != NULL)
             {
                 ui = &lui;
@@ -961,47 +987,49 @@ void Ui::PlotFourierTransformSelected()
         if (!m_selected[i])
             continue;
 
-        for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
+        for (auto &ui : m_digitizer_ui_state[i].channels)
         {
-            auto &ui = m_digitizer_ui_state[i].channels[ch];
-            if (ui.record != NULL)
+            if (ui.record == NULL)
+                continue;
+
+            int count = static_cast<int>(ui.record->frequency_domain->x.size());
+            ImPlot::PushStyleColor(ImPlotCol_Line, ui.color);
+            ImPlot::PlotLine(ui.record->label.c_str(), ui.record->frequency_domain->x.data(),
+                             ui.record->frequency_domain->y.data(), count);
+            ImPlot::PopStyleColor();
+
+            /* Here we have to resort to using ImPlot internals to gain access
+               to whether or not the plot is shown or not. The user can click
+               the legend entry to change the visibility state. */
+
+            auto item =
+                ImPlot::GetCurrentContext()->CurrentItems->GetItem(ui.record->label.c_str());
+            ui.is_frequency_domain_visible = (item != NULL) && item->Show;
+
+            if (ui.is_frequency_domain_visible)
             {
-                int count = static_cast<int>(ui.record->frequency_domain->x.size());
-                ImPlot::PlotLine(ui.record->label.c_str(),
-                                 ui.record->frequency_domain->x.data(),
-                                 ui.record->frequency_domain->y.data(), count);
-                ui.color = ImPlot::GetLastItemColor();
-
-                /* Here we have to resort to using ImPlot internals to gain
-                   access to whether or not the plot is shown or not. The user
-                   can click the legend entry to change the visibility state. */
-                auto item = ImPlot::GetCurrentContext()->CurrentItems->GetItem(ui.record->label.c_str());
-                ui.is_frequency_domain_visible = (item != NULL) && item->Show;
-
-                if (ui.is_frequency_domain_visible)
+                Annotate(ui.record->frequency_domain_metrics.fundamental, "Fund.");
+                for (size_t j = 0; j < ui.record->frequency_domain_metrics.harmonics.size(); ++j)
                 {
-                    Annotate(ui.record->frequency_domain_metrics.fundamental, "Fund.");
-                    for (size_t j = 0; j < ui.record->frequency_domain_metrics.harmonics.size(); ++j)
-                    {
-                        Annotate(ui.record->frequency_domain_metrics.harmonics[j],
-                                 fmt::format("HD{}", j + 2));
-                    }
-
-                    auto &markers = ui.frequency_domain_markers;
-                    for (auto &m : markers)
-                    {
-                        SnapX(m.x, ui.record->frequency_domain->bin_range,
-                              ui.record->frequency_domain->y, m.x, m.y);
-                        RenderMarkerX(marker_id++, &m.x, MetricFormatter(m.x, "{:.2f} {}Hz", 1e6));
-                        RenderMarkerY(marker_id++, &m.y, fmt::format("{: 8.2f} dBFS", m.y),
-                                      ImPlotDragToolFlags_NoInputs);
-                        ImPlot::DragPoint(0, &m.x, &m.y, ImVec4(1, 1, 1, 1), 5.0f, ImPlotDragToolFlags_NoInputs);
-                    }
-
-                    markers.erase(std::remove_if(markers.begin(), markers.end(),
-                                                 IsHoveredAndDoubleClicked),
-                                  markers.end());
+                    Annotate(ui.record->frequency_domain_metrics.harmonics[j],
+                             fmt::format("HD{}", j + 2));
                 }
+
+                auto &markers = ui.frequency_domain_markers;
+                for (auto &m : markers)
+                {
+                    SnapX(m.x, ui.record->frequency_domain->bin_range,
+                          ui.record->frequency_domain->y, m.x, m.y);
+                    RenderMarkerX(marker_id++, &m.x, MetricFormatter(m.x, "{:.2f} {}Hz", 1e6));
+                    RenderMarkerY(marker_id++, &m.y, fmt::format("{: 8.2f} dBFS", m.y),
+                                  ImPlotDragToolFlags_NoInputs);
+                    ImPlot::DragPoint(0, &m.x, &m.y, ImVec4(1, 1, 1, 1), 5.0f,
+                                      ImPlotDragToolFlags_NoInputs);
+                }
+
+                markers.erase(std::remove_if(markers.begin(), markers.end(),
+                                             IsHoveredAndDoubleClicked),
+                              markers.end());
             }
         }
     }
@@ -1033,25 +1061,24 @@ void Ui::PlotWaterfallSelected()
     for (size_t i = 0; i < m_digitizers.size(); ++i)
     {
         if (!m_selected[i])
-            continue;
+                continue;
 
         /* FIXME: Plot for the first channel for the first selected digitizer.
                   We have to figure out what to do here since we cannot plot
                   multiple waterfalls at the same time. */
 
-        for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
+        for (const auto &ui : m_digitizer_ui_state[i].channels)
         {
-            const auto &record = m_digitizer_ui_state[i].channels[ch].record;
-            if (record != NULL)
-            {
-                /* FIXME: Y-axis scale (probably time delta?) */
-                const double TOP_RIGHT = record->time_domain->sampling_frequency / 2;
-                ImPlot::PlotHeatmap("heat", record->waterfall->data.data(),
-                                    static_cast<int>(record->waterfall->rows),
-                                    static_cast<int>(record->waterfall->columns),
-                                    -100, 0, NULL, ImPlotPoint(0,0), ImPlotPoint(TOP_RIGHT, 1));
-                return;
-            }
+            if (ui.record == NULL)
+                continue;
+
+            /* FIXME: Y-axis scale (probably time delta?) */
+            const double TOP_RIGHT = ui.record->time_domain->sampling_frequency / 2;
+            ImPlot::PlotHeatmap("heat", ui.record->waterfall->data.data(),
+                                static_cast<int>(ui.record->waterfall->rows),
+                                static_cast<int>(ui.record->waterfall->columns),
+                                -100, 0, NULL, ImPlotPoint(0,0), ImPlotPoint(TOP_RIGHT, 1));
+            return;
         }
     }
 }
@@ -1070,6 +1097,38 @@ void Ui::RenderWaterfallPlot()
     ImPlot::PopColormap();
 }
 
+void Ui::MarkerTable(const std::vector<Marker> &markers)
+{
+    ImGui::Separator();
+    const ImGuiTableFlags flags =
+        ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_BordersInnerV;
+    if (ImGui::BeginTable("Markers", 2, flags))
+    {
+        for (const auto &m : markers)
+        {
+            const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
+            ImGui::TableSetupColumn("Metric", ImGuiTableColumnFlags_WidthFixed
+                                                | ImGuiTableColumnFlags_NoHide,
+                                    16.0f * TEXT_BASE_WIDTH);
+            ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
+            ImGui::TableNextRow();
+
+            for (size_t i = 0; i < markers.size(); ++i)
+            {
+                if (i > 1)
+                {
+                    ImGui::TableNextRow();
+                    ImGui::Separator();
+                }
+                ImGui::TableNextColumn();
+                ImGui::Text("Marker %zu", i);
+                // ImGui::TableN?
+            }
+        }
+        ImGui::EndTable();
+    }
+}
+
 void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
 {
     /* FIXME: Move into functions? */
@@ -1083,18 +1142,34 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
         if (!m_selected[i])
             continue;
 
-        for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
+        for (auto &ui : m_digitizer_ui_state[i].channels)
         {
-            const auto &ui = m_digitizer_ui_state[i].channels[ch];
-            if ((ui.record != NULL) && ui.is_time_domain_visible)
+            if (ui.record == NULL)
+                continue;
+
+            if (has_contents)
+                ImGui::Separator();
+
+            ImGui::ColorEdit4((ui.record->label + "##TimeDomain").c_str(), (float *)&ui.color,
+                                ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+            ImGui::SameLine();
+            ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
+
+            int flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnDoubleClick |
+                        ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+            if (ui.is_time_domain_selected)
+                flags |= ImGuiTreeNodeFlags_Selected;
+
+            bool node_open = ImGui::TreeNodeEx(ui.record->label.c_str(), flags);
+
+            if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
             {
-                if (has_contents)
-                    ImGui::Separator();
+                ClearTimeDomainSelection();
+                ui.is_time_domain_selected = !ui.is_time_domain_selected;
+            }
 
-                ui.ColorSquare();
-                ImGui::SameLine();
-                ImGui::Text("%s", ui.record->label.c_str());
-
+            if (node_open)
+            {
                 const auto &record = ui.record->time_domain;
                 const auto &metrics = ui.record->time_domain_metrics;
 
@@ -1103,8 +1178,9 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                 if (ImGui::BeginTable("Metrics", 2, flags))
                 {
                     const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
-                    ImGui::TableSetupColumn("Metric", ImGuiTableColumnFlags_WidthFixed
-                                                      | ImGuiTableColumnFlags_NoHide,
+                    ImGui::TableSetupColumn("Metric",
+                                            ImGuiTableColumnFlags_WidthFixed |
+                                                ImGuiTableColumnFlags_NoHide,
                                             16.0f * TEXT_BASE_WIDTH);
                     ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
 
@@ -1152,8 +1228,11 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
 
                     ImGui::EndTable();
                 }
+                // MarkerTable(ui.time_domain_markers);
                 has_contents = true;
+                ImGui::TreePop();
             }
+            ImGui::PopStyleVar();
         }
     }
     ImGui::End();
@@ -1171,18 +1250,34 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
         if (!m_selected[i])
             continue;
 
-        for (int ch = 0; ch < ADQ_MAX_NOF_CHANNELS; ++ch)
+        for (auto &ui : m_digitizer_ui_state[i].channels)
         {
-            const auto &ui = m_digitizer_ui_state[i].channels[ch];
-            if ((ui.record != NULL) && ui.is_frequency_domain_visible)
+            if (ui.record == NULL)
+                continue;
+
+            if (has_contents)
+                ImGui::Separator();
+
+            ImGui::ColorEdit4((ui.record->label + "##FrequencyDomain").c_str(), (float *)&ui.color,
+                                ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+            ImGui::SameLine();
+            ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
+
+            int flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnDoubleClick |
+                        ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+            if (ui.is_frequency_domain_selected)
+                flags |= ImGuiTreeNodeFlags_Selected;
+
+            bool node_open = ImGui::TreeNodeEx(ui.record->label.c_str(), flags);
+
+            if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
             {
-                if (has_contents)
-                    ImGui::Separator();
+                ClearFrequencyDomainSelection();
+                ui.is_frequency_domain_selected = !ui.is_frequency_domain_selected;
+            }
 
-                ui.ColorSquare();
-                ImGui::SameLine();
-                ImGui::Text("%s", ui.record->label.c_str());
-
+            if (node_open)
+            {
                 const auto &record = ui.record->frequency_domain;
                 const auto &metrics = ui.record->frequency_domain_metrics;
 
@@ -1297,7 +1392,9 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
                     ImGui::PopStyleColor();
 
                 has_contents = true;
+                ImGui::TreePop();
             }
+            ImGui::PopStyleVar();
         }
     }
     ImGui::End();

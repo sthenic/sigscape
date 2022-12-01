@@ -26,6 +26,7 @@ enum class DigitizerMessageId
     CLEAN_TOP_PARAMETERS,
     CLEAN_CLOCK_SYSTEM_PARAMETERS,
     IDENTIFIER,
+    NOF_CHANNELS,
     STATE,
     ERR,
     CLEAR,
@@ -77,6 +78,12 @@ struct DigitizerMessage
         , str(str)
     {}
 
+    /* Create an integer message. */
+    DigitizerMessage(DigitizerMessageId id, int ivalue)
+        : id(id)
+        , ivalue(ivalue)
+    {}
+
     /* Create a window message. */
     DigitizerMessage(DigitizerMessageId id, WindowType window_type)
         : id(id)
@@ -86,6 +93,7 @@ struct DigitizerMessage
     DigitizerMessageId id;
     DigitizerState state;
     std::shared_ptr<std::string> str;
+    int ivalue;
     WindowType window_type;
 };
 

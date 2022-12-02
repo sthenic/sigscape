@@ -529,7 +529,7 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
     if (!any_selected)
         ss << "No digitizer selected.";
 
-    ImGui::Text("%s", ss.str().c_str());
+    ImGui::Text(ss.str());
 
     const ImVec2 COMMAND_PALETTE_BUTTON_SIZE{85, 50};
     if (!any_selected)
@@ -629,6 +629,13 @@ void Ui::RenderSetClockSystemParametersButton(const ImVec2 &size)
     ImGui::PopStyleColor(2);
 }
 
+void CenteredTextInCell(const std::string &str)
+{
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
+                         (ImGui::GetColumnWidth() - ImGui::CalcTextSize(str.c_str()).x) / 2);
+    ImGui::Text(str);
+}
+
 void Ui::RenderMarkers(const ImVec2 &position, const ImVec2 &size)
 {
     ImGui::SetNextWindowPos(position);
@@ -641,54 +648,92 @@ void Ui::RenderMarkers(const ImVec2 &position, const ImVec2 &size)
         m_frequency_domain_markers.clear();
     }
 
-    for (size_t i = 0; i < m_time_domain_markers.size(); ++i)
-    {
-        const auto &marker = m_time_domain_markers[i];
-        const auto &ui = m_digitizer_ui_state[marker.digitizer].channels[marker.channel];
-        ImGui::ColorEdit4(fmt::format("##M{}", i).c_str(), (float *)&ui.color,
+    /* Present the markers as a two-dimensional table to visualize the one-many
+       metrics for each individual marker. */
+
+    const auto flags =
+        ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_BordersInnerV;
+
+    auto Label = [&](size_t digitizer, size_t channel, size_t i){
+        auto &color = m_digitizer_ui_state[digitizer].channels[channel].color;
+        ImGui::ColorEdit4(fmt::format("##M{}", i).c_str(), (float *)&color,
                             ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel |
                                 ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoPicker);
         ImGui::SameLine();
+        ImGui::Text(fmt::format("M{}", i));
+    };
 
-        ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 5.0f);
+    if (ImGui::BeginTable("Markers##timedomainx", m_time_domain_markers.size() + 1, flags))
+    {
+        ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
+        for (size_t i = 0; i < m_time_domain_markers.size(); ++i)
+            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+        ImGui::TableNextRow();
 
-        int flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnDoubleClick |
-                    ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
-        if (ImGui::TreeNodeEx(fmt::format("M{}", i).c_str(), flags))
+        /* Header row */
+        for (size_t i = 0; i < m_time_domain_markers.size(); ++i)
         {
-            const ImGuiTableFlags flags = ImGuiTableFlags_RowBg |
-                                            ImGuiTableFlags_NoSavedSettings |
-                                            ImGuiTableFlags_BordersInnerV;
-
-            if (ImGui::BeginTable("Markers", 2, flags))
-            {
-                const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
-                /* FIXME: Names? */
-                ImGui::TableSetupColumn("Metric", ImGuiTableColumnFlags_WidthFixed
-                                                    | ImGuiTableColumnFlags_NoHide,
-                                        16.0f * TEXT_BASE_WIDTH);
-                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-
-                ImGui::Text(MetricFormatter(marker.x, "{:g} {}s", 1e-9));
-                ImGui::TableNextColumn();
-                ImGui::Text(MetricFormatter(marker.y, "{: 7.1f} {}V", 1e-3));
-
-                for (size_t j = 0; j < m_time_domain_markers.size(); ++j)
-                {
-                    if (i == j)
-                        continue;
-
-                    ImGui::TableNextRow();
-                    ImGui::TableNextColumn();
-                    ImGui::Text(fmt::format("vs. M{}", j));
-                }
-                ImGui::EndTable();
-            }
-            ImGui::TreePop();
+            const auto &marker = m_time_domain_markers[i];
+            ImGui::TableSetColumnIndex(i + 1);
+            Label(marker.digitizer, marker.channel, i);
         }
-        ImGui::PopStyleVar();
+
+        for (size_t i = 0; i < m_time_domain_markers.size(); ++i)
+        {
+            const auto &marker = m_time_domain_markers[i];
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            Label(marker.digitizer, marker.channel, i);
+            const auto &marker_row = m_time_domain_markers[i];
+
+            for (size_t j = 0; j < m_time_domain_markers.size(); ++j)
+            {
+                const auto &marker_column = m_time_domain_markers[j];
+                ImGui::TableSetColumnIndex(j + 1);
+
+                if (i != j)
+                    ImGui::Text(MetricFormatter(marker_row.x - marker_column.x, "{: 7.1f} {}s", 1e-6));
+            }
+        }
+        ImGui::EndTable();
+    }
+
+    ImGui::Spacing();
+
+    if (ImGui::BeginTable("Markers##timedomainy", m_time_domain_markers.size() + 1, flags))
+    {
+        ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
+        for (size_t i = 0; i < m_time_domain_markers.size(); ++i)
+            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+        ImGui::TableNextRow();
+
+        /* Header row */
+        for (size_t i = 0; i < m_time_domain_markers.size(); ++i)
+        {
+            const auto &marker = m_time_domain_markers[i];
+            ImGui::TableSetColumnIndex(i + 1);
+            Label(marker.digitizer, marker.channel, i);
+        }
+
+        for (size_t i = 0; i < m_time_domain_markers.size(); ++i)
+        {
+            const auto &marker = m_time_domain_markers[i];
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            Label(marker.digitizer, marker.channel, i);
+            const auto &marker_row = m_time_domain_markers[i];
+
+            for (size_t j = 0; j < m_time_domain_markers.size(); ++j)
+            {
+                const auto &marker_column = m_time_domain_markers[j];
+                ImGui::TableSetColumnIndex(j + 1);
+
+                if (i != j)
+                    ImGui::Text(MetricFormatter(marker_row.y - marker_column.y, "{: 7.1f} {}V", 1e-3));
+            }
+        }
+
+        ImGui::EndTable();
     }
 
     ImGui::End();

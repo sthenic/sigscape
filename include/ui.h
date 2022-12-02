@@ -34,6 +34,8 @@ private:
 
     struct Marker
     {
+        size_t digitizer;
+        size_t channel;
         double x;
         double y;
     };
@@ -47,11 +49,7 @@ private:
         bool sample_markers;
         bool is_time_domain_visible;
         bool is_frequency_domain_visible;
-        bool is_adding_time_domain_marker;
-        bool is_adding_frequency_domain_marker;
         std::shared_ptr<ProcessedRecord> record;
-        std::vector<Marker> time_domain_markers;
-        std::vector<Marker> frequency_domain_markers;
 
         void ColorSquare() const;
     };
@@ -73,6 +71,10 @@ private:
     };
 
     std::vector<DigitizerUiState> m_digitizer_ui_state;
+    std::vector<Marker> m_frequency_domain_markers;
+    std::vector<Marker> m_time_domain_markers;
+    bool m_is_adding_frequency_domain_marker;
+    bool m_is_adding_time_domain_marker;
 
     void ClearChannelSelection();
 
@@ -105,7 +107,8 @@ private:
     int GetSelectedChannel(ChannelUiState *&ui);
     void RenderMarkerX(int id, double *x, const std::string &format, ImPlotDragToolFlags flags = 0);
     void RenderMarkerY(int id, double *y, const std::string &format, ImPlotDragToolFlags flags = 0);
-    void MaybeAddMarker(std::vector<Marker> &markers, bool &is_adding_marker);
+    static void MaybeAddMarker(size_t digitizer, size_t channel, std::vector<Marker> &markers,
+                               bool &is_adding_marker);
     static bool IsHoveredAndDoubleClicked(const Marker &marker);
     static void SnapX(double x, double step, const std::vector<double> &y, double &snap_x,
                       double &snap_y);

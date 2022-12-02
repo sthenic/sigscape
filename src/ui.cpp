@@ -39,11 +39,7 @@ Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     , sample_markers(false)
     , is_time_domain_visible(true)
     , is_frequency_domain_visible(true)
-    , is_adding_time_domain_marker(false)
-    , is_adding_frequency_domain_marker(false)
     , record(NULL)
-    , time_domain_markers{}
-    , frequency_domain_markers{}
 {
     if (nof_channels_total == 0)
         is_selected = true;
@@ -84,6 +80,10 @@ Ui::Ui()
     , m_selected()
     , m_nof_channels_total(0)
     , m_digitizer_ui_state{}
+    , m_frequency_domain_markers{}
+    , m_time_domain_markers{}
+    , m_is_adding_frequency_domain_marker(false)
+    , m_is_adding_time_domain_marker(false)
 {}
 
 Ui::~Ui()
@@ -637,69 +637,58 @@ void Ui::RenderMarkers(const ImVec2 &position, const ImVec2 &size)
 
     if (ImGui::SmallButton("Clear all"))
     {
-        for (auto &dui : m_digitizer_ui_state)
-        {
-            for (auto &chui : dui.channels)
-            {
-                chui.time_domain_markers.clear();
-                chui.frequency_domain_markers.clear();
-            }
-        }
+        m_time_domain_markers.clear();
+        m_frequency_domain_markers.clear();
     }
 
-    for (const auto &dui : m_digitizer_ui_state)
+    for (size_t i = 0; i < m_time_domain_markers.size(); ++i)
     {
-        for (const auto &chui : dui.channels)
+        const auto &marker = m_time_domain_markers[i];
+        const auto &ui = m_digitizer_ui_state[marker.digitizer].channels[marker.channel];
+        ImGui::ColorEdit4(fmt::format("##M{}", i).c_str(), (float *)&ui.color,
+                            ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel |
+                                ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoPicker);
+        ImGui::SameLine();
+
+        ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 5.0f);
+
+        int flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnDoubleClick |
+                    ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+        if (ImGui::TreeNodeEx(fmt::format("M{}", i).c_str(), flags))
         {
-            const auto &markers = chui.time_domain_markers;
-            for (size_t i = 0; i < markers.size(); ++i)
+            const ImGuiTableFlags flags = ImGuiTableFlags_RowBg |
+                                            ImGuiTableFlags_NoSavedSettings |
+                                            ImGuiTableFlags_BordersInnerV;
+
+            if (ImGui::BeginTable("Markers", 2, flags))
             {
-                ImGui::ColorEdit4(fmt::format("##M{}", i).c_str(), (float *)&chui.color,
-                                  ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel |
-                                      ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoPicker);
-                ImGui::SameLine();
+                const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
+                /* FIXME: Names? */
+                ImGui::TableSetupColumn("Metric", ImGuiTableColumnFlags_WidthFixed
+                                                    | ImGuiTableColumnFlags_NoHide,
+                                        16.0f * TEXT_BASE_WIDTH);
+                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
 
-                ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 5.0f);
+                ImGui::Text(MetricFormatter(marker.x, "{:g} {}s", 1e-9));
+                ImGui::TableNextColumn();
+                ImGui::Text(MetricFormatter(marker.y, "{: 7.1f} {}V", 1e-3));
 
-                int flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnDoubleClick |
-                            ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
-                if (ImGui::TreeNodeEx(fmt::format("M{}", i).c_str(), flags))
+                for (size_t j = 0; j < m_time_domain_markers.size(); ++j)
                 {
-                    const ImGuiTableFlags flags = ImGuiTableFlags_RowBg |
-                                                  ImGuiTableFlags_NoSavedSettings |
-                                                  ImGuiTableFlags_BordersInnerV;
+                    if (i == j)
+                        continue;
 
-                    if (ImGui::BeginTable("Markers", 2, flags))
-                    {
-                        const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
-                        /* FIXME: Names? */
-                        ImGui::TableSetupColumn("Metric", ImGuiTableColumnFlags_WidthFixed
-                                                            | ImGuiTableColumnFlags_NoHide,
-                                                16.0f * TEXT_BASE_WIDTH);
-                        ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
-                        ImGui::TableNextRow();
-                        ImGui::TableNextColumn();
-
-                        ImGui::Text(MetricFormatter(markers[i].x, "{:g} {}s", 1e-9));
-                        ImGui::TableNextColumn();
-                        ImGui::Text(MetricFormatter(markers[i].y, "{: 7.1f} {}V", 1e-3));
-
-                        for (size_t j = 0; j < markers.size(); ++j)
-                        {
-                            if (i == j)
-                                continue;
-
-                            ImGui::TableNextRow();
-                            ImGui::TableNextColumn();
-                            ImGui::Text(fmt::format("vs. M{}", j));
-                        }
-                        ImGui::EndTable();
-                    }
-                    ImGui::TreePop();
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    ImGui::Text(fmt::format("vs. M{}", j));
                 }
-                ImGui::PopStyleVar();
+                ImGui::EndTable();
             }
+            ImGui::TreePop();
         }
+        ImGui::PopStyleVar();
     }
 
     ImGui::End();
@@ -866,8 +855,9 @@ void Ui::PlotTimeDomainSelected()
         if (!m_selected[i])
             continue;
 
-        for (auto &ui : m_digitizer_ui_state[i].channels)
+        for (size_t ch = 0; ch < m_digitizer_ui_state[i].channels.size(); ++ch)
         {
+            auto &ui = m_digitizer_ui_state[i].channels[ch];
             if (ui.record == NULL)
                 continue;
 
@@ -889,9 +879,11 @@ void Ui::PlotTimeDomainSelected()
 
             if (ui.is_time_domain_visible)
             {
-                auto &markers = ui.time_domain_markers;
-                for (auto &m : markers)
+                for (auto &m : m_time_domain_markers)
                 {
+                    if (m.digitizer != i || m.channel != ch)
+                        continue;
+
                     SnapX(m.x, ui.record->time_domain->sampling_period, ui.record->time_domain->y,
                           m.x, m.y);
                     RenderMarkerX(marker_id++, &m.x, MetricFormatter(m.x, "{:g} {}s", 1e-9));
@@ -900,9 +892,8 @@ void Ui::PlotTimeDomainSelected()
                     ImPlot::DragPoint(0, &m.x, &m.y, ImVec4(1, 1, 1, 1), 5.0f, ImPlotDragToolFlags_NoInputs);
                 }
 
-                markers.erase(std::remove_if(markers.begin(), markers.end(),
-                                             IsHoveredAndDoubleClicked),
-                              markers.end());
+                if (ui.is_selected)
+                    MaybeAddMarker(i, ch, m_time_domain_markers, m_is_adding_time_domain_marker);
             }
         }
     }
@@ -937,11 +928,12 @@ void Ui::RenderMarkerY(int id, double *y, const std::string &tag, ImPlotDragTool
     ImPlot::TagY(*y, ImVec4(1, 1, 1, 1), "%s", tag.c_str());
 }
 
-void Ui::MaybeAddMarker(std::vector<Marker> &markers, bool &is_adding_marker)
+void Ui::MaybeAddMarker(size_t digitizer, size_t channel, std::vector<Marker> &markers,
+                        bool &is_adding_marker)
 {
     if (ImPlot::IsPlotHovered() && ImGui::GetIO().KeyCtrl && ImGui::IsMouseClicked(0))
     {
-        markers.push_back({ImPlot::GetPlotMousePos().x, 0.0});
+        markers.push_back({digitizer, channel, ImPlot::GetPlotMousePos().x, 0.0});
         is_adding_marker = true;
     }
 
@@ -991,10 +983,11 @@ void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
         ImPlot::SetupAxisFormat(ImAxis_Y1, MetricFormatter, (void *)"V");
         PlotTimeDomainSelected();
 
-        ChannelUiState *ui;
-        if (ADQR_EOK == GetSelectedChannel(ui) && ui->is_time_domain_visible)
-            MaybeAddMarker(ui->time_domain_markers, ui->is_adding_time_domain_marker);
-
+        /* Check for double click marker removal. */
+        m_time_domain_markers.erase(std::remove_if(m_time_domain_markers.begin(),
+                                                   m_time_domain_markers.end(),
+                                                   IsHoveredAndDoubleClicked),
+                                    m_time_domain_markers.end());
         ImPlot::EndPlot();
     }
     ImPlot::PopStyleVar();
@@ -1054,8 +1047,9 @@ void Ui::PlotFourierTransformSelected()
         if (!m_selected[i])
             continue;
 
-        for (auto &ui : m_digitizer_ui_state[i].channels)
+        for (size_t ch = 0; ch < m_digitizer_ui_state[i].channels.size(); ++ch)
         {
+            auto &ui = m_digitizer_ui_state[i].channels[ch];
             if (ui.record == NULL)
                 continue;
 
@@ -1082,9 +1076,11 @@ void Ui::PlotFourierTransformSelected()
                              fmt::format("HD{}", j + 2));
                 }
 
-                auto &markers = ui.frequency_domain_markers;
-                for (auto &m : markers)
+                for (auto &m : m_frequency_domain_markers)
                 {
+                    if (m.digitizer != i || m.channel != ch)
+                        continue;
+
                     SnapX(m.x, ui.record->frequency_domain->bin_range,
                           ui.record->frequency_domain->y, m.x, m.y);
                     RenderMarkerX(marker_id++, &m.x, MetricFormatter(m.x, "{:.2f} {}Hz", 1e6));
@@ -1094,9 +1090,11 @@ void Ui::PlotFourierTransformSelected()
                                       ImPlotDragToolFlags_NoInputs);
                 }
 
-                markers.erase(std::remove_if(markers.begin(), markers.end(),
-                                             IsHoveredAndDoubleClicked),
-                              markers.end());
+                if (ui.is_selected)
+                {
+                    MaybeAddMarker(i, ch, m_frequency_domain_markers,
+                                   m_is_adding_frequency_domain_marker);
+                }
             }
         }
     }
@@ -1113,10 +1111,11 @@ void Ui::RenderFourierTransformPlot()
         ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatter, (void *)"Hz");
         PlotFourierTransformSelected();
 
-        ChannelUiState *ui;
-        if (ADQR_EOK == GetSelectedChannel(ui) && ui->is_frequency_domain_visible)
-            MaybeAddMarker(ui->frequency_domain_markers, ui->is_adding_frequency_domain_marker);
-
+        /* Check for double click marker removal. */
+        m_frequency_domain_markers.erase(std::remove_if(m_frequency_domain_markers.begin(),
+                                                        m_frequency_domain_markers.end(),
+                                                        IsHoveredAndDoubleClicked),
+                                         m_frequency_domain_markers.end());
         ImPlot::EndPlot();
     }
     ImPlot::PopStyleVar();
@@ -1127,15 +1126,11 @@ void Ui::PlotWaterfallSelected()
     for (size_t i = 0; i < m_digitizers.size(); ++i)
     {
         if (!m_selected[i])
-                continue;
-
-        /* FIXME: Plot for the first channel for the first selected digitizer.
-                  We have to figure out what to do here since we cannot plot
-                  multiple waterfalls at the same time. */
+            continue;
 
         for (const auto &ui : m_digitizer_ui_state[i].channels)
         {
-            if (ui.record == NULL)
+            if (!ui.is_selected)
                 continue;
 
             /* FIXME: Y-axis scale (probably time delta?) */

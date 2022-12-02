@@ -35,11 +35,10 @@ static inline void Text(const std::string &str)
 
 Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     : color{}
+    , is_selected(false)
     , sample_markers(false)
     , is_time_domain_visible(true)
-    , is_time_domain_selected(false)
     , is_frequency_domain_visible(true)
-    , is_frequency_domain_selected(false)
     , is_adding_time_domain_marker(false)
     , is_adding_frequency_domain_marker(false)
     , record(NULL)
@@ -47,10 +46,7 @@ Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     , frequency_domain_markers{}
 {
     if (nof_channels_total == 0)
-    {
-        is_time_domain_selected = true;
-        is_frequency_domain_selected = true;
-    }
+        is_selected = true;
 
     color = ImPlot::GetColormapColor(nof_channels_total++);
 }
@@ -145,21 +141,12 @@ void Ui::Render(float width, float height)
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-void Ui::ClearTimeDomainSelection()
+void Ui::ClearChannelSelection()
 {
     for (auto &ui : m_digitizer_ui_state)
     {
         for (auto &ch : ui.channels)
-            ch.is_time_domain_selected = false;
-    }
-}
-
-void Ui::ClearFrequencyDomainSelection()
-{
-    for (auto &ui : m_digitizer_ui_state)
-    {
-        for (auto &ch : ui.channels)
-            ch.is_frequency_domain_selected = false;
+            ch.is_selected = false;
     }
 }
 
@@ -383,17 +370,27 @@ void Ui::RenderLeft(float width, float height)
     const ImVec2 DIGITIZER_SELECTION_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 200.0f);
     RenderDigitizerSelection(DIGITIZER_SELECTION_POS, DIGITIZER_SELECTION_SIZE);
 
-    const ImVec2 COMMAND_PALETTE_POS(0.0f, 200.0f + FRAME_HEIGHT);
-    const ImVec2 COMMAND_PALETTE_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, height - 400.0f - 4 * FRAME_HEIGHT);
+    const ImVec2 COMMAND_PALETTE_POS(0.0f, DIGITIZER_SELECTION_POS.y + DIGITIZER_SELECTION_SIZE.y);
+    const ImVec2 COMMAND_PALETTE_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 300.0f);
     RenderCommandPalette(COMMAND_PALETTE_POS, COMMAND_PALETTE_SIZE);
 
-    const ImVec2 PROCESSING_OPTIONS_POS(0.0f, height - 200.0f - 3 * FRAME_HEIGHT);
-    const ImVec2 PROCESSING_OPTIONS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 200.0f);
-    RenderProcessingOptions(PROCESSING_OPTIONS_POS, PROCESSING_OPTIONS_SIZE);
-
+    /* Measured from the bottom */
     const ImVec2 METRICS_POS(0.0f, height - 3 * FRAME_HEIGHT);
     const ImVec2 METRICS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 3 * FRAME_HEIGHT);
     RenderApplicationMetrics(METRICS_POS, METRICS_SIZE);
+
+    const ImVec2 PROCESSING_OPTIONS_POS(0.0f, METRICS_POS.y - 200.0f);
+    const ImVec2 PROCESSING_OPTIONS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 200.0f);
+    RenderProcessingOptions(PROCESSING_OPTIONS_POS, PROCESSING_OPTIONS_SIZE);
+
+    /* The marker window is the one we allow to stretch stretchable. */
+    const ImVec2 MARKERS_POS(0.0f, COMMAND_PALETTE_POS.y + COMMAND_PALETTE_SIZE.y);
+    const ImVec2 MARKERS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH,
+                              height - (FRAME_HEIGHT + DIGITIZER_SELECTION_SIZE.y +
+                                        COMMAND_PALETTE_SIZE.y + PROCESSING_OPTIONS_SIZE.y +
+                                        METRICS_SIZE.y));
+    RenderMarkers(MARKERS_POS, MARKERS_SIZE);
+
 }
 
 void Ui::RenderPopups()
@@ -439,7 +436,7 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
 {
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
-    ImGui::Begin("Digitizers", NULL, ImGuiWindowFlags_NoMove);
+    ImGui::Begin("Digitizers", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
     if (ImGui::Button("Select All"))
     {
@@ -510,7 +507,7 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
 {
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
-    ImGui::Begin("Command Palette");
+    ImGui::Begin("Command Palette", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
     /* FIXME: Maybe this is overkill. */
     std::stringstream ss;
@@ -632,11 +629,87 @@ void Ui::RenderSetClockSystemParametersButton(const ImVec2 &size)
     ImGui::PopStyleColor(2);
 }
 
+void Ui::RenderMarkers(const ImVec2 &position, const ImVec2 &size)
+{
+    ImGui::SetNextWindowPos(position);
+    ImGui::SetNextWindowSize(size);
+    ImGui::Begin("Markers", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+
+    if (ImGui::SmallButton("Clear all"))
+    {
+        for (auto &dui : m_digitizer_ui_state)
+        {
+            for (auto &chui : dui.channels)
+            {
+                chui.time_domain_markers.clear();
+                chui.frequency_domain_markers.clear();
+            }
+        }
+    }
+
+    for (const auto &dui : m_digitizer_ui_state)
+    {
+        for (const auto &chui : dui.channels)
+        {
+            const auto &markers = chui.time_domain_markers;
+            for (size_t i = 0; i < markers.size(); ++i)
+            {
+                ImGui::ColorEdit4(fmt::format("##M{}", i).c_str(), (float *)&chui.color,
+                                  ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel |
+                                      ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoPicker);
+                ImGui::SameLine();
+
+                ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 5.0f);
+
+                int flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnDoubleClick |
+                            ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+                if (ImGui::TreeNodeEx(fmt::format("M{}", i).c_str(), flags))
+                {
+                    const ImGuiTableFlags flags = ImGuiTableFlags_RowBg |
+                                                  ImGuiTableFlags_NoSavedSettings |
+                                                  ImGuiTableFlags_BordersInnerV;
+
+                    if (ImGui::BeginTable("Markers", 2, flags))
+                    {
+                        const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
+                        /* FIXME: Names? */
+                        ImGui::TableSetupColumn("Metric", ImGuiTableColumnFlags_WidthFixed
+                                                            | ImGuiTableColumnFlags_NoHide,
+                                                16.0f * TEXT_BASE_WIDTH);
+                        ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
+                        ImGui::TableNextRow();
+                        ImGui::TableNextColumn();
+
+                        ImGui::Text(MetricFormatter(markers[i].x, "{:g} {}s", 1e-9));
+                        ImGui::TableNextColumn();
+                        ImGui::Text(MetricFormatter(markers[i].y, "{: 7.1f} {}V", 1e-3));
+
+                        for (size_t j = 0; j < markers.size(); ++j)
+                        {
+                            if (i == j)
+                                continue;
+
+                            ImGui::TableNextRow();
+                            ImGui::TableNextColumn();
+                            ImGui::Text(fmt::format("vs. M{}", j));
+                        }
+                        ImGui::EndTable();
+                    }
+                    ImGui::TreePop();
+                }
+                ImGui::PopStyleVar();
+            }
+        }
+    }
+
+    ImGui::End();
+}
+
 void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
 {
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
-    ImGui::Begin("Processing Options");
+    ImGui::Begin("Processing Options", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
     static int window_idx = 1;
     static int window_idx_prev = 1;
@@ -835,36 +908,13 @@ void Ui::PlotTimeDomainSelected()
     }
 }
 
-int Ui::GetSelectedTimeDomainChannel(ChannelUiState *&ui)
+int Ui::GetSelectedChannel(ChannelUiState *&ui)
 {
-    /* FIXME: Maybe just have one global selection? Time domain and freq. domain
-              follow each other? */
-
     for (auto &dui : m_digitizer_ui_state)
     {
         for (auto &chui : dui.channels)
         {
-            if (chui.is_time_domain_selected)
-            {
-                ui = &chui;
-                return ADQR_EOK;
-            }
-        }
-    }
-
-    return ADQR_EAGAIN;
-}
-
-int Ui::GetSelectedFrequencyDomainChannel(ChannelUiState *&ui)
-{
-    /* FIXME: Maybe just have one global selection? Time domain and freq. domain
-              follow each other? */
-
-    for (auto &dui : m_digitizer_ui_state)
-    {
-        for (auto &chui : dui.channels)
-        {
-            if (chui.is_frequency_domain_selected)
+            if (chui.is_selected)
             {
                 ui = &chui;
                 return ADQR_EOK;
@@ -942,7 +992,7 @@ void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
         PlotTimeDomainSelected();
 
         ChannelUiState *ui;
-        if (ADQR_EOK == GetSelectedTimeDomainChannel(ui) && ui->is_time_domain_visible)
+        if (ADQR_EOK == GetSelectedChannel(ui) && ui->is_time_domain_visible)
             MaybeAddMarker(ui->time_domain_markers, ui->is_adding_time_domain_marker);
 
         ImPlot::EndPlot();
@@ -1063,9 +1113,8 @@ void Ui::RenderFourierTransformPlot()
         ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatter, (void *)"Hz");
         PlotFourierTransformSelected();
 
-        /* FIXME: Just as a temporary solution, not the prettiest. */
         ChannelUiState *ui;
-        if (ADQR_EOK == GetSelectedFrequencyDomainChannel(ui) && ui->is_frequency_domain_visible)
+        if (ADQR_EOK == GetSelectedChannel(ui) && ui->is_frequency_domain_visible)
             MaybeAddMarker(ui->frequency_domain_markers, ui->is_adding_frequency_domain_marker);
 
         ImPlot::EndPlot();
@@ -1114,58 +1163,12 @@ void Ui::RenderWaterfallPlot()
     ImPlot::PopColormap();
 }
 
-void Ui::MarkerNodes(const std::vector<Marker> &markers)
-{
-    if (markers.empty())
-        return;
-
-    for (size_t i = 0; i < markers.size(); ++i)
-    {
-        ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 5.0f);
-        if (ImGui::TreeNodeEx(fmt::format("M{}", i).c_str()))
-        {
-            const ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
-                                          ImGuiTableFlags_BordersInnerV;
-
-            if (ImGui::BeginTable("Markers", 2, flags))
-            {
-                const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
-                /* FIXME: Names? */
-                ImGui::TableSetupColumn("Metric", ImGuiTableColumnFlags_WidthFixed
-                                                    | ImGuiTableColumnFlags_NoHide,
-                                        16.0f * TEXT_BASE_WIDTH);
-                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-
-                ImGui::Text(MetricFormatter(markers[i].x, "{:g} {}s", 1e-9));
-                ImGui::TableNextColumn();
-                ImGui::Text(MetricFormatter(markers[i].y, "{: 7.1f} {}V", 1e-3));
-
-                for (size_t j = 0; j < markers.size(); ++j)
-                {
-                    if (i == j)
-                        continue;
-
-                    ImGui::TableNextRow();
-                    ImGui::TableNextColumn();
-                    ImGui::Text(fmt::format("vs. M{}", j));
-                }
-                ImGui::EndTable();
-            }
-            ImGui::TreePop();
-        }
-        ImGui::PopStyleVar();
-    }
-
-}
-
 void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
 {
     /* FIXME: Move into functions? */
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
-    ImGui::Begin("Time Domain Metrics", NULL, ImGuiWindowFlags_NoMove);
+    ImGui::Begin("Time Domain Metrics", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
     bool has_contents = false;
     for (size_t i = 0; i < m_digitizers.size(); ++i)
@@ -1188,7 +1191,7 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
 
             int flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnDoubleClick |
                         ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
-            if (ui.is_time_domain_selected)
+            if (ui.is_selected)
                 flags |= ImGuiTreeNodeFlags_Selected;
 
             ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
@@ -1196,8 +1199,8 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
 
             if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
             {
-                ClearTimeDomainSelection();
-                ui.is_time_domain_selected = !ui.is_time_domain_selected;
+                ClearChannelSelection();
+                ui.is_selected = !ui.is_selected;
             }
 
             if (ImGui::BeginPopupContextItem())
@@ -1266,8 +1269,6 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
 
                     ImGui::EndTable();
                 }
-
-                MarkerNodes(ui.time_domain_markers);
                 ImGui::TreePop();
             }
             ImGui::PopStyleVar();
@@ -1280,7 +1281,8 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
 {
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
-    ImGui::Begin("Frequency Domain Metrics", NULL, ImGuiWindowFlags_NoMove);
+    ImGui::Begin("Frequency Domain Metrics", NULL,
+                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoNavFocus);
 
     bool has_contents = false;
     for (size_t i = 0; i < m_digitizers.size(); ++i)
@@ -1304,15 +1306,15 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
 
             int flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnDoubleClick |
                         ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
-            if (ui.is_frequency_domain_selected)
+            if (ui.is_selected)
                 flags |= ImGuiTreeNodeFlags_Selected;
 
             bool node_open = ImGui::TreeNodeEx(ui.record->label.c_str(), flags);
 
             if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
             {
-                ClearFrequencyDomainSelection();
-                ui.is_frequency_domain_selected = !ui.is_frequency_domain_selected;
+                ClearChannelSelection();
+                ui.is_selected = !ui.is_selected;
             }
 
             if (node_open)
@@ -1442,7 +1444,7 @@ void Ui::RenderApplicationMetrics(const ImVec2 &position, const ImVec2 &size)
 {
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
-    ImGui::Begin("Application Metrics");
+    ImGui::Begin("Application Metrics", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
     const ImGuiIO &io = ImGui::GetIO();
     ImGui::Text("Average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
     ImGui::End();

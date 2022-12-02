@@ -43,11 +43,10 @@ private:
         ChannelUiState(int &nof_channels_total);
 
         ImVec4 color;
+        bool is_selected;
         bool sample_markers;
         bool is_time_domain_visible;
-        bool is_time_domain_selected;
         bool is_frequency_domain_visible;
-        bool is_frequency_domain_selected;
         bool is_adding_time_domain_marker;
         bool is_adding_frequency_domain_marker;
         std::shared_ptr<ProcessedRecord> record;
@@ -72,10 +71,10 @@ private:
 
         std::vector<ChannelUiState> channels;
     };
+
     std::vector<DigitizerUiState> m_digitizer_ui_state;
 
-    void ClearTimeDomainSelection();
-    void ClearFrequencyDomainSelection();
+    void ClearChannelSelection();
 
     void PushMessage(const DigitizerMessage &message, bool selected = true);
 
@@ -95,6 +94,7 @@ private:
     void RenderCommandPalette(const ImVec2 &position, const ImVec2 &size);
     void RenderSetTopParametersButton(const ImVec2 &size);
     void RenderSetClockSystemParametersButton(const ImVec2 &size);
+    void RenderMarkers(const ImVec2 &position, const ImVec2 &size);
     void RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size);
 
     void Reduce(double xsize, double sampling_frequency, int &count, int &stride);
@@ -102,8 +102,7 @@ private:
                                        double highest_prefix = 1e9);
     static void MetricFormatter(double value, char *tick_label, int size, void *data);
     void PlotTimeDomainSelected();
-    int GetSelectedTimeDomainChannel(ChannelUiState *&ui);
-    int GetSelectedFrequencyDomainChannel(ChannelUiState *&ui);
+    int GetSelectedChannel(ChannelUiState *&ui);
     void RenderMarkerX(int id, double *x, const std::string &format, ImPlotDragToolFlags flags = 0);
     void RenderMarkerY(int id, double *y, const std::string &format, ImPlotDragToolFlags flags = 0);
     void MaybeAddMarker(std::vector<Marker> &markers, bool &is_adding_marker);
@@ -120,7 +119,6 @@ private:
     void PlotWaterfallSelected();
     void RenderWaterfallPlot();
 
-    void MarkerNodes(const std::vector<Marker> &markers);
     void RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size);
     void RenderApplicationMetrics(const ImVec2 &position, const ImVec2 &size);

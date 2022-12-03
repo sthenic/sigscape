@@ -24,6 +24,7 @@ public:
 private:
     static const size_t WATERFALL_SIZE = 20;
     static const size_t NOF_SKIRT_BINS_DEFAULT = 3;
+    static const size_t CLOUD_SIZE = 20;
     void *m_handle;
     int m_index;
     int m_channel;
@@ -33,6 +34,7 @@ private:
     WindowType m_window_type;
     size_t m_nof_skirt_bins;
     std::deque<std::shared_ptr<FrequencyDomainRecord>> m_waterfall;
+    std::deque<std::shared_ptr<TimeDomainRecord>> m_cloud;
 
     template <typename T>
     static size_t NextPowerOfTwo(T i);

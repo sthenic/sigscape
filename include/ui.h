@@ -47,6 +47,7 @@ private:
         ImVec4 color;
         bool is_selected;
         bool sample_markers;
+        bool cloud;
         bool is_time_domain_visible;
         bool is_frequency_domain_visible;
         std::shared_ptr<ProcessedRecord> record;

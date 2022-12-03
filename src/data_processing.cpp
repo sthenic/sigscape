@@ -23,6 +23,7 @@ DataProcessing::DataProcessing(void *handle, int index, int channel, const std::
     , m_window_type(WindowType::BLACKMAN_HARRIS)
     , m_nof_skirt_bins(NOF_SKIRT_BINS_DEFAULT)
     , m_waterfall{}
+    , m_cloud{}
 {
 }
 
@@ -90,6 +91,11 @@ void DataProcessing::MainLoop()
             processed_record->time_domain->estimated_trigger_frequency = estimated_trigger_frequency;
             processed_record->time_domain->estimated_throughput = estimated_throughput;
 
+            if (m_cloud.size() >= CLOUD_SIZE)
+                m_cloud.pop_back();
+            m_cloud.push_front(processed_record->time_domain);
+            processed_record->cloud = std::make_shared<Cloud>(m_cloud);
+
             const size_t FFT_LENGTH = PreviousPowerOfTwo(time_domain->header->record_length);
             processed_record->frequency_domain =
                 std::make_shared<FrequencyDomainRecord>(FFT_LENGTH / 2 + 1);
@@ -131,7 +137,7 @@ void DataProcessing::MainLoop()
             /* Push the new FFT at the top of the waterfall and construct a
                row-major array for the plotting. We unfortunately cannot the
                requirement of this linear layout. */
-            if (m_waterfall.size() > WATERFALL_SIZE)
+            if (m_waterfall.size() >= WATERFALL_SIZE)
                 m_waterfall.pop_back();
             m_waterfall.push_front(processed_record->frequency_domain);
             processed_record->waterfall = std::make_shared<Waterfall>(m_waterfall);

@@ -37,6 +37,7 @@ Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     : color{}
     , is_selected(false)
     , sample_markers(false)
+    , cloud(false)
     , is_time_domain_visible(true)
     , is_frequency_domain_visible(true)
     , record(NULL)
@@ -872,6 +873,7 @@ void Ui::SnapX(double x, double step, const std::vector<double> &y, double &snap
 {
     double nearest = std::round(x / step);
 
+    /* FIXME: This is wrong and needs the x vector as well. Consider record start. */
     if (nearest < 0.0)
     {
         snap_x = 0;
@@ -910,11 +912,24 @@ void Ui::PlotTimeDomainSelected()
             if (ui.sample_markers)
                 ImPlot::SetNextMarkerStyle(ImPlotMarker_Cross);
 
-            ImPlot::PushStyleColor(ImPlotCol_Line, ui.color);
-            ImPlot::PlotLine(ui.record->label.c_str(),
-                             ui.record->time_domain->x.data(),
-                             ui.record->time_domain->y.data(), count);
-            ImPlot::PopStyleColor();
+            if (ui.cloud)
+            {
+                ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
+                for (const auto &c : ui.record->cloud->data)
+                {
+                    ImPlot::PlotScatter(ui.record->label.c_str(), c->x.data(), c->y.data(),
+                                        c->x.size());
+                }
+                ImPlot::PopStyleVar();
+            }
+            else
+            {
+                ImPlot::PushStyleColor(ImPlotCol_Line, ui.color);
+                ImPlot::PlotLine(ui.record->label.c_str(),
+                                ui.record->time_domain->x.data(),
+                                ui.record->time_domain->y.data(), count);
+                ImPlot::PopStyleColor();
+            }
 
             /* Here we have to resort to using ImPlot internals to gain
                 access to whether or not the plot is shown or not. The user
@@ -1246,6 +1261,7 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
             if (ImGui::BeginPopupContextItem())
             {
                 ImGui::MenuItem("Sample markers", "", &ui.sample_markers);
+                ImGui::MenuItem("Cloud", "", &ui.cloud);
                 ImGui::EndPopup();
             }
 

@@ -174,7 +174,7 @@ void Digitizer::MainLoop()
     {
         std::string label = fmt::format("{} CH{}", constant.serial_number,
                                                    constant.channel[ch].label);
-        m_processing_threads.push_back(
+        m_processing_threads.emplace_back(
             std::make_unique<DataProcessing>(m_id.handle, m_id.index, ch, label)
         );
     }

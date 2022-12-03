@@ -57,7 +57,7 @@ void Generator::MainLoop()
         *record->header = {};
         record->header->record_length = static_cast<uint32_t>(m_parameters.record_length);
         record->header->record_number = record_number;
-        record->header->record_start = 0;
+        record->header->record_start = static_cast<int64_t>(m_distribution(m_random_generator) * 1000);
         record->header->time_unit = 25e-12f; /* TODO: 25ps steps for now */
         record->header->sampling_period = static_cast<uint64_t>(
             1.0 / (record->header->time_unit * m_sampling_frequency) + 0.5);

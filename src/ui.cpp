@@ -3,6 +3,7 @@
 
 #include "fmt/format.h"
 #include <cinttypes>
+#include <cmath>
 
 const ImVec4 Ui::COLOR_GREEN = {0.0f, 1.0f, 0.5f, 0.6f};
 const ImVec4 Ui::COLOR_RED = {1.0f, 0.0f, 0.2f, 0.6f};
@@ -36,8 +37,8 @@ static inline void Text(const std::string &str)
 Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     : color{}
     , is_selected(false)
-    , sample_markers(false)
-    , cloud(false)
+    , is_sample_markers_enabled(true)
+    , is_cloud_enabled(false)
     , is_time_domain_visible(true)
     , is_frequency_domain_visible(true)
     , record(NULL)
@@ -869,27 +870,88 @@ void Ui::MetricFormatter(double value, char *tick_label, int size, void *data)
     std::snprintf(tick_label, size, "%g %s%s", value / LIMITS.back().first, LIMITS.back().second, UNIT);
 }
 
-void Ui::SnapX(double x, double step, const std::vector<double> &y, double &snap_x, double &snap_y)
+void Ui::SnapX(double x, const std::vector<double> &data_x, const std::vector<double> &data_y,
+               double step_x, double &snap_x, double &snap_y)
 {
-    double nearest = std::round(x / step);
-
-    /* FIXME: This is wrong and needs the x vector as well. Consider record start. */
-    if (nearest < 0.0)
+    if (x < data_x.front())
     {
-        snap_x = 0;
-        snap_y = y.front();
+        snap_x = data_x.front();
+        snap_y = data_y.front();
     }
-    else if (nearest >= y.size())
+    else if (x > data_x.back())
     {
-        snap_x = (y.size() - 1) * step;
-        snap_y = y.back();
+        snap_x = data_x.back();
+        snap_y = data_y.back();
     }
     else
     {
-        snap_x = nearest * step;
-        snap_y = y[static_cast<size_t>(nearest)];
+        /* Get the distance to the first sample, which we now know is a positive
+           value in the range spanned by the x-vector. */
+        double distance = x - data_x.front();
+        size_t index = static_cast<size_t>(std::round(distance / step_x));
+        snap_x = data_x[index];
+        snap_y = data_y[index];
     }
+}
 
+void Ui::GetClosestSampleIndex(double x, double y, const std::vector<double> &data_x,
+                               const std::vector<double> &data_y, double step_x,
+                               const ImPlotRect &view, size_t &index)
+{
+    /* Find the closest sample to the coordinates (x,y) by minimizing the
+       Euclidian distance. We have to normalize the data fpr this method to give
+       the desired results---namely, we have to normalize using the _plot_
+       limits since that is the perceived reference frame of the user. */
+
+    const double kx = (view.X.Max - view.X.Min) / 2;
+    const double mx = -(view.X.Min + kx);
+    const double ky = (view.Y.Max - view.Y.Min) / 2;
+    const double my = -(view.Y.Min + ky);
+
+    const double x_normalized = (x + mx) / kx;
+    const double x_step_normalized = step_x / kx;
+    const double y_normalized = (y + my) / ky;
+
+    const double x0_normalized = (data_x.front() + mx) / kx;
+    const double center = std::round((x_normalized - x0_normalized) / x_step_normalized);
+
+    /* Create a symmetric span around the rounded x-coordinate and then clip the
+       limits to the range where there's data. */
+    const double span = 16.0;
+    const double low_limit = 0.0;
+    const double high_limit = static_cast<double>(data_x.size() - 1);
+    double span_low = center - span;
+    double span_high = center + span;
+
+    if (span_low < low_limit)
+        span_low = low_limit;
+    else if (span_low > (high_limit - span))
+        span_low = (std::max)(high_limit - span, low_limit);
+
+    if (span_high < (low_limit + span))
+        span_high = (std::min)(low_limit + span, high_limit);
+    else if (span_high > high_limit)
+        span_high = high_limit;
+
+    const size_t low = static_cast<size_t>(span_low);
+    const size_t high = static_cast<size_t>(span_high);
+    double distance_min = (std::numeric_limits<double>::max)();
+
+    for (size_t i = low; i <= high; ++i)
+    {
+        const double xi = (data_x[i] + mx) / kx;
+        const double yi = (data_y[i] + my) / ky;
+
+        const double x2 = std::pow(x_normalized - xi, 2);
+        const double y2 = std::pow(y_normalized - yi, 2);
+        const double distance = x2 + y2;
+
+        if (distance < distance_min)
+        {
+            index = i;
+            distance_min = distance;
+        }
+    }
 }
 
 void Ui::PlotTimeDomainSelected()
@@ -909,10 +971,10 @@ void Ui::PlotTimeDomainSelected()
                 continue;
 
             int count = static_cast<int>(ui.record->time_domain->x.size());
-            if (ui.sample_markers)
+            if (ui.is_sample_markers_enabled)
                 ImPlot::SetNextMarkerStyle(ImPlotMarker_Cross);
 
-            if (ui.cloud)
+            if (ui.is_cloud_enabled)
             {
                 ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
                 for (const auto &c : ui.record->cloud->data)
@@ -944,16 +1006,22 @@ void Ui::PlotTimeDomainSelected()
                     if (m.digitizer != i || m.channel != ch)
                         continue;
 
-                    SnapX(m.x, ui.record->time_domain->sampling_period, ui.record->time_domain->y,
-                          m.x, m.y);
+                    SnapX(m.x, ui.record->time_domain->x, ui.record->time_domain->y,
+                          ui.record->time_domain->sampling_period, m.x, m.y);
+
+                    ImPlot::DragPoint(0, &m.x, &m.y, ImVec4(1, 1, 1, 1), 4.0f,
+                                      ImPlotDragToolFlags_NoInputs);
                     RenderMarkerX(marker_id++, &m.x, MetricFormatter(m.x, "{:g} {}s", 1e-9));
                     RenderMarkerY(marker_id++, &m.y, MetricFormatter(m.y, "{: 7.1f} {}V", 1e-3),
                                   ImPlotDragToolFlags_NoInputs);
-                    ImPlot::DragPoint(0, &m.x, &m.y, ImVec4(1, 1, 1, 1), 5.0f, ImPlotDragToolFlags_NoInputs);
                 }
 
                 if (ui.is_selected)
-                    MaybeAddMarker(i, ch, m_time_domain_markers, m_is_adding_time_domain_marker);
+                {
+                    MaybeAddMarker(i, ch, ui.record->time_domain->x, ui.record->time_domain->y,
+                                   ui.record->time_domain->sampling_period, m_time_domain_markers,
+                                   m_is_adding_time_domain_marker);
+                }
             }
         }
     }
@@ -988,12 +1056,16 @@ void Ui::RenderMarkerY(int id, double *y, const std::string &tag, ImPlotDragTool
     ImPlot::TagY(*y, ImVec4(1, 1, 1, 1), "%s", tag.c_str());
 }
 
-void Ui::MaybeAddMarker(size_t digitizer, size_t channel, std::vector<Marker> &markers,
+void Ui::MaybeAddMarker(size_t digitizer, size_t channel, const std::vector<double> &x,
+                        const std::vector<double> &y, double step, std::vector<Marker> &markers,
                         bool &is_adding_marker)
 {
     if (ImPlot::IsPlotHovered() && ImGui::GetIO().KeyCtrl && ImGui::IsMouseClicked(0))
     {
-        markers.push_back({digitizer, channel, ImPlot::GetPlotMousePos().x, 0.0});
+        size_t index;
+        GetClosestSampleIndex(ImPlot::GetPlotMousePos().x, ImPlot::GetPlotMousePos().y, x, y, step,
+                              ImPlot::GetPlotLimits(), index);
+        markers.push_back({digitizer, channel, index, x[index], y[index]});
         is_adding_marker = true;
     }
 
@@ -1141,19 +1213,22 @@ void Ui::PlotFourierTransformSelected()
                     if (m.digitizer != i || m.channel != ch)
                         continue;
 
-                    SnapX(m.x, ui.record->frequency_domain->bin_range,
-                          ui.record->frequency_domain->y, m.x, m.y);
+                    SnapX(m.x, ui.record->frequency_domain->x, ui.record->frequency_domain->y,
+                          ui.record->frequency_domain->bin_range, m.x, m.y);
+                    ImPlot::DragPoint(0, &m.x, &m.y, ImVec4(1, 1, 1, 1), 4.0f,
+                                      ImPlotDragToolFlags_NoInputs);
+
                     RenderMarkerX(marker_id++, &m.x, MetricFormatter(m.x, "{:.2f} {}Hz", 1e6));
                     RenderMarkerY(marker_id++, &m.y, fmt::format("{: 8.2f} dBFS", m.y),
                                   ImPlotDragToolFlags_NoInputs);
-                    ImPlot::DragPoint(0, &m.x, &m.y, ImVec4(1, 1, 1, 1), 5.0f,
-                                      ImPlotDragToolFlags_NoInputs);
                 }
 
                 if (ui.is_selected)
                 {
-                    MaybeAddMarker(i, ch, m_frequency_domain_markers,
-                                   m_is_adding_frequency_domain_marker);
+                    MaybeAddMarker(i, ch, ui.record->frequency_domain->x,
+                                   ui.record->frequency_domain->y,
+                                   ui.record->frequency_domain->bin_range,
+                                   m_frequency_domain_markers, m_is_adding_frequency_domain_marker);
                 }
             }
         }
@@ -1260,8 +1335,8 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
 
             if (ImGui::BeginPopupContextItem())
             {
-                ImGui::MenuItem("Sample markers", "", &ui.sample_markers);
-                ImGui::MenuItem("Cloud", "", &ui.cloud);
+                ImGui::MenuItem("Sample markers", "", &ui.is_sample_markers_enabled);
+                ImGui::MenuItem("Cloud", "", &ui.is_cloud_enabled);
                 ImGui::EndPopup();
             }
 

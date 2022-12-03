@@ -36,6 +36,7 @@ private:
     {
         size_t digitizer;
         size_t channel;
+        size_t sample;
         double x;
         double y;
     };
@@ -46,8 +47,8 @@ private:
 
         ImVec4 color;
         bool is_selected;
-        bool sample_markers;
-        bool cloud;
+        bool is_sample_markers_enabled;
+        bool is_cloud_enabled;
         bool is_time_domain_visible;
         bool is_frequency_domain_visible;
         std::shared_ptr<ProcessedRecord> record;
@@ -104,15 +105,27 @@ private:
     static std::string MetricFormatter(double value, const std::string &format,
                                        double highest_prefix = 1e9);
     static void MetricFormatter(double value, char *tick_label, int size, void *data);
+
     void PlotTimeDomainSelected();
+
     int GetSelectedChannel(ChannelUiState *&ui);
     void RenderMarkerX(int id, double *x, const std::string &format, ImPlotDragToolFlags flags = 0);
     void RenderMarkerY(int id, double *y, const std::string &format, ImPlotDragToolFlags flags = 0);
-    static void MaybeAddMarker(size_t digitizer, size_t channel, std::vector<Marker> &markers,
-                               bool &is_adding_marker);
+
+    void MaybeAddMarker(size_t digitizer, size_t channel, const std::vector<double> &x,
+                        const std::vector<double> &y, double step, std::vector<Marker> &markers,
+                        bool &is_adding_marker);
+
     static bool IsHoveredAndDoubleClicked(const Marker &marker);
-    static void SnapX(double x, double step, const std::vector<double> &y, double &snap_x,
+
+    static void SnapX(double x, const std::vector<double> &data_x,
+                      const std::vector<double> &data_y, double step_x, double &snap_x,
                       double &snap_y);
+
+    static void GetClosestSampleIndex(double x, double y, const std::vector<double> &data_x,
+                                      const std::vector<double> &data_y, double step_x,
+                                      const ImPlotRect &view, size_t &index);
+
     void RenderTimeDomain(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size);
 

@@ -23,8 +23,8 @@ struct TimeDomainRecord
         , header(*raw->header)
         , estimated_trigger_frequency(0)
         , estimated_throughput(0)
+        , step(0)
         , sampling_frequency(0)
-        , sampling_period(0)
         , record_start(0.0)
     {
         /* FIXME: Assuming two bytes per sample. */
@@ -35,16 +35,16 @@ struct TimeDomainRecord
         int time_unit_ps = static_cast<int>(raw->header->time_unit * 1e12);
         double time_unit = static_cast<double>(time_unit_ps) * 1e-12;
         const int16_t *data = static_cast<const int16_t *>(raw->data);
-        sampling_period = static_cast<double>(raw->header->sampling_period) * time_unit;
+        step = static_cast<double>(raw->header->sampling_period) * time_unit;
         record_start = static_cast<double>(raw->header->record_start) * time_unit;
 
         /* This will be an integer number of Hz */
-        sampling_frequency = std::round(1.0 / sampling_period);
+        sampling_frequency = std::round(1.0 / step);
 
         for (size_t i = 0; i < raw->header->record_length; ++i)
         {
             /* FIXME: Read vertical resolution from header->data_format. */
-            x[i] = record_start + i * sampling_period;
+            x[i] = record_start + i * step;
             y[i] = static_cast<double>(data[i]) / 65536.0 * afe.input_range - afe.dc_offset;
             y[i] /= 1e3;
         }
@@ -59,8 +59,8 @@ struct TimeDomainRecord
     struct ADQGen4RecordHeader header;
     double estimated_trigger_frequency;
     double estimated_throughput;
+    double step; /* Sampling period */
     double sampling_frequency;
-    double sampling_period;
     double record_start;
 };
 
@@ -69,7 +69,7 @@ struct FrequencyDomainRecord
     FrequencyDomainRecord(size_t count)
         : x(count)
         , y(count)
-        , bin_range(0)
+        , step(0)
     {
     }
 
@@ -79,7 +79,7 @@ struct FrequencyDomainRecord
 
     std::vector<double> x;
     std::vector<double> y;
-    double bin_range;
+    double step; /* Bin range */
 };
 
 struct Waterfall

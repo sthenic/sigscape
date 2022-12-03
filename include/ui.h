@@ -112,19 +112,18 @@ private:
     void RenderMarkerX(int id, double *x, const std::string &format, ImPlotDragToolFlags flags = 0);
     void RenderMarkerY(int id, double *y, const std::string &format, ImPlotDragToolFlags flags = 0);
 
-    void MaybeAddMarker(size_t digitizer, size_t channel, const std::vector<double> &x,
-                        const std::vector<double> &y, double step, std::vector<Marker> &markers,
-                        bool &is_adding_marker);
+    template <typename T>
+    static void MaybeAddMarker(size_t digitizer, size_t channel, const T &record,
+                               std::vector<Marker> &markers, bool &is_adding_marker);
 
     static bool IsHoveredAndDoubleClicked(const Marker &marker);
 
-    static void SnapX(double x, const std::vector<double> &data_x,
-                      const std::vector<double> &data_y, double step_x, double &snap_x,
-                      double &snap_y);
+    template <typename T>
+    static void SnapX(double x, const T &record, double &snap_x, double &snap_y);
 
-    static void GetClosestSampleIndex(double x, double y, const std::vector<double> &data_x,
-                                      const std::vector<double> &data_y, double step_x,
-                                      const ImPlotRect &view, size_t &index);
+    template <typename T>
+    static void GetClosestSampleIndex(double x, double y, const T &record, const ImPlotRect &view,
+                                      size_t &index);
 
     void RenderTimeDomain(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size);

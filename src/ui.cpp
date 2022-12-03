@@ -870,33 +870,34 @@ void Ui::MetricFormatter(double value, char *tick_label, int size, void *data)
     std::snprintf(tick_label, size, "%g %s%s", value / LIMITS.back().first, LIMITS.back().second, UNIT);
 }
 
-void Ui::SnapX(double x, const std::vector<double> &data_x, const std::vector<double> &data_y,
-               double step_x, double &snap_x, double &snap_y)
+
+template<typename T>
+void Ui::SnapX(double x, const T &record, double &snap_x, double &snap_y)
 {
-    if (x < data_x.front())
+    if (x < record->x.front())
     {
-        snap_x = data_x.front();
-        snap_y = data_y.front();
+        snap_x = record->x.front();
+        snap_y = record->y.front();
     }
-    else if (x > data_x.back())
+    else if (x > record->x.back())
     {
-        snap_x = data_x.back();
-        snap_y = data_y.back();
+        snap_x = record->x.back();
+        snap_y = record->y.back();
     }
     else
     {
         /* Get the distance to the first sample, which we now know is a positive
            value in the range spanned by the x-vector. */
-        double distance = x - data_x.front();
-        size_t index = static_cast<size_t>(std::round(distance / step_x));
-        snap_x = data_x[index];
-        snap_y = data_y[index];
+        double distance = x - record->x.front();
+        size_t index = static_cast<size_t>(std::round(distance / record->step));
+        snap_x = record->x[index];
+        snap_y = record->y[index];
     }
 }
 
-void Ui::GetClosestSampleIndex(double x, double y, const std::vector<double> &data_x,
-                               const std::vector<double> &data_y, double step_x,
-                               const ImPlotRect &view, size_t &index)
+template <typename T>
+void Ui::GetClosestSampleIndex(double x, double y, const T &record, const ImPlotRect &view,
+                               size_t &index)
 {
     /* Find the closest sample to the coordinates (x,y) by minimizing the
        Euclidian distance. We have to normalize the data fpr this method to give
@@ -909,17 +910,17 @@ void Ui::GetClosestSampleIndex(double x, double y, const std::vector<double> &da
     const double my = -(view.Y.Min + ky);
 
     const double x_normalized = (x + mx) / kx;
-    const double x_step_normalized = step_x / kx;
+    const double x_step_normalized = record->step / kx;
     const double y_normalized = (y + my) / ky;
 
-    const double x0_normalized = (data_x.front() + mx) / kx;
+    const double x0_normalized = (record->x.front() + mx) / kx;
     const double center = std::round((x_normalized - x0_normalized) / x_step_normalized);
 
     /* Create a symmetric span around the rounded x-coordinate and then clip the
        limits to the range where there's data. */
     const double span = 16.0;
     const double low_limit = 0.0;
-    const double high_limit = static_cast<double>(data_x.size() - 1);
+    const double high_limit = static_cast<double>(record->x.size() - 1);
     double span_low = center - span;
     double span_high = center + span;
 
@@ -939,8 +940,8 @@ void Ui::GetClosestSampleIndex(double x, double y, const std::vector<double> &da
 
     for (size_t i = low; i <= high; ++i)
     {
-        const double xi = (data_x[i] + mx) / kx;
-        const double yi = (data_y[i] + my) / ky;
+        const double xi = (record->x[i] + mx) / kx;
+        const double yi = (record->y[i] + my) / ky;
 
         const double x2 = std::pow(x_normalized - xi, 2);
         const double y2 = std::pow(y_normalized - yi, 2);
@@ -1006,8 +1007,7 @@ void Ui::PlotTimeDomainSelected()
                     if (m.digitizer != i || m.channel != ch)
                         continue;
 
-                    SnapX(m.x, ui.record->time_domain->x, ui.record->time_domain->y,
-                          ui.record->time_domain->sampling_period, m.x, m.y);
+                    SnapX(m.x, ui.record->time_domain, m.x, m.y);
 
                     ImPlot::DragPoint(0, &m.x, &m.y, ImVec4(1, 1, 1, 1), 4.0f,
                                       ImPlotDragToolFlags_NoInputs);
@@ -1018,8 +1018,7 @@ void Ui::PlotTimeDomainSelected()
 
                 if (ui.is_selected)
                 {
-                    MaybeAddMarker(i, ch, ui.record->time_domain->x, ui.record->time_domain->y,
-                                   ui.record->time_domain->sampling_period, m_time_domain_markers,
+                    MaybeAddMarker(i, ch, ui.record->time_domain, m_time_domain_markers,
                                    m_is_adding_time_domain_marker);
                 }
             }
@@ -1056,16 +1055,16 @@ void Ui::RenderMarkerY(int id, double *y, const std::string &tag, ImPlotDragTool
     ImPlot::TagY(*y, ImVec4(1, 1, 1, 1), "%s", tag.c_str());
 }
 
-void Ui::MaybeAddMarker(size_t digitizer, size_t channel, const std::vector<double> &x,
-                        const std::vector<double> &y, double step, std::vector<Marker> &markers,
-                        bool &is_adding_marker)
+template <typename T>
+void Ui::MaybeAddMarker(size_t digitizer, size_t channel, const T &record,
+                        std::vector<Marker> &markers, bool &is_adding_marker)
 {
     if (ImPlot::IsPlotHovered() && ImGui::GetIO().KeyCtrl && ImGui::IsMouseClicked(0))
     {
         size_t index;
-        GetClosestSampleIndex(ImPlot::GetPlotMousePos().x, ImPlot::GetPlotMousePos().y, x, y, step,
+        GetClosestSampleIndex(ImPlot::GetPlotMousePos().x, ImPlot::GetPlotMousePos().y, record,
                               ImPlot::GetPlotLimits(), index);
-        markers.push_back({digitizer, channel, index, x[index], y[index]});
+        markers.push_back({digitizer, channel, index, record->x[index], record->y[index]});
         is_adding_marker = true;
     }
 
@@ -1213,8 +1212,7 @@ void Ui::PlotFourierTransformSelected()
                     if (m.digitizer != i || m.channel != ch)
                         continue;
 
-                    SnapX(m.x, ui.record->frequency_domain->x, ui.record->frequency_domain->y,
-                          ui.record->frequency_domain->bin_range, m.x, m.y);
+                    SnapX(m.x, ui.record->frequency_domain, m.x, m.y);
                     ImPlot::DragPoint(0, &m.x, &m.y, ImVec4(1, 1, 1, 1), 4.0f,
                                       ImPlotDragToolFlags_NoInputs);
 
@@ -1225,10 +1223,8 @@ void Ui::PlotFourierTransformSelected()
 
                 if (ui.is_selected)
                 {
-                    MaybeAddMarker(i, ch, ui.record->frequency_domain->x,
-                                   ui.record->frequency_domain->y,
-                                   ui.record->frequency_domain->bin_range,
-                                   m_frequency_domain_markers, m_is_adding_frequency_domain_marker);
+                    MaybeAddMarker(i, ch, ui.record->frequency_domain, m_frequency_domain_markers,
+                                   m_is_adding_frequency_domain_marker);
                 }
             }
         }
@@ -1384,7 +1380,7 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                     ImGui::TableNextColumn();
                     ImGui::Text("Sampling period");
                     ImGui::TableNextColumn();
-                    ImGui::Text(MetricFormatter(record->sampling_period, "{: 8.1f} {}s"));
+                    ImGui::Text(MetricFormatter(record->step, "{: 8.1f} {}s"));
 
                     ImGui::TableNextColumn();
                     ImGui::Text("Trigger rate");
@@ -1553,7 +1549,7 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
                     ImGui::TableNextColumn();
                     ImGui::Text("Bin");
                     ImGui::TableNextColumn();
-                    ImGui::Text(MetricFormatter(record->bin_range, "{: 7.2f} {}Hz", 1e6));
+                    ImGui::Text(MetricFormatter(record->step, "{: 7.2f} {}Hz", 1e6));
                     ImGui::TableNextColumn();
                     ImGui::Text(fmt::format("{:8} pts", (record->x.size() - 1) * 2));
 

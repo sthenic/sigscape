@@ -99,7 +99,7 @@ void DataProcessing::MainLoop()
             const size_t FFT_LENGTH = PreviousPowerOfTwo(time_domain->header->record_length);
             processed_record->frequency_domain =
                 std::make_shared<FrequencyDomainRecord>(FFT_LENGTH / 2 + 1);
-            processed_record->frequency_domain->bin_range =
+            processed_record->frequency_domain->step =
                 processed_record->time_domain->sampling_frequency / static_cast<double>(FFT_LENGTH);
 
             /* Windowing and scaling to [-1, 1] for the correct FFT values. We
@@ -256,7 +256,7 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
 
     auto &x = record->frequency_domain->x;
     auto &y = record->frequency_domain->y;
-    const auto &bin_range = record->frequency_domain->bin_range;
+    const auto &bin_range = record->frequency_domain->step;
     std::deque<double> cursor;
 
     dc = {};
@@ -339,7 +339,7 @@ void DataProcessing::PlaceHarmonics(const Tone &fundamental, const ProcessedReco
                                     std::vector<Tone> &harmonics)
 {
     const auto &y = record->frequency_domain->y;
-    const auto &bin_range = record->frequency_domain->bin_range;
+    const auto &bin_range = record->frequency_domain->step;
 
     /* Analyze the harmonics where we only look at HD2 to HD5. We use the same
        approach as for the tone analysis above, with an interpolation. Though we

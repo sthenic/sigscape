@@ -37,6 +37,8 @@ private:
         size_t digitizer;
         size_t channel;
         size_t sample;
+        ImVec4 color;
+        float thickness;
         double x;
         double y;
     };
@@ -105,12 +107,20 @@ private:
     static std::string MetricFormatter(double value, const std::string &format,
                                        double highest_prefix = 1e9);
     static void MetricFormatter(double value, char *tick_label, int size, void *data);
+    static void MarkerFormatterTimeDomain(const Marker &marker, std::string &x, std::string &y);
+    static void MarkerFormatterFrequencyDomain(const Marker &marker, std::string &x, std::string &y);
+    typedef void (*MarkerFormatter)(const Marker &marker, std::string &x, std::string &y);
+
+    void MarkerTree(std::vector<Marker> &markers, const std::string &label,
+                    MarkerFormatter formatter);
 
     void PlotTimeDomainSelected();
 
     int GetSelectedChannel(ChannelUiState *&ui);
-    void RenderMarkerX(int id, double *x, const std::string &format, ImPlotDragToolFlags flags = 0);
-    void RenderMarkerY(int id, double *y, const std::string &format, ImPlotDragToolFlags flags = 0);
+    void DrawMarkerX(int id, double *x, const ImVec4 &color, float thickness,
+                     const std::string &format, ImPlotDragToolFlags flags = 0);
+    void DrawMarkerY(int id, double *y, const ImVec4 &color, float thickness,
+                     const std::string &format, ImPlotDragToolFlags flags = 0);
 
     template <typename T>
     static void MaybeAddMarker(size_t digitizer, size_t channel, const T &record,

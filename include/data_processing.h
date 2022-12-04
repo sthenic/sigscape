@@ -24,7 +24,7 @@ public:
 private:
     static const size_t WATERFALL_SIZE = 20;
     static const size_t NOF_SKIRT_BINS_DEFAULT = 3;
-    static const size_t CLOUD_SIZE = 20;
+    static const size_t CLOUD_SIZE = 30;
     void *m_handle;
     int m_index;
     int m_channel;

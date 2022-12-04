@@ -194,6 +194,9 @@ void Ui::HandleMessage(const IdentificationMessage &message)
 
     for (const auto &d : m_digitizers)
         d->Start();
+
+    // for (size_t i = 0; i < m_digitizers.size(); ++i)
+    m_selected[0] = true;
 }
 
 void Ui::HandleMessage(size_t i, const DigitizerMessage &message)
@@ -248,6 +251,8 @@ void Ui::HandleMessage(size_t i, const DigitizerMessage &message)
 
     case DigitizerMessageId::DIRTY_TOP_PARAMETERS:
         m_digitizer_ui_state[i].set_top_color = COLOR_ORANGE;
+        m_digitizers[i]->PushMessage(DigitizerMessageId::SET_PARAMETERS);
+        // m_digitizers[i]->PushMessage(DigitizerMessageId::START_ACQUISITION);
         break;
 
     case DigitizerMessageId::DIRTY_CLOCK_SYSTEM_PARAMETERS:
@@ -631,11 +636,84 @@ void Ui::RenderSetClockSystemParametersButton(const ImVec2 &size)
     ImGui::PopStyleColor(2);
 }
 
+/* FIXME: Remove if no longer needed. */
 void CenteredTextInCell(const std::string &str)
 {
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
                          (ImGui::GetColumnWidth() - ImGui::CalcTextSize(str.c_str()).x) / 2);
     ImGui::Text(str);
+}
+
+void Ui::MarkerTree(std::vector<Marker> &markers, const std::string &label,
+                    MarkerFormatter formatter)
+{
+    if (markers.empty())
+        return;
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    if (!ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+        return;
+    ImGui::Spacing();
+
+    for (size_t i = 0; i < markers.size(); ++i)
+    {
+        auto &marker = markers[i];
+        const auto &ui = m_digitizer_ui_state[marker.digitizer].channels[marker.channel];
+
+        ImGui::ColorEdit4(fmt::format("##color{}M{}", label, i).c_str(), (float *)&marker.color,
+                            ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+        ImGui::SameLine();
+
+        int flags = ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow |
+                    ImGuiTreeNodeFlags_SpanAvailWidth;
+
+        bool node_open = ImGui::TreeNodeEx(fmt::format("M{}##{}", i, label).c_str(), flags);
+
+        /* TODO: Maybe change the color instead. */
+        if (ImGui::IsItemHovered())
+            marker.thickness = 3.0f;
+        else
+            marker.thickness = 1.0f; /* FIXME: Restore 'unhovered' thickness instead. */
+
+        std::string x_str;
+        std::string y_str;
+        formatter(marker, x_str, y_str);
+
+        ImGui::SameLine();
+        ImGui::Text(fmt::format("@ {}, {}", x_str, y_str));
+
+        ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 30.0f -
+                        ImGui::CalcTextSize(ui.record->label.c_str()).x);
+        ImGui::Text(ui.record->label);
+        ImGui::SameLine();
+        ImGui::ColorEdit4(fmt::format("##channel{}M{}", label, i).c_str(), (float *)&ui.color,
+                          ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel |
+                              ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoPicker);
+
+        if (node_open)
+        {
+            const auto flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
+                               ImGuiTableFlags_BordersInnerV;
+            if (ImGui::BeginTable(fmt::format("##table{}M{}", label, i).c_str(), 2, flags))
+            {
+                ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
+                ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
+
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Text("Attached");
+                ImGui::TableSetColumnIndex(1);
+                ImGui::Text(ui.record->label);
+
+                ImGui::EndTable();
+            }
+
+            ImGui::TreePop();
+        }
+    }
+
+    ImGui::TreePop();
 }
 
 void Ui::RenderMarkers(const ImVec2 &position, const ImVec2 &size)
@@ -650,94 +728,8 @@ void Ui::RenderMarkers(const ImVec2 &position, const ImVec2 &size)
         m_frequency_domain_markers.clear();
     }
 
-    /* Present the markers as a two-dimensional table to visualize the one-many
-       metrics for each individual marker. */
-
-    const auto flags =
-        ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_BordersInnerV;
-
-    auto Label = [&](size_t digitizer, size_t channel, size_t i){
-        auto &color = m_digitizer_ui_state[digitizer].channels[channel].color;
-        ImGui::ColorEdit4(fmt::format("##M{}", i).c_str(), (float *)&color,
-                            ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel |
-                                ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoPicker);
-        ImGui::SameLine();
-        ImGui::Text(fmt::format("M{}", i));
-    };
-
-    if (ImGui::BeginTable("Markers##timedomainx", m_time_domain_markers.size() + 1, flags))
-    {
-        ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
-        for (size_t i = 0; i < m_time_domain_markers.size(); ++i)
-            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 80.0f);
-        ImGui::TableNextRow();
-
-        /* Header row */
-        for (size_t i = 0; i < m_time_domain_markers.size(); ++i)
-        {
-            const auto &marker = m_time_domain_markers[i];
-            ImGui::TableSetColumnIndex(i + 1);
-            Label(marker.digitizer, marker.channel, i);
-        }
-
-        for (size_t i = 0; i < m_time_domain_markers.size(); ++i)
-        {
-            const auto &marker = m_time_domain_markers[i];
-            ImGui::TableNextRow();
-            ImGui::TableSetColumnIndex(0);
-            Label(marker.digitizer, marker.channel, i);
-            const auto &marker_row = m_time_domain_markers[i];
-
-            for (size_t j = 0; j < m_time_domain_markers.size(); ++j)
-            {
-                const auto &marker_column = m_time_domain_markers[j];
-                ImGui::TableSetColumnIndex(j + 1);
-
-                if (i != j)
-                    ImGui::Text(MetricFormatter(marker_row.x - marker_column.x, "{: 7.1f} {}s", 1e-6));
-            }
-        }
-        ImGui::EndTable();
-    }
-
-    ImGui::Spacing();
-
-    if (ImGui::BeginTable("Markers##timedomainy", m_time_domain_markers.size() + 1, flags))
-    {
-        ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
-        for (size_t i = 0; i < m_time_domain_markers.size(); ++i)
-            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 80.0f);
-        ImGui::TableNextRow();
-
-        /* Header row */
-        for (size_t i = 0; i < m_time_domain_markers.size(); ++i)
-        {
-            const auto &marker = m_time_domain_markers[i];
-            ImGui::TableSetColumnIndex(i + 1);
-            Label(marker.digitizer, marker.channel, i);
-        }
-
-        for (size_t i = 0; i < m_time_domain_markers.size(); ++i)
-        {
-            const auto &marker = m_time_domain_markers[i];
-            ImGui::TableNextRow();
-            ImGui::TableSetColumnIndex(0);
-            Label(marker.digitizer, marker.channel, i);
-            const auto &marker_row = m_time_domain_markers[i];
-
-            for (size_t j = 0; j < m_time_domain_markers.size(); ++j)
-            {
-                const auto &marker_column = m_time_domain_markers[j];
-                ImGui::TableSetColumnIndex(j + 1);
-
-                if (i != j)
-                    ImGui::Text(MetricFormatter(marker_row.y - marker_column.y, "{: 7.1f} {}V", 1e-3));
-            }
-        }
-
-        ImGui::EndTable();
-    }
-
+    MarkerTree(m_time_domain_markers, "Time Domain", MarkerFormatterTimeDomain);
+    MarkerTree(m_frequency_domain_markers, "Frequency Domain", MarkerFormatterFrequencyDomain);
     ImGui::End();
 }
 
@@ -870,6 +862,17 @@ void Ui::MetricFormatter(double value, char *tick_label, int size, void *data)
     std::snprintf(tick_label, size, "%g %s%s", value / LIMITS.back().first, LIMITS.back().second, UNIT);
 }
 
+void Ui::MarkerFormatterTimeDomain(const Marker &marker, std::string &x, std::string &y)
+{
+    x = MetricFormatter(marker.x, "{: 7.2f} {}s", 1e-3);
+    y = MetricFormatter(marker.y, "{: 7.2f} {}V", 1e-3);
+}
+
+void Ui::MarkerFormatterFrequencyDomain(const Marker &marker, std::string &x, std::string &y)
+{
+    x = MetricFormatter(marker.x, "{: 7.2f} {}Hz", 1e6);
+    y = fmt::format("{: 7.2f} dBFS", marker.y);
+}
 
 template<typename T>
 void Ui::SnapX(double x, const T &record, double &snap_x, double &snap_y)
@@ -972,8 +975,6 @@ void Ui::PlotTimeDomainSelected()
                 continue;
 
             int count = static_cast<int>(ui.record->time_domain->x.size());
-            if (ui.is_sample_markers_enabled)
-                ImPlot::SetNextMarkerStyle(ImPlotMarker_Cross);
 
             if (ui.is_cloud_enabled)
             {
@@ -987,6 +988,9 @@ void Ui::PlotTimeDomainSelected()
             }
             else
             {
+                if (ui.is_sample_markers_enabled)
+                    ImPlot::SetNextMarkerStyle(ImPlotMarker_Cross);
+
                 ImPlot::PushStyleColor(ImPlotCol_Line, ui.color);
                 ImPlot::PlotLine(ui.record->label.c_str(),
                                 ui.record->time_domain->x.data(),
@@ -1009,11 +1013,13 @@ void Ui::PlotTimeDomainSelected()
 
                     SnapX(m.x, ui.record->time_domain, m.x, m.y);
 
-                    ImPlot::DragPoint(0, &m.x, &m.y, ImVec4(1, 1, 1, 1), 4.0f,
+                    ImPlot::DragPoint(0, &m.x, &m.y, m.color, 3.0f + m.thickness,
                                       ImPlotDragToolFlags_NoInputs);
-                    RenderMarkerX(marker_id++, &m.x, MetricFormatter(m.x, "{:g} {}s", 1e-9));
-                    RenderMarkerY(marker_id++, &m.y, MetricFormatter(m.y, "{: 7.1f} {}V", 1e-3),
-                                  ImPlotDragToolFlags_NoInputs);
+                    DrawMarkerX(marker_id++, &m.x, m.color, m.thickness,
+                                MetricFormatter(m.x, "{:g} {}s", 1e-3));
+                    DrawMarkerY(marker_id++, &m.y, m.color, m.thickness,
+                                MetricFormatter(m.y, "{: 7.1f} {}V", 1e-3),
+                                ImPlotDragToolFlags_NoInputs);
                 }
 
                 if (ui.is_selected)
@@ -1043,16 +1049,18 @@ int Ui::GetSelectedChannel(ChannelUiState *&ui)
     return ADQR_EAGAIN;
 }
 
-void Ui::RenderMarkerX(int id, double *x, const std::string &tag, ImPlotDragToolFlags flags)
+void Ui::DrawMarkerX(int id, double *x, const ImVec4 &color, float thickness,
+                       const std::string &tag, ImPlotDragToolFlags flags)
 {
-    ImPlot::DragLineX(id, x, ImVec4(1, 1, 1, 1), 1.0F, flags);
-    ImPlot::TagX(*x, ImVec4(1, 1, 1, 1), "%s", tag.c_str());
+    ImPlot::DragLineX(id, x, color, thickness, flags);
+    ImPlot::TagX(*x, color, "%s", tag.c_str());
 }
 
-void Ui::RenderMarkerY(int id, double *y, const std::string &tag, ImPlotDragToolFlags flags)
+void Ui::DrawMarkerY(int id, double *y, const ImVec4 &color, float thickness,
+                       const std::string &tag, ImPlotDragToolFlags flags)
 {
-    ImPlot::DragLineY(id, y, ImVec4(1, 1, 1, 1), 1.0F, flags);
-    ImPlot::TagY(*y, ImVec4(1, 1, 1, 1), "%s", tag.c_str());
+    ImPlot::DragLineY(id, y, color, thickness, flags);
+    ImPlot::TagY(*y, color, "%s", tag.c_str());
 }
 
 template <typename T>
@@ -1064,7 +1072,13 @@ void Ui::MaybeAddMarker(size_t digitizer, size_t channel, const T &record,
         size_t index;
         GetClosestSampleIndex(ImPlot::GetPlotMousePos().x, ImPlot::GetPlotMousePos().y, record,
                               ImPlot::GetPlotLimits(), index);
-        markers.push_back({digitizer, channel, index, record->x[index], record->y[index]});
+
+        /* FIXME: Emplace back w/ constructor handling the default color & thickness. */
+        /* FIXME: Probably need to consider the initial x/y-values to be
+                  special. Otherwise, the marker can seem to wander a bit if the
+                  signal is noisy. */
+        markers.push_back({digitizer, channel, index, ImVec4(1, 1, 1, 1), 1.0f, record->x[index],
+                           record->y[index]});
         is_adding_marker = true;
     }
 
@@ -1213,12 +1227,13 @@ void Ui::PlotFourierTransformSelected()
                         continue;
 
                     SnapX(m.x, ui.record->frequency_domain, m.x, m.y);
-                    ImPlot::DragPoint(0, &m.x, &m.y, ImVec4(1, 1, 1, 1), 4.0f,
-                                      ImPlotDragToolFlags_NoInputs);
 
-                    RenderMarkerX(marker_id++, &m.x, MetricFormatter(m.x, "{:.2f} {}Hz", 1e6));
-                    RenderMarkerY(marker_id++, &m.y, fmt::format("{: 8.2f} dBFS", m.y),
-                                  ImPlotDragToolFlags_NoInputs);
+                    ImPlot::DragPoint(0, &m.x, &m.y, m.color, 3.0f + m.thickness,
+                                      ImPlotDragToolFlags_NoInputs);
+                    DrawMarkerX(marker_id++, &m.x, m.color, m.thickness,
+                                MetricFormatter(m.x, "{:.2f} {}Hz", 1e6));
+                    DrawMarkerY(marker_id++, &m.y, m.color, m.thickness,
+                                fmt::format("{: 8.2f} dBFS", m.y), ImPlotDragToolFlags_NoInputs);
                 }
 
                 if (ui.is_selected)

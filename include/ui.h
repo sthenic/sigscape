@@ -83,11 +83,14 @@ private:
     };
 
     std::vector<DigitizerUiState> m_digitizer_ui_state;
+
+    std::map<size_t, Marker>::iterator m_last_frequency_domain_marker;
     std::map<size_t, Marker> m_frequency_domain_markers;
     bool m_is_dragging_frequency_domain_marker;
     bool m_is_adding_frequency_domain_marker;
     size_t m_next_frequency_domain_marker_id;
 
+    std::map<size_t, Marker>::iterator m_last_time_domain_marker;
     std::map<size_t, Marker> m_time_domain_markers;
     bool m_is_dragging_time_domain_marker;
     bool m_is_adding_time_domain_marker;
@@ -140,9 +143,11 @@ private:
     template <typename T>
     static void MaybeAddMarker(size_t digitizer, size_t channel, const T &record,
                                std::map<size_t, Marker> &markers, bool &is_adding_marker,
-                               bool &is_dragging_marker, size_t &next_marker_id);
+                               bool &is_dragging_marker, size_t &next_marker_id,
+                               std::map<size_t, Marker>::iterator &last_marker);
 
     static bool IsHoveredAndDoubleClicked(const std::pair<size_t, Marker> &marker);
+    static void RemoveDoubleClickedMarkers(std::map<size_t, Marker> &markers);
 
     template <typename T>
     static void SnapX(double x, const T &record, double &snap_x, double &snap_y);

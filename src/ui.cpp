@@ -104,7 +104,10 @@ Ui::Ui()
     , m_is_dragging_time_domain_marker(false)
     , m_is_adding_time_domain_marker(false)
     , m_next_time_domain_marker_id(0)
-{}
+{
+    m_last_frequency_domain_marker = m_frequency_domain_markers.end();
+    m_last_time_domain_marker = m_time_domain_markers.end();
+}
 
 Ui::~Ui()
 {
@@ -1118,8 +1121,8 @@ void Ui::PlotTimeDomainSelected()
                 if (ui.is_selected)
                 {
                     MaybeAddMarker(i, ch, ui.record->time_domain, m_time_domain_markers,
-                                   m_is_adding_time_domain_marker,
-                                   m_is_dragging_time_domain_marker, m_next_time_domain_marker_id);
+                                   m_is_adding_time_domain_marker, m_is_dragging_time_domain_marker,
+                                   m_next_time_domain_marker_id, m_last_time_domain_marker);
                 }
             }
         }
@@ -1160,7 +1163,8 @@ void Ui::DrawMarkerY(int id, double *y, const ImVec4 &color, float thickness,
 template <typename T>
 void Ui::MaybeAddMarker(size_t digitizer, size_t channel, const T &record,
                         std::map<size_t, Marker> &markers, bool &is_adding_marker,
-                        bool &is_dragging_marker, size_t &next_marker_id)
+                        bool &is_dragging_marker, size_t &next_marker_id,
+                        std::map<size_t, Marker>::iterator &last_marker)
 {
     if (ImPlot::IsPlotHovered() && ImGui::GetIO().KeyCtrl && ImGui::IsMouseClicked(0))
     {
@@ -1168,15 +1172,15 @@ void Ui::MaybeAddMarker(size_t digitizer, size_t channel, const T &record,
         GetClosestSampleIndex(ImPlot::GetPlotMousePos().x, ImPlot::GetPlotMousePos().y, record,
                               ImPlot::GetPlotLimits(), index);
 
-        /* FIXME: Emplace back w/ constructor handling the default color & thickness. */
         /* FIXME: Probably need to consider the initial x/y-values to be
                   special. Otherwise, the marker can seem to wander a bit if the
                   signal is noisy. */
-        /* FIXME: Monotonically increasing id? */
 
-        markers.insert({next_marker_id, Marker(next_marker_id, digitizer, channel, index,
-                                               record->x[index], record->y[index])});
+        auto [it, success] =
+            markers.insert({next_marker_id, Marker(next_marker_id, digitizer, channel, index,
+                                                   record->x[index], record->y[index])});
         next_marker_id++;
+        last_marker = it;
         is_adding_marker = true;
         is_dragging_marker = false;
     }
@@ -1184,19 +1188,22 @@ void Ui::MaybeAddMarker(size_t digitizer, size_t channel, const T &record,
     if (is_adding_marker && ImGui::IsMouseDragging(0))
     {
         /* FIXME: Very rough test of delta dragging */
-        // if (!is_dragging_marker)
-        // {
-        //     size_t index;
-        //     GetClosestSampleIndex(ImPlot::GetPlotMousePos().x, ImPlot::GetPlotMousePos().y, record,
-        //                           ImPlot::GetPlotLimits(), index);
-        //     markers.back().references.push_back(markers.size());
-        //     markers.
-        //     markers.push_back({markers.size(), digitizer, channel, index, ImVec4(1, 1, 1, 1),
-        //                        1.0f, record->x[index], record->y[index], {}});
-        // }
+        if (!is_dragging_marker)
+        {
+            size_t index;
+            GetClosestSampleIndex(ImPlot::GetPlotMousePos().x, ImPlot::GetPlotMousePos().y, record,
+                                  ImPlot::GetPlotLimits(), index);
+
+            last_marker->second.deltas.insert(next_marker_id);
+            auto [it, success] =
+                markers.insert({next_marker_id, Marker(next_marker_id, digitizer, channel, index,
+                                                       record->x[index], record->y[index])});
+            next_marker_id++;
+            last_marker = it;
+        }
 
         is_dragging_marker = true;
-        // markers.back().x = ImPlot::GetPlotMousePos().x;
+        last_marker->second.x = ImPlot::GetPlotMousePos().x;
     }
 
     if (is_adding_marker && ImGui::IsMouseReleased(0))
@@ -1227,6 +1234,26 @@ bool Ui::IsHoveredAndDoubleClicked(const std::pair<size_t, Marker> &marker)
             ImGui::IsMouseHoveringRect(marker_y_upper_left, marker_y_lower_right));
 }
 
+void Ui::RemoveDoubleClickedMarkers(std::map<size_t, Marker> &markers)
+{
+    for (auto it = markers.begin(); it != markers.end(); )
+    {
+        if (IsHoveredAndDoubleClicked(*it))
+        {
+            /* Make sure to remove any delta references to the marker we're
+               about to remove. The std::set::erase has no effect if the key
+               does not exist. */
+            for (auto &[_, marker] : markers)
+                marker.deltas.erase(it->first);
+            it = markers.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+}
+
 void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
 {
     ImGui::SetNextWindowPos(position);
@@ -1240,16 +1267,7 @@ void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
         ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatter, (void *)"s");
         ImPlot::SetupAxisFormat(ImAxis_Y1, MetricFormatter, (void *)"V");
         PlotTimeDomainSelected();
-
-        /* Check for double click marker removal. */
-        for (auto it = m_time_domain_markers.begin(); it != m_time_domain_markers.end(); )
-        {
-            if (IsHoveredAndDoubleClicked(*it))
-                it = m_time_domain_markers.erase(it);
-            else
-                ++it;
-        }
-
+        RemoveDoubleClickedMarkers(m_time_domain_markers);
         ImPlot::EndPlot();
     }
     ImPlot::PopStyleVar();
@@ -1358,7 +1376,8 @@ void Ui::PlotFourierTransformSelected()
                     MaybeAddMarker(i, ch, ui.record->frequency_domain, m_frequency_domain_markers,
                                    m_is_adding_frequency_domain_marker,
                                    m_is_dragging_frequency_domain_marker,
-                                   m_next_frequency_domain_marker_id);
+                                   m_next_frequency_domain_marker_id,
+                                   m_last_frequency_domain_marker);
                 }
             }
         }
@@ -1375,16 +1394,7 @@ void Ui::RenderFourierTransformPlot()
         ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, 1e9);
         ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatter, (void *)"Hz");
         PlotFourierTransformSelected();
-
-        /* Check for double click marker removal. */
-        for (auto it = m_frequency_domain_markers.begin(); it != m_frequency_domain_markers.end(); )
-        {
-            if (IsHoveredAndDoubleClicked(*it))
-                it = m_frequency_domain_markers.erase(it);
-            else
-                ++it;
-        }
-
+        RemoveDoubleClickedMarkers(m_frequency_domain_markers);
         ImPlot::EndPlot();
     }
     ImPlot::PopStyleVar();

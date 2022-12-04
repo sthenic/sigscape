@@ -647,7 +647,7 @@ void CenteredTextInCell(const std::string &str)
 }
 
 void Ui::MarkerTree(std::vector<Marker> &markers, const std::string &label,
-                    MarkerFormatter formatter)
+                    Formatter format_x, Formatter format_y)
 {
     if (markers.empty())
         return;
@@ -669,13 +669,13 @@ void Ui::MarkerTree(std::vector<Marker> &markers, const std::string &label,
         const auto &ui = m_digitizer_ui_state[marker.digitizer].channels[marker.channel];
 
         ImGui::ColorEdit4(fmt::format("##color{}M{}", label, i).c_str(), (float *)&marker.color,
-                            ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+                          ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
         ImGui::SameLine();
 
         int flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnDoubleClick |
                     ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
 
-        bool node_open = ImGui::TreeNodeEx(fmt::format("M{}##{}", marker.id, label).c_str(), flags);
+        bool node_open = ImGui::TreeNodeEx(fmt::format("##node{}", marker.id, label).c_str(), flags);
 
         /* TODO: Maybe change the color instead. */
         if (ImGui::IsItemHovered())
@@ -711,12 +711,8 @@ void Ui::MarkerTree(std::vector<Marker> &markers, const std::string &label,
             ImGui::EndDragDropTarget();
         }
 
-        std::string x_str;
-        std::string y_str;
-        formatter(marker, x_str, y_str);
-
         ImGui::SameLine();
-        ImGui::Text(fmt::format("{}, {}", x_str, y_str));
+        ImGui::Text(fmt::format("M{} {}, {}", i, format_x(marker.x, false), format_y(marker.y, false)));
 
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 30.0f -
                         ImGui::CalcTextSize(ui.record->label.c_str()).x);
@@ -726,11 +722,16 @@ void Ui::MarkerTree(std::vector<Marker> &markers, const std::string &label,
                           ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel |
                               ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoPicker);
 
+
         if (node_open)
         {
+            /* TODO: Don't like this alignment hack. Is there a better layout? */
+            const float indent = 27.0f;
+            ImGui::Indent(indent);
             if (!marker.references.empty())
             {
-                const auto flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings;
+                const auto flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
+                                   ImGuiTableFlags_NoPadInnerX | ImGuiTableFlags_NoPadOuterX;
                 if (ImGui::BeginTable(fmt::format("##table{}M{}", label, i).c_str(), 2, flags))
                 {
                     ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
@@ -744,14 +745,14 @@ void Ui::MarkerTree(std::vector<Marker> &markers, const std::string &label,
                         ImGui::Text(fmt::format("M{}", reference.id));
                         ImGui::TableSetColumnIndex(1);
                         /* FIXME: Probably wrong to call it 'reference'. */
-                        std::string delta_x_str = MetricFormatter(reference.x - marker.x, "{:>+7.2f} {}s", 1e-3);
-                        std::string delta_y_str = MetricFormatter(reference.y - marker.y, "{:>+8.2f} {}V", 1e-3);
-                        ImGui::Text(fmt::format(" {}, {}", delta_x_str, delta_y_str));
+                        ImGui::Text(fmt::format(" {}, {}", format_x(reference.x - marker.x, true),
+                                                format_y(reference.y - marker.y, true)));
                     }
 
                     ImGui::EndTable();
                 }
             }
+            ImGui::Unindent(indent);
 
             ImGui::TreePop();
         }
@@ -760,6 +761,13 @@ void Ui::MarkerTree(std::vector<Marker> &markers, const std::string &label,
     if (to_remove >= 0)
     {
         /* FIXME: Make sure to remove any references. */
+        for (auto &marker : markers)
+        {
+            auto Predicate = [&](size_t i) { return i == static_cast<size_t>(to_remove); };
+            auto &r = marker.references;
+            r.erase(std::remove_if(r.begin(), r.end(), Predicate), r.end());
+        }
+
         markers.erase(markers.begin() + to_remove);
     }
 
@@ -778,8 +786,9 @@ void Ui::RenderMarkers(const ImVec2 &position, const ImVec2 &size)
         m_frequency_domain_markers.clear();
     }
 
-    MarkerTree(m_time_domain_markers, "Time Domain", MarkerFormatterTimeDomain);
-    MarkerTree(m_frequency_domain_markers, "Frequency Domain", MarkerFormatterFrequencyDomain);
+    MarkerTree(m_time_domain_markers, "Time Domain", FormatTimeDomainX, FormatTimeDomainY);
+    MarkerTree(m_frequency_domain_markers, "Frequency Domain", FormatFrequencyDomainX,
+               FormatFrequencyDomainY);
     ImGui::End();
 }
 
@@ -912,16 +921,36 @@ void Ui::MetricFormatter(double value, char *tick_label, int size, void *data)
     std::snprintf(tick_label, size, "%g %s%s", value / LIMITS.back().first, LIMITS.back().second, UNIT);
 }
 
-void Ui::MarkerFormatterTimeDomain(const Marker &marker, std::string &x, std::string &y)
+std::string Ui::FormatTimeDomainX(double value, bool show_sign)
 {
-    x = MetricFormatter(marker.x, "{: 7.2f} {}s", 1e-3);
-    y = MetricFormatter(marker.y, "{: 8.2f} {}V", 1e-3);
+    std::string format = "{:>-7.2f} {}s";
+    if (show_sign)
+        format[3] = '+';
+    return MetricFormatter(value, format, 1e-3);
 }
 
-void Ui::MarkerFormatterFrequencyDomain(const Marker &marker, std::string &x, std::string &y)
+std::string Ui::FormatTimeDomainY(double value, bool show_sign)
 {
-    x = MetricFormatter(marker.x, "{: 7.2f} {}Hz", 1e6);
-    y = fmt::format("{: 7.2f} dBFS", marker.y);
+    std::string format = "{:>-8.2f} {}V";
+    if (show_sign)
+        format[3] = '+';
+    return MetricFormatter(value, format, 1e-3);
+}
+
+std::string Ui::FormatFrequencyDomainX(double value, bool show_sign)
+{
+    std::string format = "{:>-7.2f} {}Hz";
+    if (show_sign)
+        format[3] = '+';
+    return MetricFormatter(value, format, 1e6);
+}
+
+std::string Ui::FormatFrequencyDomainY(double value, bool show_sign)
+{
+    std::string format = "{:>-7.2f} dBFS";
+    if (show_sign)
+        format[3] = '+';
+    return fmt::format(format, value);
 }
 
 template<typename T>

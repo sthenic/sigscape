@@ -111,12 +111,14 @@ private:
     static std::string MetricFormatter(double value, const std::string &format,
                                        double highest_prefix = 1e9);
     static void MetricFormatter(double value, char *tick_label, int size, void *data);
-    static void MarkerFormatterTimeDomain(const Marker &marker, std::string &x, std::string &y);
-    static void MarkerFormatterFrequencyDomain(const Marker &marker, std::string &x, std::string &y);
-    typedef void (*MarkerFormatter)(const Marker &marker, std::string &x, std::string &y);
+    static std::string FormatTimeDomainX(double value, bool show_sign);
+    static std::string FormatTimeDomainY(double value, bool show_sign);
+    static std::string FormatFrequencyDomainX(double value, bool show_sign);
+    static std::string FormatFrequencyDomainY(double value, bool show_sign);
+    typedef std::string (*Formatter)(double value, bool show_sign);
 
     void MarkerTree(std::vector<Marker> &markers, const std::string &label,
-                    MarkerFormatter formatter);
+                    Formatter format_x, Formatter format_y);
 
     void PlotTimeDomainSelected();
 

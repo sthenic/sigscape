@@ -723,7 +723,7 @@ void Ui::MarkerTree(std::map<size_t, Marker> &markers, const std::string &label,
             if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload(payload_identifier.c_str()))
             {
                 size_t payload_id = *static_cast<const size_t *>(payload->Data);
-                marker.deltas.push_back(payload_id);
+                marker.deltas.insert(payload_id);
             }
             ImGui::EndDragDropTarget();
         }
@@ -776,14 +776,10 @@ void Ui::MarkerTree(std::map<size_t, Marker> &markers, const std::string &label,
 
     if (id_to_remove >= 0)
     {
-        /* Make sure to remove any delta references to the marker we're about to remove. */
+        /* Make sure to remove any delta references to the marker we're about to
+           remove. The std::set::erase has no effect if the key does not exist.*/
         for (auto &[_, marker] : markers)
-        {
-            auto Predicate = [&](size_t i) { return i == static_cast<size_t>(id_to_remove); };
-            auto &d = marker.deltas;
-            d.erase(std::remove_if(d.begin(), d.end(), Predicate), d.end());
-        }
-
+            marker.deltas.erase(id_to_remove);
         markers.erase(id_to_remove);
     }
 

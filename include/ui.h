@@ -12,6 +12,7 @@
 #include "identification.h"
 
 #include <map>
+#include <set>
 
 class Ui
 {
@@ -47,7 +48,7 @@ private:
         float thickness;
         double x;
         double y;
-        std::vector<size_t> deltas;
+        std::set<size_t> deltas;
     };
 
     struct ChannelUiState

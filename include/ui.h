@@ -34,6 +34,7 @@ private:
 
     struct Marker
     {
+        size_t id;
         size_t digitizer;
         size_t channel;
         size_t sample;
@@ -41,6 +42,7 @@ private:
         float thickness;
         double x;
         double y;
+        std::vector<size_t> references;
     };
 
     struct ChannelUiState
@@ -76,8 +78,10 @@ private:
 
     std::vector<DigitizerUiState> m_digitizer_ui_state;
     std::vector<Marker> m_frequency_domain_markers;
-    std::vector<Marker> m_time_domain_markers;
+    std::vector<Marker> m_time_domain_markers; /* FIXME: Maps instead <id, marker>? */
+    bool m_is_dragging_frequency_domain_marker;
     bool m_is_adding_frequency_domain_marker;
+    bool m_is_dragging_time_domain_marker;
     bool m_is_adding_time_domain_marker;
 
     void ClearChannelSelection();
@@ -124,7 +128,8 @@ private:
 
     template <typename T>
     static void MaybeAddMarker(size_t digitizer, size_t channel, const T &record,
-                               std::vector<Marker> &markers, bool &is_adding_marker);
+                               std::vector<Marker> &markers, bool &is_adding_marker,
+                               bool &is_dragging_marker);
 
     static bool IsHoveredAndDoubleClicked(const Marker &marker);
 

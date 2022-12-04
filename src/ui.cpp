@@ -84,7 +84,9 @@ Ui::Ui()
     , m_digitizer_ui_state{}
     , m_frequency_domain_markers{}
     , m_time_domain_markers{}
+    , m_is_dragging_frequency_domain_marker(false)
     , m_is_adding_frequency_domain_marker(false)
+    , m_is_dragging_time_domain_marker(false)
     , m_is_adding_time_domain_marker(false)
 {}
 
@@ -670,10 +672,10 @@ void Ui::MarkerTree(std::vector<Marker> &markers, const std::string &label,
                             ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
         ImGui::SameLine();
 
-        int flags = ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow |
-                    ImGuiTreeNodeFlags_SpanAvailWidth;
+        int flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnDoubleClick |
+                    ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
 
-        bool node_open = ImGui::TreeNodeEx(fmt::format("M{}##{}", i, label).c_str(), flags);
+        bool node_open = ImGui::TreeNodeEx(fmt::format("M{}##{}", marker.id, label).c_str(), flags);
 
         /* TODO: Maybe change the color instead. */
         if (ImGui::IsItemHovered())
@@ -686,7 +688,27 @@ void Ui::MarkerTree(std::vector<Marker> &markers, const std::string &label,
             if (ImGui::MenuItem("Remove"))
                 to_remove = static_cast<int>(i);
 
+            if (ImGui::MenuItem("Clear references", NULL, false, !marker.references.empty()))
+                marker.references.clear();
+
             ImGui::EndPopup();
+        }
+
+        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
+        {
+            ImGui::SetDragDropPayload("MARKER_REFERENCE", &i, sizeof(i));
+            ImGui::EndDragDropSource();
+        }
+
+        if (ImGui::BeginDragDropTarget())
+        {
+            /* FIXME: Not a oneliner */
+            if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload("MARKER_REFERENCE"))
+            {
+                size_t payload_i = *static_cast<const size_t *>(payload->Data);
+                marker.references.push_back(payload_i);
+            }
+            ImGui::EndDragDropTarget();
         }
 
         std::string x_str;
@@ -694,7 +716,7 @@ void Ui::MarkerTree(std::vector<Marker> &markers, const std::string &label,
         formatter(marker, x_str, y_str);
 
         ImGui::SameLine();
-        ImGui::Text(fmt::format("@ {}, {}", x_str, y_str));
+        ImGui::Text(fmt::format("{}, {}", x_str, y_str));
 
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 30.0f -
                         ImGui::CalcTextSize(ui.record->label.c_str()).x);
@@ -706,20 +728,29 @@ void Ui::MarkerTree(std::vector<Marker> &markers, const std::string &label,
 
         if (node_open)
         {
-            const auto flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
-                               ImGuiTableFlags_BordersInnerV;
-            if (ImGui::BeginTable(fmt::format("##table{}M{}", label, i).c_str(), 2, flags))
+            if (!marker.references.empty())
             {
-                ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
-                ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
+                const auto flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings;
+                if (ImGui::BeginTable(fmt::format("##table{}M{}", label, i).c_str(), 2, flags))
+                {
+                    ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
+                    ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
 
-                ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0);
-                ImGui::Text("Attached");
-                ImGui::TableSetColumnIndex(1);
-                ImGui::Text(ui.record->label);
+                    for (auto id : marker.references)
+                    {
+                        const auto &reference = markers[id];
+                        ImGui::TableNextRow();
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::Text(fmt::format("M{}", reference.id));
+                        ImGui::TableSetColumnIndex(1);
+                        /* FIXME: Probably wrong to call it 'reference'. */
+                        std::string delta_x_str = MetricFormatter(reference.x - marker.x, "{:>+7.2f} {}s", 1e-3);
+                        std::string delta_y_str = MetricFormatter(reference.y - marker.y, "{:>+8.2f} {}V", 1e-3);
+                        ImGui::Text(fmt::format(" {}, {}", delta_x_str, delta_y_str));
+                    }
 
-                ImGui::EndTable();
+                    ImGui::EndTable();
+                }
             }
 
             ImGui::TreePop();
@@ -727,7 +758,10 @@ void Ui::MarkerTree(std::vector<Marker> &markers, const std::string &label,
     }
 
     if (to_remove >= 0)
+    {
+        /* FIXME: Make sure to remove any references. */
         markers.erase(markers.begin() + to_remove);
+    }
 
     ImGui::TreePop();
 }
@@ -881,7 +915,7 @@ void Ui::MetricFormatter(double value, char *tick_label, int size, void *data)
 void Ui::MarkerFormatterTimeDomain(const Marker &marker, std::string &x, std::string &y)
 {
     x = MetricFormatter(marker.x, "{: 7.2f} {}s", 1e-3);
-    y = MetricFormatter(marker.y, "{: 7.2f} {}V", 1e-3);
+    y = MetricFormatter(marker.y, "{: 8.2f} {}V", 1e-3);
 }
 
 void Ui::MarkerFormatterFrequencyDomain(const Marker &marker, std::string &x, std::string &y)
@@ -1041,7 +1075,8 @@ void Ui::PlotTimeDomainSelected()
                 if (ui.is_selected)
                 {
                     MaybeAddMarker(i, ch, ui.record->time_domain, m_time_domain_markers,
-                                   m_is_adding_time_domain_marker);
+                                   m_is_adding_time_domain_marker,
+                                   m_is_dragging_time_domain_marker);
                 }
             }
         }
@@ -1081,7 +1116,8 @@ void Ui::DrawMarkerY(int id, double *y, const ImVec4 &color, float thickness,
 
 template <typename T>
 void Ui::MaybeAddMarker(size_t digitizer, size_t channel, const T &record,
-                        std::vector<Marker> &markers, bool &is_adding_marker)
+                        std::vector<Marker> &markers, bool &is_adding_marker,
+                        bool &is_dragging_marker)
 {
     if (ImPlot::IsPlotHovered() && ImGui::GetIO().KeyCtrl && ImGui::IsMouseClicked(0))
     {
@@ -1093,19 +1129,34 @@ void Ui::MaybeAddMarker(size_t digitizer, size_t channel, const T &record,
         /* FIXME: Probably need to consider the initial x/y-values to be
                   special. Otherwise, the marker can seem to wander a bit if the
                   signal is noisy. */
-        markers.push_back({digitizer, channel, index, ImVec4(1, 1, 1, 1), 1.0f, record->x[index],
-                           record->y[index]});
+        /* FIXME: Monotonically increasing id? */
+        markers.push_back({markers.size(), digitizer, channel, index, ImVec4(1, 1, 1, 1),
+                           1.0f, record->x[index], record->y[index], {}});
         is_adding_marker = true;
+        is_dragging_marker = false;
     }
 
     if (is_adding_marker && ImGui::IsMouseDragging(0))
     {
+        /* FIXME: Very rough test of delta dragging */
+        if (!is_dragging_marker)
+        {
+            size_t index;
+            GetClosestSampleIndex(ImPlot::GetPlotMousePos().x, ImPlot::GetPlotMousePos().y, record,
+                                  ImPlot::GetPlotLimits(), index);
+            markers.back().references.push_back(markers.size());
+            markers.push_back({markers.size(), digitizer, channel, index, ImVec4(1, 1, 1, 1),
+                               1.0f, record->x[index], record->y[index], {}});
+        }
+
+        is_dragging_marker = true;
         markers.back().x = ImPlot::GetPlotMousePos().x;
     }
 
     if (is_adding_marker && ImGui::IsMouseReleased(0))
     {
         is_adding_marker = false;
+        is_dragging_marker = false;
     }
 }
 
@@ -1255,7 +1306,8 @@ void Ui::PlotFourierTransformSelected()
                 if (ui.is_selected)
                 {
                     MaybeAddMarker(i, ch, ui.record->frequency_domain, m_frequency_domain_markers,
-                                   m_is_adding_frequency_domain_marker);
+                                   m_is_adding_frequency_domain_marker,
+                                   m_is_dragging_frequency_domain_marker);
                 }
             }
         }

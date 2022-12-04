@@ -11,6 +11,8 @@
 #include "digitizer.h"
 #include "identification.h"
 
+#include <map>
+
 class Ui
 {
 public:
@@ -34,6 +36,9 @@ private:
 
     struct Marker
     {
+        Marker() = default;
+        Marker(size_t id, size_t digitizer, size_t channel, size_t sample, double x, double y);
+
         size_t id;
         size_t digitizer;
         size_t channel;
@@ -42,7 +47,7 @@ private:
         float thickness;
         double x;
         double y;
-        std::vector<size_t> references;
+        std::vector<size_t> deltas;
     };
 
     struct ChannelUiState
@@ -77,12 +82,15 @@ private:
     };
 
     std::vector<DigitizerUiState> m_digitizer_ui_state;
-    std::vector<Marker> m_frequency_domain_markers;
-    std::vector<Marker> m_time_domain_markers; /* FIXME: Maps instead <id, marker>? */
+    std::map<size_t, Marker> m_frequency_domain_markers;
     bool m_is_dragging_frequency_domain_marker;
     bool m_is_adding_frequency_domain_marker;
+    size_t m_next_frequency_domain_marker_id;
+
+    std::map<size_t, Marker> m_time_domain_markers;
     bool m_is_dragging_time_domain_marker;
     bool m_is_adding_time_domain_marker;
+    size_t m_next_time_domain_marker_id;
 
     void ClearChannelSelection();
 
@@ -117,7 +125,7 @@ private:
     static std::string FormatFrequencyDomainY(double value, bool show_sign);
     typedef std::string (*Formatter)(double value, bool show_sign);
 
-    void MarkerTree(std::vector<Marker> &markers, const std::string &label,
+    void MarkerTree(std::map<size_t, Marker> &markers, const std::string &label,
                     Formatter format_x, Formatter format_y);
 
     void PlotTimeDomainSelected();
@@ -130,10 +138,10 @@ private:
 
     template <typename T>
     static void MaybeAddMarker(size_t digitizer, size_t channel, const T &record,
-                               std::vector<Marker> &markers, bool &is_adding_marker,
-                               bool &is_dragging_marker);
+                               std::map<size_t, Marker> &markers, bool &is_adding_marker,
+                               bool &is_dragging_marker, size_t &next_marker_id);
 
-    static bool IsHoveredAndDoubleClicked(const Marker &marker);
+    static bool IsHoveredAndDoubleClicked(const std::pair<size_t, Marker> &marker);
 
     template <typename T>
     static void SnapX(double x, const T &record, double &snap_x, double &snap_y);

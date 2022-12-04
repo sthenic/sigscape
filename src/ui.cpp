@@ -34,6 +34,20 @@ static inline void Text(const std::string &str)
 }
 }
 
+Ui::Marker::Marker(size_t id, size_t digitizer, size_t channel, size_t sample, double x, double y)
+    : id(id)
+    , digitizer(digitizer)
+    , channel(channel)
+    , sample(sample)
+    , color(1, 1, 1, 1)
+    , thickness(1.0f)
+    , x(x)
+    , y(y)
+    , deltas{}
+{
+}
+
+
 Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     : color{}
     , is_selected(false)
@@ -83,11 +97,13 @@ Ui::Ui()
     , m_nof_channels_total(0)
     , m_digitizer_ui_state{}
     , m_frequency_domain_markers{}
-    , m_time_domain_markers{}
     , m_is_dragging_frequency_domain_marker(false)
     , m_is_adding_frequency_domain_marker(false)
+    , m_next_frequency_domain_marker_id(0)
+    , m_time_domain_markers{}
     , m_is_dragging_time_domain_marker(false)
     , m_is_adding_time_domain_marker(false)
+    , m_next_time_domain_marker_id(0)
 {}
 
 Ui::~Ui()
@@ -646,7 +662,7 @@ void CenteredTextInCell(const std::string &str)
     ImGui::Text(str);
 }
 
-void Ui::MarkerTree(std::vector<Marker> &markers, const std::string &label,
+void Ui::MarkerTree(std::map<size_t, Marker> &markers, const std::string &label,
                     Formatter format_x, Formatter format_y)
 {
     if (markers.empty())
@@ -661,14 +677,14 @@ void Ui::MarkerTree(std::vector<Marker> &markers, const std::string &label,
     /* We don't need a vector to store multiple removal indexes since the user
        will only have one context men u up at a time and this loop runs a
        magnitude faster than the fastest clicking in GUI can achieve.  */
-    int to_remove = -1;
+    int id_to_remove = -1;
 
-    for (size_t i = 0; i < markers.size(); ++i)
+    for (auto &[id, marker] : markers)
     {
-        auto &marker = markers[i];
+        // auto &marker = markers[i];
         const auto &ui = m_digitizer_ui_state[marker.digitizer].channels[marker.channel];
 
-        ImGui::ColorEdit4(fmt::format("##color{}M{}", label, i).c_str(), (float *)&marker.color,
+        ImGui::ColorEdit4(fmt::format("##color{}M{}", label, id).c_str(), (float *)&marker.color,
                           ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
         ImGui::SameLine();
 
@@ -686,67 +702,67 @@ void Ui::MarkerTree(std::vector<Marker> &markers, const std::string &label,
         if (ImGui::BeginPopupContextItem())
         {
             if (ImGui::MenuItem("Remove"))
-                to_remove = static_cast<int>(i);
+                id_to_remove = static_cast<int>(id);
 
-            if (ImGui::MenuItem("Clear references", NULL, false, !marker.references.empty()))
-                marker.references.clear();
+            if (ImGui::MenuItem("Clear deltas", NULL, false, !marker.deltas.empty()))
+                marker.deltas.clear();
 
             ImGui::EndPopup();
         }
 
+        const std::string payload_identifier = fmt::format("MARKER_REFERENCE{}", label);
         if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
         {
-            ImGui::SetDragDropPayload("MARKER_REFERENCE", &i, sizeof(i));
+            ImGui::SetDragDropPayload(payload_identifier.c_str(), &id, sizeof(id));
             ImGui::EndDragDropSource();
         }
 
         if (ImGui::BeginDragDropTarget())
         {
             /* FIXME: Not a oneliner */
-            if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload("MARKER_REFERENCE"))
+            if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload(payload_identifier.c_str()))
             {
-                size_t payload_i = *static_cast<const size_t *>(payload->Data);
-                marker.references.push_back(payload_i);
+                size_t payload_id = *static_cast<const size_t *>(payload->Data);
+                marker.deltas.push_back(payload_id);
             }
             ImGui::EndDragDropTarget();
         }
 
         ImGui::SameLine();
-        ImGui::Text(fmt::format("M{} {}, {}", i, format_x(marker.x, false), format_y(marker.y, false)));
+        ImGui::Text(fmt::format("M{} {}, {}", id, format_x(marker.x, false), format_y(marker.y, false)));
 
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 30.0f -
                         ImGui::CalcTextSize(ui.record->label.c_str()).x);
         ImGui::Text(ui.record->label);
         ImGui::SameLine();
-        ImGui::ColorEdit4(fmt::format("##channel{}M{}", label, i).c_str(), (float *)&ui.color,
+        ImGui::ColorEdit4(fmt::format("##channel{}M{}", label, id).c_str(), (float *)&ui.color,
                           ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel |
                               ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoPicker);
-
 
         if (node_open)
         {
             /* TODO: Don't like this alignment hack. Is there a better layout? */
             const float indent = 27.0f;
             ImGui::Indent(indent);
-            if (!marker.references.empty())
+            if (!marker.deltas.empty())
             {
                 const auto flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
                                    ImGuiTableFlags_NoPadInnerX | ImGuiTableFlags_NoPadOuterX;
-                if (ImGui::BeginTable(fmt::format("##table{}M{}", label, i).c_str(), 2, flags))
+                if (ImGui::BeginTable(fmt::format("##table{}M{}", label, id).c_str(), 2, flags))
                 {
                     ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
                     ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
 
-                    for (auto id : marker.references)
+                    for (auto id : marker.deltas)
                     {
-                        const auto &reference = markers[id];
+                        const auto &delta_marker = markers.at(id);
                         ImGui::TableNextRow();
                         ImGui::TableSetColumnIndex(0);
-                        ImGui::Text(fmt::format("M{}", reference.id));
+                        ImGui::Text(fmt::format("M{}", delta_marker.id));
                         ImGui::TableSetColumnIndex(1);
-                        /* FIXME: Probably wrong to call it 'reference'. */
-                        ImGui::Text(fmt::format(" {}, {}", format_x(reference.x - marker.x, true),
-                                                format_y(reference.y - marker.y, true)));
+                        ImGui::Text(fmt::format(" {}, {}",
+                                                format_x(delta_marker.x - marker.x, true),
+                                                format_y(delta_marker.y - marker.y, true)));
                     }
 
                     ImGui::EndTable();
@@ -758,17 +774,17 @@ void Ui::MarkerTree(std::vector<Marker> &markers, const std::string &label,
         }
     }
 
-    if (to_remove >= 0)
+    if (id_to_remove >= 0)
     {
-        /* FIXME: Make sure to remove any references. */
-        for (auto &marker : markers)
+        /* Make sure to remove any delta references to the marker we're about to remove. */
+        for (auto &[_, marker] : markers)
         {
-            auto Predicate = [&](size_t i) { return i == static_cast<size_t>(to_remove); };
-            auto &r = marker.references;
-            r.erase(std::remove_if(r.begin(), r.end(), Predicate), r.end());
+            auto Predicate = [&](size_t i) { return i == static_cast<size_t>(id_to_remove); };
+            auto &d = marker.deltas;
+            d.erase(std::remove_if(d.begin(), d.end(), Predicate), d.end());
         }
 
-        markers.erase(markers.begin() + to_remove);
+        markers.erase(id_to_remove);
     }
 
     ImGui::TreePop();
@@ -783,7 +799,9 @@ void Ui::RenderMarkers(const ImVec2 &position, const ImVec2 &size)
     if (ImGui::SmallButton("Remove all"))
     {
         m_time_domain_markers.clear();
+        m_next_time_domain_marker_id = 0;
         m_frequency_domain_markers.clear();
+        m_next_frequency_domain_marker_id = 0;
     }
 
     MarkerTree(m_time_domain_markers, "Time Domain", FormatTimeDomainX, FormatTimeDomainY);
@@ -1085,19 +1103,19 @@ void Ui::PlotTimeDomainSelected()
 
             if (ui.is_time_domain_visible)
             {
-                for (auto &m : m_time_domain_markers)
+                for (auto &[id, marker] : m_time_domain_markers)
                 {
-                    if (m.digitizer != i || m.channel != ch)
+                    if (marker.digitizer != i || marker.channel != ch)
                         continue;
 
-                    SnapX(m.x, ui.record->time_domain, m.x, m.y);
+                    SnapX(marker.x, ui.record->time_domain, marker.x, marker.y);
 
-                    ImPlot::DragPoint(0, &m.x, &m.y, m.color, 3.0f + m.thickness,
-                                      ImPlotDragToolFlags_NoInputs);
-                    DrawMarkerX(marker_id++, &m.x, m.color, m.thickness,
-                                MetricFormatter(m.x, "{:g} {}s", 1e-3));
-                    DrawMarkerY(marker_id++, &m.y, m.color, m.thickness,
-                                MetricFormatter(m.y, "{: 7.1f} {}V", 1e-3),
+                    ImPlot::DragPoint(0, &marker.x, &marker.y, marker.color,
+                                      3.0f + marker.thickness, ImPlotDragToolFlags_NoInputs);
+                    DrawMarkerX(marker_id++, &marker.x, marker.color, marker.thickness,
+                                MetricFormatter(marker.x, "{:g} {}s", 1e-3));
+                    DrawMarkerY(marker_id++, &marker.y, marker.color, marker.thickness,
+                                MetricFormatter(marker.y, "{: 7.1f} {}V", 1e-3),
                                 ImPlotDragToolFlags_NoInputs);
                 }
 
@@ -1105,7 +1123,7 @@ void Ui::PlotTimeDomainSelected()
                 {
                     MaybeAddMarker(i, ch, ui.record->time_domain, m_time_domain_markers,
                                    m_is_adding_time_domain_marker,
-                                   m_is_dragging_time_domain_marker);
+                                   m_is_dragging_time_domain_marker, m_next_time_domain_marker_id);
                 }
             }
         }
@@ -1145,8 +1163,8 @@ void Ui::DrawMarkerY(int id, double *y, const ImVec4 &color, float thickness,
 
 template <typename T>
 void Ui::MaybeAddMarker(size_t digitizer, size_t channel, const T &record,
-                        std::vector<Marker> &markers, bool &is_adding_marker,
-                        bool &is_dragging_marker)
+                        std::map<size_t, Marker> &markers, bool &is_adding_marker,
+                        bool &is_dragging_marker, size_t &next_marker_id)
 {
     if (ImPlot::IsPlotHovered() && ImGui::GetIO().KeyCtrl && ImGui::IsMouseClicked(0))
     {
@@ -1159,8 +1177,10 @@ void Ui::MaybeAddMarker(size_t digitizer, size_t channel, const T &record,
                   special. Otherwise, the marker can seem to wander a bit if the
                   signal is noisy. */
         /* FIXME: Monotonically increasing id? */
-        markers.push_back({markers.size(), digitizer, channel, index, ImVec4(1, 1, 1, 1),
-                           1.0f, record->x[index], record->y[index], {}});
+
+        markers.insert({next_marker_id, Marker(next_marker_id, digitizer, channel, index,
+                                               record->x[index], record->y[index])});
+        next_marker_id++;
         is_adding_marker = true;
         is_dragging_marker = false;
     }
@@ -1168,18 +1188,19 @@ void Ui::MaybeAddMarker(size_t digitizer, size_t channel, const T &record,
     if (is_adding_marker && ImGui::IsMouseDragging(0))
     {
         /* FIXME: Very rough test of delta dragging */
-        if (!is_dragging_marker)
-        {
-            size_t index;
-            GetClosestSampleIndex(ImPlot::GetPlotMousePos().x, ImPlot::GetPlotMousePos().y, record,
-                                  ImPlot::GetPlotLimits(), index);
-            markers.back().references.push_back(markers.size());
-            markers.push_back({markers.size(), digitizer, channel, index, ImVec4(1, 1, 1, 1),
-                               1.0f, record->x[index], record->y[index], {}});
-        }
+        // if (!is_dragging_marker)
+        // {
+        //     size_t index;
+        //     GetClosestSampleIndex(ImPlot::GetPlotMousePos().x, ImPlot::GetPlotMousePos().y, record,
+        //                           ImPlot::GetPlotLimits(), index);
+        //     markers.back().references.push_back(markers.size());
+        //     markers.
+        //     markers.push_back({markers.size(), digitizer, channel, index, ImVec4(1, 1, 1, 1),
+        //                        1.0f, record->x[index], record->y[index], {}});
+        // }
 
         is_dragging_marker = true;
-        markers.back().x = ImPlot::GetPlotMousePos().x;
+        // markers.back().x = ImPlot::GetPlotMousePos().x;
     }
 
     if (is_adding_marker && ImGui::IsMouseReleased(0))
@@ -1189,13 +1210,13 @@ void Ui::MaybeAddMarker(size_t digitizer, size_t channel, const T &record,
     }
 }
 
-bool Ui::IsHoveredAndDoubleClicked(const Marker &marker)
+bool Ui::IsHoveredAndDoubleClicked(const std::pair<size_t, Marker> &marker)
 {
     /* Construct a rect that covers the markers. If the mouse is double clicked
        while inside these limits, we remove the marker. This needs to be called
        within a current plot that also contains the provided marker. */
 
-    const auto lmarker = ImPlot::PlotToPixels(marker.x, marker.y);
+    const auto lmarker = ImPlot::PlotToPixels(marker.second.x, marker.second.y);
     const auto limits = ImPlot::GetPlotLimits();
     const auto upper_left = ImPlot::PlotToPixels(limits.X.Min, limits.Y.Max);
     const auto lower_right = ImPlot::PlotToPixels(limits.X.Max, limits.Y.Min);
@@ -1225,10 +1246,14 @@ void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
         PlotTimeDomainSelected();
 
         /* Check for double click marker removal. */
-        m_time_domain_markers.erase(std::remove_if(m_time_domain_markers.begin(),
-                                                   m_time_domain_markers.end(),
-                                                   IsHoveredAndDoubleClicked),
-                                    m_time_domain_markers.end());
+        for (auto it = m_time_domain_markers.begin(); it != m_time_domain_markers.end(); )
+        {
+            if (IsHoveredAndDoubleClicked(*it))
+                it = m_time_domain_markers.erase(it);
+            else
+                ++it;
+        }
+
         ImPlot::EndPlot();
     }
     ImPlot::PopStyleVar();
@@ -1317,26 +1342,27 @@ void Ui::PlotFourierTransformSelected()
                              fmt::format("HD{}", j + 2));
                 }
 
-                for (auto &m : m_frequency_domain_markers)
+                for (auto &[id, marker] : m_frequency_domain_markers)
                 {
-                    if (m.digitizer != i || m.channel != ch)
+                    if (marker.digitizer != i || marker.channel != ch)
                         continue;
 
-                    SnapX(m.x, ui.record->frequency_domain, m.x, m.y);
+                    SnapX(marker.x, ui.record->frequency_domain, marker.x, marker.y);
 
-                    ImPlot::DragPoint(0, &m.x, &m.y, m.color, 3.0f + m.thickness,
-                                      ImPlotDragToolFlags_NoInputs);
-                    DrawMarkerX(marker_id++, &m.x, m.color, m.thickness,
-                                MetricFormatter(m.x, "{:.2f} {}Hz", 1e6));
-                    DrawMarkerY(marker_id++, &m.y, m.color, m.thickness,
-                                fmt::format("{: 8.2f} dBFS", m.y), ImPlotDragToolFlags_NoInputs);
+                    ImPlot::DragPoint(0, &marker.x, &marker.y, marker.color,
+                                      3.0f + marker.thickness, ImPlotDragToolFlags_NoInputs);
+                    DrawMarkerX(marker_id++, &marker.x, marker.color, marker.thickness,
+                                MetricFormatter(marker.x, "{:.2f} {}Hz", 1e6));
+                    DrawMarkerY(marker_id++, &marker.y, marker.color, marker.thickness,
+                                fmt::format("{: 8.2f} dBFS", marker.y), ImPlotDragToolFlags_NoInputs);
                 }
 
                 if (ui.is_selected)
                 {
                     MaybeAddMarker(i, ch, ui.record->frequency_domain, m_frequency_domain_markers,
                                    m_is_adding_frequency_domain_marker,
-                                   m_is_dragging_frequency_domain_marker);
+                                   m_is_dragging_frequency_domain_marker,
+                                   m_next_frequency_domain_marker_id);
                 }
             }
         }
@@ -1355,10 +1381,14 @@ void Ui::RenderFourierTransformPlot()
         PlotFourierTransformSelected();
 
         /* Check for double click marker removal. */
-        m_frequency_domain_markers.erase(std::remove_if(m_frequency_domain_markers.begin(),
-                                                        m_frequency_domain_markers.end(),
-                                                        IsHoveredAndDoubleClicked),
-                                         m_frequency_domain_markers.end());
+        for (auto it = m_frequency_domain_markers.begin(); it != m_frequency_domain_markers.end(); )
+        {
+            if (IsHoveredAndDoubleClicked(*it))
+                it = m_frequency_domain_markers.erase(it);
+            else
+                ++it;
+        }
+
         ImPlot::EndPlot();
     }
     ImPlot::PopStyleVar();

@@ -656,6 +656,11 @@ void Ui::MarkerTree(std::vector<Marker> &markers, const std::string &label,
         return;
     ImGui::Spacing();
 
+    /* We don't need a vector to store multiple removal indexes since the user
+       will only have one context men u up at a time and this loop runs a
+       magnitude faster than the fastest clicking in GUI can achieve.  */
+    int to_remove = -1;
+
     for (size_t i = 0; i < markers.size(); ++i)
     {
         auto &marker = markers[i];
@@ -675,6 +680,14 @@ void Ui::MarkerTree(std::vector<Marker> &markers, const std::string &label,
             marker.thickness = 3.0f;
         else
             marker.thickness = 1.0f; /* FIXME: Restore 'unhovered' thickness instead. */
+
+        if (ImGui::BeginPopupContextItem())
+        {
+            if (ImGui::MenuItem("Remove"))
+                to_remove = static_cast<int>(i);
+
+            ImGui::EndPopup();
+        }
 
         std::string x_str;
         std::string y_str;
@@ -713,6 +726,9 @@ void Ui::MarkerTree(std::vector<Marker> &markers, const std::string &label,
         }
     }
 
+    if (to_remove >= 0)
+        markers.erase(markers.begin() + to_remove);
+
     ImGui::TreePop();
 }
 
@@ -722,7 +738,7 @@ void Ui::RenderMarkers(const ImVec2 &position, const ImVec2 &size)
     ImGui::SetNextWindowSize(size);
     ImGui::Begin("Markers", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
-    if (ImGui::SmallButton("Clear all"))
+    if (ImGui::SmallButton("Remove all"))
     {
         m_time_domain_markers.clear();
         m_frequency_domain_markers.clear();

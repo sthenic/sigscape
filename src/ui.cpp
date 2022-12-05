@@ -681,11 +681,15 @@ void Ui::MarkerTree(std::map<size_t, Marker> &markers, const std::string &label,
        will only have one context men u up at a time and this loop runs a
        magnitude faster than the fastest clicking in GUI can achieve.  */
     int id_to_remove = -1;
+    bool add_separator = false;
 
     for (auto &[id, marker] : markers)
     {
-        // auto &marker = markers[i];
         const auto &ui = m_digitizer_ui_state[marker.digitizer].channels[marker.channel];
+
+        if (add_separator)
+            ImGui::Separator();
+        add_separator = true;
 
         ImGui::ColorEdit4(fmt::format("##color{}{}", label, id).c_str(), (float *)&marker.color,
                           ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);

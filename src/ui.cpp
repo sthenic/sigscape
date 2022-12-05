@@ -1076,7 +1076,13 @@ void Ui::PlotTimeDomainSelected()
 
             int count = static_cast<int>(ui.record->time_domain->x.size());
 
-            if (ui.is_persistence_enabled)
+            /* FIXME: A rough value to switch off persistent plotting when the
+                      window contains too many samples, heavily tanking the
+                      performance. */
+            bool is_persistence_performant =
+                ImPlot::GetPlotLimits().Size().x / ui.record->time_domain->step < 2048;
+
+            if (ui.is_persistence_enabled && is_persistence_performant)
             {
                 ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
                 for (const auto &c : ui.record->persistence->data)

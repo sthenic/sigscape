@@ -58,7 +58,7 @@ private:
         ImVec4 color;
         bool is_selected;
         bool is_sample_markers_enabled;
-        bool is_cloud_enabled;
+        bool is_persistence_enabled;
         bool is_time_domain_visible;
         bool is_frequency_domain_visible;
         std::shared_ptr<ProcessedRecord> record;
@@ -122,7 +122,7 @@ private:
     void Reduce(double xsize, double sampling_frequency, int &count, int &stride);
     static std::string MetricFormatter(double value, const std::string &format,
                                        double highest_prefix = 1e9);
-    static void MetricFormatter(double value, char *tick_label, int size, void *data);
+    static int MetricFormatter(double value, char *tick_label, int size, void *data);
     static std::string FormatTimeDomainX(double value, bool show_sign);
     static std::string FormatTimeDomainY(double value, bool show_sign);
     static std::string FormatFrequencyDomainX(double value, bool show_sign);
@@ -130,7 +130,7 @@ private:
     typedef std::string (*Formatter)(double value, bool show_sign);
 
     void MarkerTree(std::map<size_t, Marker> &markers, const std::string &label,
-                    Formatter format_x, Formatter format_y);
+                    const std::string &prefix, Formatter format_x, Formatter format_y);
 
     void PlotTimeDomainSelected();
 

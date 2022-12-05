@@ -52,7 +52,7 @@ Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     : color{}
     , is_selected(false)
     , is_sample_markers_enabled(true)
-    , is_cloud_enabled(false)
+    , is_persistence_enabled(false)
     , is_time_domain_visible(true)
     , is_frequency_domain_visible(true)
     , record(NULL)
@@ -666,7 +666,7 @@ void CenteredTextInCell(const std::string &str)
 }
 
 void Ui::MarkerTree(std::map<size_t, Marker> &markers, const std::string &label,
-                    Formatter format_x, Formatter format_y)
+                    const std::string &prefix, Formatter format_x, Formatter format_y)
 {
     if (markers.empty())
         return;
@@ -687,7 +687,7 @@ void Ui::MarkerTree(std::map<size_t, Marker> &markers, const std::string &label,
         // auto &marker = markers[i];
         const auto &ui = m_digitizer_ui_state[marker.digitizer].channels[marker.channel];
 
-        ImGui::ColorEdit4(fmt::format("##color{}M{}", label, id).c_str(), (float *)&marker.color,
+        ImGui::ColorEdit4(fmt::format("##color{}{}", label, id).c_str(), (float *)&marker.color,
                           ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
         ImGui::SameLine();
 
@@ -732,26 +732,27 @@ void Ui::MarkerTree(std::map<size_t, Marker> &markers, const std::string &label,
         }
 
         ImGui::SameLine();
-        ImGui::Text(fmt::format("M{} {}, {}", id, format_x(marker.x, false), format_y(marker.y, false)));
+        ImGui::Text(fmt::format("{}{} {}, {}", prefix, id, format_x(marker.x, false),
+                                format_y(marker.y, false)));
 
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 30.0f -
                         ImGui::CalcTextSize(ui.record->label.c_str()).x);
         ImGui::Text(ui.record->label);
         ImGui::SameLine();
-        ImGui::ColorEdit4(fmt::format("##channel{}M{}", label, id).c_str(), (float *)&ui.color,
+        ImGui::ColorEdit4(fmt::format("##channel{}{}", label, id).c_str(), (float *)&ui.color,
                           ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel |
                               ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoPicker);
 
         if (node_open)
         {
             /* TODO: Don't like this alignment hack. Is there a better layout? */
-            const float indent = 27.0f;
+            const float indent = 13.0f;
             ImGui::Indent(indent);
             if (!marker.deltas.empty())
             {
                 const auto flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
                                    ImGuiTableFlags_NoPadInnerX | ImGuiTableFlags_NoPadOuterX;
-                if (ImGui::BeginTable(fmt::format("##table{}M{}", label, id).c_str(), 2, flags))
+                if (ImGui::BeginTable(fmt::format("##table{}{}", label, id).c_str(), 2, flags))
                 {
                     ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
                     ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
@@ -759,13 +760,15 @@ void Ui::MarkerTree(std::map<size_t, Marker> &markers, const std::string &label,
                     for (auto id : marker.deltas)
                     {
                         const auto &delta_marker = markers.at(id);
+                        const double delta_x = delta_marker.x - marker.x;
+                        const double delta_y = delta_marker.y - marker.y;
+
                         ImGui::TableNextRow();
                         ImGui::TableSetColumnIndex(0);
-                        ImGui::Text(fmt::format("M{}", delta_marker.id));
+                        ImGui::Text(fmt::format("> {}{}", prefix, delta_marker.id));
                         ImGui::TableSetColumnIndex(1);
-                        ImGui::Text(fmt::format(" {}, {}",
-                                                format_x(delta_marker.x - marker.x, true),
-                                                format_y(delta_marker.y - marker.y, true)));
+                        ImGui::Text(fmt::format(" {}, {}", format_x(delta_x, true),
+                                                format_y(delta_y, true)));
                     }
 
                     ImGui::EndTable();
@@ -803,8 +806,8 @@ void Ui::RenderMarkers(const ImVec2 &position, const ImVec2 &size)
         m_next_frequency_domain_marker_id = 0;
     }
 
-    MarkerTree(m_time_domain_markers, "Time Domain", FormatTimeDomainX, FormatTimeDomainY);
-    MarkerTree(m_frequency_domain_markers, "Frequency Domain", FormatFrequencyDomainX,
+    MarkerTree(m_time_domain_markers, "Time Domain", "T", FormatTimeDomainX, FormatTimeDomainY);
+    MarkerTree(m_frequency_domain_markers, "Frequency Domain", "F", FormatFrequencyDomainX,
                FormatFrequencyDomainY);
     ImGui::End();
 }
@@ -905,7 +908,7 @@ std::string Ui::MetricFormatter(double value, const std::string &format, double 
     return fmt::format(format, value / LIMITS.back().first, LIMITS.back().second);
 }
 
-void Ui::MetricFormatter(double value, char *tick_label, int size, void *data)
+int Ui::MetricFormatter(double value, char *tick_label, int size, void *data)
 {
     auto UNIT = static_cast<const char *>(data);
     static const std::vector<std::pair<double, const char *>> LIMITS = {
@@ -923,7 +926,7 @@ void Ui::MetricFormatter(double value, char *tick_label, int size, void *data)
     if (value == 0)
     {
         std::snprintf(tick_label, size, "0 %s", UNIT);
-        return;
+        return 0;
     }
 
     for (const auto &limit : LIMITS)
@@ -931,11 +934,12 @@ void Ui::MetricFormatter(double value, char *tick_label, int size, void *data)
         if (std::fabs(value) >= limit.first)
         {
             std::snprintf(tick_label, size, "%g %s%s", value / limit.first, limit.second, UNIT);
-            return;
+            return 0;
         }
     }
 
     std::snprintf(tick_label, size, "%g %s%s", value / LIMITS.back().first, LIMITS.back().second, UNIT);
+    return 0;
 }
 
 std::string Ui::FormatTimeDomainX(double value, bool show_sign)
@@ -1072,10 +1076,10 @@ void Ui::PlotTimeDomainSelected()
 
             int count = static_cast<int>(ui.record->time_domain->x.size());
 
-            if (ui.is_cloud_enabled)
+            if (ui.is_persistence_enabled)
             {
                 ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
-                for (const auto &c : ui.record->cloud->data)
+                for (const auto &c : ui.record->persistence->data)
                 {
                     ImPlot::PlotScatter(ui.record->label.c_str(), c->x.data(), c->y.data(),
                                         c->x.size());
@@ -1261,7 +1265,7 @@ void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
     ImGui::Begin("Time Domain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
     m_is_time_domain_collapsed = ImGui::IsWindowCollapsed();
     ImPlot::PushStyleVar(ImPlotStyleVar_FitPadding, ImVec2(0.0f, 0.1f));
-    if (ImPlot::BeginPlot("Time domain", ImVec2(-1, -1), ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
+    if (ImPlot::BeginPlot("Time domain", ImVec2(-1, -1), ImPlotFlags_NoTitle))
     {
         ImPlot::SetupLegend(ImPlotLocation_NorthEast);
         ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatter, (void *)"s");
@@ -1387,7 +1391,7 @@ void Ui::PlotFourierTransformSelected()
 void Ui::RenderFourierTransformPlot()
 {
     ImPlot::PushStyleVar(ImPlotStyleVar_FitPadding, ImVec2(0.0f, 0.1f));
-    if (ImPlot::BeginPlot("FFT##plot", ImVec2(-1, -1), ImPlotFlags_AntiAliased | ImPlotFlags_NoTitle))
+    if (ImPlot::BeginPlot("FFT##plot", ImVec2(-1, -1), ImPlotFlags_NoTitle))
     {
         ImPlot::SetupLegend(ImPlotLocation_NorthEast);
         ImPlot::SetupAxisLimits(ImAxis_Y1, -100.0, 10.0);
@@ -1480,7 +1484,7 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
             if (ImGui::BeginPopupContextItem())
             {
                 ImGui::MenuItem("Sample markers", "", &ui.is_sample_markers_enabled);
-                ImGui::MenuItem("Cloud", "", &ui.is_cloud_enabled);
+                ImGui::MenuItem("Persistence", "", &ui.is_persistence_enabled);
                 ImGui::EndPopup();
             }
 

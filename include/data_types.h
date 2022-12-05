@@ -135,15 +135,15 @@ struct Waterfall
     size_t columns;
 };
 
-struct Cloud
+struct Persistence
 {
-    Cloud(const std::deque<std::shared_ptr<TimeDomainRecord>> &cloud)
-        : data(cloud)
+    Persistence(const std::deque<std::shared_ptr<TimeDomainRecord>> &persistence)
+        : data(persistence)
     {}
 
     /* Delete copy constructors until we need them. */
-    Cloud(const Cloud &other) = delete;
-    Cloud &operator=(const Cloud &other) = delete;
+    Persistence(const Persistence &other) = delete;
+    Persistence &operator=(const Persistence &other) = delete;
 
     std::deque<std::shared_ptr<TimeDomainRecord>> data;
 };
@@ -154,7 +154,7 @@ struct ProcessedRecord
         : time_domain(NULL)
         , frequency_domain(NULL)
         , waterfall(NULL)
-        , cloud(NULL)
+        , persistence(NULL)
         , label("")
         , time_domain_metrics{}
         , frequency_domain_metrics{}
@@ -170,7 +170,7 @@ struct ProcessedRecord
     std::shared_ptr<TimeDomainRecord> time_domain;
     std::shared_ptr<FrequencyDomainRecord> frequency_domain;
     std::shared_ptr<Waterfall> waterfall;
-    std::shared_ptr<Cloud> cloud;
+    std::shared_ptr<Persistence> persistence;
     std::string label;
 
     struct TimeDomainMetrics

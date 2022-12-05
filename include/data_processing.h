@@ -34,7 +34,7 @@ private:
     WindowType m_window_type;
     size_t m_nof_skirt_bins;
     std::deque<std::shared_ptr<FrequencyDomainRecord>> m_waterfall;
-    std::deque<std::shared_ptr<TimeDomainRecord>> m_cloud;
+    std::deque<std::shared_ptr<TimeDomainRecord>> m_persistence;
 
     template <typename T>
     static size_t NextPowerOfTwo(T i);

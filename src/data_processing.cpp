@@ -23,7 +23,7 @@ DataProcessing::DataProcessing(void *handle, int index, int channel, const std::
     , m_window_type(WindowType::BLACKMAN_HARRIS)
     , m_nof_skirt_bins(NOF_SKIRT_BINS_DEFAULT)
     , m_waterfall{}
-    , m_cloud{}
+    , m_persistence{}
 {
 }
 
@@ -91,10 +91,10 @@ void DataProcessing::MainLoop()
             processed_record->time_domain->estimated_trigger_frequency = estimated_trigger_frequency;
             processed_record->time_domain->estimated_throughput = estimated_throughput;
 
-            if (m_cloud.size() >= CLOUD_SIZE)
-                m_cloud.pop_back();
-            m_cloud.push_front(processed_record->time_domain);
-            processed_record->cloud = std::make_shared<Cloud>(m_cloud);
+            if (m_persistence.size() >= CLOUD_SIZE)
+                m_persistence.pop_back();
+            m_persistence.push_front(processed_record->time_domain);
+            processed_record->persistence = std::make_shared<Persistence>(m_persistence);
 
             const size_t FFT_LENGTH = PreviousPowerOfTwo(time_domain->header->record_length);
             processed_record->frequency_domain =

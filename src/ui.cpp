@@ -39,7 +39,7 @@ Ui::Marker::Marker(size_t id, size_t digitizer, size_t channel, size_t sample, d
     , digitizer(digitizer)
     , channel(channel)
     , sample(sample)
-    , color(1, 1, 1, 1)
+    , color(ImPlot::GetColormapColor(static_cast<int>(id), ImPlotColormap_Pastel))
     , thickness(1.0f)
     , x(x)
     , y(y)

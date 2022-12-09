@@ -130,7 +130,7 @@ private:
     typedef std::string (*Formatter)(double value, bool show_sign);
 
     void MarkerTree(std::map<size_t, Marker> &markers, const std::string &label,
-                    const std::string &prefix, Formatter format_x, Formatter format_y);
+                    const std::string &prefix, Formatter FormatX, Formatter FormatY);
 
     void PlotTimeDomainSelected();
 

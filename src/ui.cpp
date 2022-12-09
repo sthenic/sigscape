@@ -666,7 +666,7 @@ void CenteredTextInCell(const std::string &str)
 }
 
 void Ui::MarkerTree(std::map<size_t, Marker> &markers, const std::string &label,
-                    const std::string &prefix, Formatter format_x, Formatter format_y)
+                    const std::string &prefix, Formatter FormatX, Formatter FormatY)
 {
     if (markers.empty())
         return;
@@ -736,8 +736,9 @@ void Ui::MarkerTree(std::map<size_t, Marker> &markers, const std::string &label,
         }
 
         ImGui::SameLine();
-        ImGui::Text(fmt::format("{}{} {}, {}", prefix, id, format_x(marker.x, false),
-                                format_y(marker.y, false)));
+        const float LINE_START = ImGui::GetCursorPosX();
+        ImGui::Text(fmt::format("{}{} {}, {}", prefix, id, FormatX(marker.x, false),
+                                FormatY(marker.y, false)));
 
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 30.0f -
                         ImGui::CalcTextSize(ui.record->label.c_str()).x);
@@ -749,9 +750,6 @@ void Ui::MarkerTree(std::map<size_t, Marker> &markers, const std::string &label,
 
         if (node_open)
         {
-            /* TODO: Don't like this alignment hack. Is there a better layout? */
-            const float indent = 13.0f;
-            ImGui::Indent(indent);
             if (!marker.deltas.empty())
             {
                 const auto flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
@@ -769,16 +767,16 @@ void Ui::MarkerTree(std::map<size_t, Marker> &markers, const std::string &label,
 
                         ImGui::TableNextRow();
                         ImGui::TableSetColumnIndex(0);
-                        ImGui::Text(fmt::format("> {}{}", prefix, delta_marker.id));
+                        ImGui::SetCursorPosX(LINE_START - ImGui::CalcTextSize("d").x);
+                        ImGui::Text(fmt::format("d{}{}", prefix, delta_marker.id));
                         ImGui::TableSetColumnIndex(1);
-                        ImGui::Text(fmt::format(" {}, {}", format_x(delta_x, true),
-                                                format_y(delta_y, true)));
+                        ImGui::Text(fmt::format(" {}, {}", FormatX(delta_x, true),
+                                                FormatY(delta_y, true)));
                     }
 
                     ImGui::EndTable();
                 }
             }
-            ImGui::Unindent(indent);
 
             ImGui::TreePop();
         }

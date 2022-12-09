@@ -27,13 +27,11 @@ public:
 
 private:
     Identification m_identification;
-    std::vector<std::shared_ptr<Digitizer>> m_digitizers;
     void *m_adq_control_unit;
     bool m_show_imgui_demo_window;
     bool m_show_implot_demo_window;
     bool m_is_time_domain_collapsed;
     bool m_is_frequency_domain_collapsed;
-    std::unique_ptr<bool[]> m_selected;
     int m_nof_channels_total;
 
     struct ChannelUiState
@@ -47,8 +45,6 @@ private:
         bool is_time_domain_visible;
         bool is_frequency_domain_visible;
         std::shared_ptr<ProcessedRecord> record;
-
-        void ColorSquare() const;
     };
 
     struct DigitizerUiState
@@ -63,11 +59,23 @@ private:
         ImVec4 set_top_color;
         ImVec4 set_clock_system_color;
         bool popup_initialize_would_overwrite;
+        bool is_selected;
 
         std::vector<ChannelUiState> channels;
     };
 
-    std::vector<DigitizerUiState> m_digitizer_ui_state;
+    struct DigitizerUi
+    {
+        DigitizerUi(std::shared_ptr<Digitizer> interface)
+            : interface(interface)
+            , ui{}
+        {}
+
+        std::shared_ptr<Digitizer> interface;
+        DigitizerUiState ui;
+    };
+
+    std::vector<DigitizerUi> m_digitizers;
 
     std::map<size_t, Marker>::iterator m_last_frequency_domain_marker;
     std::map<size_t, Marker> m_frequency_domain_markers;
@@ -87,7 +95,7 @@ private:
 
     void UpdateRecords();
     void HandleMessage(const IdentificationMessage &message);
-    void HandleMessage(size_t i, const DigitizerMessage &message);
+    void HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message);
     void HandleMessages();
 
     void RenderMenuBar();

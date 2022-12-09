@@ -50,15 +50,6 @@ Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     color = ImPlot::GetColormapColor(nof_channels_total++);
 }
 
-void Ui::ChannelUiState::ColorSquare() const
-{
-    ImGui::PushStyleColor(ImGuiCol_Button, color);
-    ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-    ImGui::SmallButton(" ");
-    ImGui::PopItemFlag();
-    ImGui::PopStyleColor();
-}
-
 Ui::DigitizerUiState::DigitizerUiState()
     : identifier("")
     , state("")
@@ -68,21 +59,20 @@ Ui::DigitizerUiState::DigitizerUiState()
     , set_top_color(ImGui::GetStyleColorVec4(ImGuiCol_Button))
     , set_clock_system_color(ImGui::GetStyleColorVec4(ImGuiCol_Button))
     , popup_initialize_would_overwrite(false)
+    , is_selected(false)
     , channels{}
 {
 }
 
 Ui::Ui()
     : m_identification()
-    , m_digitizers()
     , m_adq_control_unit()
     , m_show_imgui_demo_window(false)
     , m_show_implot_demo_window(false)
     , m_is_time_domain_collapsed(false)
     , m_is_frequency_domain_collapsed(false)
-    , m_selected()
     , m_nof_channels_total(0)
-    , m_digitizer_ui_state{}
+    , m_digitizers()
     , m_frequency_domain_markers{}
     , m_is_dragging_frequency_domain_marker(false)
     , m_is_adding_frequency_domain_marker(false)
@@ -116,7 +106,7 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version)
 void Ui::Terminate()
 {
     for (const auto &d : m_digitizers)
-        d->Stop();
+        d.interface->Stop();
 
     if (m_adq_control_unit != NULL)
         DeleteADQControlUnit(m_adq_control_unit);
@@ -153,20 +143,20 @@ void Ui::Render(float width, float height)
 
 void Ui::ClearChannelSelection()
 {
-    for (auto &ui : m_digitizer_ui_state)
+    for (auto &d : m_digitizers)
     {
-        for (auto &ch : ui.channels)
-            ch.is_selected = false;
+        for (auto &chui : d.ui.channels)
+            chui.is_selected = false;
     }
 }
 
 void Ui::PushMessage(const DigitizerMessage &message, bool selected)
 {
-    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    for (auto &digitizer : m_digitizers)
     {
-        if (selected && !m_selected[i])
+        if (selected && !digitizer.ui.is_selected)
             continue;
-        m_digitizers[i]->PushMessage(message);
+        digitizer.interface->PushMessage(message);
     }
 }
 
@@ -177,10 +167,10 @@ void Ui::UpdateRecords()
               read or not. */
 
     /* Attempt to update the set of processed records for each digitizer. */
-    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    for (auto &digitizer : m_digitizers)
     {
-        for (size_t ch = 0; ch < m_digitizer_ui_state[i].channels.size(); ++ch)
-            m_digitizers[i]->WaitForProcessedRecord(ch, m_digitizer_ui_state[i].channels[ch].record);
+        for (size_t ch = 0; ch < digitizer.ui.channels.size(); ++ch)
+            digitizer.interface->WaitForProcessedRecord(ch, digitizer.ui.channels[ch].record);
     }
 }
 
@@ -188,95 +178,91 @@ void Ui::HandleMessage(const IdentificationMessage &message)
 {
     /* If we get a message, the identification went well. */
     for (const auto &d : m_digitizers)
-        d->Stop();
+        d.interface->Stop();
 
-    m_digitizers = message.digitizers;
+    m_digitizers.clear();
+    for (auto interface : message.digitizers)
+        m_digitizers.emplace_back(interface);
+
     m_adq_control_unit = message.handle;
 
-    m_digitizer_ui_state.clear();
-    for (size_t i = 0; i < m_digitizers.size(); ++i)
-        m_digitizer_ui_state.emplace_back();
-
-    m_selected = std::unique_ptr<bool[]>( new bool[m_digitizers.size()] );
-    memset(&m_selected[0], 0, sizeof(m_selected[0]) * m_digitizers.size());
-
     for (const auto &d : m_digitizers)
-        d->Start();
+        d.interface->Start();
 
-    // for (size_t i = 0; i < m_digitizers.size(); ++i)
-    m_selected[0] = true;
+    /* FIXME: Remove since debug convenience */
+    m_digitizers.front().ui.is_selected = true;
 }
 
-void Ui::HandleMessage(size_t i, const DigitizerMessage &message)
+void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
 {
     switch (message.id)
     {
     case DigitizerMessageId::IDENTIFIER:
-        m_digitizer_ui_state[i].identifier = *message.str;
+        digitizer.ui.identifier = *message.str;
         break;
 
     case DigitizerMessageId::NOF_CHANNELS:
-        m_digitizer_ui_state[i].channels.clear();
+        digitizer.ui.channels.clear();
         for (int ch = 0; ch < message.ivalue; ++ch)
-            m_digitizer_ui_state[i].channels.emplace_back(m_nof_channels_total);
+            digitizer.ui.channels.emplace_back(m_nof_channels_total);
         break;
 
     case DigitizerMessageId::CONFIGURATION:
-        m_digitizer_ui_state[i].event = "CONFIGURATION";
-        m_digitizer_ui_state[i].event_color = COLOR_WOW_TAN;
+        digitizer.ui.event = "CONFIGURATION";
+        digitizer.ui.event_color = COLOR_WOW_TAN;
         break;
 
     case DigitizerMessageId::CLEAR:
-        m_digitizer_ui_state[i].event = "";
+        digitizer.ui.event = "";
         break;
 
     case DigitizerMessageId::ERR:
-        m_digitizer_ui_state[i].event = "ERROR";
-        m_digitizer_ui_state[i].event_color = COLOR_RED;
+        digitizer.ui.event = "ERROR";
+        digitizer.ui.event_color = COLOR_RED;
         break;
 
     case DigitizerMessageId::STATE:
         switch (message.state)
         {
         case DigitizerState::NOT_ENUMERATED:
-            m_digitizer_ui_state[i].state = "NOT ENUMERATED";
-            m_digitizer_ui_state[i].state_color = COLOR_RED;
+            digitizer.ui.state = "NOT ENUMERATED";
+            digitizer.ui.state_color = COLOR_RED;
             break;
         case DigitizerState::ENUMERATION:
-            m_digitizer_ui_state[i].state = "ENUMERATION";
-            m_digitizer_ui_state[i].state_color = COLOR_PURPLE;
+            digitizer.ui.state = "ENUMERATION";
+            digitizer.ui.state_color = COLOR_PURPLE;
             break;
         case DigitizerState::IDLE:
-            m_digitizer_ui_state[i].state = "IDLE";
-            m_digitizer_ui_state[i].state_color = COLOR_GREEN;
+            digitizer.ui.state = "IDLE";
+            digitizer.ui.state_color = COLOR_GREEN;
             break;
         case DigitizerState::ACQUISITION:
-            m_digitizer_ui_state[i].state = "ACQUISITION";
-            m_digitizer_ui_state[i].state_color = COLOR_ORANGE;
+            digitizer.ui.state = "ACQUISITION";
+            digitizer.ui.state_color = COLOR_ORANGE;
             break;
         }
         break;
 
     case DigitizerMessageId::DIRTY_TOP_PARAMETERS:
-        m_digitizer_ui_state[i].set_top_color = COLOR_ORANGE;
-        m_digitizers[i]->PushMessage(DigitizerMessageId::SET_PARAMETERS);
-        // m_digitizers[i]->PushMessage(DigitizerMessageId::START_ACQUISITION);
+        digitizer.ui.set_top_color = COLOR_ORANGE;
+        /* FIXME: Remove since debug convenience */
+        digitizer.interface->PushMessage(DigitizerMessageId::SET_PARAMETERS);
         break;
 
     case DigitizerMessageId::DIRTY_CLOCK_SYSTEM_PARAMETERS:
-        m_digitizer_ui_state[i].set_clock_system_color = COLOR_ORANGE;
+        digitizer.ui.set_clock_system_color = COLOR_ORANGE;
         break;
 
     case DigitizerMessageId::CLEAN_TOP_PARAMETERS:
-        m_digitizer_ui_state[i].set_top_color = COLOR_GREEN;
+        digitizer.ui.set_top_color = COLOR_GREEN;
         break;
 
     case DigitizerMessageId::CLEAN_CLOCK_SYSTEM_PARAMETERS:
-        m_digitizer_ui_state[i].set_clock_system_color = COLOR_GREEN;
+        digitizer.ui.set_clock_system_color = COLOR_GREEN;
         break;
 
     case DigitizerMessageId::INITIALIZE_WOULD_OVERWRITE:
-        m_digitizer_ui_state[i].popup_initialize_would_overwrite = true;
+        digitizer.ui.popup_initialize_would_overwrite = true;
         ImGui::OpenPopup("InitializeWouldOverwrite");
         break;
 
@@ -292,11 +278,11 @@ void Ui::HandleMessages()
     if (ADQR_EOK == m_identification.WaitForMessage(identification_message, 0))
         HandleMessage(identification_message);
 
-    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    for (auto &digitizer : m_digitizers)
     {
         DigitizerMessage digitizer_message;
-        if (ADQR_EOK == m_digitizers[i]->WaitForMessage(digitizer_message, 0))
-            HandleMessage(i, digitizer_message);
+        if (ADQR_EOK == digitizer.interface->WaitForMessage(digitizer_message, 0))
+            HandleMessage(digitizer, digitizer_message);
     }
 }
 
@@ -412,7 +398,7 @@ void Ui::RenderPopups()
 {
     for (size_t i = 0; i < m_digitizers.size(); ++i)
     {
-        if (m_digitizer_ui_state[i].popup_initialize_would_overwrite)
+        if (m_digitizers[i].ui.popup_initialize_would_overwrite)
             RenderPopupInitializeWouldOverwrite(i);
     }
 }
@@ -426,20 +412,20 @@ void Ui::RenderPopupInitializeWouldOverwrite(size_t idx)
         ImGui::Text("Initializing parameters for %s would\n"
                     "overwrite (reset) the existing parameters.\n\n"
                     "Proceed?\n\n",
-                    m_digitizer_ui_state[idx].identifier.c_str());
+                    m_digitizers[idx].ui.identifier.c_str());
         ImGui::Separator();
 
         if (ImGui::Button("Yes"))
         {
-            m_digitizers[idx]->PushMessage(DigitizerMessageId::INITIALIZE_PARAMETERS_FORCE);
-            m_digitizer_ui_state[idx].popup_initialize_would_overwrite = false;
+            m_digitizers[idx].interface->PushMessage(DigitizerMessageId::INITIALIZE_PARAMETERS_FORCE);
+            m_digitizers[idx].ui.popup_initialize_would_overwrite = false;
             ImGui::CloseCurrentPopup();
         }
 
         ImGui::SameLine();
         if (ImGui::Button("No"))
         {
-            m_digitizer_ui_state[idx].popup_initialize_would_overwrite = false;
+            m_digitizers[idx].ui.popup_initialize_would_overwrite = false;
             ImGui::CloseCurrentPopup();
         }
 
@@ -455,14 +441,15 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
 
     if (ImGui::Button("Select All"))
     {
-        for (size_t i = 0; i < m_digitizers.size(); ++i)
-            m_selected[i] = true;
+        for (auto &digitizer : m_digitizers)
+            digitizer.ui.is_selected = true;
     }
     ImGui::SameLine();
+
     if (ImGui::Button("Deselect All"))
     {
-        for (size_t i = 0; i < m_digitizers.size(); ++i)
-            m_selected[i] = false;
+        for (auto &digitizer : m_digitizers)
+            digitizer.ui.is_selected = false;
     }
     ImGui::Separator();
 
@@ -484,30 +471,36 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
             ImGui::TableSetupColumn("Event");
             ImGui::TableHeadersRow();
 
-            for (size_t i = 0; i < m_digitizers.size(); ++i)
+            for (auto &digitizer : m_digitizers)
             {
                 ImGui::TableNextColumn();
-                if (ImGui::Selectable(m_digitizer_ui_state[i].identifier.c_str(), m_selected[i],
+                if (ImGui::Selectable(digitizer.ui.identifier.c_str(), digitizer.ui.is_selected,
                                       ImGuiSelectableFlags_SpanAllColumns))
                 {
+                    /* Clear all if CTRL is not held during the press. */
                     if (!ImGui::GetIO().KeyCtrl)
-                        memset(&m_selected[0], 0, sizeof(m_selected[0]) * m_digitizers.size());
-                    m_selected[i] ^= 1;
+                    {
+                        for (auto &d : m_digitizers)
+                            d.ui.is_selected = false;
+                    }
+
+                    /* Toggle the selection state. */
+                    digitizer.ui.is_selected ^= true;
                 }
 
                 ImGui::TableNextColumn();
-                if (m_digitizer_ui_state[i].state.size() > 0)
+                if (digitizer.ui.state.size() > 0)
                 {
-                    ImGui::PushStyleColor(ImGuiCol_Button, m_digitizer_ui_state[i].state_color);
-                    ImGui::SmallButton(m_digitizer_ui_state[i].state.c_str());
+                    ImGui::PushStyleColor(ImGuiCol_Button, digitizer.ui.state_color);
+                    ImGui::SmallButton(digitizer.ui.state.c_str());
                     ImGui::PopStyleColor();
                 }
 
                 ImGui::TableNextColumn();
-                if (m_digitizer_ui_state[i].event.size() > 0)
+                if (digitizer.ui.event.size() > 0)
                 {
-                    ImGui::PushStyleColor(ImGuiCol_Button, m_digitizer_ui_state[i].event_color);
-                    ImGui::SmallButton(m_digitizer_ui_state[i].event.c_str());
+                    ImGui::PushStyleColor(ImGuiCol_Button, digitizer.ui.event_color);
+                    ImGui::SmallButton(digitizer.ui.event.c_str());
                     ImGui::PopStyleColor();
                 }
                 ImGui::TableNextRow();
@@ -527,16 +520,16 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
     /* FIXME: Maybe this is overkill. */
     std::stringstream ss;
     bool any_selected = false;
-    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    for (const auto &digitizer : m_digitizers)
     {
-        if (m_selected[i])
+        if (digitizer.ui.is_selected)
         {
             if (!any_selected)
                 ss << "Commands will be applied to ";
             else
                 ss << ", ";
 
-            ss << m_digitizer_ui_state[i].identifier;
+            ss << digitizer.ui.identifier;
             any_selected = true;
         }
     }
@@ -605,14 +598,14 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
 void Ui::RenderSetTopParametersButton(const ImVec2 &size)
 {
     ImVec4 color = ImGui::GetStyleColorVec4(ImGuiCol_Button);
-    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    for (auto &digitizer : m_digitizers)
     {
-        if (!m_selected[i])
+        if (!digitizer.ui.is_selected)
             continue;
 
         /* FIXME: Figure out color when multiple units are selected. Perhaps we
                   need to store the state... */
-        color = m_digitizer_ui_state[i].set_top_color;
+        color = digitizer.ui.set_top_color;
         break;
     }
 
@@ -626,14 +619,14 @@ void Ui::RenderSetTopParametersButton(const ImVec2 &size)
 void Ui::RenderSetClockSystemParametersButton(const ImVec2 &size)
 {
     ImVec4 color = ImGui::GetStyleColorVec4(ImGuiCol_Button);
-    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    for (auto &digitizer : m_digitizers)
     {
-        if (!m_selected[i])
+        if (!digitizer.ui.is_selected)
             continue;
 
         /* FIXME: Figure out color when multiple units are selected. Perhaps we
                   need to store the state... */
-        color = m_digitizer_ui_state[i].set_clock_system_color;
+        color = digitizer.ui.set_clock_system_color;
         break;
     }
 
@@ -672,7 +665,7 @@ void Ui::MarkerTree(std::map<size_t, Marker> &markers, const std::string &label,
 
     for (auto &[id, marker] : markers)
     {
-        const auto &ui = m_digitizer_ui_state[marker.digitizer].channels[marker.channel];
+        const auto &ui = m_digitizers[marker.digitizer].ui.channels[marker.channel];
 
         if (add_separator)
             ImGui::Separator();
@@ -953,14 +946,16 @@ void Ui::PlotTimeDomainSelected()
     /* We need a (globally) unique id for each marker. */
     int marker_id = 0;
 
+    /* FIXME: Want range based for */
     for (size_t i = 0; i < m_digitizers.size(); ++i)
     {
-        if (!m_selected[i])
+        if (!m_digitizers[i].ui.is_selected)
             continue;
 
-        for (size_t ch = 0; ch < m_digitizer_ui_state[i].channels.size(); ++ch)
+        /* FIXME: Want range based for */
+        for (size_t ch = 0; ch < m_digitizers[i].ui.channels.size(); ++ch)
         {
-            auto &ui = m_digitizer_ui_state[i].channels[ch];
+            auto &ui = m_digitizers[i].ui.channels[ch];
             if (ui.record == NULL)
                 continue;
 
@@ -1031,9 +1026,9 @@ void Ui::PlotTimeDomainSelected()
 
 int Ui::GetSelectedChannel(ChannelUiState *&ui)
 {
-    for (auto &dui : m_digitizer_ui_state)
+    for (auto &d : m_digitizers)
     {
-        for (auto &chui : dui.channels)
+        for (auto &chui : d.ui.channels)
         {
             if (chui.is_selected)
             {
@@ -1222,14 +1217,16 @@ void Ui::PlotFourierTransformSelected()
     /* We need a (globally) unique id for each marker. */
     int marker_id = 0;
 
+    /* FIXME: Want range based for */
     for (size_t i = 0; i < m_digitizers.size(); ++i)
     {
-        if (!m_selected[i])
+        if (!m_digitizers[i].ui.is_selected)
             continue;
 
-        for (size_t ch = 0; ch < m_digitizer_ui_state[i].channels.size(); ++ch)
+        /* FIXME: Want range based for */
+        for (size_t ch = 0; ch < m_digitizers[i].ui.channels.size(); ++ch)
         {
-            auto &ui = m_digitizer_ui_state[i].channels[ch];
+            auto &ui = m_digitizers[i].ui.channels[ch];
             if (ui.record == NULL)
                 continue;
 
@@ -1302,24 +1299,15 @@ void Ui::RenderFourierTransformPlot()
 
 void Ui::PlotWaterfallSelected()
 {
-    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    ChannelUiState *ui;
+    if (ADQR_EOK == GetSelectedChannel(ui))
     {
-        if (!m_selected[i])
-            continue;
-
-        for (const auto &ui : m_digitizer_ui_state[i].channels)
-        {
-            if (!ui.is_selected)
-                continue;
-
-            /* FIXME: Y-axis scale (probably time delta?) */
-            const double TOP_RIGHT = ui.record->time_domain->sampling_frequency / 2;
-            ImPlot::PlotHeatmap("heat", ui.record->waterfall->data.data(),
-                                static_cast<int>(ui.record->waterfall->rows),
-                                static_cast<int>(ui.record->waterfall->columns),
-                                -100, 0, NULL, ImPlotPoint(0,0), ImPlotPoint(TOP_RIGHT, 1));
-            return;
-        }
+        /* FIXME: Y-axis scale (probably time delta?) */
+        const double TOP_RIGHT = ui->record->time_domain->sampling_frequency / 2;
+        ImPlot::PlotHeatmap("heat", ui->record->waterfall->data.data(),
+                            static_cast<int>(ui->record->waterfall->rows),
+                            static_cast<int>(ui->record->waterfall->columns), -100, 0, NULL,
+                            ImPlotPoint(0, 0), ImPlotPoint(TOP_RIGHT, 1));
     }
 }
 
@@ -1345,12 +1333,12 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
     ImGui::Begin("Time Domain Metrics", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
     bool has_contents = false;
-    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    for (auto &digitizer : m_digitizers)
     {
-        if (!m_selected[i])
+        if (!digitizer.ui.is_selected)
             continue;
 
-        for (auto &ui : m_digitizer_ui_state[i].channels)
+        for (auto &ui : digitizer.ui.channels)
         {
             if (ui.record == NULL)
                 continue;
@@ -1459,17 +1447,17 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
                  ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoNavFocus);
 
     bool has_contents = false;
-    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    for (auto &digitizer : m_digitizers)
     {
-        if (!m_selected[i])
+        if (!digitizer.ui.is_selected)
             continue;
 
-        for (auto &ui : m_digitizer_ui_state[i].channels)
+        for (auto &ui : digitizer.ui.channels)
         {
             if (ui.record == NULL)
                 continue;
-            has_contents = true;
 
+            has_contents = true;
             if (has_contents)
                 ImGui::Separator();
 

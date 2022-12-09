@@ -2,6 +2,7 @@
 #include "implot_internal.h" /* To be able to get item visibility state. */
 
 #include "fmt/format.h"
+#include "format.h"
 #include <cinttypes>
 #include <cmath>
 
@@ -33,20 +34,6 @@ static inline void Text(const std::string &str)
     ImGui::Text("%s", str.c_str());
 }
 }
-
-Ui::Marker::Marker(size_t id, size_t digitizer, size_t channel, size_t sample, double x, double y)
-    : id(id)
-    , digitizer(digitizer)
-    , channel(channel)
-    , sample(sample)
-    , color(ImPlot::GetColormapColor(static_cast<int>(id), ImPlotColormap_Pastel))
-    , thickness(1.0f)
-    , x(x)
-    , y(y)
-    , deltas{}
-{
-}
-
 
 Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     : color{}
@@ -808,9 +795,9 @@ void Ui::RenderMarkers(const ImVec2 &position, const ImVec2 &size)
         m_next_frequency_domain_marker_id = 0;
     }
 
-    MarkerTree(m_time_domain_markers, "Time Domain", "T", FormatTimeDomainX, FormatTimeDomainY);
-    MarkerTree(m_frequency_domain_markers, "Frequency Domain", "F", FormatFrequencyDomainX,
-               FormatFrequencyDomainY);
+    MarkerTree(m_time_domain_markers, "Time Domain", "T", Format::TimeDomainX, Format::TimeDomainY);
+    MarkerTree(m_frequency_domain_markers, "Frequency Domain", "F", Format::FrequencyDomainX,
+               Format::FrequencyDomainY);
     ImGui::End();
 }
 
@@ -875,105 +862,6 @@ void Ui::Reduce(double xsize, double sampling_period, int &count, int &stride)
     } while ((count / stride) > MAX_NOF_SAMPLES);
 
     count /= stride;
-}
-
-std::string Ui::MetricFormatter(double value, const std::string &format, double highest_prefix)
-{
-    static const std::vector<std::pair<double, const char *>> LIMITS = {
-        {1e12, "T"},
-        {1e9, "G"},
-        {1e6, "M"},
-        {1e3, "k"},
-        {1, ""},
-        {1e-3, "m"},
-        {1e-6, "u"},
-        {1e-9, "n"},
-        {1e-12, "p"}
-    };
-
-    if (value == 0)
-        return fmt::format(format, 0.0, "");
-
-    /* Loop through the limits (descending order) checking if the input value is
-       larger than the limit. If it is, we pick the corresponding prefix. If
-       we've exhausted the search, we pick the last entry (smallest prefix). */
-
-    for (const auto &limit : LIMITS)
-    {
-        if (limit.first > highest_prefix)
-            continue;
-
-        if (std::fabs(value) >= limit.first)
-            return fmt::format(format, value / limit.first, limit.second);
-    }
-
-    return fmt::format(format, value / LIMITS.back().first, LIMITS.back().second);
-}
-
-int Ui::MetricFormatter(double value, char *tick_label, int size, void *data)
-{
-    auto UNIT = static_cast<const char *>(data);
-    static const std::vector<std::pair<double, const char *>> LIMITS = {
-        {1e12, "T"},
-        {1e9, "G"},
-        {1e6, "M"},
-        {1e3, "k"},
-        {1, ""},
-        {1e-3, "m"},
-        {1e-6, "u"},
-        {1e-9, "n"},
-        {1e-12, "p"}
-    };
-
-    if (value == 0)
-    {
-        std::snprintf(tick_label, size, "0 %s", UNIT);
-        return 0;
-    }
-
-    for (const auto &limit : LIMITS)
-    {
-        if (std::fabs(value) >= limit.first)
-        {
-            std::snprintf(tick_label, size, "%g %s%s", value / limit.first, limit.second, UNIT);
-            return 0;
-        }
-    }
-
-    std::snprintf(tick_label, size, "%g %s%s", value / LIMITS.back().first, LIMITS.back().second, UNIT);
-    return 0;
-}
-
-std::string Ui::FormatTimeDomainX(double value, bool show_sign)
-{
-    std::string format = "{:>-7.2f} {}s";
-    if (show_sign)
-        format[3] = '+';
-    return MetricFormatter(value, format, 1e-3);
-}
-
-std::string Ui::FormatTimeDomainY(double value, bool show_sign)
-{
-    std::string format = "{:>-8.2f} {}V";
-    if (show_sign)
-        format[3] = '+';
-    return MetricFormatter(value, format, 1e-3);
-}
-
-std::string Ui::FormatFrequencyDomainX(double value, bool show_sign)
-{
-    std::string format = "{:>-7.2f} {}Hz";
-    if (show_sign)
-        format[3] = '+';
-    return MetricFormatter(value, format, 1e6);
-}
-
-std::string Ui::FormatFrequencyDomainY(double value, bool show_sign)
-{
-    std::string format = "{:>-7.2f} dBFS";
-    if (show_sign)
-        format[3] = '+';
-    return fmt::format(format, value);
 }
 
 template<typename T>
@@ -1124,9 +1012,9 @@ void Ui::PlotTimeDomainSelected()
                     ImPlot::DragPoint(0, &marker.x, &marker.y, marker.color,
                                       3.0f + marker.thickness, ImPlotDragToolFlags_NoInputs);
                     DrawMarkerX(marker_id++, &marker.x, marker.color, marker.thickness,
-                                MetricFormatter(marker.x, "{:g} {}s", 1e-3));
+                                Format::Metric(marker.x, "{:g} {}s", 1e-3));
                     DrawMarkerY(marker_id++, &marker.y, marker.color, marker.thickness,
-                                MetricFormatter(marker.y, "{: 7.1f} {}V", 1e-3),
+                                Format::Metric(marker.y, "{: 7.1f} {}V", 1e-3),
                                 ImPlotDragToolFlags_NoInputs);
                 }
 
@@ -1276,8 +1164,8 @@ void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
     if (ImPlot::BeginPlot("Time domain", ImVec2(-1, -1), ImPlotFlags_NoTitle))
     {
         ImPlot::SetupLegend(ImPlotLocation_NorthEast);
-        ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatter, (void *)"s");
-        ImPlot::SetupAxisFormat(ImAxis_Y1, MetricFormatter, (void *)"V");
+        ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric, (void *)"s");
+        ImPlot::SetupAxisFormat(ImAxis_Y1, Format::Metric, (void *)"V");
         PlotTimeDomainSelected();
         RemoveDoubleClickedMarkers(m_time_domain_markers);
         ImPlot::EndPlot();
@@ -1320,7 +1208,7 @@ void Ui::Annotate(const std::pair<double, double> &point, const std::string &lab
                        ImVec2(0, -5), false, "%.2f dBFS", point.second);
     ImPlot::Annotation(point.first, point.second, ImVec4(0, 0, 0, 0),
                        ImVec2(0, -5 - ImGui::GetTextLineHeight()), false,
-                       "%s", MetricFormatter(point.first, "{:.2f} {}Hz", 1e6).c_str());
+                       "%s", Format::Metric(point.first, "{:.2f} {}Hz", 1e6).c_str());
     if (label.size() > 0)
     {
         ImPlot::Annotation(point.first, point.second, ImVec4(0, 0, 0, 0),
@@ -1378,7 +1266,7 @@ void Ui::PlotFourierTransformSelected()
                     ImPlot::DragPoint(0, &marker.x, &marker.y, marker.color,
                                       3.0f + marker.thickness, ImPlotDragToolFlags_NoInputs);
                     DrawMarkerX(marker_id++, &marker.x, marker.color, marker.thickness,
-                                MetricFormatter(marker.x, "{:.2f} {}Hz", 1e6));
+                                Format::Metric(marker.x, "{:.2f} {}Hz", 1e6));
                     DrawMarkerY(marker_id++, &marker.y, marker.color, marker.thickness,
                                 fmt::format("{: 8.2f} dBFS", marker.y), ImPlotDragToolFlags_NoInputs);
                 }
@@ -1404,7 +1292,7 @@ void Ui::RenderFourierTransformPlot()
         ImPlot::SetupLegend(ImPlotLocation_NorthEast);
         ImPlot::SetupAxisLimits(ImAxis_Y1, -100.0, 10.0);
         ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, 1e9);
-        ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatter, (void *)"Hz");
+        ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric, (void *)"Hz");
         PlotFourierTransformSelected();
         RemoveDoubleClickedMarkers(m_frequency_domain_markers);
         ImPlot::EndPlot();
@@ -1442,7 +1330,7 @@ void Ui::RenderWaterfallPlot()
     {
         static const ImPlotAxisFlags FLAGS = ImPlotAxisFlags_NoGridLines;
         ImPlot::SetupAxes(NULL, NULL, FLAGS, FLAGS);
-        ImPlot::SetupAxisFormat(ImAxis_X1, MetricFormatter, (void *)"Hz");
+        ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric, (void *)"Hz");
         PlotWaterfallSelected();
         ImPlot::EndPlot();
     }
@@ -1520,39 +1408,38 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                     ImGui::TableNextColumn();
                     ImGui::Text("Maximum");
                     ImGui::TableNextColumn();
-                    ImGui::Text(MetricFormatter(metrics.max, "{: 8.1f} {}V", 1e-3));
+                    ImGui::Text(Format::TimeDomainY(metrics.max));
 
                     ImGui::TableNextColumn();
                     ImGui::Text("Minimum");
                     ImGui::TableNextColumn();
-                    ImGui::Text(MetricFormatter(metrics.min, "{: 8.1f} {}V", 1e-3));
+                    ImGui::Text(Format::TimeDomainY(metrics.min));
 
                     ImGui::TableNextColumn();
                     ImGui::Text("Mean");
                     ImGui::TableNextColumn();
-                    ImGui::Text(MetricFormatter(metrics.mean, "{: 8.1f} {}V", 1e-3));
+                    ImGui::Text(Format::TimeDomainY(metrics.mean));
 
                     ImGui::TableNextColumn();
                     ImGui::Text("Sampling rate");
                     ImGui::TableNextColumn();
-                    ImGui::Text(MetricFormatter(record->sampling_frequency, "{: 8.1f} {}Hz", 1e6));
+                    ImGui::Text(Format::FrequencyDomainX(record->sampling_frequency));
 
                     ImGui::TableNextColumn();
                     ImGui::Text("Sampling period");
                     ImGui::TableNextColumn();
-                    ImGui::Text(MetricFormatter(record->step, "{: 8.1f} {}s"));
+                    ImGui::Text(Format::TimeDomainX(record->step));
 
                     ImGui::TableNextColumn();
                     ImGui::Text("Trigger rate");
                     ImGui::TableNextColumn();
-                    ImGui::Text(
-                        MetricFormatter(record->estimated_trigger_frequency, "{: 8.1f} {}Hz", 1e6));
+                    ImGui::Text(Format::FrequencyDomainX(record->estimated_trigger_frequency));
 
                     ImGui::TableNextColumn();
                     ImGui::Text("Throughput");
                     ImGui::TableNextColumn();
                     ImGui::Text(
-                        MetricFormatter(record->estimated_throughput, "{: 8.1f} {}B/s", 1e6));
+                        Format::Metric(record->estimated_throughput, "{: 8.1f} {}B/s", 1e6));
 
                     ImGui::EndTable();
                 }
@@ -1632,86 +1519,85 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
                     ImGui::TableNextColumn();
                     ImGui::Text("SNR");
                     ImGui::TableNextColumn();
-                    ImGui::Text(fmt::format("{: 8.2f} dB", metrics.snr));
+                    ImGui::Text(Format::FrequencyDomainDeltaY(metrics.snr));
                     ImGui::TableNextColumn();
                     ImGui::TableNextColumn();
                     ImGui::Text("Fund.");
                     ImGui::TableNextColumn();
-                    ImGui::Text(MetricFormatter(metrics.fundamental.first, "{: 7.2f} {}Hz", 1e6));
+                    ImGui::Text(Format::FrequencyDomainX(metrics.fundamental.first));
                     ImGui::TableNextColumn();
-                    ImGui::Text(fmt::format("{: 8.2f} dBFS", metrics.fundamental.second));
+                    ImGui::Text(Format::FrequencyDomainY(metrics.fundamental.second));
 
                     ImGui::TableNextColumn();
                     ImGui::Text("SINAD");
                     ImGui::TableNextColumn();
-                    ImGui::Text(fmt::format("{: 8.2f} dB", metrics.sinad));
+                    ImGui::Text(Format::FrequencyDomainDeltaY(metrics.sinad));
                     ImGui::TableNextColumn();
                     ImGui::TableNextColumn();
                     ImGui::Text("HD2");
                     ImGui::TableNextColumn();
-                    ImGui::Text(MetricFormatter(metrics.harmonics[0].first, "{: 7.2f} {}Hz", 1e6));
+                    ImGui::Text(Format::FrequencyDomainX(metrics.harmonics[0].first));
                     ImGui::TableNextColumn();
-                    ImGui::Text(fmt::format("{: 8.2f} dBFS", metrics.harmonics[0].second));
-
-                    ImGui::TableNextColumn();
-                    ImGui::Text("THD");
-                    ImGui::TableNextColumn();
-                    ImGui::Text(fmt::format("{: 8.2f} dB", metrics.thd));
-                    ImGui::TableNextColumn();
-                    ImGui::TableNextColumn();
-                    ImGui::Text("HD3");
-                    ImGui::TableNextColumn();
-                    ImGui::Text(MetricFormatter(metrics.harmonics[1].first, "{: 7.2f} {}Hz", 1e6));
-                    ImGui::TableNextColumn();
-                    ImGui::Text(fmt::format("{: 8.2f} dBFS", metrics.harmonics[1].second));
+                    ImGui::Text(Format::FrequencyDomainY(metrics.harmonics[0].second));
 
                     ImGui::TableNextColumn();
                     ImGui::Text("ENOB");
                     ImGui::TableNextColumn();
-                    ImGui::Text(fmt::format("{: 8.2f} bits", metrics.enob));
+                    ImGui::Text(fmt::format("{: 7.2f} bits", metrics.enob));
+                    ImGui::TableNextColumn();
+                    ImGui::TableNextColumn();
+                    ImGui::Text("HD3");
+                    ImGui::TableNextColumn();
+                    ImGui::Text(Format::FrequencyDomainX(metrics.harmonics[1].first));
+                    ImGui::TableNextColumn();
+                    ImGui::Text(Format::FrequencyDomainY(metrics.harmonics[1].second));
+
+                    ImGui::TableNextColumn();
+                    ImGui::Text("THD");
+                    ImGui::TableNextColumn();
+                    ImGui::Text(Format::FrequencyDomainDeltaY(metrics.thd));
                     ImGui::TableNextColumn();
                     ImGui::TableNextColumn();
                     ImGui::Text("HD4");
                     ImGui::TableNextColumn();
-                    ImGui::Text(MetricFormatter(metrics.harmonics[2].first, "{: 7.2f} {}Hz", 1e6));
+                    ImGui::Text(Format::FrequencyDomainX(metrics.harmonics[2].first));
                     ImGui::TableNextColumn();
-                    ImGui::Text(fmt::format("{: 8.2f} dBFS", metrics.harmonics[2].second));
+                    ImGui::Text(Format::FrequencyDomainY(metrics.harmonics[2].second));
 
                     ImGui::TableNextColumn();
                     ImGui::Text("SFDR");
                     ImGui::TableNextColumn();
-                    ImGui::Text(fmt::format("{: 8.2f} dBc", metrics.sfdr_dbc));
+                    ImGui::Text(Format::FrequencyDomainY(metrics.sfdr_dbfs));
                     ImGui::TableNextColumn();
                     ImGui::TableNextColumn();
                     ImGui::Text("HD5");
                     ImGui::TableNextColumn();
-                    ImGui::Text(MetricFormatter(metrics.harmonics[3].first, "{: 7.2f} {}Hz", 1e6));
+                    ImGui::Text(Format::FrequencyDomainX(metrics.harmonics[3].first));
                     ImGui::TableNextColumn();
-                    ImGui::Text(fmt::format("{: 8.2f} dBFS", metrics.harmonics[3].second));
-
-                    ImGui::TableNextColumn();
-                    ImGui::Text("SFDR");
-                    ImGui::TableNextColumn();
-                    ImGui::Text(fmt::format("{: 8.2f} dBFS", metrics.sfdr_dbfs));
-                    ImGui::TableNextColumn();
-                    ImGui::TableNextColumn();
-                    ImGui::Text("Spur");
-                    ImGui::TableNextColumn();
-                    ImGui::Text(MetricFormatter(metrics.spur.first, "{: 7.2f} {}Hz", 1e6));
-                    ImGui::TableNextColumn();
-                    ImGui::Text(fmt::format("{: 8.2f} dBFS", metrics.spur.second));
+                    ImGui::Text(Format::FrequencyDomainY(metrics.harmonics[3].second));
 
                     ImGui::TableNextColumn();
                     ImGui::Text("Noise");
                     ImGui::TableNextColumn();
-                    ImGui::Text(fmt::format("{: 8.2f} dBFS", metrics.noise));
+                    ImGui::Text(Format::FrequencyDomainY(metrics.noise));
+                    ImGui::TableNextColumn();
+                    ImGui::TableNextColumn();
+                    ImGui::Text("Spur");
+                    ImGui::TableNextColumn();
+                    ImGui::Text(Format::FrequencyDomainX(metrics.spur.first));
+                    ImGui::TableNextColumn();
+                    ImGui::Text(Format::FrequencyDomainY(metrics.spur.second));
+
+                    ImGui::TableNextColumn();
+                    ImGui::Text("Size");
+                    ImGui::TableNextColumn();
+                    ImGui::Text(fmt::format("{:7} pts", (record->x.size() - 1) * 2));
                     ImGui::TableNextColumn();
                     ImGui::TableNextColumn();
                     ImGui::Text("Bin");
                     ImGui::TableNextColumn();
-                    ImGui::Text(MetricFormatter(record->step, "{: 7.2f} {}Hz", 1e6));
+                    ImGui::Text(Format::FrequencyDomainX(record->step));
                     ImGui::TableNextColumn();
-                    ImGui::Text(fmt::format("{:8} pts", (record->x.size() - 1) * 2));
 
                     ImGui::EndTable();
                 }

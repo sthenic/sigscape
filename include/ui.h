@@ -10,6 +10,7 @@
 
 #include "digitizer.h"
 #include "identification.h"
+#include "marker.h"
 
 #include <map>
 #include <set>
@@ -34,22 +35,6 @@ private:
     bool m_is_frequency_domain_collapsed;
     std::unique_ptr<bool[]> m_selected;
     int m_nof_channels_total;
-
-    struct Marker
-    {
-        Marker() = default;
-        Marker(size_t id, size_t digitizer, size_t channel, size_t sample, double x, double y);
-
-        size_t id;
-        size_t digitizer;
-        size_t channel;
-        size_t sample;
-        ImVec4 color;
-        float thickness;
-        double x;
-        double y;
-        std::set<size_t> deltas;
-    };
 
     struct ChannelUiState
     {
@@ -120,15 +105,8 @@ private:
     void RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size);
 
     void Reduce(double xsize, double sampling_frequency, int &count, int &stride);
-    static std::string MetricFormatter(double value, const std::string &format,
-                                       double highest_prefix = 1e9);
-    static int MetricFormatter(double value, char *tick_label, int size, void *data);
-    static std::string FormatTimeDomainX(double value, bool show_sign);
-    static std::string FormatTimeDomainY(double value, bool show_sign);
-    static std::string FormatFrequencyDomainX(double value, bool show_sign);
-    static std::string FormatFrequencyDomainY(double value, bool show_sign);
-    typedef std::string (*Formatter)(double value, bool show_sign);
 
+    typedef std::string (*Formatter)(double value, bool show_sign);
     void MarkerTree(std::map<size_t, Marker> &markers, const std::string &label,
                     const std::string &prefix, Formatter FormatX, Formatter FormatY);
 

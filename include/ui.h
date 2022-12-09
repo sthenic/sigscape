@@ -126,8 +126,7 @@ private:
     void DrawMarkerY(int id, double *y, const ImVec4 &color, float thickness,
                      const std::string &format, ImPlotDragToolFlags flags = 0);
 
-    template <typename T>
-    static void MaybeAddMarker(size_t digitizer, size_t channel, const T &record,
+    static void MaybeAddMarker(size_t digitizer, size_t channel, const BaseRecord *record,
                                std::map<size_t, Marker> &markers, bool &is_adding_marker,
                                bool &is_dragging_marker, size_t &next_marker_id,
                                std::map<size_t, Marker>::iterator &last_marker);

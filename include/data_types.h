@@ -6,6 +6,8 @@
 #include <complex>
 #include <limits>
 #include <cstring>
+#include <vector>
+#include <deque>
 
 #ifdef NO_ADQAPI
 #include "mock_adqapi_definitions.h"
@@ -13,17 +15,34 @@
 #include "ADQAPI.h"
 #endif
 
+struct BaseRecord
+{
+    BaseRecord(size_t count)
+        : x(count)
+        , y(count)
+        , step(0)
+    {}
+
+    virtual ~BaseRecord() = 0;
+
+    /* Delete copy constructors until we need them. */
+    BaseRecord(const BaseRecord &other) = delete;
+    BaseRecord &operator=(const BaseRecord &other) = delete;
+
+    std::vector<double> x;
+    std::vector<double> y;
+    double step;
+};
+
 /* A time domain record. */
-struct TimeDomainRecord
+struct TimeDomainRecord : public BaseRecord
 {
     TimeDomainRecord(const struct ADQGen4Record *raw,
                      const struct ADQAnalogFrontendParametersChannel &afe)
-        : x(raw->header->record_length)
-        , y(raw->header->record_length)
+        : BaseRecord(raw->header->record_length)
         , header(*raw->header)
         , estimated_trigger_frequency(0)
         , estimated_throughput(0)
-        , step(0)
         , sampling_frequency(0)
         , record_start(0.0)
     {
@@ -54,32 +73,23 @@ struct TimeDomainRecord
     TimeDomainRecord(const TimeDomainRecord &other) = delete;
     TimeDomainRecord &operator=(const TimeDomainRecord &other) = delete;
 
-    std::vector<double> x;
-    std::vector<double> y;
     struct ADQGen4RecordHeader header;
     double estimated_trigger_frequency;
     double estimated_throughput;
-    double step; /* Sampling period */
     double sampling_frequency;
     double record_start;
 };
 
-struct FrequencyDomainRecord
+struct FrequencyDomainRecord : public BaseRecord
 {
     FrequencyDomainRecord(size_t count)
-        : x(count)
-        , y(count)
-        , step(0)
+        : BaseRecord(count)
     {
     }
 
     /* Delete copy constructors until we need them. */
     FrequencyDomainRecord(const FrequencyDomainRecord &other) = delete;
     FrequencyDomainRecord &operator=(const FrequencyDomainRecord &other) = delete;
-
-    std::vector<double> x;
-    std::vector<double> y;
-    double step; /* Bin range */
 };
 
 struct Waterfall

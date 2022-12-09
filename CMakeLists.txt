@@ -95,6 +95,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     src/ui.cpp
     src/marker.cpp
     src/format.cpp
+    src/data_types.cpp
     src/window.cpp
     src/main.cpp
 )

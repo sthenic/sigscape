@@ -989,9 +989,9 @@ void Ui::PlotTimeDomainSelected()
                 ImPlot::PopStyleColor();
             }
 
-            /* Here we have to resort to using ImPlot internals to gain
-                access to whether or not the plot is shown or not. The user
-                can click the legend entry to change the visibility state. */
+            /* Here we have to resort to using ImPlot internals to gain access
+               to whether or not the plot is shown or not. The user can click
+               the legend entry to change the visibility state. */
             auto item = ImPlot::GetCurrentContext()->CurrentItems->GetItem(ui.record->label.c_str());
             ui.is_time_domain_visible = (item != NULL) && item->Show;
 
@@ -1015,7 +1015,7 @@ void Ui::PlotTimeDomainSelected()
 
                 if (ui.is_selected)
                 {
-                    MaybeAddMarker(i, ch, ui.record->time_domain, m_time_domain_markers,
+                    MaybeAddMarker(i, ch, ui.record->time_domain.get(), m_time_domain_markers,
                                    m_is_adding_time_domain_marker, m_is_dragging_time_domain_marker,
                                    m_next_time_domain_marker_id, m_last_time_domain_marker);
                 }
@@ -1055,8 +1055,7 @@ void Ui::DrawMarkerY(int id, double *y, const ImVec4 &color, float thickness,
     ImPlot::TagY(*y, color, "%s", tag.c_str());
 }
 
-template <typename T>
-void Ui::MaybeAddMarker(size_t digitizer, size_t channel, const T &record,
+void Ui::MaybeAddMarker(size_t digitizer, size_t channel, const BaseRecord *record,
                         std::map<size_t, Marker> &markers, bool &is_adding_marker,
                         bool &is_dragging_marker, size_t &next_marker_id,
                         std::map<size_t, Marker>::iterator &last_marker)
@@ -1270,8 +1269,8 @@ void Ui::PlotFourierTransformSelected()
 
                 if (ui.is_selected)
                 {
-                    MaybeAddMarker(i, ch, ui.record->frequency_domain, m_frequency_domain_markers,
-                                   m_is_adding_frequency_domain_marker,
+                    MaybeAddMarker(i, ch, ui.record->frequency_domain.get(),
+                                   m_frequency_domain_markers, m_is_adding_frequency_domain_marker,
                                    m_is_dragging_frequency_domain_marker,
                                    m_next_frequency_domain_marker_id,
                                    m_last_frequency_domain_marker);

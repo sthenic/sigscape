@@ -11,9 +11,9 @@
 #include "digitizer.h"
 #include "identification.h"
 #include "marker.h"
+#include "format.h"
 
-#include <map>
-#include <set>
+#include <vector>
 
 class Ui
 {
@@ -111,8 +111,7 @@ private:
 
     void Reduce(double xsize, double sampling_frequency, int &count, int &stride);
 
-    typedef std::string (*Formatter)(double value, bool show_sign);
-    void MarkerTree(Markers &markers, Formatter FormatX, Formatter FormatY);
+    void MarkerTree(Markers &markers, Format::Formatter FormatX, Format::Formatter FormatY);
 
     std::vector<std::tuple<size_t, size_t, ChannelUiState *>> FilterUiStates();
     void PlotTimeDomainSelected();

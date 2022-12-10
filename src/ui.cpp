@@ -2,7 +2,6 @@
 #include "implot_internal.h" /* To be able to get item visibility state. */
 
 #include "fmt/format.h"
-#include "format.h"
 #include <cinttypes>
 #include <cmath>
 
@@ -653,7 +652,7 @@ void CenteredTextInCell(const std::string &str)
     ImGui::Text(str);
 }
 
-void Ui::MarkerTree(Markers &markers, Formatter FormatX, Formatter FormatY)
+void Ui::MarkerTree(Markers &markers, Format::Formatter FormatX, Format::Formatter FormatY)
 {
     if (markers.empty())
         return;
@@ -1470,44 +1469,59 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                                             16.0f * TEXT_BASE_WIDTH);
                     ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
 
-                    ImGui::TableNextColumn();
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
                     ImGui::Text("Record number");
-                    ImGui::TableNextColumn();
-                    ImGui::Text(fmt::format("{: >6d}", record->header.record_number));
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text(fmt::format("{: >7d}", record->header.record_number));
 
-                    ImGui::TableNextColumn();
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
                     ImGui::Text("Maximum");
-                    ImGui::TableNextColumn();
+                    ImGui::TableSetColumnIndex(1);
                     ImGui::Text(Format::TimeDomainY(metrics.max));
 
-                    ImGui::TableNextColumn();
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
                     ImGui::Text("Minimum");
-                    ImGui::TableNextColumn();
+                    ImGui::TableSetColumnIndex(1);
                     ImGui::Text(Format::TimeDomainY(metrics.min));
 
-                    ImGui::TableNextColumn();
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
                     ImGui::Text("Mean");
-                    ImGui::TableNextColumn();
+                    ImGui::TableSetColumnIndex(1);
                     ImGui::Text(Format::TimeDomainY(metrics.mean));
 
-                    ImGui::TableNextColumn();
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("Peak-to-peak");
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text(Format::TimeDomainY(metrics.max - metrics.min));
+
+                    /* FIXME: Hide these behind some 'show extra' toggle. */
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
                     ImGui::Text("Sampling rate");
-                    ImGui::TableNextColumn();
+                    ImGui::TableSetColumnIndex(1);
                     ImGui::Text(Format::FrequencyDomainX(record->sampling_frequency));
 
-                    ImGui::TableNextColumn();
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
                     ImGui::Text("Sampling period");
-                    ImGui::TableNextColumn();
+                    ImGui::TableSetColumnIndex(1);
                     ImGui::Text(Format::TimeDomainX(record->step));
 
-                    ImGui::TableNextColumn();
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
                     ImGui::Text("Trigger rate");
-                    ImGui::TableNextColumn();
+                    ImGui::TableSetColumnIndex(1);
                     ImGui::Text(Format::FrequencyDomainX(record->estimated_trigger_frequency));
 
-                    ImGui::TableNextColumn();
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
                     ImGui::Text("Throughput");
-                    ImGui::TableNextColumn();
+                    ImGui::TableSetColumnIndex(1);
                     ImGui::Text(
                         Format::Metric(record->estimated_throughput, "{: 8.1f} {}B/s", 1e6));
 

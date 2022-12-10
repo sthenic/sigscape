@@ -44,7 +44,10 @@ struct TimeDomainRecord : public BaseRecord
         , estimated_trigger_frequency(0)
         , estimated_throughput(0)
         , sampling_frequency(0)
-        , record_start(0.0)
+        , record_start(0)
+        , range_max(0)
+        , range_min(0)
+        , range_mid(0)
     {
         /* FIXME: Assuming two bytes per sample. */
 
@@ -67,6 +70,10 @@ struct TimeDomainRecord : public BaseRecord
             y[i] = static_cast<double>(data[i]) / 65536.0 * afe.input_range - afe.dc_offset;
             y[i] /= 1e3;
         }
+
+        range_max = (afe.input_range / 2 - afe.dc_offset) / 1e3;
+        range_min = (-afe.input_range / 2 - afe.dc_offset) / 1e3;
+        range_mid = (range_max + range_min) / 2;
     }
 
     /* Delete copy constructors until we need them. */
@@ -78,6 +85,9 @@ struct TimeDomainRecord : public BaseRecord
     double estimated_throughput;
     double sampling_frequency;
     double record_start;
+    double range_max;
+    double range_min;
+    double range_mid;
 };
 
 struct FrequencyDomainRecord : public BaseRecord

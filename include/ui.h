@@ -135,12 +135,9 @@ private:
     static bool IsHoveredAndDoubleClicked(const std::pair<size_t, Marker> &marker);
     static void RemoveDoubleClickedMarkers(std::map<size_t, Marker> &markers);
 
-    template <typename T>
-    static void SnapX(double x, const T &record, double &snap_x, double &snap_y);
-
-    template <typename T>
-    static void GetClosestSampleIndex(double x, double y, const T &record, const ImPlotRect &view,
-                                      size_t &index);
+    static void SnapX(double x, const BaseRecord *record, double &snap_x, double &snap_y);
+    static void GetClosestSampleIndex(double x, double y, const BaseRecord *record,
+                                      const ImPlotRect &view, size_t &index);
 
     void RenderTimeDomain(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size);

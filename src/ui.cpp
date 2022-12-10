@@ -857,8 +857,7 @@ void Ui::Reduce(double xsize, double sampling_period, int &count, int &stride)
     count /= stride;
 }
 
-template<typename T>
-void Ui::SnapX(double x, const T &record, double &snap_x, double &snap_y)
+void Ui::SnapX(double x, const BaseRecord *record, double &snap_x, double &snap_y)
 {
     if (x < record->x.front())
     {
@@ -881,8 +880,7 @@ void Ui::SnapX(double x, const T &record, double &snap_x, double &snap_y)
     }
 }
 
-template <typename T>
-void Ui::GetClosestSampleIndex(double x, double y, const T &record, const ImPlotRect &view,
+void Ui::GetClosestSampleIndex(double x, double y, const BaseRecord *record, const ImPlotRect &view,
                                size_t &index)
 {
     /* Find the closest sample to the coordinates (x,y) by minimizing the
@@ -1030,7 +1028,7 @@ void Ui::PlotTimeDomainSelected()
                     if (marker.digitizer != i || marker.channel != ch)
                         continue;
 
-                    SnapX(marker.x, ui.record->time_domain, marker.x, marker.y);
+                    SnapX(marker.x, ui.record->time_domain.get(), marker.x, marker.y);
 
                     ImPlot::DragPoint(0, &marker.x, &marker.y, marker.color,
                                       3.0f + marker.thickness, ImPlotDragToolFlags_NoInputs);
@@ -1285,7 +1283,7 @@ void Ui::PlotFourierTransformSelected()
                     if (marker.digitizer != i || marker.channel != ch)
                         continue;
 
-                    SnapX(marker.x, ui.record->frequency_domain, marker.x, marker.y);
+                    SnapX(marker.x, ui.record->frequency_domain.get(), marker.x, marker.y);
 
                     ImPlot::DragPoint(0, &marker.x, &marker.y, marker.color,
                                       3.0f + marker.thickness, ImPlotDragToolFlags_NoInputs);

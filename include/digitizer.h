@@ -64,29 +64,45 @@ struct DigitizerMessage
     /* Create an empty message. */
     DigitizerMessage(DigitizerMessageId id)
         : id(id)
-    {};
+        , state()
+        , str()
+        , ivalue()
+        , window_type()
+    {}
 
     /* Create a state message. */
     DigitizerMessage(DigitizerMessageId id, DigitizerState state)
         : id(id)
         , state(state)
+        , str()
+        , ivalue()
+        , window_type()
     {}
 
     /* Create a string message. */
     DigitizerMessage(DigitizerMessageId id, std::shared_ptr<std::string> str)
         : id(id)
+        , state()
         , str(str)
+        , ivalue()
+        , window_type()
     {}
 
     /* Create an integer message. */
     DigitizerMessage(DigitizerMessageId id, int ivalue)
         : id(id)
+        , state()
+        , str()
         , ivalue(ivalue)
+        , window_type()
     {}
 
     /* Create a window message. */
     DigitizerMessage(DigitizerMessageId id, WindowType window_type)
         : id(id)
+        , state()
+        , str()
+        , ivalue()
         , window_type(window_type)
     {}
 

@@ -177,6 +177,14 @@ public:
         return ADQR_EOK;
     }
 
+    /* An `emplace_back`-style call, forwarding the arguments to a matching
+       constructor for a new object of type `T`. */
+    template<class... Args>
+    int EmplaceWrite(Args &&... args)
+    {
+        return Write(T(std::forward<Args>(args)...), 0);
+    }
+
     bool IsFull()
     {
         std::unique_lock<std::mutex> lock(m_mutex);

@@ -143,7 +143,8 @@ void Digitizer::MainLoop()
     /* When the main loop is started, we assume ownership of the digitizer with
        the identifier we were given when this object was constructed. We begin
        by enumerating the digitizer, completing its initial setup procedure. */
-    m_read_queue.Write({DigitizerMessageId::IDENTIFIER, std::make_shared<std::string>("Unknown")});
+    m_read_queue.EmplaceWrite(DigitizerMessageId::IDENTIFIER,
+                              std::make_shared<std::string>("Unknown"));
     SetState(DigitizerState::ENUMERATION);
 
     /* Performing this operation in a thread safe manner requires that
@@ -181,9 +182,9 @@ void Digitizer::MainLoop()
 
     /* Signal that the digitizer was set up correctly, that we're entering the
        IDLE state and enter the main loop. */
-    m_read_queue.Write({DigitizerMessageId::IDENTIFIER,
-                        std::make_shared<std::string>(constant.serial_number)});
-    m_read_queue.Write({DigitizerMessageId::NOF_CHANNELS, constant.nof_channels});
+    m_read_queue.EmplaceWrite(DigitizerMessageId::IDENTIFIER,
+                              std::make_shared<std::string>(constant.serial_number));
+    m_read_queue.EmplaceWrite(DigitizerMessageId::NOF_CHANNELS, constant.nof_channels);
     SetState(DigitizerState::IDLE);
 
     m_thread_exit_code = ADQR_EOK;
@@ -283,7 +284,7 @@ void Digitizer::StopDataAcquisition()
 void Digitizer::SetState(DigitizerState state)
 {
     m_state = state;
-    m_read_queue.Write({DigitizerMessageId::STATE, state});
+    m_read_queue.EmplaceWrite(DigitizerMessageId::STATE, state);
 }
 
 void Digitizer::HandleMessageInNotEnumerated(const struct DigitizerMessage &message)
@@ -345,7 +346,7 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
     case DigitizerMessageId::INITIALIZE_PARAMETERS:
         if (m_parameters.top->size() != 0 || m_parameters.clock_system->size() != 0)
         {
-            m_read_queue.Write(DigitizerMessageId::INITIALIZE_WOULD_OVERWRITE);
+            m_read_queue.EmplaceWrite(DigitizerMessageId::INITIALIZE_WOULD_OVERWRITE);
             break;
         }
         /* FALLTHROUGH */
@@ -453,13 +454,13 @@ void Digitizer::HandleMessageInState(const struct DigitizerMessage &message)
         }
 
         /* If the message was processed successfully, we send the 'all clear'. */
-        m_read_queue.Write(DigitizerMessageId::CLEAR);
+        m_read_queue.EmplaceWrite(DigitizerMessageId::CLEAR);
     }
     catch (const DigitizerException &e)
     {
         /* TODO: Propagate message in some other way? We just write it to stderr for now. */
         fprintf(stderr, "%s", fmt::format("ERROR: {}\n", e.what()).c_str());
-        m_read_queue.Write(DigitizerMessageId::ERR);
+        m_read_queue.EmplaceWrite(DigitizerMessageId::ERR);
     }
 }
 
@@ -586,7 +587,7 @@ void Digitizer::ConfigureDefaultAcquisition()
 
 void Digitizer::SetParameters(const std::shared_ptr<std::string> &str, DigitizerMessageId clean_id)
 {
-    m_read_queue.Write(DigitizerMessageId::CONFIGURATION);
+    m_read_queue.EmplaceWrite(DigitizerMessageId::CONFIGURATION);
     int result = ADQ_SetParametersString(m_id.handle, m_id.index, str->c_str(), str->size());
     if (result > 0)
         m_read_queue.Write(clean_id);

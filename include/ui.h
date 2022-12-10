@@ -34,6 +34,7 @@ private:
     bool m_is_frequency_domain_collapsed;
     int m_nof_channels_total;
 
+    /* Representation of a digitizer channel's state in the UI. */
     struct ChannelUiState
     {
         ChannelUiState(int &nof_channels_total);
@@ -47,6 +48,7 @@ private:
         std::shared_ptr<ProcessedRecord> record;
     };
 
+    /* Representation of a digitizer's state in the UI. */
     struct DigitizerUiState
     {
         DigitizerUiState();
@@ -64,6 +66,7 @@ private:
         std::vector<ChannelUiState> channels;
     };
 
+    /* Representation of a digitizer in the UI. */
     struct DigitizerUi
     {
         DigitizerUi(std::shared_ptr<Digitizer> interface)
@@ -77,17 +80,8 @@ private:
 
     std::vector<DigitizerUi> m_digitizers;
 
-    std::map<size_t, Marker>::iterator m_last_frequency_domain_marker;
-    std::map<size_t, Marker> m_frequency_domain_markers;
-    bool m_is_dragging_frequency_domain_marker;
-    bool m_is_adding_frequency_domain_marker;
-    size_t m_next_frequency_domain_marker_id;
-
-    std::map<size_t, Marker>::iterator m_last_time_domain_marker;
-    std::map<size_t, Marker> m_time_domain_markers;
-    bool m_is_dragging_time_domain_marker;
-    bool m_is_adding_time_domain_marker;
-    size_t m_next_time_domain_marker_id;
+    Markers m_time_domain_markers;
+    Markers m_frequency_domain_markers;
 
     void ClearChannelSelection();
 
@@ -115,8 +109,7 @@ private:
     void Reduce(double xsize, double sampling_frequency, int &count, int &stride);
 
     typedef std::string (*Formatter)(double value, bool show_sign);
-    void MarkerTree(std::map<size_t, Marker> &markers, const std::string &label,
-                    const std::string &prefix, Formatter FormatX, Formatter FormatY);
+    void MarkerTree(Markers &markers, Formatter FormatX, Formatter FormatY);
 
     std::vector<ChannelUiState*> GetUiWithSelectedLast();
     void PlotTimeDomainSelected();
@@ -128,12 +121,10 @@ private:
                      const std::string &format, ImPlotDragToolFlags flags = 0);
 
     static void MaybeAddMarker(size_t digitizer, size_t channel, const BaseRecord *record,
-                               std::map<size_t, Marker> &markers, bool &is_adding_marker,
-                               bool &is_dragging_marker, size_t &next_marker_id,
-                               std::map<size_t, Marker>::iterator &last_marker);
+                               Markers &markers);
 
-    static bool IsHoveredAndDoubleClicked(const std::pair<size_t, Marker> &marker);
-    static void RemoveDoubleClickedMarkers(std::map<size_t, Marker> &markers);
+    static bool IsHoveredAndDoubleClicked(const Marker &marker);
+    static void RemoveDoubleClickedMarkers(Markers &markers);
 
     static void SnapX(double x, const BaseRecord *record, double &snap_x, double &snap_y);
     static void GetClosestSampleIndex(double x, double y, const BaseRecord *record,

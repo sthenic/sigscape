@@ -73,17 +73,9 @@ Ui::Ui()
     , m_is_frequency_domain_collapsed(false)
     , m_nof_channels_total(0)
     , m_digitizers()
-    , m_frequency_domain_markers{}
-    , m_is_dragging_frequency_domain_marker(false)
-    , m_is_adding_frequency_domain_marker(false)
-    , m_next_frequency_domain_marker_id(0)
-    , m_time_domain_markers{}
-    , m_is_dragging_time_domain_marker(false)
-    , m_is_adding_time_domain_marker(false)
-    , m_next_time_domain_marker_id(0)
+    , m_time_domain_markers("Time Domain", "T")
+    , m_frequency_domain_markers("Frequency Domain", "F")
 {
-    m_last_frequency_domain_marker = m_frequency_domain_markers.end();
-    m_last_time_domain_marker = m_time_domain_markers.end();
 }
 
 Ui::~Ui()
@@ -181,6 +173,9 @@ void Ui::HandleMessage(const IdentificationMessage &message)
         d.interface->Stop();
 
     m_digitizers.clear();
+    m_time_domain_markers.clear();
+    m_frequency_domain_markers.clear();
+
     for (auto interface : message.digitizers)
         m_digitizers.emplace_back(interface);
 
@@ -645,15 +640,14 @@ void CenteredTextInCell(const std::string &str)
     ImGui::Text(str);
 }
 
-void Ui::MarkerTree(std::map<size_t, Marker> &markers, const std::string &label,
-                    const std::string &prefix, Formatter FormatX, Formatter FormatY)
+void Ui::MarkerTree(Markers &markers, Formatter FormatX, Formatter FormatY)
 {
     if (markers.empty())
         return;
 
     ImGui::Spacing();
     ImGui::Separator();
-    if (!ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+    if (!ImGui::TreeNodeEx(markers.label.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
         return;
     ImGui::Spacing();
 
@@ -671,14 +665,16 @@ void Ui::MarkerTree(std::map<size_t, Marker> &markers, const std::string &label,
             ImGui::Separator();
         add_separator = true;
 
-        ImGui::ColorEdit4(fmt::format("##color{}{}", label, id).c_str(), (float *)&marker.color,
+        ImGui::ColorEdit4(fmt::format("##color{}{}", markers.label, id).c_str(),
+                          (float *)&marker.color,
                           ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
         ImGui::SameLine();
 
         int flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnDoubleClick |
                     ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
 
-        bool node_open = ImGui::TreeNodeEx(fmt::format("##node{}", marker.id, label).c_str(), flags);
+        bool node_open =
+            ImGui::TreeNodeEx(fmt::format("##node{}", marker.id, markers.label).c_str(), flags);
 
         /* TODO: Maybe change the color instead. */
         if (ImGui::IsItemHovered())
@@ -697,7 +693,7 @@ void Ui::MarkerTree(std::map<size_t, Marker> &markers, const std::string &label,
             ImGui::EndPopup();
         }
 
-        const std::string payload_identifier = fmt::format("MARKER_REFERENCE{}", label);
+        const std::string payload_identifier = fmt::format("MARKER_REFERENCE{}", markers.label);
         if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
         {
             ImGui::SetDragDropPayload(payload_identifier.c_str(), &id, sizeof(id));
@@ -717,14 +713,15 @@ void Ui::MarkerTree(std::map<size_t, Marker> &markers, const std::string &label,
 
         ImGui::SameLine();
         const float LINE_START = ImGui::GetCursorPosX();
-        ImGui::Text(fmt::format("{}{} {}, {}", prefix, id, FormatX(marker.x, false),
+        ImGui::Text(fmt::format("{}{} {}, {}", markers.prefix, id, FormatX(marker.x, false),
                                 FormatY(marker.y, false)));
 
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 30.0f -
                         ImGui::CalcTextSize(ui.record->label.c_str()).x);
         ImGui::Text(ui.record->label);
         ImGui::SameLine();
-        ImGui::ColorEdit4(fmt::format("##channel{}{}", label, id).c_str(), (float *)&ui.color,
+        ImGui::ColorEdit4(fmt::format("##channel{}{}", markers.label, id).c_str(),
+                          (float *)&ui.color,
                           ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel |
                               ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoPicker);
 
@@ -734,7 +731,8 @@ void Ui::MarkerTree(std::map<size_t, Marker> &markers, const std::string &label,
             {
                 const auto flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
                                    ImGuiTableFlags_NoPadInnerX | ImGuiTableFlags_NoPadOuterX;
-                if (ImGui::BeginTable(fmt::format("##table{}{}", label, id).c_str(), 2, flags))
+                if (ImGui::BeginTable(fmt::format("##table{}{}", markers.label, id).c_str(), 2,
+                                      flags))
                 {
                     ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
                     ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
@@ -748,10 +746,10 @@ void Ui::MarkerTree(std::map<size_t, Marker> &markers, const std::string &label,
                         ImGui::TableNextRow();
                         ImGui::TableSetColumnIndex(0);
                         ImGui::SetCursorPosX(LINE_START - ImGui::CalcTextSize("d").x);
-                        ImGui::Text(fmt::format("d{}{}", prefix, delta_marker.id));
+                        ImGui::Text(fmt::format("d{}{}", markers.prefix, delta_marker.id));
                         ImGui::TableSetColumnIndex(1);
-                        ImGui::Text(fmt::format(" {}, {}", FormatX(delta_x, true),
-                                                FormatY(delta_y, true)));
+                        ImGui::Text(
+                            fmt::format(" {}, {}", FormatX(delta_x, true), FormatY(delta_y, true)));
                     }
 
                     ImGui::EndTable();
@@ -783,14 +781,11 @@ void Ui::RenderMarkers(const ImVec2 &position, const ImVec2 &size)
     if (ImGui::SmallButton("Remove all"))
     {
         m_time_domain_markers.clear();
-        m_next_time_domain_marker_id = 0;
         m_frequency_domain_markers.clear();
-        m_next_frequency_domain_marker_id = 0;
     }
 
-    MarkerTree(m_time_domain_markers, "Time Domain", "T", Format::TimeDomainX, Format::TimeDomainY);
-    MarkerTree(m_frequency_domain_markers, "Frequency Domain", "F", Format::FrequencyDomainX,
-               Format::FrequencyDomainY);
+    MarkerTree(m_time_domain_markers, Format::TimeDomainX, Format::TimeDomainY);
+    MarkerTree(m_frequency_domain_markers, Format::FrequencyDomainX, Format::FrequencyDomainY);
     ImGui::End();
 }
 
@@ -1040,11 +1035,7 @@ void Ui::PlotTimeDomainSelected()
                 }
 
                 if (ui.is_selected)
-                {
-                    MaybeAddMarker(i, ch, ui.record->time_domain.get(), m_time_domain_markers,
-                                   m_is_adding_time_domain_marker, m_is_dragging_time_domain_marker,
-                                   m_next_time_domain_marker_id, m_last_time_domain_marker);
-                }
+                    MaybeAddMarker(i, ch, ui.record->time_domain.get(), m_time_domain_markers);
             }
         }
     }
@@ -1068,23 +1059,21 @@ int Ui::GetSelectedChannel(ChannelUiState *&ui)
 }
 
 void Ui::DrawMarkerX(int id, double *x, const ImVec4 &color, float thickness,
-                       const std::string &tag, ImPlotDragToolFlags flags)
+                     const std::string &tag, ImPlotDragToolFlags flags)
 {
     ImPlot::DragLineX(id, x, color, thickness, flags);
     ImPlot::TagX(*x, color, "%s", tag.c_str());
 }
 
 void Ui::DrawMarkerY(int id, double *y, const ImVec4 &color, float thickness,
-                       const std::string &tag, ImPlotDragToolFlags flags)
+                     const std::string &tag, ImPlotDragToolFlags flags)
 {
     ImPlot::DragLineY(id, y, color, thickness, flags);
     ImPlot::TagY(*y, color, "%s", tag.c_str());
 }
 
 void Ui::MaybeAddMarker(size_t digitizer, size_t channel, const BaseRecord *record,
-                        std::map<size_t, Marker> &markers, bool &is_adding_marker,
-                        bool &is_dragging_marker, size_t &next_marker_id,
-                        std::map<size_t, Marker>::iterator &last_marker)
+                        Markers &markers)
 {
     if (ImPlot::IsPlotHovered() && ImGui::GetIO().KeyCtrl && ImGui::IsMouseClicked(0))
     {
@@ -1096,50 +1085,40 @@ void Ui::MaybeAddMarker(size_t digitizer, size_t channel, const BaseRecord *reco
                   special. Otherwise, the marker can seem to wander a bit if the
                   signal is noisy. */
 
-        auto [it, success] =
-            markers.insert({next_marker_id, Marker(next_marker_id, digitizer, channel, index,
-                                                   record->x[index], record->y[index])});
-        next_marker_id++;
-        last_marker = it;
-        is_adding_marker = true;
-        is_dragging_marker = false;
+        markers.insert(digitizer, channel, index, record->x[index], record->y[index]);
+        markers.is_adding = true;
+        markers.is_dragging = false;
     }
 
-    if (is_adding_marker && ImGui::IsMouseDragging(0))
+    if (markers.is_adding && ImGui::IsMouseDragging(0))
     {
         /* FIXME: Very rough test of delta dragging */
-        if (!is_dragging_marker)
+        if (!markers.is_dragging)
         {
             size_t index;
             GetClosestSampleIndex(ImPlot::GetPlotMousePos().x, ImPlot::GetPlotMousePos().y, record,
                                   ImPlot::GetPlotLimits(), index);
-
-            last_marker->second.deltas.insert(next_marker_id);
-            auto [it, success] =
-                markers.insert({next_marker_id, Marker(next_marker_id, digitizer, channel, index,
-                                                       record->x[index], record->y[index])});
-            next_marker_id++;
-            last_marker = it;
+            markers.insert(digitizer, channel, index, record->x[index], record->y[index], true);
         }
 
-        is_dragging_marker = true;
-        last_marker->second.x = ImPlot::GetPlotMousePos().x;
+        markers.is_dragging = true;
+        markers.last().x = ImPlot::GetPlotMousePos().x;
     }
 
-    if (is_adding_marker && ImGui::IsMouseReleased(0))
+    if (markers.is_adding && ImGui::IsMouseReleased(0))
     {
-        is_adding_marker = false;
-        is_dragging_marker = false;
+        markers.is_adding = false;
+        markers.is_dragging = false;
     }
 }
 
-bool Ui::IsHoveredAndDoubleClicked(const std::pair<size_t, Marker> &marker)
+bool Ui::IsHoveredAndDoubleClicked(const Marker &marker)
 {
     /* Construct a rect that covers the markers. If the mouse is double clicked
        while inside these limits, we remove the marker. This needs to be called
        within a current plot that also contains the provided marker. */
 
-    const auto lmarker = ImPlot::PlotToPixels(marker.second.x, marker.second.y);
+    const auto lmarker = ImPlot::PlotToPixels(marker.x, marker.y);
     const auto limits = ImPlot::GetPlotLimits();
     const auto upper_left = ImPlot::PlotToPixels(limits.X.Min, limits.Y.Max);
     const auto lower_right = ImPlot::PlotToPixels(limits.X.Max, limits.Y.Min);
@@ -1154,11 +1133,11 @@ bool Ui::IsHoveredAndDoubleClicked(const std::pair<size_t, Marker> &marker)
             ImGui::IsMouseHoveringRect(marker_y_upper_left, marker_y_lower_right));
 }
 
-void Ui::RemoveDoubleClickedMarkers(std::map<size_t, Marker> &markers)
+void Ui::RemoveDoubleClickedMarkers(Markers &markers)
 {
     for (auto it = markers.begin(); it != markers.end(); )
     {
-        if (IsHoveredAndDoubleClicked(*it))
+        if (IsHoveredAndDoubleClicked(it->second))
         {
             /* Make sure to remove any delta references to the marker we're
                about to remove. The std::set::erase has no effect if the key
@@ -1296,10 +1275,7 @@ void Ui::PlotFourierTransformSelected()
                 if (ui.is_selected)
                 {
                     MaybeAddMarker(i, ch, ui.record->frequency_domain.get(),
-                                   m_frequency_domain_markers, m_is_adding_frequency_domain_marker,
-                                   m_is_dragging_frequency_domain_marker,
-                                   m_next_frequency_domain_marker_id,
-                                   m_last_frequency_domain_marker);
+                                   m_frequency_domain_markers);
                 }
             }
         }

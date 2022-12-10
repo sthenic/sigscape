@@ -647,8 +647,18 @@ void Ui::MarkerTree(Markers &markers, Formatter FormatX, Formatter FormatY)
 
     ImGui::Spacing();
     ImGui::Separator();
-    if (!ImGui::TreeNodeEx(markers.label.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+    int flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
+    if (!ImGui::TreeNodeEx(markers.label.c_str(), flags))
         return;
+
+    if (ImGui::BeginPopupContextItem())
+    {
+        if (ImGui::MenuItem("Remove"))
+            markers.clear();
+
+        ImGui::EndPopup();
+    }
+
     ImGui::Spacing();
 
     /* We don't need a vector to store multiple removal indexes since the user

@@ -941,6 +941,34 @@ void Ui::GetClosestSampleIndex(double x, double y, const T &record, const ImPlot
     }
 }
 
+std::vector<Ui::ChannelUiState *> Ui::GetUiWithSelectedLast()
+{
+    std::vector<ChannelUiState *> result;
+    ChannelUiState *selected = NULL;
+
+    for (auto &digitizer : m_digitizers)
+    {
+        if (!digitizer.ui.is_selected)
+            continue;
+
+        for (auto &ui : digitizer.ui.channels)
+        {
+            if (ui.record == NULL)
+                continue;
+
+            if (ui.is_selected)
+                selected = &ui;
+            else
+                result.push_back(&ui);
+        }
+    }
+
+    if (selected != NULL)
+        result.push_back(selected);
+
+    return result;
+}
+
 void Ui::PlotTimeDomainSelected()
 {
     /* We need a (globally) unique id for each marker. */

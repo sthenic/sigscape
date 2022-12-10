@@ -118,6 +118,7 @@ private:
     void MarkerTree(std::map<size_t, Marker> &markers, const std::string &label,
                     const std::string &prefix, Formatter FormatX, Formatter FormatY);
 
+    std::vector<ChannelUiState*> GetUiWithSelectedLast();
     void PlotTimeDomainSelected();
 
     int GetSelectedChannel(ChannelUiState *&ui);

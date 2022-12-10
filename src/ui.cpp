@@ -934,29 +934,30 @@ void Ui::GetClosestSampleIndex(double x, double y, const BaseRecord *record, con
     }
 }
 
-std::vector<Ui::ChannelUiState *> Ui::GetUiWithSelectedLast()
+std::vector<std::tuple<size_t, size_t, Ui::ChannelUiState *>> Ui::GetUiWithSelectedLast()
 {
-    std::vector<ChannelUiState *> result;
-    ChannelUiState *selected = NULL;
+    std::vector<std::tuple<size_t, size_t, ChannelUiState *>> result = {};
+    std::tuple<size_t, size_t, ChannelUiState *> selected = {0, 0, NULL};
 
-    for (auto &digitizer : m_digitizers)
+    for (size_t i = 0; i < m_digitizers.size(); ++i)
     {
-        if (!digitizer.ui.is_selected)
+        if (!m_digitizers[i].ui.is_selected)
             continue;
 
-        for (auto &ui : digitizer.ui.channels)
+        for (size_t ch = 0; ch < m_digitizers[i].ui.channels.size(); ++ch)
         {
+            auto &ui = m_digitizers[i].ui.channels[ch];
             if (ui.record == NULL)
                 continue;
 
             if (ui.is_selected)
-                selected = &ui;
+                selected = {i, ch, &ui};
             else
-                result.push_back(&ui);
+                result.emplace_back(i, ch, &ui);
         }
     }
 
-    if (selected != NULL)
+    if (std::get<2>(selected) != NULL)
         result.push_back(selected);
 
     return result;
@@ -967,76 +968,62 @@ void Ui::PlotTimeDomainSelected()
     /* We need a (globally) unique id for each marker. */
     int marker_id = 0;
 
-    /* FIXME: Want range based for */
-    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    for (auto &[i, ch, ui] : GetUiWithSelectedLast())
     {
-        if (!m_digitizers[i].ui.is_selected)
-            continue;
+        /* FIXME: A rough value to switch off persistent plotting when the
+                    window contains too many samples, heavily tanking the
+                    performance. */
 
-        /* FIXME: Want range based for */
-        for (size_t ch = 0; ch < m_digitizers[i].ui.channels.size(); ++ch)
+        bool is_persistence_performant =
+            ImPlot::GetPlotLimits().Size().x / ui->record->time_domain->step < 2048;
+
+        if (ui->is_persistence_enabled && is_persistence_performant)
         {
-            auto &ui = m_digitizers[i].ui.channels[ch];
-            if (ui.record == NULL)
-                continue;
-
-            int count = static_cast<int>(ui.record->time_domain->x.size());
-
-            /* FIXME: A rough value to switch off persistent plotting when the
-                      window contains too many samples, heavily tanking the
-                      performance. */
-            bool is_persistence_performant =
-                ImPlot::GetPlotLimits().Size().x / ui.record->time_domain->step < 2048;
-
-            if (ui.is_persistence_enabled && is_persistence_performant)
+            ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
+            for (const auto &c : ui->record->persistence->data)
             {
-                ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
-                for (const auto &c : ui.record->persistence->data)
-                {
-                    ImPlot::PlotScatter(ui.record->label.c_str(), c->x.data(), c->y.data(),
-                                        c->x.size());
-                }
-                ImPlot::PopStyleVar();
+                ImPlot::PlotScatter(ui->record->label.c_str(), c->x.data(), c->y.data(),
+                                    c->x.size());
             }
-            else
+            ImPlot::PopStyleVar();
+        }
+        else
+        {
+            if (ui->is_sample_markers_enabled)
+                ImPlot::SetNextMarkerStyle(ImPlotMarker_Cross);
+
+            ImPlot::PushStyleColor(ImPlotCol_Line, ui->color);
+            ImPlot::PlotLine(ui->record->label.c_str(), ui->record->time_domain->x.data(),
+                             ui->record->time_domain->y.data(), ui->record->time_domain->x.size());
+            ImPlot::PopStyleColor();
+        }
+
+        /* Here we have to resort to using ImPlot internals to gain access to
+           whether or not the plot is shown or not. The user can click the
+           legend entry to change the visibility state. */
+
+        auto item = ImPlot::GetCurrentContext()->CurrentItems->GetItem(ui->record->label.c_str());
+        ui->is_time_domain_visible = (item != NULL) && item->Show;
+
+        if (ui->is_time_domain_visible)
+        {
+            for (auto &[id, marker] : m_time_domain_markers)
             {
-                if (ui.is_sample_markers_enabled)
-                    ImPlot::SetNextMarkerStyle(ImPlotMarker_Cross);
+                if (marker.digitizer != i || marker.channel != ch)
+                    continue;
 
-                ImPlot::PushStyleColor(ImPlotCol_Line, ui.color);
-                ImPlot::PlotLine(ui.record->label.c_str(),
-                                ui.record->time_domain->x.data(),
-                                ui.record->time_domain->y.data(), count);
-                ImPlot::PopStyleColor();
+                SnapX(marker.x, ui->record->time_domain.get(), marker.x, marker.y);
+
+                ImPlot::DragPoint(0, &marker.x, &marker.y, marker.color, 3.0f + marker.thickness,
+                                  ImPlotDragToolFlags_NoInputs);
+                DrawMarkerX(marker_id++, &marker.x, marker.color, marker.thickness,
+                            Format::Metric(marker.x, "{:g} {}s", 1e-3));
+                DrawMarkerY(marker_id++, &marker.y, marker.color, marker.thickness,
+                            Format::TimeDomainY(marker.y), ImPlotDragToolFlags_NoInputs);
             }
 
-            /* Here we have to resort to using ImPlot internals to gain access
-               to whether or not the plot is shown or not. The user can click
-               the legend entry to change the visibility state. */
-            auto item = ImPlot::GetCurrentContext()->CurrentItems->GetItem(ui.record->label.c_str());
-            ui.is_time_domain_visible = (item != NULL) && item->Show;
-
-            if (ui.is_time_domain_visible)
-            {
-                for (auto &[id, marker] : m_time_domain_markers)
-                {
-                    if (marker.digitizer != i || marker.channel != ch)
-                        continue;
-
-                    SnapX(marker.x, ui.record->time_domain.get(), marker.x, marker.y);
-
-                    ImPlot::DragPoint(0, &marker.x, &marker.y, marker.color,
-                                      3.0f + marker.thickness, ImPlotDragToolFlags_NoInputs);
-                    DrawMarkerX(marker_id++, &marker.x, marker.color, marker.thickness,
-                                Format::Metric(marker.x, "{:g} {}s", 1e-3));
-                    DrawMarkerY(marker_id++, &marker.y, marker.color, marker.thickness,
-                                Format::Metric(marker.y, "{: 7.1f} {}V", 1e-3),
-                                ImPlotDragToolFlags_NoInputs);
-                }
-
-                if (ui.is_selected)
-                    MaybeAddMarker(i, ch, ui.record->time_domain.get(), m_time_domain_markers);
-            }
+            if (ui->is_selected)
+                MaybeAddMarker(i, ch, ui->record->time_domain.get(), m_time_domain_markers);
         }
     }
 }
@@ -1221,62 +1208,49 @@ void Ui::PlotFourierTransformSelected()
     /* We need a (globally) unique id for each marker. */
     int marker_id = 0;
 
-    /* FIXME: Want range based for */
-    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    for (auto &[i, ch, ui] : GetUiWithSelectedLast())
     {
-        if (!m_digitizers[i].ui.is_selected)
-            continue;
+        ImPlot::PushStyleColor(ImPlotCol_Line, ui->color);
+        ImPlot::PlotLine(ui->record->label.c_str(), ui->record->frequency_domain->x.data(),
+                         ui->record->frequency_domain->y.data(),
+                         ui->record->frequency_domain->x.size());
+        ImPlot::PopStyleColor();
 
-        /* FIXME: Want range based for */
-        for (size_t ch = 0; ch < m_digitizers[i].ui.channels.size(); ++ch)
+        /* Here we have to resort to using ImPlot internals to gain access to
+           whether or not the plot is shown or not. The user can click the
+           legend entry to change the visibility state. */
+
+        auto item = ImPlot::GetCurrentContext()->CurrentItems->GetItem(ui->record->label.c_str());
+        ui->is_frequency_domain_visible = (item != NULL) && item->Show;
+
+        if (ui->is_frequency_domain_visible)
         {
-            auto &ui = m_digitizers[i].ui.channels[ch];
-            if (ui.record == NULL)
-                continue;
-
-            int count = static_cast<int>(ui.record->frequency_domain->x.size());
-            ImPlot::PushStyleColor(ImPlotCol_Line, ui.color);
-            ImPlot::PlotLine(ui.record->label.c_str(), ui.record->frequency_domain->x.data(),
-                             ui.record->frequency_domain->y.data(), count);
-            ImPlot::PopStyleColor();
-
-            /* Here we have to resort to using ImPlot internals to gain access
-               to whether or not the plot is shown or not. The user can click
-               the legend entry to change the visibility state. */
-
-            auto item =
-                ImPlot::GetCurrentContext()->CurrentItems->GetItem(ui.record->label.c_str());
-            ui.is_frequency_domain_visible = (item != NULL) && item->Show;
-
-            if (ui.is_frequency_domain_visible)
+            Annotate(ui->record->frequency_domain_metrics.fundamental, "Fund.");
+            for (size_t j = 0; j < ui->record->frequency_domain_metrics.harmonics.size(); ++j)
             {
-                Annotate(ui.record->frequency_domain_metrics.fundamental, "Fund.");
-                for (size_t j = 0; j < ui.record->frequency_domain_metrics.harmonics.size(); ++j)
-                {
-                    Annotate(ui.record->frequency_domain_metrics.harmonics[j],
-                             fmt::format("HD{}", j + 2));
-                }
+                Annotate(ui->record->frequency_domain_metrics.harmonics[j],
+                         fmt::format("HD{}", j + 2));
+            }
 
-                for (auto &[id, marker] : m_frequency_domain_markers)
-                {
-                    if (marker.digitizer != i || marker.channel != ch)
-                        continue;
+            for (auto &[id, marker] : m_frequency_domain_markers)
+            {
+                if (marker.digitizer != i || marker.channel != ch)
+                    continue;
 
-                    SnapX(marker.x, ui.record->frequency_domain.get(), marker.x, marker.y);
+                SnapX(marker.x, ui->record->frequency_domain.get(), marker.x, marker.y);
 
-                    ImPlot::DragPoint(0, &marker.x, &marker.y, marker.color,
-                                      3.0f + marker.thickness, ImPlotDragToolFlags_NoInputs);
-                    DrawMarkerX(marker_id++, &marker.x, marker.color, marker.thickness,
-                                Format::Metric(marker.x, "{:.2f} {}Hz", 1e6));
-                    DrawMarkerY(marker_id++, &marker.y, marker.color, marker.thickness,
-                                fmt::format("{: 8.2f} dBFS", marker.y), ImPlotDragToolFlags_NoInputs);
-                }
+                ImPlot::DragPoint(0, &marker.x, &marker.y, marker.color, 3.0f + marker.thickness,
+                                  ImPlotDragToolFlags_NoInputs);
+                DrawMarkerX(marker_id++, &marker.x, marker.color, marker.thickness,
+                            Format::Metric(marker.x, "{:.2f} {}Hz", 1e6));
+                DrawMarkerY(marker_id++, &marker.y, marker.color, marker.thickness,
+                            Format::FrequencyDomainY(marker.y), ImPlotDragToolFlags_NoInputs);
+            }
 
-                if (ui.is_selected)
-                {
-                    MaybeAddMarker(i, ch, ui.record->frequency_domain.get(),
-                                   m_frequency_domain_markers);
-                }
+            if (ui->is_selected)
+            {
+                MaybeAddMarker(i, ch, ui->record->frequency_domain.get(),
+                               m_frequency_domain_markers);
             }
         }
     }

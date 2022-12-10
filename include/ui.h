@@ -111,7 +111,7 @@ private:
     typedef std::string (*Formatter)(double value, bool show_sign);
     void MarkerTree(Markers &markers, Formatter FormatX, Formatter FormatY);
 
-    std::vector<ChannelUiState*> GetUiWithSelectedLast();
+    std::vector<std::tuple<size_t, size_t, ChannelUiState *>> GetUiWithSelectedLast();
     void PlotTimeDomainSelected();
 
     int GetSelectedChannel(ChannelUiState *&ui);

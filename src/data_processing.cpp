@@ -20,7 +20,7 @@ DataProcessing::DataProcessing(void *handle, int index, int channel, const std::
     , m_label(label)
     , m_afe{1000.0, 0.0}
     , m_window_cache()
-    , m_window_type(WindowType::BLACKMAN_HARRIS)
+    , m_window_type(WindowType::FLAT_TOP)
     , m_nof_skirt_bins(NOF_SKIRT_BINS_DEFAULT)
     , m_waterfall{}
     , m_persistence{}

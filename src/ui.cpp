@@ -38,6 +38,8 @@ static inline void Text(const std::string &str)
 Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     : color{}
     , is_selected(false)
+    , is_muted(false)
+    , is_solo(false)
     , is_sample_markers_enabled(true)
     , is_persistence_enabled(false)
     , is_time_domain_visible(true)
@@ -135,11 +137,22 @@ void Ui::Render(float width, float height)
 
 void Ui::ClearChannelSelection()
 {
-    for (auto &d : m_digitizers)
+    for (auto &digitizer : m_digitizers)
     {
-        for (auto &chui : d.ui.channels)
+        for (auto &chui : digitizer.ui.channels)
             chui.is_selected = false;
     }
+}
+
+bool Ui::IsAnySolo() const
+{
+    bool result = false;
+    for (const auto &digitizer : m_digitizers)
+    {
+        for (const auto &chui : digitizer.ui.channels)
+            result |= chui.is_solo;
+    }
+    return result;
 }
 
 void Ui::PushMessage(const DigitizerMessage &message, bool selected)
@@ -669,8 +682,6 @@ void Ui::MarkerTree(Markers &markers, Formatter FormatX, Formatter FormatY)
 
     for (auto &[id, marker] : markers)
     {
-        const auto &ui = m_digitizers[marker.digitizer].ui.channels[marker.channel];
-
         if (add_separator)
             ImGui::Separator();
         add_separator = true;
@@ -726,6 +737,7 @@ void Ui::MarkerTree(Markers &markers, Formatter FormatX, Formatter FormatY)
         ImGui::Text(fmt::format("{}{} {}, {}", markers.prefix, id, FormatX(marker.x, false),
                                 FormatY(marker.y, false)));
 
+        const auto &ui = m_digitizers[marker.digitizer].ui.channels[marker.channel];
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 30.0f -
                         ImGui::CalcTextSize(ui.record->label.c_str()).x);
         ImGui::Text(ui.record->label);
@@ -805,8 +817,8 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
     ImGui::SetNextWindowSize(size);
     ImGui::Begin("Processing Options", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
-    static int window_idx = 1;
-    static int window_idx_prev = 1;
+    static int window_idx = 2;
+    static int window_idx_prev = 2;
     const char *window_labels[] = {"No window", "Blackman-Harris", "Flat top", "Hamming", "Hanning"};
     ImGui::Combo("Window##window", &window_idx, window_labels, IM_ARRAYSIZE(window_labels));
 
@@ -944,10 +956,23 @@ void Ui::GetClosestSampleIndex(double x, double y, const BaseRecord *record, con
     }
 }
 
-std::vector<std::tuple<size_t, size_t, Ui::ChannelUiState *>> Ui::GetUiWithSelectedLast()
+std::vector<std::tuple<size_t, size_t, Ui::ChannelUiState *>> Ui::FilterUiStates()
 {
-    std::vector<std::tuple<size_t, size_t, ChannelUiState *>> result = {};
-    std::tuple<size_t, size_t, ChannelUiState *> selected = {0, 0, NULL};
+    /* We pass through all UI states and filter out the ones we should pass on
+       for plotting. First, we skip any unselected digitizers. Second, we skip
+       any channels w/o data. We take special care to put the selected channel
+       at the end to cause this data to be plotted last, and thus effectively
+       'on top' of all the other traces.
+
+       Additionally, we consider the two channel properties 'solo' and 'muted'.
+       This concept is borrowed from the world of music editing software. They
+       do what it says on the tin, but here are the edge cases: if a channel is
+       both muted and solo, it is included. If several channels are marked solo,
+       they are all included. */
+
+    std::vector<std::tuple<size_t, size_t, ChannelUiState *>> result{};
+    std::tuple<size_t, size_t, ChannelUiState *> selected{0, 0, NULL};
+    bool any_solo = false;
 
     for (size_t i = 0; i < m_digitizers.size(); ++i)
     {
@@ -960,6 +985,9 @@ std::vector<std::tuple<size_t, size_t, Ui::ChannelUiState *>> Ui::GetUiWithSelec
             if (ui.record == NULL)
                 continue;
 
+            if (ui.is_solo)
+                any_solo = true;
+
             if (ui.is_selected)
                 selected = {i, ch, &ui};
             else
@@ -970,6 +998,19 @@ std::vector<std::tuple<size_t, size_t, Ui::ChannelUiState *>> Ui::GetUiWithSelec
     if (std::get<2>(selected) != NULL)
         result.push_back(selected);
 
+    /* Filter again based on the solo/muted state. */
+    auto MaskSoloMuted = [&](std::tuple<size_t, size_t, ChannelUiState *> &x) -> bool
+    {
+        auto &[i, ch, ui] = x;
+        if (ui->is_solo)
+            return false;
+        else if (ui->is_muted || any_solo)
+            return true;
+        else
+            return false;
+    };
+
+    result.erase(std::remove_if(result.begin(), result.end(), MaskSoloMuted), result.end());
     return result;
 }
 
@@ -978,7 +1019,7 @@ void Ui::PlotTimeDomainSelected()
     /* We need a (globally) unique id for each marker. */
     int marker_id = 0;
 
-    for (auto &[i, ch, ui] : GetUiWithSelectedLast())
+    for (auto &[i, ch, ui] : FilterUiStates())
     {
         /* FIXME: A rough value to switch off persistent plotting when the
                     window contains too many samples, heavily tanking the
@@ -1218,7 +1259,7 @@ void Ui::PlotFourierTransformSelected()
     /* We need a (globally) unique id for each marker. */
     int marker_id = 0;
 
-    for (auto &[i, ch, ui] : GetUiWithSelectedLast())
+    for (auto &[i, ch, ui] : FilterUiStates())
     {
         ImPlot::PushStyleColor(ImPlotCol_Line, ui->color);
         ImPlot::PlotLine(ui->record->label.c_str(), ui->record->frequency_domain->x.data(),
@@ -1310,6 +1351,55 @@ void Ui::RenderWaterfallPlot()
     ImPlot::PopColormap();
 }
 
+void Ui::RenderHeaderButtons(ChannelUiState &ui)
+{
+    ImGui::ColorEdit4((ui.record->label + "##ColorPicker").c_str(), (float *)&ui.color,
+                       ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+    ImGui::SameLine();
+
+    auto Button = [](const std::string &label, bool &state)
+    {
+        auto button_color = COLOR_WOW_RED;
+        button_color.w = 0.8;
+
+        auto hovered_color = button_color;
+        hovered_color.w = 1.0;
+
+        auto active_color = button_color;
+        active_color.w = 0.8;
+
+        bool lstate = state;
+        if (lstate)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Button, button_color);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, hovered_color);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, active_color);
+        }
+
+        const ImVec2 SIZE = {ImGui::GetTextLineHeightWithSpacing(),
+                             ImGui::GetTextLineHeightWithSpacing()};
+
+        /* Slight tweaking to align w/ color box. */
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1);
+
+        if (ImGui::Button(label.c_str(), SIZE))
+            state ^= true;
+
+        if (lstate)
+        {
+            ImGui::PopStyleColor();
+            ImGui::PopStyleColor();
+            ImGui::PopStyleColor();
+        }
+    };
+
+    Button(fmt::format("S##Solo{}", ui.record->label), ui.is_solo);
+    ImGui::SameLine();
+
+    Button(fmt::format("M##Muted{}", ui.record->label), ui.is_muted);
+    ImGui::SameLine();
+}
+
 void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
 {
     /* FIXME: Move into functions? */
@@ -1332,9 +1422,7 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                 ImGui::Separator();
             has_contents = true;
 
-            ImGui::ColorEdit4((ui.record->label + "##TimeDomain").c_str(), (float *)&ui.color,
-                                ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
-            ImGui::SameLine();
+            RenderHeaderButtons(ui);
 
             int flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnDoubleClick |
                         ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
@@ -1352,6 +1440,8 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
 
             if (ImGui::BeginPopupContextItem())
             {
+                ImGui::MenuItem("Solo", "", &ui.is_solo);
+                ImGui::MenuItem("Mute", "", &ui.is_muted);
                 ImGui::MenuItem("Sample markers", "", &ui.is_sample_markers_enabled);
                 ImGui::MenuItem("Persistence", "", &ui.is_persistence_enabled);
                 ImGui::EndPopup();
@@ -1359,6 +1449,13 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
 
             if (node_open)
             {
+                if ((ui.is_muted || IsAnySolo()) && !ui.is_solo)
+                {
+                    auto text_color = ImGui::GetStyleColorVec4(ImGuiCol_Text);
+                    text_color.w *= 0.5f;
+                    ImGui::PushStyleColor(ImGuiCol_Text, text_color);
+                }
+
                 const auto &record = ui.record->time_domain;
                 const auto &metrics = ui.record->time_domain_metrics;
 
@@ -1416,6 +1513,10 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
 
                     ImGui::EndTable();
                 }
+
+                if ((ui.is_muted || IsAnySolo()) && !ui.is_solo)
+                    ImGui::PopStyleColor();
+
                 ImGui::TreePop();
             }
             ImGui::PopStyleVar();
@@ -1442,20 +1543,18 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
             if (ui.record == NULL)
                 continue;
 
-            has_contents = true;
             if (has_contents)
                 ImGui::Separator();
+            has_contents = true;
 
-            ImGui::ColorEdit4((ui.record->label + "##FrequencyDomain").c_str(), (float *)&ui.color,
-                                ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
-            ImGui::SameLine();
-            ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
+            RenderHeaderButtons(ui);
 
             int flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnDoubleClick |
                         ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
             if (ui.is_selected)
                 flags |= ImGuiTreeNodeFlags_Selected;
 
+            ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
             bool node_open = ImGui::TreeNodeEx(ui.record->label.c_str(), flags);
 
             if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
@@ -1474,6 +1573,13 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
                     ImGui::PushStyleColor(ImGuiCol_Text, COLOR_ORANGE);
                     ImGui::SameLine();
                     ImGui::Text("OVERLAP");
+                }
+
+                if ((ui.is_muted || IsAnySolo()) && !ui.is_solo)
+                {
+                    auto text_color = ImGui::GetStyleColorVec4(ImGuiCol_Text);
+                    text_color.w *= 0.5f;
+                    ImGui::PushStyleColor(ImGuiCol_Text, text_color);
                 }
 
                 ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings;
@@ -1575,6 +1681,8 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
                     ImGui::EndTable();
                 }
 
+                if ((ui.is_muted || IsAnySolo()) && !ui.is_solo)
+                    ImGui::PopStyleColor();
                 if (metrics.overlap)
                     ImGui::PopStyleColor();
 

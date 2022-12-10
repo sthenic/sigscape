@@ -41,6 +41,8 @@ private:
 
         ImVec4 color;
         bool is_selected;
+        bool is_muted;
+        bool is_solo;
         bool is_sample_markers_enabled;
         bool is_persistence_enabled;
         bool is_time_domain_visible;
@@ -84,6 +86,7 @@ private:
     Markers m_frequency_domain_markers;
 
     void ClearChannelSelection();
+    bool IsAnySolo() const;
 
     void PushMessage(const DigitizerMessage &message, bool selected = true);
 
@@ -111,7 +114,7 @@ private:
     typedef std::string (*Formatter)(double value, bool show_sign);
     void MarkerTree(Markers &markers, Formatter FormatX, Formatter FormatY);
 
-    std::vector<std::tuple<size_t, size_t, ChannelUiState *>> GetUiWithSelectedLast();
+    std::vector<std::tuple<size_t, size_t, ChannelUiState *>> FilterUiStates();
     void PlotTimeDomainSelected();
 
     int GetSelectedChannel(ChannelUiState *&ui);
@@ -139,6 +142,8 @@ private:
 
     void PlotWaterfallSelected();
     void RenderWaterfallPlot();
+
+    static void RenderHeaderButtons(ChannelUiState &ui);
 
     void RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size);

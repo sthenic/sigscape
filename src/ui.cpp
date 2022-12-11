@@ -1013,6 +1013,25 @@ std::vector<std::tuple<size_t, size_t, Ui::ChannelUiState *>> Ui::FilterUiStates
     return result;
 }
 
+void Ui::GetUnitsPerDivision(const std::string &title, UnitsPerDivision &units_per_division)
+{
+    /* WARNING: This function makes use of ImPlot's internal API and may _only_
+                be called after EndPlot(). Otherwise, the ticker is invalid. */
+
+    const auto &axis_x = ImPlot::GetPlot(title.c_str())->Axes[ImAxis_X1];
+    const auto &axis_y = ImPlot::GetPlot(title.c_str())->Axes[ImAxis_Y1];
+
+    if (axis_x.Ticker.TickCount() > 1)
+        units_per_division.x = axis_x.Ticker.Ticks[1].PlotPos - axis_x.Ticker.Ticks[0].PlotPos;
+    else
+        units_per_division.x = axis_x.Range.Size();
+
+    if (axis_y.Ticker.TickCount() > 1)
+        units_per_division.y = axis_y.Ticker.Ticks[1].PlotPos - axis_y.Ticker.Ticks[0].PlotPos;
+    else
+        units_per_division.y = axis_y.Range.Size();
+}
+
 void Ui::PlotTimeDomainSelected()
 {
     /* We need a (globally) unique id for each marker. */
@@ -1199,12 +1218,26 @@ void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
     ImPlot::PushStyleVar(ImPlotStyleVar_FitPadding, ImVec2(0.0f, 0.1f));
     if (ImPlot::BeginPlot("Time domain", ImVec2(-1, -1), ImPlotFlags_NoTitle))
     {
-        ImPlot::SetupLegend(ImPlotLocation_NorthEast);
+        ImPlot::SetupLegend(ImPlotLocation_NorthEast, ImPlotLegendFlags_Sort);
         ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric, (void *)"s");
         ImPlot::SetupAxisFormat(ImAxis_Y1, Format::Metric, (void *)"V");
         PlotTimeDomainSelected();
         RemoveDoubleClickedMarkers(m_time_domain_markers);
+
+        const auto str =
+            fmt::format("{}/div\n{}/div",
+                        Format::Metric(m_time_domain_units_per_division.y, "{:6.2f} {}V", 1e-3),
+                        Format::Metric(m_time_domain_units_per_division.x, "{:6.2f} {}s", 1e-3));
+
+        const auto limits = ImPlot::GetPlotLimits();
+        ImPlot::Annotation(limits.Min().x, limits.Max().y, ImVec4(0, 0, 0, 0), ImVec2(10, 10),
+                           false, "%s", str.c_str());
+
         ImPlot::EndPlot();
+
+        /* Update the units per division. It's imperative that this is carried
+           out after ImPlot::EndPlot() has been called. */
+        GetUnitsPerDivision("Time domain", m_time_domain_units_per_division);
     }
     ImPlot::PopStyleVar();
     ImGui::End();
@@ -1311,13 +1344,26 @@ void Ui::RenderFourierTransformPlot()
     ImPlot::PushStyleVar(ImPlotStyleVar_FitPadding, ImVec2(0.0f, 0.1f));
     if (ImPlot::BeginPlot("FFT##plot", ImVec2(-1, -1), ImPlotFlags_NoTitle))
     {
-        ImPlot::SetupLegend(ImPlotLocation_NorthEast);
+        ImPlot::SetupLegend(ImPlotLocation_NorthEast, ImPlotLegendFlags_Sort);
         ImPlot::SetupAxisLimits(ImAxis_Y1, -100.0, 10.0);
         ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, 1e9);
         ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric, (void *)"Hz");
         PlotFourierTransformSelected();
         RemoveDoubleClickedMarkers(m_frequency_domain_markers);
+
+        const auto str =
+            fmt::format("{:6.2f} dB/div\n{}/div", m_frequency_domain_units_per_division.y,
+                        Format::Metric(m_frequency_domain_units_per_division.x, "{:6.2f} {}Hz", 1e6));
+
+        const auto limits = ImPlot::GetPlotLimits();
+        ImPlot::Annotation(limits.Min().x, limits.Max().y, ImVec4(0, 0, 0, 0), ImVec2(10, 10),
+                           false, "%s", str.c_str());
+
         ImPlot::EndPlot();
+
+        /* Update the units per division. It's imperative that this is carried
+           out after ImPlot::EndPlot() has been called. */
+        GetUnitsPerDivision("FFT##plot", m_frequency_domain_units_per_division);
     }
     ImPlot::PopStyleVar();
 }

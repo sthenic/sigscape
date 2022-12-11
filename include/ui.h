@@ -85,6 +85,15 @@ private:
     Markers m_time_domain_markers;
     Markers m_frequency_domain_markers;
 
+    struct UnitsPerDivision
+    {
+        double x;
+        double y;
+    };
+
+    UnitsPerDivision m_time_domain_units_per_division;
+    UnitsPerDivision m_frequency_domain_units_per_division;
+
     void ClearChannelSelection();
     bool IsAnySolo() const;
 
@@ -114,6 +123,8 @@ private:
     void MarkerTree(Markers &markers, Format::Formatter FormatX, Format::Formatter FormatY);
 
     std::vector<std::tuple<size_t, size_t, ChannelUiState *>> FilterUiStates();
+    static void GetUnitsPerDivision(const std::string &title, UnitsPerDivision &units_per_division);
+
     void PlotTimeDomainSelected();
 
     int GetSelectedChannel(ChannelUiState *&ui);

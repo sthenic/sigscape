@@ -39,7 +39,7 @@ Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     , is_selected(false)
     , is_muted(false)
     , is_solo(false)
-    , is_sample_markers_enabled(true)
+    , is_sample_markers_enabled(false)
     , is_persistence_enabled(false)
     , is_time_domain_visible(true)
     , is_frequency_domain_visible(true)
@@ -1460,70 +1460,88 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
 
                 ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
                                         ImGuiTableFlags_BordersInnerV;
-                if (ImGui::BeginTable("Metrics", 2, flags))
+                if (ImGui::BeginTable("Metrics", 4, flags))
                 {
-                    const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
-                    ImGui::TableSetupColumn("Metric",
-                                            ImGuiTableColumnFlags_WidthFixed |
-                                                ImGuiTableColumnFlags_NoHide,
-                                            16.0f * TEXT_BASE_WIDTH);
+                    ImGui::TableSetupColumn("Metric", ImGuiTableColumnFlags_WidthFixed);
                     ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
+                    ImGui::TableSetupColumn("Extra0", ImGuiTableColumnFlags_WidthFixed);
+                    ImGui::TableSetupColumn("Extra1", ImGuiTableColumnFlags_WidthFixed);
 
+                    const std::string DIGITS = "8.2";
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::Text("Record number");
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text(fmt::format("{: >7d}", record->header.record_number));
+                    ImGui::Text(fmt::format("{: >8d}", record->header.record_number));
 
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::Text("Maximum");
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text(Format::TimeDomainY(metrics.max));
+                    ImGui::Text(Format::TimeDomainY(metrics.max, DIGITS, false));
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text(Format::TimeDomainY(record->range_max, DIGITS, false));
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text(Format::TimeDomainY(record->range_max - metrics.max, DIGITS, true));
 
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::Text("Minimum");
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text(Format::TimeDomainY(metrics.min));
+                    ImGui::Text(Format::TimeDomainY(metrics.min, DIGITS, false));
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text(Format::TimeDomainY(record->range_min, DIGITS, false));
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text(Format::TimeDomainY(record->range_min - metrics.min, DIGITS, true));
 
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::Text("Mean");
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text(Format::TimeDomainY(metrics.mean));
+                    ImGui::Text(Format::TimeDomainY(metrics.mean, DIGITS, false));
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text(Format::TimeDomainY(record->range_mid, DIGITS, false));
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text(Format::TimeDomainY(record->range_mid - metrics.mean, DIGITS, true));
 
+                    const double peak_to_peak = metrics.max - metrics.min;
+                    const double peak_to_peak_range = record->range_max - record->range_min;
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::Text("Peak-to-peak");
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text(Format::TimeDomainY(metrics.max - metrics.min));
+                    ImGui::Text(Format::TimeDomainY(peak_to_peak, DIGITS, false));
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text(Format::TimeDomainY(peak_to_peak_range, DIGITS, false));
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text(fmt::format("{:" + DIGITS + "f} %",
+                                            100.0 * peak_to_peak / peak_to_peak_range));
 
                     /* FIXME: Hide these behind some 'show extra' toggle. */
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::Text("Sampling rate");
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text(Format::FrequencyDomainX(record->sampling_frequency));
+                    ImGui::Text(Format::FrequencyDomainX(record->sampling_frequency, DIGITS, false));
 
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::Text("Sampling period");
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text(Format::TimeDomainX(record->step));
+                    ImGui::Text(Format::TimeDomainX(record->step, DIGITS, false));
 
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::Text("Trigger rate");
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text(Format::FrequencyDomainX(record->estimated_trigger_frequency));
+                    ImGui::Text(Format::FrequencyDomainX(record->estimated_trigger_frequency, DIGITS, false));
 
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::Text("Throughput");
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text(
-                        Format::Metric(record->estimated_throughput, "{: 8.1f} {}B/s", 1e6));
+                    ImGui::Text(Format::Metric(record->estimated_throughput,
+                                               "{: " + DIGITS + "f} {}B/s", 1e6));
 
                     ImGui::EndTable();
                 }

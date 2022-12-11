@@ -36,44 +36,70 @@ std::string Format::Metric(double value, const std::string &format, double highe
     return fmt::format(format, value / LIMITS.back().first, LIMITS.back().second);
 }
 
+std::string Format::TimeDomainX(double value, const std::string &format, bool show_sign)
+{
+    std::string lformat = "{:>-" + format + "f} {}s";
+    if (show_sign)
+        lformat[3] = '+';
+    return Metric(value, lformat, 1e-3);
+}
+
 std::string Format::TimeDomainX(double value, bool show_sign)
 {
-    std::string format = "{:>-7.2f} {}s";
+    return TimeDomainX(value, "7.2", show_sign);
+}
+
+std::string Format::TimeDomainY(double value, const std::string &format, bool show_sign)
+{
+    std::string lformat = "{:>-" + format + "f} {}V";
     if (show_sign)
-        format[3] = '+';
-    return Metric(value, format, 1e-3);
+        lformat[3] = '+';
+    return Metric(value, lformat, 1e-3);
 }
 
 std::string Format::TimeDomainY(double value, bool show_sign)
 {
-    std::string format = "{:>-8.2f} {}V";
-    if (show_sign)
-        format[3] = '+';
-    return Metric(value, format, 1e-3);
+    return TimeDomainY(value, "8.2", show_sign);
 }
+
+std::string Format::FrequencyDomainX(double value, const std::string &format, bool show_sign)
+{
+    std::string lformat = "{:>-" + format + "f} {}Hz";
+    if (show_sign)
+        lformat[3] = '+';
+    return Metric(value, lformat, 1e6);
+}
+
 
 std::string Format::FrequencyDomainX(double value, bool show_sign)
 {
-    std::string format = "{:>-7.2f} {}Hz";
+    return FrequencyDomainX(value, "7.2", show_sign);
+}
+
+std::string Format::FrequencyDomainY(double value, const std::string &format, bool show_sign)
+{
+    std::string lformat = "{:>-" + format + "f} dBFS";
     if (show_sign)
-        format[3] = '+';
-    return Metric(value, format, 1e6);
+        lformat[3] = '+';
+    return fmt::format(lformat, value);
 }
 
 std::string Format::FrequencyDomainY(double value, bool show_sign)
 {
-    std::string format = "{:>-7.2f} dBFS";
+    return FrequencyDomainY(value, "7.2", show_sign);
+}
+
+std::string Format::FrequencyDomainDeltaY(double value, const std::string &format, bool show_sign)
+{
+    std::string lformat = "{:>-" + format + "f} dB";
     if (show_sign)
-        format[3] = '+';
-    return fmt::format(format, value);
+        lformat[3] = '+';
+    return fmt::format(lformat, value);
 }
 
 std::string Format::FrequencyDomainDeltaY(double value, bool show_sign)
 {
-    std::string format = "{:>-7.2f} dB";
-    if (show_sign)
-        format[3] = '+';
-    return fmt::format(format, value);
+    return FrequencyDomainDeltaY(value, "7.2", show_sign);
 }
 
 int Format::Metric(double value, char *tick_label, int size, void *data)

@@ -48,6 +48,7 @@ private:
         bool is_time_domain_visible;
         bool is_frequency_domain_visible;
         std::shared_ptr<ProcessedRecord> record;
+        std::vector<std::shared_ptr<ProcessedRecord>> memory;
     };
 
     /* Representation of a digitizer's state in the UI. */
@@ -115,7 +116,9 @@ private:
     void RenderCommandPalette(const ImVec2 &position, const ImVec2 &size);
     void RenderSetTopParametersButton(const ImVec2 &size);
     void RenderSetClockSystemParametersButton(const ImVec2 &size);
-    void RenderMarkers(const ImVec2 &position, const ImVec2 &size);
+    void RenderTools(const ImVec2 &position, const ImVec2 &size);
+    void RenderMemory();
+    void RenderMarkers();
     void RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size);
 
     void Reduce(double xsize, double sampling_frequency, int &count, int &stride);

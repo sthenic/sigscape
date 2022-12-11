@@ -44,6 +44,7 @@ Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     , is_time_domain_visible(true)
     , is_frequency_domain_visible(true)
     , record(NULL)
+    , memory{}
 {
     if (nof_channels_total == 0)
         is_selected = true;
@@ -397,8 +398,7 @@ void Ui::RenderLeft(float width, float height)
                               height - (FRAME_HEIGHT + DIGITIZER_SELECTION_SIZE.y +
                                         COMMAND_PALETTE_SIZE.y + PROCESSING_OPTIONS_SIZE.y +
                                         METRICS_SIZE.y));
-    RenderMarkers(MARKERS_POS, MARKERS_SIZE);
-
+    RenderTools(MARKERS_POS, MARKERS_SIZE);
 }
 
 void Ui::RenderPopups()
@@ -793,12 +793,8 @@ void Ui::MarkerTree(Markers &markers, Format::Formatter FormatX, Format::Formatt
     ImGui::TreePop();
 }
 
-void Ui::RenderMarkers(const ImVec2 &position, const ImVec2 &size)
+void Ui::RenderMarkers()
 {
-    ImGui::SetNextWindowPos(position);
-    ImGui::SetNextWindowSize(size);
-    ImGui::Begin("Markers", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-
     if (ImGui::SmallButton("Remove all"))
     {
         m_time_domain_markers.clear();
@@ -807,6 +803,45 @@ void Ui::RenderMarkers(const ImVec2 &position, const ImVec2 &size)
 
     MarkerTree(m_time_domain_markers, Format::TimeDomainX, Format::TimeDomainY);
     MarkerTree(m_frequency_domain_markers, Format::FrequencyDomainX, Format::FrequencyDomainY);
+}
+
+void Ui::RenderMemory()
+{
+    if (ImGui::SmallButton("Remove all"))
+    {
+        for (auto &digitizer : m_digitizers)
+        {
+            for (auto &chui : digitizer.ui.channels)
+                chui.memory.clear();
+        }
+    }
+
+    /* FIXME: Implement listing */
+}
+
+void Ui::RenderTools(const ImVec2 &position, const ImVec2 &size)
+{
+    ImGui::SetNextWindowPos(position);
+    ImGui::SetNextWindowSize(size);
+    ImGui::Begin("Tools", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+
+    if (ImGui::BeginTabBar("Tools##tabbar", ImGuiTabBarFlags_None))
+    {
+        if (ImGui::BeginTabItem("Markers"))
+        {
+            RenderMarkers();
+            ImGui::EndTabItem();
+        }
+
+        if (ImGui::BeginTabItem("Memory"))
+        {
+            RenderMemory();
+            ImGui::EndTabItem();
+        }
+
+        ImGui::EndTabBar();
+    }
+
     ImGui::End();
 }
 
@@ -1067,6 +1102,26 @@ void Ui::PlotTimeDomainSelected()
             ImPlot::PopStyleColor();
         }
 
+        /* Plot any waveforms in memory. */
+        if (!ui->memory.empty())
+        {
+            /* TODO: Ideally RGB -> HSV -> / increase brightness / -> RGB */
+            auto memory_color = ui->color;
+            memory_color.x *= 1.5;
+            memory_color.y *= 1.5;
+            memory_color.z *= 1.5;
+            ImPlot::PushStyleColor(ImPlotCol_Line, memory_color);
+            for (size_t m = 0; m < ui->memory.size(); ++m)
+            {
+                const auto &memory_record = ui->memory[m];
+                const std::string label = fmt::format("M{} {}", m, memory_record->label);
+                ImPlot::PlotLine(label.c_str(), memory_record->time_domain->x.data(),
+                                 memory_record->time_domain->y.data(),
+                                 memory_record->time_domain->x.size());
+            }
+            ImPlot::PopStyleColor();
+        }
+
         /* Here we have to resort to using ImPlot internals to gain access to
            whether or not the plot is shown or not. The user can click the
            legend entry to change the visibility state. */
@@ -1282,6 +1337,26 @@ void Ui::PlotFourierTransformSelected()
                          ui->record->frequency_domain->x.size());
         ImPlot::PopStyleColor();
 
+        /* Plot any waveforms in memory. */
+        if (!ui->memory.empty())
+        {
+            /* TODO: Ideally RGB -> HSV -> / increase brightness / -> RGB */
+            auto memory_color = ui->color;
+            memory_color.x *= 1.5;
+            memory_color.y *= 1.5;
+            memory_color.z *= 1.5;
+            ImPlot::PushStyleColor(ImPlotCol_Line, memory_color);
+            for (size_t m = 0; m < ui->memory.size(); ++m)
+            {
+                const auto &memory_record = ui->memory[m];
+                const std::string label = fmt::format("M{} {}", m, memory_record->label);
+                ImPlot::PlotLine(label.c_str(), memory_record->frequency_domain->x.data(),
+                                 memory_record->frequency_domain->y.data(),
+                                 memory_record->frequency_domain->x.size());
+            }
+            ImPlot::PopStyleColor();
+        }
+
         /* Here we have to resort to using ImPlot internals to gain access to
            whether or not the plot is shown or not. The user can click the
            legend entry to change the visibility state. */
@@ -1474,6 +1549,8 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                 ImGui::MenuItem("Solo", "", &ui.is_solo);
                 ImGui::MenuItem("Mute", "", &ui.is_muted);
                 ImGui::MenuItem("Sample markers", "", &ui.is_sample_markers_enabled);
+                if (ImGui::MenuItem("Add to memory"))
+                    ui.memory.push_back(ui.record);
                 ImGui::MenuItem("Persistence", "", &ui.is_persistence_enabled);
                 ImGui::EndPopup();
             }

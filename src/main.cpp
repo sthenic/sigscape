@@ -1,16 +1,85 @@
 #include "ui.h"
 
+#include "png.h"
 #include "GL/gl3w.h"
 #include <GLFW/glfw3.h>
 
-static void glfw_error_callback(int error, const char *description)
+#include <vector>
+#include <string>
+
+/* Global GLFW window to enable callback to save to file. */
+/* TODO: Maybe not the best idea in the world. */
+static GLFWwindow *window = NULL;
+
+static void GlfwErrorCallback(int error, const char *description)
 {
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
+static bool SavePng(const std::string &filename, uint8_t *pixels, int w, int h)
+{
+    /* FIXME: C++-ify */
+    png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (!png)
+        return false;
+
+    png_infop info = png_create_info_struct(png);
+    if (!info)
+    {
+        png_destroy_write_struct(&png, &info);
+        return false;
+    }
+
+    FILE *fp = fopen(filename.c_str(), "wb");
+    if (!fp)
+    {
+        png_destroy_write_struct(&png, &info);
+        return false;
+    }
+
+    png_init_io(png, fp);
+    png_set_IHDR(png, info, w, h, 8 /* depth */, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
+        PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
+    png_colorp palette = (png_colorp)png_malloc(png, PNG_MAX_PALETTE_LENGTH * sizeof(png_color));
+    if (!palette)
+    {
+        fclose(fp);
+        png_destroy_write_struct(&png, &info);
+        return false;
+    }
+    png_set_PLTE(png, info, palette, PNG_MAX_PALETTE_LENGTH);
+    png_write_info(png, info);
+    png_set_packing(png);
+
+    png_bytepp rows = (png_bytepp)png_malloc(png, h * sizeof(png_bytep));
+    for (int i = 0; i < h; ++i)
+        rows[i] = (png_bytep)(pixels + (h - i - 1) * w * 3);
+
+    png_write_image(png, rows);
+    png_write_end(png, info);
+    png_free(png, palette);
+    png_destroy_write_struct(&png, &info);
+
+    fclose(fp);
+    delete[] rows;
+    return true;
+}
+
+static bool SaveToFile(const std::string &filename)
+{
+    int width;
+    int height;
+    glfwGetFramebufferSize(window, &width, &height);
+
+    std::vector<uint8_t> pixels(width * height * 3);
+    glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
+
+    return SavePng(filename, pixels.data(), width, height);
+}
+
 int main(int, char **)
 {
-    glfwSetErrorCallback(glfw_error_callback);
+    glfwSetErrorCallback(GlfwErrorCallback);
     if (!glfwInit())
         return -1;
 
@@ -27,7 +96,7 @@ int main(int, char **)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 #endif
 
-    GLFWwindow *window = glfwCreateWindow(2140, 1200, "ADQ Rapid", NULL, NULL);
+    window = glfwCreateWindow(2140, 1200, "ADQ Rapid", NULL, NULL);
     if (window == NULL)
         return 1;
     glfwMakeContextCurrent(window);
@@ -40,7 +109,7 @@ int main(int, char **)
     }
 
     Ui ui;
-    ui.Initialize(window, glsl_version);
+    ui.Initialize(window, glsl_version, SaveToFile);
 
     while (!glfwWindowShouldClose(window))
     {

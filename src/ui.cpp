@@ -4,6 +4,7 @@
 #include "fmt/format.h"
 #include <cinttypes>
 #include <cmath>
+#include <ctime>
 
 const ImVec4 Ui::COLOR_GREEN = {0.0f, 1.0f, 0.5f, 0.6f};
 const ImVec4 Ui::COLOR_RED = {1.0f, 0.0f, 0.2f, 0.6f};
@@ -67,7 +68,9 @@ Ui::DigitizerUiState::DigitizerUiState()
 }
 
 Ui::Ui()
-    : m_identification()
+    : SaveToFile(NULL)
+    , m_save_to_file(false)
+    , m_identification()
     , m_adq_control_unit()
     , m_show_imgui_demo_window(false)
     , m_show_implot_demo_window(false)
@@ -84,7 +87,8 @@ Ui::~Ui()
 {
 }
 
-void Ui::Initialize(GLFWwindow *window, const char *glsl_version)
+void Ui::Initialize(GLFWwindow *window, const char *glsl_version,
+                    bool (*SaveToFile)(const std::string &filename))
 {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -92,6 +96,7 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version)
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
     ImGui::StyleColorsDark();
+    this->SaveToFile = SaveToFile;
 
     /* Start device identification thread. */
     m_identification.Start();
@@ -133,6 +138,32 @@ void Ui::Render(float width, float height)
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+    /* FIXME: Obviously improve this... */
+    if (m_save_to_file && SaveToFile)
+    {
+        m_save_to_file = false;
+
+        time_t now;
+        time(&now);
+        std::string now_as_iso8601(32, '\0');
+        size_t result = std::strftime(now_as_iso8601.data(), now_as_iso8601.size(), "%FT%T%z",
+                                      std::localtime(&now));
+        if (result > 0)
+        {
+            /* Remember to strip the null terminator. */
+            now_as_iso8601.resize(result);
+            const std::string filename = "adqrapid_" + now_as_iso8601 + ".png";
+            if (SaveToFile(filename))
+                printf("%s\n", fmt::format("Saved current view as '{}'.", filename).c_str());
+            else
+                printf("%s\n", fmt::format("Failed to save PNG image '{}'.", filename).c_str());
+        }
+        else
+        {
+            printf("Failed to generate an ISO8601 filename.\n");
+        }
+    }
 }
 
 void Ui::ClearChannelSelection()
@@ -297,6 +328,13 @@ void Ui::HandleMessages()
 void Ui::RenderMenuBar()
 {
     ImGui::BeginMainMenuBar();
+    if (ImGui::MenuItem("Save"))
+    {
+        /* We have to postpone the saving until the very end of the 'global'
+           render function, i.e. until the frame buffer has received all its
+           contents. */
+        m_save_to_file = true;
+    }
     if (ImGui::BeginMenu("Demo"))
     {
         ImGui::MenuItem("ImGui", NULL, &m_show_imgui_demo_window);
@@ -1445,7 +1483,7 @@ void Ui::PlotWaterfallSelected()
 
 void Ui::RenderWaterfallPlot()
 {
-    ImPlot::PushColormap("Hot");
+    ImPlot::PushColormap("Plasma");
     if (ImPlot::BeginPlot("Waterfall##plot", ImVec2(-1, -1), ImPlotFlags_NoTitle | ImPlotFlags_NoLegend))
     {
         static const ImPlotAxisFlags FLAGS = ImPlotAxisFlags_NoGridLines;

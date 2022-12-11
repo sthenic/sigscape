@@ -64,6 +64,13 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(fmt)
 
+FetchContent_Declare(
+    png
+    GIT_REPOSITORY https://github.com/glennrp/libpng
+    GIT_TAG v1.6.39
+)
+FetchContent_MakeAvailable(png)
+
 # It doesn't work to link directly to gl3w for some reason.
 # Maybe something to do with https://github.com/skaslev/gl3w/issues/66
 # However adding the generation target as a dependency and then
@@ -103,6 +110,7 @@ target_sources(${PROJECT_NAME} PRIVATE
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${implot_SOURCE_DIR}
     ${imgui_SOURCE_DIR}
+    ${png_SOURCE_DIR}
     ${fmt_SOURCE_DIR}/include
     simple_fft
     ${gl3w_BINARY_DIR}/include
@@ -197,5 +205,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Threads::Threads
     glfw
     fmt
+    png
     ${ADQAPI_LIBRARY}
 )

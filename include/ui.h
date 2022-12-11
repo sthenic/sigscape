@@ -21,11 +21,14 @@ public:
     Ui();
     ~Ui();
 
-    void Initialize(GLFWwindow *window, const char *glsl_version);
+    void Initialize(GLFWwindow *window, const char *glsl_version,
+                    bool (* SaveToFile)(const std::string &filename));
     void Render(float width, float height);
     void Terminate();
 
 private:
+    bool (* SaveToFile)(const std::string &filename);
+    bool m_save_to_file;
     Identification m_identification;
     void *m_adq_control_unit;
     bool m_show_imgui_demo_window;

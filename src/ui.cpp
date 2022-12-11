@@ -1097,23 +1097,6 @@ void Ui::PlotTimeDomainSelected()
     }
 }
 
-int Ui::GetSelectedChannel(ChannelUiState *&ui)
-{
-    for (auto &d : m_digitizers)
-    {
-        for (auto &chui : d.ui.channels)
-        {
-            if (chui.is_selected)
-            {
-                ui = &chui;
-                return ADQR_EOK;
-            }
-        }
-    }
-
-    return ADQR_EAGAIN;
-}
-
 void Ui::DrawMarkerX(int id, double *x, const ImVec4 &color, float thickness,
                      const std::string &tag, ImPlotDragToolFlags flags)
 {
@@ -1370,15 +1353,18 @@ void Ui::RenderFourierTransformPlot()
 
 void Ui::PlotWaterfallSelected()
 {
-    ChannelUiState *ui;
-    if (ADQR_EOK == GetSelectedChannel(ui))
+    /* Only plot the selected channel, which will be at the back of the filtered UI states. */
+    const auto filtered_ui = FilterUiStates();
+    if (!filtered_ui.empty())
     {
         /* FIXME: Y-axis scale (probably time delta?) */
+        const auto &[i, ch, ui] = filtered_ui.back();
         const double TOP_RIGHT = ui->record->time_domain->sampling_frequency / 2;
         ImPlot::PlotHeatmap("heat", ui->record->waterfall->data.data(),
                             static_cast<int>(ui->record->waterfall->rows),
                             static_cast<int>(ui->record->waterfall->columns), -100, 0, NULL,
                             ImPlotPoint(0, 0), ImPlotPoint(TOP_RIGHT, 1));
+        return;
     }
 }
 

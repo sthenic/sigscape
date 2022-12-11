@@ -127,7 +127,6 @@ private:
 
     void PlotTimeDomainSelected();
 
-    int GetSelectedChannel(ChannelUiState *&ui);
     void DrawMarkerX(int id, double *x, const ImVec4 &color, float thickness,
                      const std::string &format, ImPlotDragToolFlags flags = 0);
     void DrawMarkerY(int id, double *y, const ImVec4 &color, float thickness,

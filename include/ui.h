@@ -130,6 +130,7 @@ private:
 
     std::vector<std::tuple<size_t, size_t, ChannelUiState *>> FilterUiStates();
     static void GetUnitsPerDivision(const std::string &title, UnitsPerDivision &units_per_division);
+    static void RenderUnitsPerDivision(const std::string &str);
 
     void PlotTimeDomainSelected();
 

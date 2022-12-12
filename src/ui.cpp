@@ -1105,6 +1105,35 @@ void Ui::GetUnitsPerDivision(const std::string &title, UnitsPerDivision &units_p
         units_per_division.y = axis_y.Range.Size();
 }
 
+void Ui::RenderUnitsPerDivision(const std::string &str)
+{
+    /* This function will output the input `str` in a 'legend' style frame in
+       the current plot's lower left corner. The function must be called inside
+       Begin/EndPlot(). */
+
+    const ImVec2 lower_left_corner{ImPlot::GetPlotPos().x,
+                                   ImPlot::GetPlotPos().y + ImPlot::GetPlotSize().y};
+    const ImVec2 text_size{ImGui::CalcTextSize(str.c_str())};
+    const ImVec2 offset{10, -10};
+    const ImVec2 padding{5, 5};
+
+    const ImRect rect{
+        /* Upper left corner */
+        lower_left_corner + offset + ImVec2{0, -text_size.y - 2 * padding.y},
+        /* Lower right corner */
+        lower_left_corner + offset + ImVec2{text_size.x + 2 * padding.x, 0}
+    };
+
+    const ImVec2 text{rect.Min + padding};
+
+    ImPlot::GetPlotDrawList()->AddRectFilled(rect.Min, rect.Max,
+                                             ImPlot::GetStyleColorU32(ImPlotCol_LegendBg));
+    ImPlot::GetPlotDrawList()->AddRect(rect.Min, rect.Max,
+                                       ImPlot::GetStyleColorU32(ImPlotCol_LegendBorder));
+    ImPlot::GetPlotDrawList()->AddText(text, ImPlot::GetStyleColorU32(ImPlotCol_LegendText),
+                                       str.c_str());
+}
+
 void Ui::PlotTimeDomainSelected()
 {
     /* We need a (globally) unique id for each marker. */
@@ -1302,12 +1331,9 @@ void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
 
         const auto str =
             fmt::format("{}/div\n{}/div",
-                        Format::Metric(m_time_domain_units_per_division.y, "{:6.2f} {}V", 1e-3),
-                        Format::Metric(m_time_domain_units_per_division.x, "{:6.2f} {}s", 1e-3));
-
-        const auto limits = ImPlot::GetPlotLimits();
-        ImPlot::Annotation(limits.Min().x, limits.Max().y, ImVec4(0, 0, 0, 0), ImVec2(10, 10),
-                           false, "%s", str.c_str());
+                        Format::Metric(m_time_domain_units_per_division.y, "{:6.2f} {}V", 1),
+                        Format::Metric(m_time_domain_units_per_division.x, "{:6.2f} {}s", 1));
+        RenderUnitsPerDivision(str);
 
         ImPlot::EndPlot();
 
@@ -1448,12 +1474,10 @@ void Ui::RenderFourierTransformPlot()
         RemoveDoubleClickedMarkers(m_frequency_domain_markers);
 
         const auto str =
-            fmt::format("{:6.2f} dB/div\n{}/div", m_frequency_domain_units_per_division.y,
-                        Format::Metric(m_frequency_domain_units_per_division.x, "{:6.2f} {}Hz", 1e6));
-
-        const auto limits = ImPlot::GetPlotLimits();
-        ImPlot::Annotation(limits.Min().x, limits.Max().y, ImVec4(0, 0, 0, 0), ImVec2(10, 10),
-                           false, "%s", str.c_str());
+            fmt::format("{}/div\n{}/div",
+                        Format::Metric(m_frequency_domain_units_per_division.y, "{:6.2f} {}dB"),
+                        Format::Metric(m_frequency_domain_units_per_division.x, "{:6.2f} {}Hz"));
+        RenderUnitsPerDivision(str);
 
         ImPlot::EndPlot();
 

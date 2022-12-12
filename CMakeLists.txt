@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 project(adq-rapid VERSION 1.0)
 add_executable(${PROJECT_NAME})
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(NO_ADQAPI "Compile with the ADQAPI as a dependency. With this set to ON, only the simulator mode is available." OFF)
 
@@ -65,10 +66,29 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(fmt)
 
 FetchContent_Declare(
+    zlib
+    GIT_REPOSITORY https://github.com/madler/zlib
+    GIT_TAG v1.2.13
+)
+FetchContent_MakeAvailable(zlib)
+
+FetchContent_Declare(
     png
     GIT_REPOSITORY https://github.com/glennrp/libpng
     GIT_TAG v1.6.39
 )
+
+set(SKIP_INSTALL_ALL ON)
+
+set(ZLIB_INCLUDE_DIRS ${zlib_SOURCE_DIR} ${zlib_BINARY_DIR})
+set(ZLIB_LIBRARIES zlibstatic)
+
+set(PNG_BUILD_ZLIB ON CACHE BOOL "")
+set(PNG_STATIC ON)
+set(PNG_SHARED OFF)
+set(PNG_EXECUTABLES OFF)
+set(PNG_TESTS OFF)
+
 FetchContent_MakeAvailable(png)
 
 # It doesn't work to link directly to gl3w for some reason.
@@ -205,6 +225,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Threads::Threads
     glfw
     fmt
-    png
+    png_static
     ${ADQAPI_LIBRARY}
 )

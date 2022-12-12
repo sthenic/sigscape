@@ -1652,8 +1652,6 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                     ImGui::Text(Format::TimeDomainY(metrics.max, DIGITS, false));
                     ImGui::TableSetColumnIndex(2);
                     ImGui::Text(Format::TimeDomainY(record->range_max, DIGITS, false));
-                    ImGui::TableSetColumnIndex(3);
-                    ImGui::Text(Format::TimeDomainY(record->range_max - metrics.max, DIGITS, true));
 
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
@@ -1662,8 +1660,6 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                     ImGui::Text(Format::TimeDomainY(metrics.min, DIGITS, false));
                     ImGui::TableSetColumnIndex(2);
                     ImGui::Text(Format::TimeDomainY(record->range_min, DIGITS, false));
-                    ImGui::TableSetColumnIndex(3);
-                    ImGui::Text(Format::TimeDomainY(record->range_min - metrics.min, DIGITS, true));
 
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
@@ -1672,8 +1668,6 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                     ImGui::Text(Format::TimeDomainY(metrics.mean, DIGITS, false));
                     ImGui::TableSetColumnIndex(2);
                     ImGui::Text(Format::TimeDomainY(record->range_mid, DIGITS, false));
-                    ImGui::TableSetColumnIndex(3);
-                    ImGui::Text(Format::TimeDomainY(record->range_mid - metrics.mean, DIGITS, true));
 
                     const double peak_to_peak = metrics.max - metrics.min;
                     const double peak_to_peak_range = record->range_max - record->range_min;

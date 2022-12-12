@@ -35,6 +35,13 @@ static inline void Text(const std::string &str)
 }
 }
 
+static void WIP()
+{
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0, 0.2, 0.2, 1.0));
+    ImGui::Text("WORK IN PROGRESS");
+    ImGui::PopStyleColor();
+}
+
 Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     : color{}
     , is_selected(false)
@@ -855,6 +862,39 @@ void Ui::RenderMemory()
     }
 
     /* FIXME: Implement listing */
+    WIP();
+}
+
+void Ui::RenderSensors()
+{
+    /* TODO: Dynamic depending on the reported sensor groups? */
+    if (ImGui::BeginTabBar("Sensors##TabBar"))
+    {
+        if (ImGui::BeginTabItem("Temperature"))
+        {
+            WIP();
+            ImGui::EndTabItem();
+        }
+
+        if (ImGui::BeginTabItem("Voltage"))
+        {
+            WIP();
+            ImGui::EndTabItem();
+        }
+
+        if (ImGui::BeginTabItem("Current"))
+        {
+            WIP();
+            ImGui::EndTabItem();
+        }
+
+        if (ImGui::BeginTabItem("Power"))
+        {
+            WIP();
+            ImGui::EndTabItem();
+        }
+        ImGui::EndTabBar();
+    }
 }
 
 void Ui::RenderTools(const ImVec2 &position, const ImVec2 &size)
@@ -863,7 +903,7 @@ void Ui::RenderTools(const ImVec2 &position, const ImVec2 &size)
     ImGui::SetNextWindowSize(size);
     ImGui::Begin("Tools", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
-    if (ImGui::BeginTabBar("Tools##tabbar", ImGuiTabBarFlags_None))
+    if (ImGui::BeginTabBar("Tools##TabBar", ImGuiTabBarFlags_None))
     {
         if (ImGui::BeginTabItem("Markers"))
         {
@@ -874,6 +914,12 @@ void Ui::RenderTools(const ImVec2 &position, const ImVec2 &size)
         if (ImGui::BeginTabItem("Memory"))
         {
             RenderMemory();
+            ImGui::EndTabItem();
+        }
+
+        if (ImGui::BeginTabItem("Sensors"))
+        {
+            RenderSensors();
             ImGui::EndTabItem();
         }
 
@@ -1351,7 +1397,7 @@ void Ui::RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size)
     ImGui::SetNextWindowSize(size);
     ImGui::Begin("Frequency Domain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
     m_is_frequency_domain_collapsed = ImGui::IsWindowCollapsed();
-    if (ImGui::BeginTabBar("Frequency Domain##tabbar", ImGuiTabBarFlags_None))
+    if (ImGui::BeginTabBar("Frequency Domain##TabBar", ImGuiTabBarFlags_None))
     {
         if (ImGui::BeginTabItem("FFT"))
         {

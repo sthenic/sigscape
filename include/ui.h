@@ -120,8 +120,9 @@ private:
     void RenderSetTopParametersButton(const ImVec2 &size);
     void RenderSetClockSystemParametersButton(const ImVec2 &size);
     void RenderTools(const ImVec2 &position, const ImVec2 &size);
-    void RenderMemory();
     void RenderMarkers();
+    void RenderMemory();
+    void RenderSensors();
     void RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size);
 
     void Reduce(double xsize, double sampling_frequency, int &count, int &stride);

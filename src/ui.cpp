@@ -147,7 +147,7 @@ void Ui::Render(float width, float height)
         time_t now;
         time(&now);
         std::string now_as_iso8601(32, '\0');
-        size_t result = std::strftime(now_as_iso8601.data(), now_as_iso8601.size(), "%FT%T%z",
+        size_t result = std::strftime(now_as_iso8601.data(), now_as_iso8601.size(), "%FT%H%M%S",
                                       std::localtime(&now));
         if (result > 0)
         {

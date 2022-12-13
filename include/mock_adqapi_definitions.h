@@ -29,6 +29,9 @@ struct ADQInfoListEntry
   enum ADQProductID_Enum ProductID;
 };
 
+#define ADQ_DATA_FORMAT_INT16 (0)
+#define ADQ_DATA_FORMAT_INT32 (1)
+
 struct ADQGen4RecordHeader
 {
     uint8_t version_major;
@@ -40,7 +43,7 @@ struct ADQGen4RecordHeader
     int64_t record_start;
     uint32_t record_length;
     uint8_t user_id;
-    uint8_t reserved0;
+    uint8_t misc;
     uint16_t record_status;
     uint32_t record_number;
     uint8_t channel;
@@ -48,7 +51,7 @@ struct ADQGen4RecordHeader
     char serial_number[10];
     uint64_t sampling_period;
     float time_unit;
-    uint32_t reserved1;
+    uint32_t firmware_specific;
 };
 
 struct ADQGen4Record
@@ -123,6 +126,7 @@ enum ADQParameterId
 struct ADQConstantParametersChannel
 {
     char label[8];
+    double code_normalization;
 };
 
 /* A reduced version of the set of constant parameters. */

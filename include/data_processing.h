@@ -11,7 +11,8 @@
 class DataProcessing : public SmartBufferThread<DataProcessing, ProcessedRecord, 100, true>
 {
 public:
-    DataProcessing(void *handle, int index, int channel, const std::string &label);
+    DataProcessing(void *handle, int index, int channel, const std::string &label,
+                   const struct ADQConstantParameters &constant);
     ~DataProcessing();
     DataProcessing(const DataProcessing &other) = delete;
     DataProcessing &operator=(const DataProcessing &other) = delete;
@@ -30,6 +31,7 @@ private:
     int m_channel;
     std::string m_label;
     struct ADQAnalogFrontendParametersChannel m_afe;
+    struct ADQConstantParameters m_constant;
     WindowCache m_window_cache;
     WindowType m_window_type;
     size_t m_nof_skirt_bins;
@@ -41,6 +43,10 @@ private:
 
     template <typename T>
     static size_t PreviousPowerOfTwo(T i);
+
+    template <typename T>
+    static void TransformToUnitRange(const T *data, double code_normalization,
+                                     const Window *window, std::vector<double> &y);
 
     struct Tone
     {

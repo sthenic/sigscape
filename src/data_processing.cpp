@@ -13,12 +13,14 @@
 #include <cinttypes>
 #include <set>
 
-DataProcessing::DataProcessing(void *handle, int index, int channel, const std::string &label)
+DataProcessing::DataProcessing(void *handle, int index, int channel, const std::string &label,
+                               const struct ADQConstantParameters &constant)
     : m_handle(handle)
     , m_index(index)
     , m_channel(channel)
     , m_label(label)
     , m_afe{1000.0, 0.0}
+    , m_constant{constant}
     , m_window_cache()
     , m_window_type(WindowType::FLAT_TOP)
     , m_nof_skirt_bins(NOF_SKIRT_BINS_DEFAULT)
@@ -86,8 +88,14 @@ void DataProcessing::MainLoop()
             auto processed_record = std::make_shared<ProcessedRecord>();
             processed_record->label = m_label;
 
+            /* Local alias */
+            const double code_normalization = m_constant.channel[channel].code_normalization;
+            /* FIXME: Divide by the number of accumulations if FWATD. */
+
             /* FIXME: Windowing in the time domain struct?  */
-            processed_record->time_domain = std::make_shared<TimeDomainRecord>(time_domain, m_afe);
+            /* FIXME: This can throw if data format is unsupported. */
+            processed_record->time_domain =
+                std::make_shared<TimeDomainRecord>(time_domain, m_afe, code_normalization);
             processed_record->time_domain->estimated_trigger_frequency = estimated_trigger_frequency;
             processed_record->time_domain->estimated_throughput = estimated_throughput;
 
@@ -106,16 +114,25 @@ void DataProcessing::MainLoop()
                use the raw data again since the processed time domain record
                will have been scaled to Volts with the input range and DC offset
                taken into account. */
+
             auto window = m_window_cache.GetWindow(m_window_type, FFT_LENGTH);
             auto y = std::vector<double>(FFT_LENGTH);
-            const int16_t *data = static_cast<const int16_t *>(time_domain->data);
-            for (size_t i = 0; i < FFT_LENGTH; ++i)
+            switch (time_domain->header->data_format)
             {
-                /* FIXME: Read vertical resolution from header->data_format. */
-                if (window != NULL)
-                    y[i] = static_cast<double>(data[i]) / 32768.0 * window->data[i];
-                else
-                    y[i] = static_cast<double>(data[i]) / 32768.0;
+            case ADQ_DATA_FORMAT_INT16:
+                TransformToUnitRange(static_cast<const int16_t *>(time_domain->data),
+                                     code_normalization, window.get(), y);
+                break;
+
+            case ADQ_DATA_FORMAT_INT32:
+                TransformToUnitRange(static_cast<const int16_t *>(time_domain->data),
+                                     code_normalization, window.get(), y);
+                break;
+
+            default:
+                printf("Unknown data format '%d', aborting.\n", time_domain->header->data_format);
+                m_thread_exit_code = ADQR_EINTERNAL;
+                return;
             }
 
             /* Calculate the FFT */
@@ -164,6 +181,19 @@ template <typename T>
 size_t DataProcessing::PreviousPowerOfTwo(T i)
 {
     return static_cast<size_t>(std::pow(2, std::floor(std::log2(i))));
+}
+
+template <typename T>
+void DataProcessing::TransformToUnitRange(const T *data, double code_normalization,
+                                          const Window *window, std::vector<double> &y)
+{
+    for (size_t i = 0; i < y.size(); ++i)
+    {
+        /* Scale to [-1, 1], which means code_normalization / 2. */
+        y[i] = static_cast<double>(data[i]) / (code_normalization / 2.0);
+        if (window != NULL)
+            y[i] *= window->data[i];
+    }
 }
 
 double DataProcessing::FoldFrequency(double f, double fs)

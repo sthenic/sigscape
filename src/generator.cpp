@@ -55,6 +55,7 @@ void Generator::MainLoop()
 
         /* Fill in a few header fields. */
         *record->header = {};
+        record->header->data_format = ADQ_DATA_FORMAT_INT16;
         record->header->record_length = static_cast<uint32_t>(m_parameters.record_length);
         record->header->record_number = record_number;
         record->header->record_start = static_cast<int64_t>(m_distribution(m_random_generator) * 1000);

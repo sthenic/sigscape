@@ -1,6 +1,8 @@
 #ifndef DATA_TYPES_H_WSKIC4
 #define DATA_TYPES_H_WSKIC4
 
+#include "fmt/format.h"
+
 #include <cstdint>
 #include <cstddef>
 #include <complex>
@@ -8,6 +10,7 @@
 #include <cstring>
 #include <vector>
 #include <deque>
+#include <stdexcept>
 
 #ifdef NO_ADQAPI
 #include "mock_adqapi_definitions.h"
@@ -38,7 +41,8 @@ struct BaseRecord
 struct TimeDomainRecord : public BaseRecord
 {
     TimeDomainRecord(const struct ADQGen4Record *raw,
-                     const struct ADQAnalogFrontendParametersChannel &afe)
+                     const struct ADQAnalogFrontendParametersChannel &afe,
+                     double code_normalization)
         : BaseRecord(raw->header->record_length)
         , header(*raw->header)
         , estimated_trigger_frequency(0)
@@ -56,24 +60,47 @@ struct TimeDomainRecord : public BaseRecord
 
         int time_unit_ps = static_cast<int>(raw->header->time_unit * 1e12);
         double time_unit = static_cast<double>(time_unit_ps) * 1e-12;
-        const int16_t *data = static_cast<const int16_t *>(raw->data);
         step = static_cast<double>(raw->header->sampling_period) * time_unit;
         record_start = static_cast<double>(raw->header->record_start) * time_unit;
 
         /* This will be an integer number of Hz */
         sampling_frequency = std::round(1.0 / step);
 
-        for (size_t i = 0; i < raw->header->record_length; ++i)
+        switch (raw->header->data_format)
         {
-            /* FIXME: Read vertical resolution from header->data_format. */
-            x[i] = record_start + i * step;
-            y[i] = static_cast<double>(data[i]) / 65536.0 * afe.input_range - afe.dc_offset;
-            y[i] /= 1e3;
+        case ADQ_DATA_FORMAT_INT16:
+            Transform(static_cast<const int16_t *>(raw->data), record_start, step,
+                      code_normalization, afe, x, y);
+            break;
+
+        case ADQ_DATA_FORMAT_INT32:
+            Transform(static_cast<const int32_t *>(raw->data), record_start, step,
+                      code_normalization, afe, x, y);
+            break;
+
+        default:
+            throw std::invalid_argument(
+                fmt::format("Unknown data format '{}' when transforming time domain record.",
+                            raw->header->data_format));
         }
 
         range_max = (afe.input_range / 2 - afe.dc_offset) / 1e3;
         range_min = (-afe.input_range / 2 - afe.dc_offset) / 1e3;
         range_mid = (range_max + range_min) / 2;
+    }
+
+    template <typename T>
+    static void Transform(const T *data, double record_start, double step,
+                          double code_normalization,
+                          const struct ADQAnalogFrontendParametersChannel &afe,
+                          std::vector<double> &x, std::vector<double> &y)
+    {
+        for (size_t i = 0; i < x.size(); ++i)
+        {
+            x[i] = record_start + i * step;
+            y[i] = static_cast<double>(data[i]) / code_normalization * afe.input_range - afe.dc_offset;
+            y[i] /= 1e3;
+        }
     }
 
     /* Delete copy constructors until we need them. */

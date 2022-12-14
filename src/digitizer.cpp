@@ -550,6 +550,11 @@ void Digitizer::ConfigureDefaultAcquisition()
     if (result != sizeof(transfer))
         throw DigitizerException(fmt::format("Failed to get transfer parameters, result {}.", result));
 
+    struct ADQDataReadoutParameters readout;
+    result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_DATA_READOUT, &readout);
+    if (result != sizeof(readout))
+        throw DigitizerException(fmt::format("Failed to get readout parameters, result {}.", result));
+
     /* The default acquisition parameters is an infinite stream of records from
        each available channel triggered by the periodic event generator. */
     for (int i = 0; i < constant.nof_channels; ++i)
@@ -566,6 +571,10 @@ void Digitizer::ConfigureDefaultAcquisition()
         transfer.channel[i].record_size = 2 * acquisition.channel[i].record_length;
         transfer.channel[i].record_buffer_size = transfer.channel[i].record_size;
         transfer.channel[i].metadata_buffer_size = sizeof(ADQGen4RecordHeader);
+
+        /* TODO: Only if FWATD? */
+        readout.channel[i].nof_record_buffers_max = ADQ_INFINITE_NOF_RECORD_BUFFERS;
+        readout.channel[i].record_buffer_size_max = ADQ_INFINITE_RECORD_LENGTH;
     }
 
     /* Default trigger frequency of 5 Hz. */
@@ -582,6 +591,10 @@ void Digitizer::ConfigureDefaultAcquisition()
     result = ADQ_SetParameters(m_id.handle, m_id.index, &transfer);
     if (result != sizeof(transfer))
         throw DigitizerException(fmt::format("Failed to set transfer parameters, result {}.", result));
+
+    result = ADQ_SetParameters(m_id.handle, m_id.index, &readout);
+    if (result != sizeof(readout))
+        throw DigitizerException(fmt::format("Failed to set readout parameters, result {}.", result));
 #endif
 }
 

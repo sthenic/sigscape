@@ -88,9 +88,20 @@ void DataProcessing::MainLoop()
             auto processed_record = std::make_shared<ProcessedRecord>();
             processed_record->label = m_label;
 
-            /* Local alias */
-            const double code_normalization = m_constant.channel[channel].code_normalization;
-            /* FIXME: Divide by the number of accumulations if FWATD. */
+            /* Determine the code normalization value to use to convert the data
+               from ADC codes to Volts. Divide by the number of accumulations if
+               we're running FWATD. */
+
+            double code_normalization =
+                static_cast<double>(m_constant.channel[channel].code_normalization);
+
+            if (m_constant.firmware.type == ADQ_FIRMWARE_TYPE_FWATD)
+            {
+                if (time_domain->header->firmware_specific > 0)
+                    code_normalization /= time_domain->header->firmware_specific;
+                else
+                    printf("Expected a nonzero number of accumulations, skipping normalization.\n");
+            }
 
             /* FIXME: Windowing in the time domain struct?  */
             /* FIXME: This can throw if data format is unsupported. */
@@ -130,7 +141,8 @@ void DataProcessing::MainLoop()
                 break;
 
             default:
-                printf("Unknown data format '%d', aborting.\n", time_domain->header->data_format);
+                printf("Unknown data format '%" PRIu8 "', aborting.\n",
+                       time_domain->header->data_format);
                 m_thread_exit_code = ADQR_EINTERNAL;
                 return;
             }

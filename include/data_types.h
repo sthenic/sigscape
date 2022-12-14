@@ -48,20 +48,16 @@ struct TimeDomainRecord : public BaseRecord
         , estimated_trigger_frequency(0)
         , estimated_throughput(0)
         , sampling_frequency(0)
-        , record_start(0)
         , range_max(0)
         , range_min(0)
         , range_mid(0)
     {
-        /* FIXME: Assuming two bytes per sample. */
-
         /* The time unit is specified in picoseconds at most. Given that we're
            using a 32-bit float, we truncate any information beyond that point. */
-
         int time_unit_ps = static_cast<int>(raw->header->time_unit * 1e12);
         double time_unit = static_cast<double>(time_unit_ps) * 1e-12;
         step = static_cast<double>(raw->header->sampling_period) * time_unit;
-        record_start = static_cast<double>(raw->header->record_start) * time_unit;
+        double record_start = static_cast<double>(raw->header->record_start) * time_unit;
 
         /* This will be an integer number of Hz */
         sampling_frequency = std::round(1.0 / step);
@@ -70,12 +66,12 @@ struct TimeDomainRecord : public BaseRecord
         {
         case ADQ_DATA_FORMAT_INT16:
             Transform(static_cast<const int16_t *>(raw->data), record_start, step,
-                      code_normalization, afe, x, y);
+                      code_normalization, afe.input_range, afe.dc_offset, x, y);
             break;
 
         case ADQ_DATA_FORMAT_INT32:
             Transform(static_cast<const int32_t *>(raw->data), record_start, step,
-                      code_normalization, afe, x, y);
+                      code_normalization, afe.input_range, afe.dc_offset, x, y);
             break;
 
         default:
@@ -90,16 +86,15 @@ struct TimeDomainRecord : public BaseRecord
     }
 
     template <typename T>
-    static void Transform(const T *data, double record_start, double step,
-                          double code_normalization,
-                          const struct ADQAnalogFrontendParametersChannel &afe,
+    static void Transform(const T *data, double record_start, double sampling_period,
+                          double code_normalization, double input_range, double dc_offset,
                           std::vector<double> &x, std::vector<double> &y)
     {
         for (size_t i = 0; i < x.size(); ++i)
         {
-            x[i] = record_start + i * step;
-            y[i] = static_cast<double>(data[i]) / code_normalization * afe.input_range - afe.dc_offset;
-            y[i] /= 1e3;
+            x[i] = record_start + i * sampling_period;
+            y[i] = static_cast<double>(data[i]) / code_normalization * input_range - dc_offset;
+            y[i] /= 1e3; /* The value is in millivolts before we scale it. */
         }
     }
 
@@ -111,7 +106,6 @@ struct TimeDomainRecord : public BaseRecord
     double estimated_trigger_frequency;
     double estimated_throughput;
     double sampling_frequency;
-    double record_start;
     double range_max;
     double range_min;
     double range_mid;

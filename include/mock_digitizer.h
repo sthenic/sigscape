@@ -8,7 +8,9 @@
 class MockDigitizer
 {
 public:
-    MockDigitizer(const std::string &serial_number, int nof_channels);
+    MockDigitizer(const std::string &serial_number,
+                  const struct ADQConstantParametersFirmware &firmware,
+                  int nof_channels);
 
     /* FIXME: Mockup control functions. */
 

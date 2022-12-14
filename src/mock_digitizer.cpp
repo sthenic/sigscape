@@ -27,7 +27,8 @@ sampling frequency:
     500e6, 500e6
 )""";
 
-MockDigitizer::MockDigitizer(const std::string &serial_number, int nof_channels)
+MockDigitizer::MockDigitizer(const std::string &serial_number,
+                             const struct ADQConstantParametersFirmware &firmware, int nof_channels)
     : m_constant{}
     , m_afe{}
     , m_generators{}
@@ -37,16 +38,18 @@ MockDigitizer::MockDigitizer(const std::string &serial_number, int nof_channels)
     m_constant.id = ADQ_PARAMETER_ID_CONSTANT;
     m_constant.magic = ADQ_PARAMETERS_MAGIC;
     m_constant.nof_channels = nof_channels;
-    std::strncpy(m_constant.serial_number, serial_number.c_str(),
-                 std::min(sizeof(m_constant.serial_number), serial_number.size()));
 
+    std::strncpy(m_constant.serial_number, serial_number.c_str(),
+                 std::min(sizeof(m_constant.serial_number), serial_number.size() + 1));
+
+    m_constant.firmware = firmware;
     m_afe.id = ADQ_PARAMETER_ID_ANALOG_FRONTEND;
     m_afe.magic = ADQ_PARAMETERS_MAGIC;
 
     for (int ch = 0; ch < nof_channels; ++ch)
     {
         m_constant.channel[ch].label[0] = "ABCDEFGH"[ch];
-        m_constant.channel[ch].code_normalization = 65536.0;
+        m_constant.channel[ch].code_normalization = 65536;
         m_afe.channel[ch].input_range = 2500;
         m_afe.channel[ch].dc_offset = 0;
         m_generators.push_back(std::make_unique<Generator>());

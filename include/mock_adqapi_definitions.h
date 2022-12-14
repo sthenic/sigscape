@@ -126,7 +126,19 @@ enum ADQParameterId
 struct ADQConstantParametersChannel
 {
     char label[8];
-    double code_normalization;
+    int64_t code_normalization;
+};
+
+enum ADQFirmwareType
+{
+    ADQ_FIRMWARE_TYPE_FWDAQ = 0,
+    ADQ_FIRMWARE_TYPE_FWATD = 1
+};
+
+struct ADQConstantParametersFirmware
+{
+    enum ADQFirmwareType type;
+    char name[32];
 };
 
 /* A reduced version of the set of constant parameters. */
@@ -137,7 +149,7 @@ struct ADQConstantParameters
   char serial_number[16];
   char product_name[32];
   char product_options[32];
-  char firmware_name[32];
+  struct ADQConstantParametersFirmware firmware;
   struct ADQConstantParametersChannel channel[ADQ_MAX_NOF_CHANNELS];
   uint64_t magic;
 };

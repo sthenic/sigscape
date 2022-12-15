@@ -72,6 +72,12 @@ public:
         return m_write_queue.Write(message);
     }
 
+    template<class... Args>
+    int EmplaceMessage(Args &&... args)
+    {
+        return PushMessage(T(std::forward<Args>(args)...));
+    }
+
 protected:
     std::thread m_thread;
     std::promise<void> m_signal_stop;

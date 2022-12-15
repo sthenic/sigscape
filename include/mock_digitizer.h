@@ -2,6 +2,7 @@
 #define MOCK_DIGITIZER_H_STIYJN
 
 #include "generator.h"
+#include "mock_system_manager.h"
 #include "mock_adqapi_definitions.h"
 #include <vector>
 
@@ -30,10 +31,13 @@ public:
     int GetParametersString(enum ADQParameterId id, char *const string, size_t length, int format);
     int ValidateParametersString( const char *const string, size_t length);
 
+    int SmTransaction(uint16_t cmd, void *wr_buf, size_t wr_buf_len, void *rd_buf, size_t rd_buf_len);
+    int SmTransactionImmediate(uint16_t cmd, void *wr_buf, size_t wr_buf_len, void *rd_buf, size_t rd_buf_len);
 private:
     struct ADQConstantParameters m_constant;
     struct ADQAnalogFrontendParameters m_afe;
     std::vector<std::unique_ptr<Generator>> m_generators;
+    std::unique_ptr<MockSystemManager> m_sysman;
     static const std::string DEFAULT_TOP_PARAMETERS;
     static const std::string DEFAULT_CLOCK_SYSTEM_PARAMETERS;
     std::string m_top_parameters;

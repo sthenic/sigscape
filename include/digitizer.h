@@ -113,7 +113,26 @@ struct DigitizerMessage
     WindowType window_type;
 };
 
-class Digitizer : public MessageThread<Digitizer, struct DigitizerMessage>
+struct SensorReading
+{
+    int id;
+    std::string label;
+    float value;
+};
+
+struct SensorGroupReadings
+{
+    int id;
+    std::string label;
+    std::vector<SensorReading> sensors;
+};
+
+struct SensorReadings
+{
+    std::vector<SensorGroupReadings> groups;
+};
+
+class Digitizer : public MessageThread<Digitizer, DigitizerMessage>
 {
 public:
     Digitizer(void *handle, int index);
@@ -158,11 +177,15 @@ private:
     /* The digitizer's data processing threads, one per channel. */
     std::vector<std::unique_ptr<DataProcessing>> m_processing_threads;
 
+    /* Sensor readings. */
+    ThreadSafeQueue<std::shared_ptr<SensorReadings>> m_sensor_readings;
+
     void ProcessMessages();
     void ProcessWatcherMessages();
     void ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watcher,
                                 std::shared_ptr<std::string> &str,
                                 DigitizerMessageId dirty_id);
+    void MaybeReadSensors();
 
     void StartDataAcquisition();
     void StopDataAcquisition();

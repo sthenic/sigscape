@@ -37,6 +37,12 @@ public:
     int GetParametersString(int adq_num, enum ADQParameterId id, char *const string, size_t length, int format);
     int ValidateParametersString(int adq_num,  const char *const string, size_t length);
 
+    int SmTransaction(int adq_num, uint16_t cmd, void *wr_buf, size_t wr_buf_len, void *rd_buf,
+                      size_t rd_buf_len);
+
+    int SmTransactionImmediate(int adq_num, uint16_t cmd, void *wr_buf, size_t wr_buf_len,
+                               void *rd_buf, size_t rd_buf_len);
+
 private:
     std::vector<std::unique_ptr<MockDigitizer>> m_digitizers;
     std::vector<ADQInfoListEntry> m_info_list;
@@ -63,5 +69,11 @@ int ADQ_InitializeParametersString(void *adq_cu, int adq_num, enum ADQParameterI
 int ADQ_SetParametersString(void *adq_cu, int adq_num, const char *const string, size_t length);
 int ADQ_GetParametersString(void *adq_cu, int adq_num, enum ADQParameterId id, char *const string, size_t length, int format);
 int ADQ_ValidateParametersString(void *adq_cu, int adq_num,  const char *const string, size_t length);
+
+int ADQ_SmTransaction(void *adq_cu, int adq_num, uint16_t cmd, void *wr_buf, size_t wr_buf_len,
+                      void *rd_buf, size_t rd_buf_len);
+
+int ADQ_SmTransactionImmediate(void *adq_cu, int adq_num, uint16_t cmd, void *wr_buf,
+                               size_t wr_buf_len, void *rd_buf, size_t rd_buf_len);
 
 #endif

@@ -121,6 +121,24 @@ int MockAdqApi::ValidateParametersString(int adq_num,  const char *const string,
     return m_digitizers[adq_num - 1]->ValidateParametersString(string, length);
 }
 
+int MockAdqApi::SmTransaction(int adq_num, uint16_t cmd, void *wr_buf, size_t wr_buf_len,
+                              void *rd_buf, size_t rd_buf_len)
+{
+    /* -1 to follow the convention of the ADQAPI. */
+    if ((adq_num == 0) || (adq_num > static_cast<int>(m_digitizers.size())))
+        return ADQ_EINVAL;
+    return m_digitizers[adq_num - 1]->SmTransaction(cmd, wr_buf, wr_buf_len, rd_buf, rd_buf_len);
+}
+
+int MockAdqApi::SmTransactionImmediate(int adq_num, uint16_t cmd, void *wr_buf, size_t wr_buf_len,
+                                       void *rd_buf, size_t rd_buf_len)
+{
+    /* -1 to follow the convention of the ADQAPI. */
+    if ((adq_num == 0) || (adq_num > static_cast<int>(m_digitizers.size())))
+        return ADQ_EINVAL;
+    return m_digitizers[adq_num - 1]->SmTransactionImmediate(cmd, wr_buf, wr_buf_len, rd_buf, rd_buf_len);
+}
+
 void *CreateADQControlUnit()
 {
     return &mock_adqapi;
@@ -221,3 +239,18 @@ int ADQ_ValidateParametersString(void *adq_cu, int adq_num,  const char *const s
     return static_cast<MockAdqApi *>(adq_cu)->ValidateParametersString(adq_num, string, length);
 }
 
+int ADQ_SmTransaction(void *adq_cu, int adq_num, uint16_t cmd, void *wr_buf, size_t wr_buf_len,
+                      void *rd_buf, size_t rd_buf_len)
+{
+    if (adq_cu == NULL)
+        return ADQ_EINVAL;
+    return static_cast<MockAdqApi *>(adq_cu)->SmTransaction(adq_num, cmd, wr_buf, wr_buf_len, rd_buf, rd_buf_len);
+}
+
+int ADQ_SmTransactionImmediate(void *adq_cu, int adq_num, uint16_t cmd, void *wr_buf,
+                               size_t wr_buf_len, void *rd_buf, size_t rd_buf_len)
+{
+    if (adq_cu == NULL)
+        return ADQ_EINVAL;
+    return static_cast<MockAdqApi *>(adq_cu)->SmTransactionImmediate(adq_num, cmd, wr_buf, wr_buf_len, rd_buf, rd_buf_len);
+}

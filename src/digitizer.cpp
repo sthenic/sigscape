@@ -193,6 +193,11 @@ void Digitizer::MainLoop()
         ProcessMessages();
         ProcessWatcherMessages();
 
+#ifdef ENABLE_SYSMAN
+        /* Can't go faster than 10 Hz unless we change the wait but that should suffice. */
+        MaybeReadSensors();
+#endif
+
         /* We implement the sleep using the stop event to be able to immediately
             react to the event being set. */
         if (m_should_stop.wait_for(std::chrono::milliseconds(100)) == std::future_status::ready)
@@ -240,6 +245,24 @@ void Digitizer::ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watch
         default:
             break;
         }
+    }
+}
+
+void Digitizer::MaybeReadSensors()
+{
+    static auto last = std::chrono::high_resolution_clock::now();
+    const auto now = std::chrono::high_resolution_clock::now();
+
+    constexpr auto PERIOD_MS = 1000;
+    if ((now - last).count() / 1e6 >= PERIOD_MS)
+    {
+        /* FIXME: Implement */
+        int result = ADQ_SmTransaction(m_id.handle, m_id.index, 0x0300, NULL, 0, NULL, 0);
+        if (result != ADQ_EOK)
+            fprintf(stderr, "Sysman transaction failed w/ status %d.\n", result);
+
+        /* Update the timestamp. */
+        last = now;
     }
 }
 

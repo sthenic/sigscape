@@ -33,6 +33,7 @@ MockDigitizer::MockDigitizer(const std::string &serial_number,
     : m_constant{}
     , m_afe{}
     , m_generators{}
+    , m_sysman(std::make_unique<MockSystemManager>())
     , m_top_parameters(DEFAULT_TOP_PARAMETERS)
     , m_clock_system_parameters(DEFAULT_CLOCK_SYSTEM_PARAMETERS)
 {
@@ -59,7 +60,8 @@ MockDigitizer::MockDigitizer(const std::string &serial_number,
 
 int MockDigitizer::SetupDevice()
 {
-    /* FIXME: Anything here? */
+    /* Start the system manager and emulate the rest as a delay. */
+    m_sysman->Start();
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     return 1;
 }
@@ -265,12 +267,52 @@ int MockDigitizer::GetParametersString(enum ADQParameterId id, char *const strin
     }
 }
 
-int MockDigitizer::ValidateParametersString( const char *const string, size_t length)
+int MockDigitizer::ValidateParametersString(const char *const string, size_t length)
 {
     /* FIXME: Implement */
     (void)string;
     (void)length;
     return ADQ_EUNSUPPORTED;
+}
+
+int MockDigitizer::SmTransaction(uint16_t cmd, void *wr_buf, size_t wr_buf_len, void *rd_buf,
+                                 size_t rd_buf_len)
+{
+    if (wr_buf_len > 0 && wr_buf == NULL)
+        return ADQ_EINVAL;
+    if (rd_buf_len > 0 && rd_buf == NULL)
+        return ADQ_EINVAL;
+
+    /* Add write message. */
+    int result = m_sysman->EmplaceMessage(cmd, wr_buf, wr_buf_len);
+    if (result != ADQ_EOK)
+        return result;
+
+    /* Wait for the reply. */
+    SystemManagerMessage reply;
+    result = m_sysman->WaitForMessage(reply, 250);
+
+    /* Write the response data to the read buffer. */
+    if (rd_buf_len > 0)
+    {
+        if (reply.data.size() != rd_buf_len)
+        {
+            printf("System manager read length mismatch, got %zu, expected %zu.\n", reply.data.size(),
+                rd_buf_len);
+            return ADQ_EINTERNAL;
+        }
+
+        std::memcpy(rd_buf, reply.data.data(), reply.data.size());
+    }
+
+    return result;
+}
+
+int MockDigitizer::SmTransactionImmediate(uint16_t cmd, void *wr_buf, size_t wr_buf_len,
+                                          void *rd_buf, size_t rd_buf_len)
+{
+    /* Exactly the same implementation since everything is emulated in software. */
+    return SmTransaction(cmd, wr_buf, wr_buf_len, rd_buf, rd_buf_len);
 }
 
 template<typename T>

@@ -147,6 +147,7 @@ if(NO_ADQAPI)
     target_sources(${PROJECT_NAME} PRIVATE
         src/mock_adqapi.cpp
         src/mock_digitizer.cpp
+        src/mock_system_manager.cpp
         src/generator.cpp)
 endif()
 

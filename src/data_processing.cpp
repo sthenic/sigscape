@@ -89,8 +89,8 @@ void DataProcessing::MainLoop()
             processed_record->label = m_label;
 
             /* Determine the code normalization value to use to convert the data
-               from ADC codes to Volts. Divide by the number of accumulations if
-               we're running FWATD. */
+               from ADC codes to Volts. Multiply by the number of accumulations
+               if we're running FWATD (normalizing with a higher value). */
 
             double code_normalization =
                 static_cast<double>(m_constant.channel[channel].code_normalization);
@@ -98,7 +98,7 @@ void DataProcessing::MainLoop()
             if (m_constant.firmware.type == ADQ_FIRMWARE_TYPE_FWATD)
             {
                 if (time_domain->header->firmware_specific > 0)
-                    code_normalization /= time_domain->header->firmware_specific;
+                    code_normalization *= time_domain->header->firmware_specific;
                 else
                     printf("Expected a nonzero number of accumulations, skipping normalization.\n");
             }

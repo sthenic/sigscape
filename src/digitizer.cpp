@@ -573,7 +573,7 @@ void Digitizer::ConfigureDefaultAcquisition()
         transfer.channel[i].metadata_buffer_size = sizeof(ADQGen4RecordHeader);
 
         /* TODO: Only if FWATD? */
-        readout.channel[i].nof_record_buffers_max = ADQ_INFINITE_NOF_RECORD_BUFFERS;
+        readout.channel[i].nof_record_buffers_max = ADQ_INFINITE_NOF_RECORDS;
         readout.channel[i].record_buffer_size_max = ADQ_INFINITE_RECORD_LENGTH;
     }
 

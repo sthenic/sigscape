@@ -12,10 +12,10 @@ void Identification::MainLoop()
 
 #ifdef NO_ADQAPI
     static_cast<MockAdqApi *>(handle)->AddDigitizer(
-        "SPD-SIM01", {ADQ_FIRMWARE_TYPE_FWDAQ, "1CH-FWDAQ"}, 1, PID_ADQ32
+        "SPD-SIM01", {ADQ_FIRMWARE_TYPE_FWDAQ, "1CH-FWDAQ"}, {2500.0}, 1, PID_ADQ32
     );
     static_cast<MockAdqApi *>(handle)->AddDigitizer(
-        "SPD-SIM02", {ADQ_FIRMWARE_TYPE_FWDAQ, "2CH-FWDAQ"}, 2, PID_ADQ36
+        "SPD-SIM02", {ADQ_FIRMWARE_TYPE_FWDAQ, "2CH-FWDAQ"}, {2500.0, 1000.0}, 2, PID_ADQ36
     );
 #endif
 

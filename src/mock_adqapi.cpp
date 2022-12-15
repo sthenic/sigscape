@@ -8,10 +8,11 @@ static MockAdqApi mock_adqapi;
 /* Mockup control functions */
 void MockAdqApi::AddDigitizer(const std::string &serial_number,
                               const struct ADQConstantParametersFirmware &firmware,
-                              int nof_channels,
+                              const std::vector<double> &input_range, int nof_channels,
                               enum ADQProductID_Enum pid)
 {
-    m_digitizers.push_back(std::make_unique<MockDigitizer>(serial_number, firmware, nof_channels));
+    m_digitizers.push_back(
+        std::make_unique<MockDigitizer>(serial_number, firmware, input_range, nof_channels));
     m_info_list.push_back({pid});
 }
 

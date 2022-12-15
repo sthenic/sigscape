@@ -15,7 +15,8 @@ public:
 
     /* Mockup control functions. */
     void AddDigitizer(const std::string &serial_number,
-                      const struct ADQConstantParametersFirmware &firmware, int nof_channels,
+                      const struct ADQConstantParametersFirmware &firmware,
+                      const std::vector<double> &input_range, int nof_channels,
                       enum ADQProductID_Enum pid);
 
     /* Mocked functions. */

@@ -28,7 +28,8 @@ sampling frequency:
 )""";
 
 MockDigitizer::MockDigitizer(const std::string &serial_number,
-                             const struct ADQConstantParametersFirmware &firmware, int nof_channels)
+                             const struct ADQConstantParametersFirmware &firmware,
+                             const std::vector<double> &input_range, int nof_channels)
     : m_constant{}
     , m_afe{}
     , m_generators{}
@@ -50,7 +51,7 @@ MockDigitizer::MockDigitizer(const std::string &serial_number,
     {
         m_constant.channel[ch].label[0] = "ABCDEFGH"[ch];
         m_constant.channel[ch].code_normalization = 65536;
-        m_afe.channel[ch].input_range = 2500;
+        m_afe.channel[ch].input_range = input_range[ch];
         m_afe.channel[ch].dc_offset = 0;
         m_generators.push_back(std::make_unique<Generator>());
     }

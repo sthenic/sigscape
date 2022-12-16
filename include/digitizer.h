@@ -185,7 +185,9 @@ private:
     void ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watcher,
                                 std::shared_ptr<std::string> &str,
                                 DigitizerMessageId dirty_id);
-    void MaybeReadSensors();
+
+    void InitializeSystemManagerObjects();
+    void UpdateSystemManagerObjects();
 
     void StartDataAcquisition();
     void StopDataAcquisition();

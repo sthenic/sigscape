@@ -284,13 +284,15 @@ int MockDigitizer::SmTransaction(uint16_t cmd, void *wr_buf, size_t wr_buf_len, 
         return ADQ_EINVAL;
 
     /* Add write message. */
-    int result = m_sysman->EmplaceMessage(cmd, wr_buf, wr_buf_len);
+    int result = m_sysman->EmplaceMessage(static_cast<SystemManagerCommand>(cmd), wr_buf, wr_buf_len);
     if (result != ADQ_EOK)
         return result;
 
     /* Wait for the reply. */
     SystemManagerMessage reply;
     result = m_sysman->WaitForMessage(reply, 250);
+    if (result != ADQ_EOK)
+        return result;
 
     /* Write the response data to the read buffer. */
     if (rd_buf_len > 0)
@@ -305,7 +307,7 @@ int MockDigitizer::SmTransaction(uint16_t cmd, void *wr_buf, size_t wr_buf_len, 
         std::memcpy(rd_buf, reply.data.data(), reply.data.size());
     }
 
-    return result;
+    return reply.result;
 }
 
 int MockDigitizer::SmTransactionImmediate(uint16_t cmd, void *wr_buf, size_t wr_buf_len,

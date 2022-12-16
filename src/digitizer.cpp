@@ -13,6 +13,7 @@
    messages are processed by a handler that's specific to the current state. */
 
 #include "digitizer.h"
+#include "system_manager.h"
 #include "fmt/core.h"
 #include "fmt/format.h"
 
@@ -187,6 +188,11 @@ void Digitizer::MainLoop()
     m_read_queue.EmplaceWrite(DigitizerMessageId::NOF_CHANNELS, constant.nof_channels);
     SetState(DigitizerState::IDLE);
 
+#ifdef ENABLE_SYSMAN
+    /* Initialize the objects associated with the system manager, like sensors and boot status. */
+    InitializeSystemManagerObjects();
+#endif
+
     m_thread_exit_code = ADQR_EOK;
     for (;;)
     {
@@ -195,7 +201,7 @@ void Digitizer::MainLoop()
 
 #ifdef ENABLE_SYSMAN
         /* Can't go faster than 10 Hz unless we change the wait but that should suffice. */
-        MaybeReadSensors();
+        UpdateSystemManagerObjects();
 #endif
 
         /* We implement the sleep using the stop event to be able to immediately
@@ -248,7 +254,56 @@ void Digitizer::ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watch
     }
 }
 
-void Digitizer::MaybeReadSensors()
+void Digitizer::InitializeSystemManagerObjects()
+{
+    uint32_t nof_sensors;
+    int result = ADQ_SmTransactionImmediate(m_id.handle, m_id.index,
+                                            SystemManagerCommand::SENSOR_GET_NOF_SENSORS, NULL,
+                                            0, &nof_sensors, sizeof(nof_sensors));
+    if (result != ADQ_EOK)
+    {
+        std::fprintf(stderr, "Failed to read the number of sensors, status %d.\n", result);
+        return;
+    }
+    printf("The sensor map has %" PRIu32 " entries.\n", nof_sensors);
+
+    std::vector<uint32_t> sensor_map(nof_sensors + 1); /* +1 for EOM */
+    result =
+        ADQ_SmTransactionImmediate(m_id.handle, m_id.index, SystemManagerCommand::SENSOR_GET_MAP,
+                                   NULL, 0, sensor_map.data(),
+                                   sizeof(sensor_map[0]) * sensor_map.size());
+    if (result != ADQ_EOK)
+    {
+        std::fprintf(stderr, "Failed to read the sensor map, status %d.\n", result);
+        return;
+    }
+
+    sensor_map.resize(nof_sensors);
+    std::stringstream ss;
+    ss << "Map: ";
+    for (const auto &id : sensor_map)
+        ss << id << " ";
+    printf("%s\n", ss.str().c_str());
+
+    for (auto &id : sensor_map)
+    {
+        struct SensorInformation information;
+        result = ADQ_SmTransactionImmediate(m_id.handle, m_id.index,
+                                            SystemManagerCommand::SENSOR_GET_INFO, &id, sizeof(id),
+                                            &information, sizeof(information));
+        if (result != ADQ_EOK)
+        {
+            std::fprintf(stderr, "Failed to read sensor information, status %d.\n", result);
+            return;
+        }
+
+        printf("Sensor %" PRIu32 ": (%" PRIu32 ") %s\n", id, information.group_id, information.label);
+    }
+
+    /* FIXME: Implement */
+}
+
+void Digitizer::UpdateSystemManagerObjects()
 {
     static auto last = std::chrono::high_resolution_clock::now();
     const auto now = std::chrono::high_resolution_clock::now();
@@ -256,13 +311,10 @@ void Digitizer::MaybeReadSensors()
     constexpr auto PERIOD_MS = 1000;
     if ((now - last).count() / 1e6 >= PERIOD_MS)
     {
-        /* FIXME: Implement */
-        int result = ADQ_SmTransaction(m_id.handle, m_id.index, 0x0300, NULL, 0, NULL, 0);
-        if (result != ADQ_EOK)
-            fprintf(stderr, "Sysman transaction failed w/ status %d.\n", result);
-
         /* Update the timestamp. */
         last = now;
+
+        /* FIXME: Implement */
     }
 }
 
@@ -482,7 +534,7 @@ void Digitizer::HandleMessageInState(const struct DigitizerMessage &message)
     catch (const DigitizerException &e)
     {
         /* TODO: Propagate message in some other way? We just write it to stderr for now. */
-        fprintf(stderr, "%s", fmt::format("ERROR: {}\n", e.what()).c_str());
+        std::fprintf(stderr, "%s", fmt::format("ERROR: {}\n", e.what()).c_str());
         m_read_queue.EmplaceWrite(DigitizerMessageId::ERR);
     }
 }

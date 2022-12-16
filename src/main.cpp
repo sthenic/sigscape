@@ -13,7 +13,7 @@ static GLFWwindow *window = NULL;
 
 static void GlfwErrorCallback(int error, const char *description)
 {
-    fprintf(stderr, "Glfw Error %d: %s\n", error, description);
+    std::fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
 static bool SavePng(const std::string &filename, uint8_t *pixels, int width, int height)
@@ -115,7 +115,7 @@ int main(int, char **)
 
     if (gl3wInit())
     {
-        fprintf(stderr, "Failed to initialize OpenGL loader!\n");
+        std::fprintf(stderr, "Failed to initialize OpenGL loader!\n");
         return -1;
     }
 

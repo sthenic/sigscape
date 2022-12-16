@@ -2,44 +2,69 @@
 #define MOCK_SYSTEM_MANAGER_H_BINPXO
 
 #include "message_thread.h"
+#include "system_manager.h"
+
 #include <cstdint>
+#include <map>
+#include <random>
 
 struct SystemManagerMessage
 {
     SystemManagerMessage() = default;
 
-    /* Create a message w/o any data. */
-    SystemManagerMessage(uint16_t cmd)
+    SystemManagerMessage(SystemManagerCommand cmd)
         : cmd(cmd)
         , data{}
+        , result(0)
     {}
 
-    /* Create a message with both a command and data. */
-    SystemManagerMessage(uint16_t cmd, std::vector<uint8_t> &data)
+    SystemManagerMessage(int result)
+        : cmd()
+        , data{}
+        , result(result)
+    {}
+
+    /* FIXME: Maybe remove? */
+    SystemManagerMessage(SystemManagerCommand cmd, std::vector<uint8_t> &data)
         : cmd(cmd)
         , data(data)
+        , result(0)
     {}
 
-    /* Create a message with both a command and data. */
-    SystemManagerMessage(uint16_t cmd, void *buffer, size_t len)
+    SystemManagerMessage(SystemManagerCommand cmd, const void *buffer, size_t len)
         : cmd(cmd)
         , data{}
+        , result(0)
     {
         if (buffer != NULL)
         {
-            const auto ldata = static_cast<uint8_t *>(buffer);
+            auto ldata = static_cast<const uint8_t *>(buffer);
             data.insert(data.end(), ldata, ldata + len);
         }
     }
 
-    /* Create a message with just data and data. */
-    SystemManagerMessage(std::vector<uint8_t> &data)
+    /* FIXME: Maybe remove? */
+    SystemManagerMessage(std::vector<uint8_t> &data, int result = 0)
         : cmd()
         , data(data)
+        , result(result)
     {}
 
-    uint16_t cmd;
+    SystemManagerMessage(const void *buffer, size_t len, int result = 0)
+        : cmd()
+        , data{}
+        , result(result)
+    {
+        if (buffer != NULL)
+        {
+            auto ldata = static_cast<const uint8_t *>(buffer);
+            data.insert(data.end(), ldata, ldata + len);
+        }
+    }
+
+    SystemManagerCommand cmd;
     std::vector<uint8_t> data;
+    int result;
 };
 
 class MockSystemManager : public MessageThread<MockSystemManager, SystemManagerMessage>
@@ -56,8 +81,13 @@ public:
     void MainLoop() override;
 
 private:
-    void HandleMessages();
-    void UpdateSensors();
+    std::default_random_engine m_random_generator;
+    std::vector<uint32_t> m_sensor_map;
+    std::map<uint32_t, SensorGroupInformation> m_sensor_group_information;
+    std::map<uint32_t, SensorInformation> m_sensor_information;
+    std::map<uint32_t, std::normal_distribution<float>> m_sensors;
+
+    int HandleMessage();
 };
 
 #endif

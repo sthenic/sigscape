@@ -152,6 +152,9 @@ private:
     static void GetClosestSampleIndex(double x, double y, const BaseRecord *record,
                                       const ImPlotRect &view, size_t &index);
 
+    void PlotSensorsSelected();
+    void RenderChannelPlot();
+    void RenderSensorPlot();
     void RenderTimeDomain(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size);
 

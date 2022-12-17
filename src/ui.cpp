@@ -900,11 +900,13 @@ void Ui::RenderSensorGroup(const SensorGroup &group, bool is_first)
             {
                 if (ImGui::MenuItem("Plot"))
                     printf("Plot sensor %d\n", sensor.id);
+                if (ImGui::MenuItem("High frequency capture"))
+                    printf("High frequency capture sensor %d\n", sensor.id);
                 ImGui::EndPopup();
             }
 
             if (sensor.status != 0 && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
-                ImGui::SetTooltip("%s", sensor.hover.c_str());
+                ImGui::SetTooltip("%s", sensor.note.c_str());
 
             ImGui::TableSetColumnIndex(1);
             if (sensor.status != 0)
@@ -915,7 +917,7 @@ void Ui::RenderSensorGroup(const SensorGroup &group, bool is_first)
             }
             else
             {
-                ImGui::Text(fmt::format("{:7.3f} {}", sensor.value, sensor.unit));
+                ImGui::Text(fmt::format("{:7.3f} {}", sensor.values.back(), sensor.unit));
             }
         }
 
@@ -995,6 +997,13 @@ void Ui::RenderTools(const ImVec2 &position, const ImVec2 &size)
         if (ImGui::BeginTabItem("Sensors"))
         {
             RenderSensors();
+            ImGui::EndTabItem();
+        }
+
+        if (ImGui::BeginTabItem("Boot"))
+        {
+            /* FIXME: Implement */
+            WIP();
             ImGui::EndTabItem();
         }
 
@@ -1435,14 +1444,10 @@ void Ui::RemoveDoubleClickedMarkers(Markers &markers)
     }
 }
 
-void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
+void Ui::RenderChannelPlot()
 {
-    ImGui::SetNextWindowPos(position);
-    ImGui::SetNextWindowSize(size);
-    ImGui::Begin("Time Domain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-    m_is_time_domain_collapsed = ImGui::IsWindowCollapsed();
     ImPlot::PushStyleVar(ImPlotStyleVar_FitPadding, ImVec2(0.0f, 0.1f));
-    if (ImPlot::BeginPlot("Time domain", ImVec2(-1, -1), ImPlotFlags_NoTitle))
+    if (ImPlot::BeginPlot("Channels##Plot", ImVec2(-1, -1), ImPlotFlags_NoTitle))
     {
         ImPlot::SetupLegend(ImPlotLocation_NorthEast, ImPlotLegendFlags_Sort);
         ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric, (void *)"s");
@@ -1460,9 +1465,72 @@ void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
 
         /* Update the units per division. It's imperative that this is carried
            out after ImPlot::EndPlot() has been called. */
-        GetUnitsPerDivision("Time domain", m_time_domain_units_per_division);
+        GetUnitsPerDivision("Channels##Plot", m_time_domain_units_per_division);
     }
     ImPlot::PopStyleVar();
+}
+
+void Ui::PlotSensorsSelected()
+{
+    /* FIXME: Rework all this selection logic. */
+    for (const auto &digitizer : m_digitizers)
+    {
+        if (!digitizer.ui.is_selected || digitizer.ui.sensors == NULL)
+            continue;
+
+        /* FIXME: Placeholder targeting a specific group. Actually implement
+                  selection state in the UI. */
+        for (const auto &sensor : digitizer.ui.sensors->at(2).sensors)
+        {
+            if (sensor.status != 0) /* FIXME: SYSMAN_EOK */
+                continue;
+
+            const auto label =
+                fmt::format("{}:{}", digitizer.ui.sensors->at(2).label[0], sensor.label);
+            ImPlot::PlotLine(label.c_str(), sensor.time_points.data(), sensor.values.data(),
+                             sensor.time_points.size());
+        }
+    }
+}
+
+void Ui::RenderSensorPlot()
+{
+    ImPlot::PushStyleVar(ImPlotStyleVar_FitPadding, ImVec2(0.0f, 0.1f));
+    if (ImPlot::BeginPlot("Sensors", ImVec2(-1, -1), ImPlotFlags_NoTitle))
+    {
+        ImPlot::SetupLegend(ImPlotLocation_NorthEast, ImPlotLegendFlags_Sort);
+        ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric, (void *)"s");
+        ImPlot::SetupAxis(ImAxis_X1, NULL, ImPlotAxisFlags_AutoFit);
+        PlotSensorsSelected();
+        ImPlot::EndPlot();
+
+        /* FIXME: Units per division */
+    }
+    ImPlot::PopStyleVar();
+}
+
+void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
+{
+    ImGui::SetNextWindowPos(position);
+    ImGui::SetNextWindowSize(size);
+    ImGui::Begin("Time Domain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+    m_is_time_domain_collapsed = ImGui::IsWindowCollapsed();
+    if (ImGui::BeginTabBar("Time Domain##TabBar"))
+    {
+        if (ImGui::BeginTabItem("Channels"))
+        {
+            RenderChannelPlot();
+            ImGui::EndTabItem();
+        }
+
+        if (ImGui::BeginTabItem("Sensors"))
+        {
+            RenderSensorPlot();
+            ImGui::EndTabItem();
+        }
+
+        ImGui::EndTabBar();
+    }
     ImGui::End();
 }
 
@@ -1472,7 +1540,7 @@ void Ui::RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size)
     ImGui::SetNextWindowSize(size);
     ImGui::Begin("Frequency Domain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
     m_is_frequency_domain_collapsed = ImGui::IsWindowCollapsed();
-    if (ImGui::BeginTabBar("Frequency Domain##TabBar", ImGuiTabBarFlags_None))
+    if (ImGui::BeginTabBar("Frequency Domain##TabBar"))
     {
         if (ImGui::BeginTabItem("FFT"))
         {

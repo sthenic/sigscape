@@ -122,16 +122,18 @@ struct Sensor
         , status(0)
         , label(label)
         , unit(unit)
-        , hover()
-        , value(0.0f)
+        , note()
+        , values{}
+        , time_points{}
     {}
 
     int id;
     int status;
     std::string label;
     std::string unit;
-    std::string hover;
-    float value;
+    std::string note;
+    std::vector<float> values;
+    std::vector<float> time_points;
 };
 
 struct SensorGroup

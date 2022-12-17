@@ -339,7 +339,8 @@ void Digitizer::InitializeSystemManagerObjects()
 void Digitizer::UpdateSystemManagerObjects()
 {
     const auto now = std::chrono::high_resolution_clock::now();
-    if ((now - m_sensor_last_timestamp).count() / 1e6 >= 1000.0) /* In milliseconds */
+    const double SAMPLING_PERIOD_MS = 1000.0;
+    if ((now - m_sensor_last_timestamp).count() / 1e6 >= SAMPLING_PERIOD_MS)
     {
         /* Update the timestamp. */
         m_sensor_last_timestamp = now;
@@ -353,15 +354,32 @@ void Digitizer::UpdateSystemManagerObjects()
                     static_cast<uint32_t>(sensor.id), SENSOR_FORMAT_FLOAT
                 };
 
+                float value = 0.0f;
                 sensor.status = ADQ_SmTransaction(m_id.handle, m_id.index,
                                                   SystemManagerCommand::SENSOR_GET_VALUE, &arg,
-                                                  sizeof(arg), &sensor.value, sizeof(sensor.value));
+                                                  sizeof(arg), &value, sizeof(value));
 
                 /* FIXME: SYSMAN_EOK? */
                 if (sensor.status != 0)
-                    sensor.hover = "Error description"; /* FIXME: Error code to text description? */
+                {
+                    /* FIXME: Error code to text description? */
+                    sensor.note = "Error description";
+                }
                 else
-                    sensor.hover.clear();
+                {
+                    /* FIXME: Configurable value or do we even need a cap? It's
+                              a very small amount of data compared to the
+                              records. */
+                    if (sensor.values.size() > 1000)
+                    {
+                        sensor.values.erase(sensor.values.begin());
+                        sensor.time_points.erase(sensor.time_points.begin());
+                    }
+
+                    sensor.values.emplace_back(value);
+                    double last = (sensor.time_points.size() > 0) ? sensor.time_points.back() : 0;
+                    sensor.time_points.emplace_back(last + SAMPLING_PERIOD_MS / 1e3);
+                }
             }
         }
 

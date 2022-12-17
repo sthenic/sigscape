@@ -3,7 +3,9 @@
 
 #include <cstdint>
 
-/* Since the ADQAPI does not provide these, we have to define our own. */
+/* Since the ADQAPI does not provide these, we have to define our own. This is
+   only a small subset of the system manager's protocol and can change at any
+   time. */
 
 enum SystemManagerCommand
 {

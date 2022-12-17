@@ -121,11 +121,11 @@ Digitizer::Digitizer(void *handle, int index)
     , m_watchers{}
     , m_parameters{}
     , m_processing_threads{}
-    , m_sensor_readings()
-    , m_sensor_readings_queue(0, true)
-    , m_last_sensor_reading(std::chrono::high_resolution_clock::now())
+    , m_sensor_data()
+    , m_sensor_data_queue(0, true)
+    , m_sensor_last_timestamp(std::chrono::high_resolution_clock::now())
 {
-    m_sensor_readings_queue.Start();
+    m_sensor_data_queue.Start();
 }
 
 Digitizer::~Digitizer()
@@ -143,9 +143,9 @@ int Digitizer::WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedReco
     return m_processing_threads[channel]->WaitForBuffer(record, 0);
 }
 
-int Digitizer::WaitForSensorData(std::shared_ptr<SensorReadings> &data)
+int Digitizer::WaitForSensorData(std::shared_ptr<SensorData> &data)
 {
-    int result = m_sensor_readings_queue.Read(data, 0);
+    int result = m_sensor_data_queue.Read(data, 0);
     // printf("result %d\n", result);
     return result;
 }
@@ -268,7 +268,7 @@ void Digitizer::ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watch
 void Digitizer::InitializeSystemManagerObjects()
 {
     /* FIXME: fprintf into exceptions? */
-    m_sensor_readings.clear();
+    m_sensor_data.clear();
     uint32_t nof_sensors;
     int result = ADQ_SmTransactionImmediate(m_id.handle, m_id.index,
                                             SystemManagerCommand::SENSOR_GET_NOF_SENSORS, NULL,
@@ -280,24 +280,30 @@ void Digitizer::InitializeSystemManagerObjects()
     }
 
     std::vector<uint32_t> sensor_map(nof_sensors + 1); /* +1 for EOM */
-    result =
-        ADQ_SmTransactionImmediate(m_id.handle, m_id.index, SystemManagerCommand::SENSOR_GET_MAP,
-                                   NULL, 0, sensor_map.data(),
-                                   sizeof(sensor_map[0]) * sensor_map.size());
+    result = ADQ_SmTransactionImmediate(m_id.handle, m_id.index,
+                                        SystemManagerCommand::SENSOR_GET_MAP,
+                                        NULL, 0, sensor_map.data(),
+                                        sizeof(sensor_map[0]) * sensor_map.size());
     if (result != ADQ_EOK)
     {
         std::fprintf(stderr, "Failed to read the sensor map, status %d.\n", result);
         return;
     }
 
+    /* Resize to remove EOM, then walk through the sensor map, retrieving the
+       static information about each sensor. While we have a flat sequence of
+       numbers, they appear clustered with the other sensors in their sensor
+       group. Thus, we can also discover the groups by detecting the first time
+       we read a sensor from a different group. */
+
     sensor_map.resize(nof_sensors);
     uint32_t group_id = 0;
-    for (auto &id : sensor_map)
+    for (auto &sensor_id : sensor_map)
     {
         struct SensorInformation information;
         result = ADQ_SmTransactionImmediate(m_id.handle, m_id.index,
-                                            SystemManagerCommand::SENSOR_GET_INFO, &id, sizeof(id),
-                                            &information, sizeof(information));
+                                            SystemManagerCommand::SENSOR_GET_INFO, &sensor_id,
+                                            sizeof(sensor_id), &information, sizeof(information));
         if (result != ADQ_EOK)
         {
             std::fprintf(stderr, "Failed to read sensor information, status %d.\n", result);
@@ -319,50 +325,47 @@ void Digitizer::InitializeSystemManagerObjects()
                 return;
             }
 
-            m_sensor_readings.try_emplace(group_information.id, group_information.id,
-                                          group_information.label);
+            m_sensor_data.emplace_back(group_information.id, group_information.label);
             group_id = information.group_id;
         }
 
-        m_sensor_readings[information.group_id].sensors.try_emplace(information.id, information.id,
-                                                                    information.label,
-                                                                    information.unit);
+        m_sensor_data.back().sensors.emplace_back(information.id, information.label,
+                                                  information.unit);
     }
 
-    m_sensor_readings_queue.Write(std::make_shared<SensorReadings>(m_sensor_readings));
+    m_sensor_data_queue.Write(std::make_shared<SensorData>(m_sensor_data));
 }
 
 void Digitizer::UpdateSystemManagerObjects()
 {
     const auto now = std::chrono::high_resolution_clock::now();
-    const double PERIOD_MS = 250.0;
-    if ((now - m_last_sensor_reading).count() / 1e6 >= PERIOD_MS)
+    if ((now - m_sensor_last_timestamp).count() / 1e6 >= 1000.0) /* In milliseconds */
     {
         /* Update the timestamp. */
-        m_last_sensor_reading = now;
+        m_sensor_last_timestamp = now;
 
-        for (auto &[group_id, group] : m_sensor_readings)
+        for (auto &group : m_sensor_data)
         {
-            for (auto &[sensor_id, sensor] : group.sensors)
+            for (auto &sensor : group.sensors)
             {
-                /* FIXME: 1 is a magic number for the float format. */
-                struct ArgSensorGetValue arg{static_cast<uint32_t>(sensor_id), 1};
-                float value = 0.0f;
-                int result = ADQ_SmTransaction(m_id.handle, m_id.index,
-                                           SystemManagerCommand::SENSOR_GET_VALUE, &arg,
-                                           sizeof(arg), &value, sizeof(value));
-                if (result != ADQ_EOK)
+                struct ArgSensorGetValue arg
                 {
-                    /* FIXME: Propagate this instead of the value. */
-                    std::fprintf(stderr, "Failed to read sensor value, status %d.\n", result);
-                    return;
-                }
+                    static_cast<uint32_t>(sensor.id), SENSOR_FORMAT_FLOAT
+                };
 
-                m_sensor_readings[group_id].sensors[sensor_id].value = value;
+                sensor.status = ADQ_SmTransaction(m_id.handle, m_id.index,
+                                                  SystemManagerCommand::SENSOR_GET_VALUE, &arg,
+                                                  sizeof(arg), &sensor.value, sizeof(sensor.value));
+
+                /* FIXME: SYSMAN_EOK? */
+                if (sensor.status != 0)
+                    sensor.hover = "Error description"; /* FIXME: Error code to text description? */
+                else
+                    sensor.hover.clear();
             }
         }
 
-        m_sensor_readings_queue.Write(std::make_shared<SensorReadings>(m_sensor_readings));
+        m_sensor_data_queue.Write(std::make_shared<SensorData>(m_sensor_data));
     }
 }
 

@@ -867,6 +867,64 @@ void Ui::RenderMemory()
     WIP();
 }
 
+void Ui::RenderSensorGroup(const SensorGroup &group, bool is_first)
+{
+    if (!is_first)
+    {
+        ImGui::Spacing();
+        ImGui::Separator();
+    }
+
+    int flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
+    if (!ImGui::TreeNodeEx(group.label.c_str(), flags))
+        return;
+
+    flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
+            ImGuiTableFlags_BordersInnerV;
+
+    if (ImGui::BeginTable(fmt::format("Sensors##{}", group.label).c_str(), 2, flags))
+    {
+        ImGui::TableSetupColumn("Sensor", ImGuiTableColumnFlags_WidthFixed, 6 * ImGui::CalcTextSize("x").x);
+        ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
+
+        for (const auto &sensor : group.sensors)
+        {
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            if (ImGui::Selectable(sensor.label.c_str(), false, ImGuiSelectableFlags_SpanAllColumns))
+            {
+                printf("Sensor %d selected\n", sensor.id);
+            }
+
+            if (sensor.status == 0 && ImGui::BeginPopupContextItem())
+            {
+                if (ImGui::MenuItem("Plot"))
+                    printf("Plot sensor %d\n", sensor.id);
+                ImGui::EndPopup();
+            }
+
+            if (sensor.status != 0 && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+                ImGui::SetTooltip("%s", sensor.hover.c_str());
+
+            ImGui::TableSetColumnIndex(1);
+            if (sensor.status != 0)
+            {
+                ImGui::Text(fmt::format("{:>7} {}", "Error", sensor.status));
+                ImGui::SameLine();
+                ImGui::TextDisabled("(?)");
+            }
+            else
+            {
+                ImGui::Text(fmt::format("{:7.3f} {}", sensor.value, sensor.unit));
+            }
+        }
+
+        ImGui::EndTable();
+    }
+
+    ImGui::TreePop();
+}
+
 void Ui::RenderSensors()
 {
     DigitizerUiState *ui = NULL;
@@ -884,61 +942,32 @@ void Ui::RenderSensors()
         ImGui::Text("No data to display.");
         return;
     }
+    ImGui::Text("Sensor data for %s", ui->identifier.c_str());
 
     /* Left column */
-    if (ImGui::BeginChild("SensorLeft", ImVec2(ImGui::GetContentRegionAvail().x * 0.5f, 0), true,
+    if (ImGui::BeginChild("SensorsLeft", ImVec2(ImGui::GetContentRegionAvail().x * 0.5f, 0), true,
                           ImGuiWindowFlags_NoScrollbar))
     {
-        bool has_contents = false;
-        for (const auto &[group_id, group] : *ui->sensors)
+        bool is_first = true;
+        for (size_t i = 0; i < ui->sensors->size(); i += 2)
         {
-            if (has_contents)
-            {
-                ImGui::Spacing();
-                ImGui::Separator();
-            }
-            has_contents = true;
-
-            int flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
-            if (!ImGui::TreeNodeEx(group.label.c_str(), flags))
-                continue;
-
-            flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
-                    ImGuiTableFlags_BordersInnerV;
-
-            if (ImGui::BeginTable(fmt::format("Sensors##{}", group.label).c_str(), 2, flags))
-            {
-                ImGui::TableSetupColumn("Sensor", ImGuiTableColumnFlags_WidthFixed);
-                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
-
-                for (const auto &[id, sensor] : group.sensors)
-                {
-                    ImGui::TableNextRow();
-                    ImGui::TableSetColumnIndex(0);
-                    if (ImGui::Selectable(sensor.label.c_str(), false, ImGuiSelectableFlags_SpanAllColumns))
-                    {
-                        printf("Sensor %d selected\n", id);
-                    }
-                    ImGui::TableSetColumnIndex(1);
-                    ImGui::Text(fmt::format("{:7.3f} {}", sensor.value, sensor.unit));
-                }
-
-                ImGui::EndTable();
-            }
-
-            ImGui::TreePop();
+            RenderSensorGroup(ui->sensors->at(i), is_first);
+            is_first = false;
         }
 
         ImGui::EndChild();
     }
 
-
     /* Right column */
     ImGui::SameLine();
-    if (ImGui::BeginChild("SensorRight", ImVec2(0, 0), true))
+    if (ImGui::BeginChild("SensorsRight", ImVec2(0, 0), true))
     {
-        // ImGui::TreeNodeEx("Right", flags);
-        // ImGui::TreePop();
+        bool is_first = true;
+        for (size_t i = 1; i < ui->sensors->size(); i += 2)
+        {
+            RenderSensorGroup(ui->sensors->at(i), is_first);
+            is_first = false;
+        }
         ImGui::EndChild();
     }
 }

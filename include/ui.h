@@ -69,7 +69,7 @@ private:
         bool popup_initialize_would_overwrite;
         bool is_selected;
 
-        std::shared_ptr<SensorReadings> sensors;
+        std::shared_ptr<SensorData> sensors;
         std::vector<ChannelUiState> channels;
     };
 
@@ -123,6 +123,7 @@ private:
     void RenderTools(const ImVec2 &position, const ImVec2 &size);
     void RenderMarkers();
     void RenderMemory();
+    void RenderSensorGroup(const SensorGroup &group, bool is_first);
     void RenderSensors();
     void RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size);
 

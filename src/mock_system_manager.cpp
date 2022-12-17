@@ -17,6 +17,7 @@
 #define SENSOR_ID_TEMPERATURE_ADC2 (21u)
 #define SENSOR_ID_TEMPERATURE_FPGA (22u)
 #define SENSOR_ID_TEMPERATURE_DCDC (23u)
+#define SENSOR_ID_TEMPERATURE_ETMP (24u) /* Sensor always returning an error (for testing). */
 
 #define SENSOR_ID_POWER_0V95 (30u)
 #define SENSOR_ID_POWER_3V3 (31u)
@@ -43,6 +44,7 @@ MockSystemManager::MockSystemManager() :
                  SENSOR_ID_TEMPERATURE_ADC2,
                  SENSOR_ID_TEMPERATURE_FPGA,
                  SENSOR_ID_TEMPERATURE_DCDC,
+                 SENSOR_ID_TEMPERATURE_ETMP,
                  SENSOR_ID_POWER_0V95,
                  SENSOR_ID_POWER_3V3,
                  SENSOR_ID_POWER_5V0,
@@ -69,6 +71,7 @@ MockSystemManager::MockSystemManager() :
         {SENSOR_ID_TEMPERATURE_ADC2, {SENSOR_ID_TEMPERATURE_ADC2, SENSOR_GROUP_ID_TEMPERATURE, "ADC2", "degC"}},
         {SENSOR_ID_TEMPERATURE_FPGA, {SENSOR_ID_TEMPERATURE_FPGA, SENSOR_GROUP_ID_TEMPERATURE, "FPGA", "degC"}},
         {SENSOR_ID_TEMPERATURE_DCDC, {SENSOR_ID_TEMPERATURE_DCDC, SENSOR_GROUP_ID_TEMPERATURE, "DCDC", "degC"}},
+        {SENSOR_ID_TEMPERATURE_ETMP, {SENSOR_ID_TEMPERATURE_ETMP, SENSOR_GROUP_ID_TEMPERATURE, "ETMP", "degC"}},
         {SENSOR_ID_POWER_0V95, {SENSOR_ID_POWER_0V95, SENSOR_GROUP_ID_POWER, "+0V95", "W"}},
         {SENSOR_ID_POWER_3V3, {SENSOR_ID_POWER_3V3, SENSOR_GROUP_ID_POWER, "+3V3", "W"}},
         {SENSOR_ID_POWER_5V0, {SENSOR_ID_POWER_5V0, SENSOR_GROUP_ID_POWER, "+5V0", "W"}},
@@ -144,10 +147,17 @@ int MockSystemManager::HandleMessage()
             m_read_queue.EmplaceWrite(-1);
         }
 
+        /* Intentionally return an error for one of the sensors. */
         auto arg = reinterpret_cast<ArgSensorGetValue *>(message.data.data());
+        if (arg->id == SENSOR_ID_TEMPERATURE_ETMP)
+        {
+            m_read_queue.EmplaceWrite(-271);
+            break;
+        }
+
         if (m_sensors.count(arg->id) > 0)
         {
-            if (arg->format == 1)
+            if (arg->format == SENSOR_FORMAT_FLOAT)
             {
                 float value = m_sensors.at(arg->id)(m_random_generator);
                 m_read_queue.EmplaceWrite(&value, sizeof(value));

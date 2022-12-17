@@ -28,6 +28,9 @@ struct SensorGroupInformation
     char label[16];
 };
 
+#define SENSOR_FORMAT_INT (0u)
+#define SENSOR_FORMAT_FLOAT (1u)
+
 struct ArgSensorGetValue
 {
     uint32_t id;

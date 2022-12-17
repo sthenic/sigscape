@@ -114,26 +114,30 @@ struct DigitizerMessage
     WindowType window_type;
 };
 
-struct SensorReading
+struct Sensor
 {
-    SensorReading() = default;
-    SensorReading(int id, const char *label, const char *unit)
+    Sensor() = default;
+    Sensor(int id, const char *label, const char *unit)
         : id(id)
+        , status(0)
         , label(label)
         , unit(unit)
+        , hover()
         , value(0.0f)
     {}
 
     int id;
+    int status;
     std::string label;
     std::string unit;
+    std::string hover;
     float value;
 };
 
-struct SensorGroupReadings
+struct SensorGroup
 {
-    SensorGroupReadings() = default;
-    SensorGroupReadings(int id, const char *label)
+    SensorGroup() = default;
+    SensorGroup(int id, const char *label)
         : id(id)
         , label(label)
         , sensors{}
@@ -141,11 +145,10 @@ struct SensorGroupReadings
 
     int id;
     std::string label;
-    std::map<int, SensorReading> sensors;
+    std::vector<Sensor> sensors;
 };
 
-/* FIXME: SensorData */
-typedef std::map<int, SensorGroupReadings> SensorReadings;
+typedef std::vector<SensorGroup> SensorData;
 
 class Digitizer : public MessageThread<Digitizer, DigitizerMessage>
 {
@@ -161,7 +164,7 @@ public:
     int WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedRecord> &record);
 
     /* Interface to the digitizer's sensor data. */
-    int WaitForSensorData(std::shared_ptr<SensorReadings> &data);
+    int WaitForSensorData(std::shared_ptr<SensorData> &data);
 
     /* The main loop. */
     void MainLoop() override;
@@ -196,9 +199,9 @@ private:
     std::vector<std::unique_ptr<DataProcessing>> m_processing_threads;
 
     /* Sensor readings. */
-    SensorReadings m_sensor_readings;
-    ThreadSafeQueue<std::shared_ptr<SensorReadings>> m_sensor_readings_queue;
-    std::chrono::high_resolution_clock::time_point m_last_sensor_reading;
+    SensorData m_sensor_data;
+    ThreadSafeQueue<std::shared_ptr<SensorData>> m_sensor_data_queue;
+    std::chrono::high_resolution_clock::time_point m_sensor_last_timestamp;
 
     void ProcessMessages();
     void ProcessWatcherMessages();

@@ -17,6 +17,7 @@
 #endif
 
 #include <array>
+#include <chrono>
 
 enum class DigitizerMessageId
 {
@@ -115,6 +116,14 @@ struct DigitizerMessage
 
 struct SensorReading
 {
+    SensorReading() = default;
+    SensorReading(int id, const char *label, const char *unit)
+        : id(id)
+        , label(label)
+        , unit(unit)
+        , value(0.0f)
+    {}
+
     int id;
     std::string label;
     std::string unit;
@@ -123,15 +132,20 @@ struct SensorReading
 
 struct SensorGroupReadings
 {
+    SensorGroupReadings() = default;
+    SensorGroupReadings(int id, const char *label)
+        : id(id)
+        , label(label)
+        , sensors{}
+    {}
+
     int id;
     std::string label;
     std::map<int, SensorReading> sensors;
 };
 
-struct SensorReadings
-{
-    std::map<int, SensorGroupReadings> groups;
-};
+/* FIXME: SensorData */
+typedef std::map<int, SensorGroupReadings> SensorReadings;
 
 class Digitizer : public MessageThread<Digitizer, DigitizerMessage>
 {
@@ -145,6 +159,9 @@ public:
 
     /* Interface to the digitizer's data processing threads, one per channel. */
     int WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedRecord> &record);
+
+    /* Interface to the digitizer's sensor data. */
+    int WaitForSensorData(std::shared_ptr<SensorReadings> &data);
 
     /* The main loop. */
     void MainLoop() override;
@@ -179,7 +196,9 @@ private:
     std::vector<std::unique_ptr<DataProcessing>> m_processing_threads;
 
     /* Sensor readings. */
-    ThreadSafeQueue<std::shared_ptr<SensorReadings>> m_sensor_readings;
+    SensorReadings m_sensor_readings;
+    ThreadSafeQueue<std::shared_ptr<SensorReadings>> m_sensor_readings_queue;
+    std::chrono::high_resolution_clock::time_point m_last_sensor_reading;
 
     void ProcessMessages();
     void ProcessWatcherMessages();

@@ -69,6 +69,7 @@ private:
         bool popup_initialize_would_overwrite;
         bool is_selected;
 
+        std::shared_ptr<SensorReadings> sensors;
         std::vector<ChannelUiState> channels;
     };
 
@@ -103,7 +104,7 @@ private:
 
     void PushMessage(const DigitizerMessage &message, bool selected = true);
 
-    void UpdateRecords();
+    void UpdateRecords(); /* FIXME: Rename (handles sensors) */
     void HandleMessage(const IdentificationMessage &message);
     void HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message);
     void HandleMessages();

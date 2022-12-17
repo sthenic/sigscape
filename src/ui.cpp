@@ -214,6 +214,8 @@ void Ui::UpdateRecords()
     {
         for (size_t ch = 0; ch < digitizer.ui.channels.size(); ++ch)
             digitizer.interface->WaitForProcessedRecord(ch, digitizer.ui.channels[ch].record);
+
+        digitizer.interface->WaitForSensorData(digitizer.ui.sensors);
     }
 }
 
@@ -867,33 +869,77 @@ void Ui::RenderMemory()
 
 void Ui::RenderSensors()
 {
-    /* TODO: Dynamic depending on the reported sensor groups? */
-    if (ImGui::BeginTabBar("Sensors##TabBar"))
+    DigitizerUiState *ui = NULL;
+    for (auto &digitizer : m_digitizers)
     {
-        if (ImGui::BeginTabItem("Temperature"))
+        if (digitizer.ui.is_selected && digitizer.ui.sensors != NULL)
         {
-            WIP();
-            ImGui::EndTabItem();
+            ui = &digitizer.ui;
+            break;
+        }
+    }
+
+    if (ui == NULL)
+    {
+        ImGui::Text("No data to display.");
+        return;
+    }
+
+    /* Left column */
+    if (ImGui::BeginChild("SensorLeft", ImVec2(ImGui::GetContentRegionAvail().x * 0.5f, 0), true,
+                          ImGuiWindowFlags_NoScrollbar))
+    {
+        bool has_contents = false;
+        for (const auto &[group_id, group] : *ui->sensors)
+        {
+            if (has_contents)
+            {
+                ImGui::Spacing();
+                ImGui::Separator();
+            }
+            has_contents = true;
+
+            int flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
+            if (!ImGui::TreeNodeEx(group.label.c_str(), flags))
+                continue;
+
+            flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
+                    ImGuiTableFlags_BordersInnerV;
+
+            if (ImGui::BeginTable(fmt::format("Sensors##{}", group.label).c_str(), 2, flags))
+            {
+                ImGui::TableSetupColumn("Sensor", ImGuiTableColumnFlags_WidthFixed);
+                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
+
+                for (const auto &[id, sensor] : group.sensors)
+                {
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    if (ImGui::Selectable(sensor.label.c_str(), false, ImGuiSelectableFlags_SpanAllColumns))
+                    {
+                        printf("Sensor %d selected\n", id);
+                    }
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text(fmt::format("{:7.3f} {}", sensor.value, sensor.unit));
+                }
+
+                ImGui::EndTable();
+            }
+
+            ImGui::TreePop();
         }
 
-        if (ImGui::BeginTabItem("Voltage"))
-        {
-            WIP();
-            ImGui::EndTabItem();
-        }
+        ImGui::EndChild();
+    }
 
-        if (ImGui::BeginTabItem("Current"))
-        {
-            WIP();
-            ImGui::EndTabItem();
-        }
 
-        if (ImGui::BeginTabItem("Power"))
-        {
-            WIP();
-            ImGui::EndTabItem();
-        }
-        ImGui::EndTabBar();
+    /* Right column */
+    ImGui::SameLine();
+    if (ImGui::BeginChild("SensorRight", ImVec2(0, 0), true))
+    {
+        // ImGui::TreeNodeEx("Right", flags);
+        // ImGui::TreePop();
+        ImGui::EndChild();
     }
 }
 

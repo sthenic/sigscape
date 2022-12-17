@@ -117,6 +117,7 @@ struct SensorReading
 {
     int id;
     std::string label;
+    std::string unit;
     float value;
 };
 
@@ -124,12 +125,12 @@ struct SensorGroupReadings
 {
     int id;
     std::string label;
-    std::vector<SensorReading> sensors;
+    std::map<int, SensorReading> sensors;
 };
 
 struct SensorReadings
 {
-    std::vector<SensorGroupReadings> groups;
+    std::map<int, SensorGroupReadings> groups;
 };
 
 class Digitizer : public MessageThread<Digitizer, DigitizerMessage>

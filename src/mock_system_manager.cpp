@@ -30,7 +30,7 @@
 #define SENSOR_GROUP_ID_POWER (4u)
 
 MockSystemManager::MockSystemManager() :
-    m_random_generator(),
+    m_random_generator(std::chrono::steady_clock::now().time_since_epoch().count()),
     m_sensor_map{SENSOR_ID_0V95,
                  SENSOR_ID_3V3,
                  SENSOR_ID_5V0,
@@ -57,22 +57,22 @@ MockSystemManager::MockSystemManager() :
     },
 
     m_sensor_information{
-        {SENSOR_ID_0V95, {SENSOR_ID_0V95, SENSOR_GROUP_ID_VOLTAGE, "+0V95"}},
-        {SENSOR_ID_3V3, {SENSOR_ID_3V3, SENSOR_GROUP_ID_VOLTAGE, "+3V3"}},
-        {SENSOR_ID_5V0, {SENSOR_ID_5V0, SENSOR_GROUP_ID_VOLTAGE, "+5V0"}},
-        {SENSOR_ID_2V6A_NEG, {SENSOR_ID_2V6A_NEG, SENSOR_GROUP_ID_VOLTAGE, "-2V6"}},
-        {SENSOR_ID_CURRENT_0V95, {SENSOR_ID_CURRENT_0V95, SENSOR_GROUP_ID_CURRENT, "+0V95"}},
-        {SENSOR_ID_CURRENT_3V3, {SENSOR_ID_CURRENT_3V3, SENSOR_GROUP_ID_CURRENT, "+3V3"}},
-        {SENSOR_ID_CURRENT_5V0, {SENSOR_ID_CURRENT_5V0, SENSOR_GROUP_ID_CURRENT, "+5V0"}},
-        {SENSOR_ID_CURRENT_2V6A_NEG, {SENSOR_ID_CURRENT_2V6A_NEG, SENSOR_GROUP_ID_CURRENT, "-2V6"}},
-        {SENSOR_ID_TEMPERATURE_ADC1, {SENSOR_ID_TEMPERATURE_ADC1, SENSOR_GROUP_ID_TEMPERATURE, "ADC1"}},
-        {SENSOR_ID_TEMPERATURE_ADC2, {SENSOR_ID_TEMPERATURE_ADC2, SENSOR_GROUP_ID_TEMPERATURE, "ADC2"}},
-        {SENSOR_ID_TEMPERATURE_FPGA, {SENSOR_ID_TEMPERATURE_FPGA, SENSOR_GROUP_ID_TEMPERATURE, "FPGA"}},
-        {SENSOR_ID_TEMPERATURE_DCDC, {SENSOR_ID_TEMPERATURE_DCDC, SENSOR_GROUP_ID_TEMPERATURE, "DCDC"}},
-        {SENSOR_ID_POWER_0V95, {SENSOR_ID_POWER_0V95, SENSOR_GROUP_ID_POWER, "+0V95"}},
-        {SENSOR_ID_POWER_3V3, {SENSOR_ID_POWER_3V3, SENSOR_GROUP_ID_POWER, "+3V3"}},
-        {SENSOR_ID_POWER_5V0, {SENSOR_ID_POWER_5V0, SENSOR_GROUP_ID_POWER, "+5V0"}},
-        {SENSOR_ID_POWER_2V6A_NEG, {SENSOR_ID_POWER_2V6A_NEG, SENSOR_GROUP_ID_POWER, "-2V6"}}
+        {SENSOR_ID_0V95, {SENSOR_ID_0V95, SENSOR_GROUP_ID_VOLTAGE, "+0V95", "V"}},
+        {SENSOR_ID_3V3, {SENSOR_ID_3V3, SENSOR_GROUP_ID_VOLTAGE, "+3V3", "V"}},
+        {SENSOR_ID_5V0, {SENSOR_ID_5V0, SENSOR_GROUP_ID_VOLTAGE, "+5V0", "V"}},
+        {SENSOR_ID_2V6A_NEG, {SENSOR_ID_2V6A_NEG, SENSOR_GROUP_ID_VOLTAGE, "-2V6", "V"}},
+        {SENSOR_ID_CURRENT_0V95, {SENSOR_ID_CURRENT_0V95, SENSOR_GROUP_ID_CURRENT, "+0V95", "A"}},
+        {SENSOR_ID_CURRENT_3V3, {SENSOR_ID_CURRENT_3V3, SENSOR_GROUP_ID_CURRENT, "+3V3", "A"}},
+        {SENSOR_ID_CURRENT_5V0, {SENSOR_ID_CURRENT_5V0, SENSOR_GROUP_ID_CURRENT, "+5V0", "A"}},
+        {SENSOR_ID_CURRENT_2V6A_NEG, {SENSOR_ID_CURRENT_2V6A_NEG, SENSOR_GROUP_ID_CURRENT, "-2V6", "A"}},
+        {SENSOR_ID_TEMPERATURE_ADC1, {SENSOR_ID_TEMPERATURE_ADC1, SENSOR_GROUP_ID_TEMPERATURE, "ADC1", "degC"}},
+        {SENSOR_ID_TEMPERATURE_ADC2, {SENSOR_ID_TEMPERATURE_ADC2, SENSOR_GROUP_ID_TEMPERATURE, "ADC2", "degC"}},
+        {SENSOR_ID_TEMPERATURE_FPGA, {SENSOR_ID_TEMPERATURE_FPGA, SENSOR_GROUP_ID_TEMPERATURE, "FPGA", "degC"}},
+        {SENSOR_ID_TEMPERATURE_DCDC, {SENSOR_ID_TEMPERATURE_DCDC, SENSOR_GROUP_ID_TEMPERATURE, "DCDC", "degC"}},
+        {SENSOR_ID_POWER_0V95, {SENSOR_ID_POWER_0V95, SENSOR_GROUP_ID_POWER, "+0V95", "W"}},
+        {SENSOR_ID_POWER_3V3, {SENSOR_ID_POWER_3V3, SENSOR_GROUP_ID_POWER, "+3V3", "W"}},
+        {SENSOR_ID_POWER_5V0, {SENSOR_ID_POWER_5V0, SENSOR_GROUP_ID_POWER, "+5V0", "W"}},
+        {SENSOR_ID_POWER_2V6A_NEG, {SENSOR_ID_POWER_2V6A_NEG, SENSOR_GROUP_ID_POWER, "-2V6", "W"}}
     },
 
     m_sensors{{SENSOR_ID_0V95, std::normal_distribution(0.95f, 0.1f)},
@@ -137,8 +137,32 @@ int MockSystemManager::HandleMessage()
 
     case SystemManagerCommand::SENSOR_GET_VALUE:
     {
-        printf("SENSOR_GET_VALUE NOT IMPLEMENTED!\n");
-        m_read_queue.EmplaceWrite(-1);
+        if (message.data.size() != sizeof(ArgSensorGetValue))
+        {
+            printf("Invalid arugment length for SENSOR_GET_VALUE: %zu != %zu.\n",
+                    message.data.size(), sizeof(ArgSensorGetValue));
+            m_read_queue.EmplaceWrite(-1);
+        }
+
+        auto arg = reinterpret_cast<ArgSensorGetValue *>(message.data.data());
+        if (m_sensors.count(arg->id) > 0)
+        {
+            if (arg->format == 1)
+            {
+                float value = m_sensors.at(arg->id)(m_random_generator);
+                m_read_queue.EmplaceWrite(&value, sizeof(value));
+            }
+            else
+            {
+                printf("Unsupported sensor format %" PRIu32 ".\n", arg->format);
+                m_read_queue.EmplaceWrite(-1);
+            }
+        }
+        else
+        {
+            printf("Unknown sensor id %" PRIu32 ".\n", arg->id);
+            m_read_queue.EmplaceWrite(-1);
+        }
         break;
     }
 
@@ -151,7 +175,7 @@ int MockSystemManager::HandleMessage()
             m_read_queue.EmplaceWrite(-1);
         }
 
-        uint32_t *id = reinterpret_cast<uint32_t *>(message.data.data());
+        auto id = reinterpret_cast<const uint32_t *>(message.data.data());
         if (m_sensor_information.count(*id) > 0)
         {
             const auto &information = m_sensor_information.at(*id);
@@ -174,7 +198,7 @@ int MockSystemManager::HandleMessage()
             m_read_queue.EmplaceWrite(-1);
         }
 
-        uint32_t *id = reinterpret_cast<uint32_t *>(message.data.data());
+        auto id = reinterpret_cast<const uint32_t *>(message.data.data());
         if (m_sensor_group_information.count(*id) > 0)
         {
             const auto &information = m_sensor_group_information.at(*id);

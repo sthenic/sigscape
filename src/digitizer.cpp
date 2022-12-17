@@ -297,7 +297,22 @@ void Digitizer::InitializeSystemManagerObjects()
             return;
         }
 
-        printf("Sensor %" PRIu32 ": (%" PRIu32 ") %s\n", id, information.group_id, information.label);
+        ss.str("");
+        ss.clear();
+        ss << "Sensor " << id << ": (" << information.group_id << ") " << information.label;
+
+        float value = 0.0f;
+        struct ArgSensorGetValue arg{id, 1};
+        result = ADQ_SmTransaction(m_id.handle, m_id.index, SystemManagerCommand::SENSOR_GET_VALUE,
+                                   &arg, sizeof(arg), &value, sizeof(value));
+        if (result != ADQ_EOK)
+        {
+            std::fprintf(stderr, "Failed to read sensor value, status %d.\n", result);
+            return;
+        }
+
+        ss << " " << value << " " << information.unit;
+        printf("%s\n", ss.str().c_str());
     }
 
     /* FIXME: Implement */

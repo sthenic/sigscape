@@ -19,6 +19,7 @@ struct SensorInformation
     uint32_t id;
     uint32_t group_id;
     char label[16];
+    char unit[8];
 };
 
 struct SensorGroupInformation

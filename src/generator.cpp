@@ -2,9 +2,10 @@
 
 #include <cmath>
 #include <limits>
+#include <chrono>
 
 Generator::Generator()
-    : m_random_generator()
+    : m_random_generator(std::chrono::steady_clock::now().time_since_epoch().count())
     , m_distribution(0, 0.1)
     , m_parameters()
     , m_sampling_frequency(500e6)

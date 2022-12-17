@@ -332,8 +332,6 @@ void Digitizer::InitializeSystemManagerObjects()
         m_sensor_data.back().sensors.emplace_back(information.id, information.label,
                                                   information.unit);
     }
-
-    m_sensor_data_queue.Write(std::make_shared<SensorData>(m_sensor_data));
 }
 
 void Digitizer::UpdateSystemManagerObjects()

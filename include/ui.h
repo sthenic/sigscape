@@ -54,6 +54,15 @@ private:
         std::vector<std::shared_ptr<ProcessedRecord>> memory;
     };
 
+    /* Representation of the state of the digitizer sensor's in the UI. */
+    struct SensorsUiState
+    {
+        SensorsUiState(std::shared_ptr<SensorData> data);
+
+        std::map<int, bool> is_plotted;
+        std::shared_ptr<SensorData> data;
+    };
+
     /* Representation of a digitizer's state in the UI. */
     struct DigitizerUiState
     {
@@ -69,7 +78,7 @@ private:
         bool popup_initialize_would_overwrite;
         bool is_selected;
 
-        std::shared_ptr<SensorData> sensors;
+        SensorsUiState sensors;
         std::vector<ChannelUiState> channels;
     };
 
@@ -123,7 +132,8 @@ private:
     void RenderTools(const ImVec2 &position, const ImVec2 &size);
     void RenderMarkers();
     void RenderMemory();
-    void RenderSensorGroup(const SensorGroup &group, bool is_first);
+    void RenderSensorGroup(const SensorGroup &group, bool is_first,
+                           std::map<int, bool> &is_selected);
     void RenderSensors();
     void RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size);
 

@@ -60,6 +60,20 @@ Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     color = ImPlot::GetColormapColor(nof_channels_total++);
 }
 
+Ui::SensorsUiState::SensorsUiState(std::shared_ptr<SensorData> data)
+    : is_plotted{}
+    , data(data)
+{
+    if (data != NULL)
+    {
+        for (const auto &group : *data)
+        {
+            for (const auto &sensor : group.sensors)
+                is_plotted[sensor.id] = false;
+        }
+    }
+}
+
 Ui::DigitizerUiState::DigitizerUiState()
     : identifier("")
     , state("")
@@ -70,6 +84,7 @@ Ui::DigitizerUiState::DigitizerUiState()
     , set_clock_system_color(ImGui::GetStyleColorVec4(ImGuiCol_Button))
     , popup_initialize_would_overwrite(false)
     , is_selected(false)
+    , sensors(NULL)
     , channels{}
 {
 }
@@ -215,7 +230,11 @@ void Ui::UpdateRecords()
         for (size_t ch = 0; ch < digitizer.ui.channels.size(); ++ch)
             digitizer.interface->WaitForProcessedRecord(ch, digitizer.ui.channels[ch].record);
 
-        digitizer.interface->WaitForSensorData(digitizer.ui.sensors);
+        digitizer.interface->WaitForSensorData(digitizer.ui.sensors.data);
+
+        /* Seed the sensor UI state the first time we get */
+        if (digitizer.ui.sensors.is_plotted.empty() && digitizer.ui.sensors.data != NULL)
+            digitizer.ui.sensors = std::move(SensorsUiState(digitizer.ui.sensors.data));
     }
 }
 
@@ -867,7 +886,8 @@ void Ui::RenderMemory()
     WIP();
 }
 
-void Ui::RenderSensorGroup(const SensorGroup &group, bool is_first)
+void Ui::RenderSensorGroup(const SensorGroup &group, bool is_first,
+                           std::map<int, bool> &is_selected)
 {
     if (!is_first)
     {
@@ -879,29 +899,40 @@ void Ui::RenderSensorGroup(const SensorGroup &group, bool is_first)
     if (!ImGui::TreeNodeEx(group.label.c_str(), flags))
         return;
 
+    if (ImGui::BeginPopupContextItem())
+    {
+        if (ImGui::MenuItem("Plot"))
+        {
+            for (const auto &sensor : group.sensors)
+                is_selected[sensor.id] = true;
+        }
+        ImGui::EndPopup();
+    }
+
     flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
             ImGuiTableFlags_BordersInnerV;
 
     if (ImGui::BeginTable(fmt::format("Sensors##{}", group.label).c_str(), 2, flags))
     {
-        ImGui::TableSetupColumn("Sensor", ImGuiTableColumnFlags_WidthFixed, 6 * ImGui::CalcTextSize("x").x);
+        ImGui::TableSetupColumn("Sensor", ImGuiTableColumnFlags_WidthFixed,
+                                6 * ImGui::CalcTextSize("x").x);
         ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
 
         for (const auto &sensor : group.sensors)
         {
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
-            if (ImGui::Selectable(sensor.label.c_str(), false, ImGuiSelectableFlags_SpanAllColumns))
+            if (ImGui::Selectable(sensor.label.c_str(), is_selected[sensor.id],
+                                  ImGuiSelectableFlags_SpanAllColumns))
             {
                 printf("Sensor %d selected\n", sensor.id);
             }
 
             if (sensor.status == 0 && ImGui::BeginPopupContextItem())
             {
-                if (ImGui::MenuItem("Plot"))
-                    printf("Plot sensor %d\n", sensor.id);
-                if (ImGui::MenuItem("High frequency capture"))
-                    printf("High frequency capture sensor %d\n", sensor.id);
+                ImGui::MenuItem("Plot", "", &is_selected[sensor.id]);
+                if (ImGui::MenuItem("Capture"))
+                    printf("Capture sensor %d\n", sensor.id);
                 ImGui::EndPopup();
             }
 
@@ -932,7 +963,7 @@ void Ui::RenderSensors()
     DigitizerUiState *ui = NULL;
     for (auto &digitizer : m_digitizers)
     {
-        if (digitizer.ui.is_selected && digitizer.ui.sensors != NULL)
+        if (digitizer.ui.is_selected && digitizer.ui.sensors.data != NULL)
         {
             ui = &digitizer.ui;
             break;
@@ -944,16 +975,26 @@ void Ui::RenderSensors()
         ImGui::Text("No data to display.");
         return;
     }
+
     ImGui::Text("Sensor data for %s", ui->identifier.c_str());
+    ImGui::SameLine(ImGui::GetWindowContentRegionMax().x -
+                    2 * ImGui::GetStyle().ItemInnerSpacing.x -
+                    ImGui::CalcTextSize("Remove from plot").x);
+
+    if (ImGui::SmallButton("Remove from plot"))
+    {
+        for (auto &[k, v] : ui->sensors.is_plotted)
+            v = false;
+    }
 
     /* Left column */
     if (ImGui::BeginChild("SensorsLeft", ImVec2(ImGui::GetContentRegionAvail().x * 0.5f, 0), true,
                           ImGuiWindowFlags_NoScrollbar))
     {
         bool is_first = true;
-        for (size_t i = 0; i < ui->sensors->size(); i += 2)
+        for (size_t i = 0; i < ui->sensors.data->size(); i += 2)
         {
-            RenderSensorGroup(ui->sensors->at(i), is_first);
+            RenderSensorGroup(ui->sensors.data->at(i), is_first, ui->sensors.is_plotted);
             is_first = false;
         }
 
@@ -965,9 +1006,9 @@ void Ui::RenderSensors()
     if (ImGui::BeginChild("SensorsRight", ImVec2(0, 0), true))
     {
         bool is_first = true;
-        for (size_t i = 1; i < ui->sensors->size(); i += 2)
+        for (size_t i = 1; i < ui->sensors.data->size(); i += 2)
         {
-            RenderSensorGroup(ui->sensors->at(i), is_first);
+            RenderSensorGroup(ui->sensors.data->at(i), is_first, ui->sensors.is_plotted);
             is_first = false;
         }
         ImGui::EndChild();
@@ -1475,20 +1516,22 @@ void Ui::PlotSensorsSelected()
     /* FIXME: Rework all this selection logic. */
     for (const auto &digitizer : m_digitizers)
     {
-        if (!digitizer.ui.is_selected || digitizer.ui.sensors == NULL)
+        const auto &ui = digitizer.ui.sensors;
+        if (ui.data == NULL)
             continue;
 
-        /* FIXME: Placeholder targeting a specific group. Actually implement
-                  selection state in the UI. */
-        for (const auto &sensor : digitizer.ui.sensors->at(2).sensors)
+        for (const auto &group : *ui.data)
         {
-            if (sensor.status != 0) /* FIXME: SYSMAN_EOK */
-                continue;
+            for (const auto &sensor : group.sensors)
+            {
+                if (!ui.is_plotted.at(sensor.id))
+                    continue;
 
-            const auto label =
-                fmt::format("{}:{}", digitizer.ui.sensors->at(2).label[0], sensor.label);
-            ImPlot::PlotLine(label.c_str(), sensor.time_points.data(), sensor.values.data(),
-                             sensor.time_points.size());
+                const auto label =
+                    fmt::format("{}:{}:{}", digitizer.ui.identifier, group.label[0], sensor.label);
+                ImPlot::PlotLine(label.c_str(), sensor.time_points.data(), sensor.values.data(),
+                                 sensor.time_points.size());
+            }
         }
     }
 }
@@ -1652,7 +1695,7 @@ void Ui::PlotFourierTransformSelected()
 
 void Ui::RenderFourierTransformPlot()
 {
-    ImPlot::PushStyleVar(ImPlotStyleVar_FitPadding, ImVec2(0.0f, 0.1f));
+    ImPlot::PushStyleVar(ImPlotStyleVar_FitPadding, ImVec2(0.0f, 0.2f));
     if (ImPlot::BeginPlot("FFT##plot", ImVec2(-1, -1), ImPlotFlags_NoTitle))
     {
         ImPlot::SetupLegend(ImPlotLocation_NorthEast, ImPlotLegendFlags_Sort);

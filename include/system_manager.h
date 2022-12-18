@@ -16,7 +16,7 @@ enum SystemManagerCommand
   SENSOR_GET_GROUP_INFO = 0x0308
 };
 
-struct SensorInformation
+struct SystemManagerSensorInformation
 {
     uint32_t id;
     uint32_t group_id;
@@ -24,7 +24,7 @@ struct SensorInformation
     char unit[8];
 };
 
-struct SensorGroupInformation
+struct SystemManagerSensorGroupInformation
 {
     uint32_t id;
     char label[16];

@@ -83,8 +83,8 @@ public:
 private:
     std::default_random_engine m_random_generator;
     std::vector<uint32_t> m_sensor_map;
-    std::map<uint32_t, SensorGroupInformation> m_sensor_group_information;
-    std::map<uint32_t, SensorInformation> m_sensor_information;
+    std::map<uint32_t, SystemManagerSensorGroupInformation> m_sensor_group_information;
+    std::map<uint32_t, SystemManagerSensorInformation> m_sensor_information;
     std::map<uint32_t, std::normal_distribution<float>> m_sensors;
 
     int HandleMessage();

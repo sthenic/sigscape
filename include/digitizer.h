@@ -9,6 +9,7 @@
 #include "data_types.h"
 #include "data_processing.h"
 #include "file_watcher.h"
+#include "system_manager.h"
 
 #ifdef NO_ADQAPI
 #include "mock_adqapi.h"
@@ -33,6 +34,7 @@ enum class DigitizerMessageId
     CLEAR,
     CONFIGURATION,
     INITIALIZE_WOULD_OVERWRITE,
+    SENSOR_TREE,
     /* The world -> digitizer */
     SET_INTERNAL_REFERENCE,
     SET_EXTERNAL_REFERENCE,
@@ -57,6 +59,37 @@ enum class DigitizerState
     ACQUISITION
 };
 
+struct Sensor
+{
+    Sensor() = default;
+    Sensor(uint32_t id, uint32_t group_id, const char *label, const char *unit)
+        : id(id)
+        , group_id(group_id)
+        , label(label)
+        , unit(unit)
+    {}
+
+    uint32_t id;
+    uint32_t group_id;
+    std::string label;
+    std::string unit;
+};
+
+struct SensorGroup
+{
+    SensorGroup() = default;
+    SensorGroup(uint32_t id, const char *label)
+        : id(id)
+        , label(label)
+    {}
+
+    uint32_t id;
+    std::string label;
+    std::vector<Sensor> sensors;
+};
+
+typedef std::vector<SensorGroup> SensorTree;
+
 struct DigitizerMessage
 {
     /* Default constructor (for receiving messages). */
@@ -69,6 +102,7 @@ struct DigitizerMessage
         , str()
         , ivalue()
         , window_type()
+        , sensor_tree()
     {}
 
     /* Create a state message. */
@@ -78,15 +112,17 @@ struct DigitizerMessage
         , str()
         , ivalue()
         , window_type()
+        , sensor_tree()
     {}
 
     /* Create a string message. */
-    DigitizerMessage(DigitizerMessageId id, std::shared_ptr<std::string> str)
+    DigitizerMessage(DigitizerMessageId id, const std::string &str)
         : id(id)
         , state()
         , str(str)
         , ivalue()
         , window_type()
+        , sensor_tree()
     {}
 
     /* Create an integer message. */
@@ -96,6 +132,7 @@ struct DigitizerMessage
         , str()
         , ivalue(ivalue)
         , window_type()
+        , sensor_tree()
     {}
 
     /* Create a window message. */
@@ -105,52 +142,50 @@ struct DigitizerMessage
         , str()
         , ivalue()
         , window_type(window_type)
+        , sensor_tree()
+    {}
+
+    /* Create a sensor identification message, taking ownership of the sensor information. */
+    DigitizerMessage(DigitizerMessageId id, SensorTree &&sensor_tree)
+        : id(id)
+        , sensor_tree(std::move(sensor_tree))
     {}
 
     DigitizerMessageId id;
     DigitizerState state;
-    std::shared_ptr<std::string> str;
+    std::string str;
     int ivalue;
     WindowType window_type;
+    SensorTree sensor_tree;
 };
 
-struct Sensor
+struct SensorReading
 {
-    Sensor() = default;
-    Sensor(int id, const char *label, const char *unit)
-        : id(id)
-        , status(0)
-        , label(label)
-        , unit(unit)
+    SensorReading()
+        : status(-1)
+        , id()
+        , group_id()
+        , note("No data")
+        , values{}
+        , time{}
+    {}
+
+    SensorReading(uint32_t id, uint32_t group_id)
+        : status(-1)
+        , id(id)
+        , group_id(group_id)
         , note()
         , values{}
-        , time_points{}
+        , time{}
     {}
 
-    int id;
     int status;
-    std::string label;
-    std::string unit;
+    uint32_t id;
+    uint32_t group_id; /* FIXME: Prob not needed */
     std::string note;
     std::vector<float> values;
-    std::vector<float> time_points;
+    std::vector<float> time;
 };
-
-struct SensorGroup
-{
-    SensorGroup() = default;
-    SensorGroup(int id, const char *label)
-        : id(id)
-        , label(label)
-        , sensors{}
-    {}
-
-    int id;
-    std::string label;
-    std::vector<Sensor> sensors;
-};
-
-typedef std::vector<SensorGroup> SensorData;
 
 class Digitizer : public MessageThread<Digitizer, DigitizerMessage>
 {
@@ -166,7 +201,7 @@ public:
     int WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedRecord> &record);
 
     /* Interface to the digitizer's sensor data. */
-    int WaitForSensorData(std::shared_ptr<SensorData> &data);
+    int WaitForSensorData(std::shared_ptr<std::vector<SensorReading>> &data);
 
     /* The main loop. */
     void MainLoop() override;
@@ -201,8 +236,8 @@ private:
     std::vector<std::unique_ptr<DataProcessing>> m_processing_threads;
 
     /* Sensor readings. */
-    SensorData m_sensor_data;
-    ThreadSafeQueue<std::shared_ptr<SensorData>> m_sensor_data_queue;
+    std::vector<SensorReading> m_sensor_readings;
+    ThreadSafeQueue<std::shared_ptr<std::vector<SensorReading>>> m_sensor_readings_queue;
     std::chrono::high_resolution_clock::time_point m_sensor_last_timestamp;
 
     void ProcessMessages();

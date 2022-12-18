@@ -54,13 +54,25 @@ private:
         std::vector<std::shared_ptr<ProcessedRecord>> memory;
     };
 
-    /* Representation of the state of the digitizer sensor's in the UI. */
-    struct SensorsUiState
+    /* Representation of the state of the digitizer's sensors in the UI. */
+    struct SensorUiState
     {
-        SensorsUiState(std::shared_ptr<SensorData> data);
+        SensorUiState() = default;
+        SensorUiState(const std::string &label, const std::string &unit);
 
-        std::map<int, bool> is_plotted;
-        std::shared_ptr<SensorData> data;
+        bool is_plotted;
+        std::string label;
+        std::string unit;
+        SensorReading reading;
+    };
+
+    struct SensorGroupUiState
+    {
+        SensorGroupUiState() = default;
+        SensorGroupUiState(const std::string &label, const std::vector<Sensor> &sensors);
+
+        std::string label;
+        std::map<uint32_t, SensorUiState> sensors;
     };
 
     /* Representation of a digitizer's state in the UI. */
@@ -78,7 +90,7 @@ private:
         bool popup_initialize_would_overwrite;
         bool is_selected;
 
-        SensorsUiState sensors;
+        std::map<uint32_t, SensorGroupUiState> sensor_groups;
         std::vector<ChannelUiState> channels;
     };
 
@@ -113,7 +125,8 @@ private:
 
     void PushMessage(const DigitizerMessage &message, bool selected = true);
 
-    void UpdateRecords(); /* FIXME: Rename (handles sensors) */
+    void UpdateRecords();
+    void UpdateSensors();
     void HandleMessage(const IdentificationMessage &message);
     void HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message);
     void HandleMessages();
@@ -132,8 +145,7 @@ private:
     void RenderTools(const ImVec2 &position, const ImVec2 &size);
     void RenderMarkers();
     void RenderMemory();
-    void RenderSensorGroup(const SensorGroup &group, bool is_first,
-                           std::map<int, bool> &is_selected);
+    void RenderSensorGroup(SensorGroupUiState &group, bool is_first);
     void RenderSensors();
     void RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size);
 

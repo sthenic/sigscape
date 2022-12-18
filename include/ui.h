@@ -63,7 +63,7 @@ private:
         bool is_plotted;
         std::string label;
         std::string unit;
-        SensorReading reading;
+        SensorRecord record;
     };
 
     struct SensorGroupUiState

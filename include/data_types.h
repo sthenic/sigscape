@@ -28,10 +28,6 @@ struct BaseRecord
 
     virtual ~BaseRecord() = 0;
 
-    /* Delete copy constructors until we need them. */
-    BaseRecord(const BaseRecord &other) = delete;
-    BaseRecord &operator=(const BaseRecord &other) = delete;
-
     std::vector<double> x;
     std::vector<double> y;
     double step;
@@ -235,6 +231,30 @@ struct ProcessedRecord
         double noise;
         bool overlap;
     } frequency_domain_metrics;
+};
+
+struct SensorRecord : public BaseRecord
+{
+    SensorRecord()
+        : BaseRecord(0)
+        , status(-1)
+        , id()
+        , group_id()
+        , note("No data")
+    {}
+
+    SensorRecord(uint32_t id, uint32_t group_id)
+        : BaseRecord(0)
+        , status(-1)
+        , id(id)
+        , group_id(group_id)
+        , note()
+    {}
+
+    int status;
+    uint32_t id;
+    uint32_t group_id; /* FIXME: Prob not needed */
+    std::string note;
 };
 
 #endif

@@ -64,7 +64,7 @@ Ui::SensorUiState::SensorUiState(const std::string &label, const std::string &un
     : is_plotted(false)
     , label(label)
     , unit(unit)
-    , reading()
+    , record()
 {
 }
 
@@ -243,13 +243,13 @@ void Ui::UpdateSensors()
 {
     for (auto &digitizer : m_digitizers)
     {
-        std::shared_ptr<std::vector<SensorReading>> data;
-        if (ADQR_EOK == digitizer.interface->WaitForSensorData(data))
+        std::shared_ptr<std::vector<SensorRecord>> records;
+        if (ADQR_EOK == digitizer.interface->WaitForSensorRecords(records))
         {
-            for (auto &sensor : *data)
+            for (auto &record : *records)
             {
-                digitizer.ui.sensor_groups[sensor.group_id].sensors[sensor.id].reading =
-                    std::move(sensor);
+                digitizer.ui.sensor_groups[record.group_id].sensors[record.id].record =
+                    std::move(record);
             }
         }
     }
@@ -961,7 +961,7 @@ void Ui::RenderSensorGroup(SensorGroupUiState &group, bool is_first)
                 ImGui::EndDragDropSource();
             }
 
-            if (sensor.reading.status == 0 && ImGui::BeginPopupContextItem())
+            if (sensor.record.status == 0 && ImGui::BeginPopupContextItem())
             {
                 ImGui::MenuItem("Plot", "", &sensor.is_plotted);
                 if (ImGui::MenuItem("Capture"))
@@ -969,19 +969,19 @@ void Ui::RenderSensorGroup(SensorGroupUiState &group, bool is_first)
                 ImGui::EndPopup();
             }
 
-            if (sensor.reading.status != 0 && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
-                ImGui::SetTooltip("%s", sensor.reading.note.c_str());
+            if (sensor.record.status != 0 && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+                ImGui::SetTooltip("%s", sensor.record.note.c_str());
 
             ImGui::TableSetColumnIndex(1);
-            if (sensor.reading.status != 0)
+            if (sensor.record.status != 0)
             {
-                ImGui::Text(fmt::format("{:>7} {}", "Error", sensor.reading.status));
+                ImGui::Text(fmt::format("{:>7} {}", "Error", sensor.record.status));
                 ImGui::SameLine();
                 ImGui::TextDisabled("(?)");
             }
             else
             {
-                ImGui::Text(fmt::format("{:7.3f} {}", sensor.reading.values.back(), sensor.unit));
+                ImGui::Text(fmt::format("{:7.3f} {}", sensor.record.y.back(), sensor.unit));
             }
         }
 
@@ -1576,8 +1576,8 @@ void Ui::PlotSensorsSelected()
 
                 const auto label =
                     fmt::format("{}:{}:{}", digitizer.ui.identifier, group.label[0], sensor.label);
-                ImPlot::PlotLine(label.c_str(), sensor.reading.time.data(),
-                                 sensor.reading.values.data(), sensor.reading.time.size());
+                ImPlot::PlotLine(label.c_str(), sensor.record.x.data(), sensor.record.y.data(),
+                                 sensor.record.x.size());
             }
         }
     }

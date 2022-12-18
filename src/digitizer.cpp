@@ -123,11 +123,11 @@ Digitizer::Digitizer(void *handle, int index)
     , m_watchers{}
     , m_parameters{}
     , m_processing_threads{}
-    , m_sensor_readings{}
-    , m_sensor_readings_queue()
-    , m_sensor_last_timestamp(std::chrono::high_resolution_clock::now())
+    , m_sensor_records{}
+    , m_sensor_record_queue()
+    , m_sensor_last_record_timestamp(std::chrono::high_resolution_clock::now())
 {
-    m_sensor_readings_queue.Start();
+    m_sensor_record_queue.Start();
 }
 
 Digitizer::~Digitizer()
@@ -145,9 +145,9 @@ int Digitizer::WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedReco
     return m_processing_threads[channel]->WaitForBuffer(record, 0);
 }
 
-int Digitizer::WaitForSensorData(std::shared_ptr<std::vector<SensorReading>> &data)
+int Digitizer::WaitForSensorRecords(std::shared_ptr<std::vector<SensorRecord>> &records)
 {
-    return m_sensor_readings_queue.Read(data, 0);
+    return m_sensor_record_queue.Read(records, 0);
 }
 
 void Digitizer::MainLoop()
@@ -269,7 +269,7 @@ void Digitizer::InitializeSystemManagerObjects()
 
     /* Populate a sensor tree w/ the static information and set up the sensor readings. */
     SensorTree sensor_tree;
-    m_sensor_readings.clear();
+    m_sensor_records.clear();
 
     uint32_t nof_sensors;
     int result = ADQ_SmTransactionImmediate(m_id.handle, m_id.index,
@@ -333,7 +333,7 @@ void Digitizer::InitializeSystemManagerObjects()
 
         sensor_tree.back().sensors.emplace_back(information.id, information.group_id,
                                                     information.label, information.unit);
-        m_sensor_readings.emplace_back(information.id, information.group_id);
+        m_sensor_records.emplace_back(information.id, information.group_id);
     }
 
     m_read_queue.EmplaceWrite(DigitizerMessageId::SENSOR_TREE, std::move(sensor_tree));
@@ -342,14 +342,14 @@ void Digitizer::InitializeSystemManagerObjects()
 void Digitizer::UpdateSystemManagerObjects()
 {
     const auto now = std::chrono::high_resolution_clock::now();
-    const double SAMPLING_PERIOD_MS = 1000.0;
-    if ((now - m_sensor_last_timestamp).count() / 1e6 >= SAMPLING_PERIOD_MS)
+    if ((now - m_sensor_last_record_timestamp).count() / 1e6 >= SENSOR_SAMPLING_PERIOD_MS)
     {
         /* Update the timestamp. */
-        m_sensor_last_timestamp = now;
+        m_sensor_last_record_timestamp = now;
 
-        for (auto &sensor : m_sensor_readings)
+        for (auto &sensor : m_sensor_records)
         {
+            sensor.step = SENSOR_SAMPLING_PERIOD_MS / 1e3;
             struct ArgSensorGetValue arg
             {
                 static_cast<uint32_t>(sensor.id), SENSOR_FORMAT_FLOAT
@@ -370,22 +370,21 @@ void Digitizer::UpdateSystemManagerObjects()
             {
                 /* FIXME: Configurable value or do we even need a cap? It's a
                           very small amount of data compared to the records. */
-                if (sensor.values.size() > 1000)
+                if (sensor.y.size() > 1000)
                 {
-                    sensor.values.erase(sensor.values.begin());
-                    sensor.time.erase(sensor.time.begin());
+                    sensor.y.erase(sensor.y.begin());
+                    sensor.x.erase(sensor.x.begin());
                 }
 
-                sensor.values.emplace_back(value);
-                double last = (sensor.time.size() > 0) ? sensor.time.back() : 0;
-                sensor.time.emplace_back(last + SAMPLING_PERIOD_MS / 1e3);
+                sensor.y.emplace_back(value);
+                double last = (sensor.x.size() > 0) ? sensor.x.back() : 0;
+                sensor.x.emplace_back(last + sensor.step);
             }
         }
 
-        /* Make a copy of the current sensor readings and push a shared pointer
+        /* Make a copy of the current sensor records and push a shared pointer
            to the outbound queue. */
-        m_sensor_readings_queue.Write(
-            std::make_shared<std::vector<SensorReading>>(m_sensor_readings));
+        m_sensor_record_queue.Write(std::make_shared<std::vector<SensorRecord>>(m_sensor_records));
     }
 }
 

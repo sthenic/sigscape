@@ -159,34 +159,6 @@ struct DigitizerMessage
     SensorTree sensor_tree;
 };
 
-struct SensorReading
-{
-    SensorReading()
-        : status(-1)
-        , id()
-        , group_id()
-        , note("No data")
-        , values{}
-        , time{}
-    {}
-
-    SensorReading(uint32_t id, uint32_t group_id)
-        : status(-1)
-        , id(id)
-        , group_id(group_id)
-        , note()
-        , values{}
-        , time{}
-    {}
-
-    int status;
-    uint32_t id;
-    uint32_t group_id; /* FIXME: Prob not needed */
-    std::string note;
-    std::vector<float> values;
-    std::vector<float> time;
-};
-
 class Digitizer : public MessageThread<Digitizer, DigitizerMessage>
 {
 public:
@@ -201,7 +173,7 @@ public:
     int WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedRecord> &record);
 
     /* Interface to the digitizer's sensor data. */
-    int WaitForSensorData(std::shared_ptr<std::vector<SensorReading>> &data);
+    int WaitForSensorRecords(std::shared_ptr<std::vector<SensorRecord>> &records);
 
     /* The main loop. */
     void MainLoop() override;
@@ -235,10 +207,10 @@ private:
     /* The digitizer's data processing threads, one per channel. */
     std::vector<std::unique_ptr<DataProcessing>> m_processing_threads;
 
-    /* Sensor readings. */
-    std::vector<SensorReading> m_sensor_readings;
-    ThreadSafeQueue<std::shared_ptr<std::vector<SensorReading>>> m_sensor_readings_queue;
-    std::chrono::high_resolution_clock::time_point m_sensor_last_timestamp;
+    /* Sensor records. */
+    std::vector<SensorRecord> m_sensor_records;
+    ThreadSafeQueue<std::shared_ptr<std::vector<SensorRecord>>> m_sensor_record_queue;
+    std::chrono::high_resolution_clock::time_point m_sensor_last_record_timestamp;
 
     void ProcessMessages();
     void ProcessWatcherMessages();
@@ -269,6 +241,8 @@ private:
     void InitializeParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher);
     void GetParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher);
     void InitializeFileWatchers(const struct ADQConstantParameters &constant);
+
+    static constexpr double SENSOR_SAMPLING_PERIOD_MS = 1000.0;
 };
 
 #endif

@@ -105,6 +105,9 @@ Ui::Ui()
     , m_digitizers()
     , m_time_domain_markers("Time Domain", "T")
     , m_frequency_domain_markers("Frequency Domain", "F")
+    , m_time_domain_units_per_division()
+    , m_frequency_domain_units_per_division()
+    , m_sensor_units_per_division()
 {
 }
 
@@ -1583,7 +1586,7 @@ void Ui::PlotSensorsSelected()
 void Ui::RenderSensorPlot()
 {
     ImPlot::PushStyleVar(ImPlotStyleVar_FitPadding, ImVec2(0.0f, 0.1f));
-    if (ImPlot::BeginPlot("Sensors", ImVec2(-1, -1), ImPlotFlags_NoTitle))
+    if (ImPlot::BeginPlot("Sensors##Plot", ImVec2(-1, -1), ImPlotFlags_NoTitle))
     {
         if (ImGui::BeginDragDropTarget())
         {
@@ -1602,9 +1605,18 @@ void Ui::RenderSensorPlot()
         ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric, (void *)"s");
         ImPlot::SetupAxis(ImAxis_X1, NULL, ImPlotAxisFlags_AutoFit);
         PlotSensorsSelected();
+
+        /* FIXME: Vertical units? Probably multiple axes. */
+        const auto str =
+            fmt::format("{:6.2f} ?/div\n{}/div", m_sensor_units_per_division.y,
+                        Format::Metric(m_sensor_units_per_division.x, "{:6.2f} {}s", 1));
+        RenderUnitsPerDivision(str);
+
         ImPlot::EndPlot();
 
-        /* FIXME: Units per division */
+        /* Update the units per division. It's imperative that this is carried
+           out after ImPlot::EndPlot() has been called. */
+        GetUnitsPerDivision("Sensors##Plot", m_sensor_units_per_division);
     }
     ImPlot::PopStyleVar();
 }

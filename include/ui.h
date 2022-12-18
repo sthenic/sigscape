@@ -119,6 +119,7 @@ private:
 
     UnitsPerDivision m_time_domain_units_per_division;
     UnitsPerDivision m_frequency_domain_units_per_division;
+    UnitsPerDivision m_sensor_units_per_division;
 
     void ClearChannelSelection();
     bool IsAnySolo() const;

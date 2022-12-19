@@ -136,7 +136,7 @@ void DataProcessing::MainLoop()
                 break;
 
             case ADQ_DATA_FORMAT_INT32:
-                TransformToUnitRange(static_cast<const int16_t *>(time_domain->data),
+                TransformToUnitRange(static_cast<const int32_t *>(time_domain->data),
                                      code_normalization, window.get(), y);
                 break;
 

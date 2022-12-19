@@ -919,7 +919,6 @@ void Ui::RenderSensorGroup(SensorGroupUiState &group, bool is_first)
 
     int flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
     bool node_open = ImGui::TreeNodeEx(group.label.c_str(), flags);
-        return;
 
     if (ImGui::BeginPopupContextItem())
     {

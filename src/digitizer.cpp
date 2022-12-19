@@ -197,29 +197,47 @@ void Digitizer::MainLoop()
     m_read_queue.EmplaceWrite(DigitizerMessageId::NOF_CHANNELS, constant.nof_channels);
     SetState(DigitizerState::IDLE);
 
-#ifdef ENABLE_SYSMAN
-    /* Initialize the objects associated with the system manager, like sensors and boot status. */
-    InitializeSystemManagerObjects();
-#endif
+    try
+    {
+        /* Initialize the objects associated with the system manager, like
+           sensors and boot status. */
+        InitializeSystemManagerObjects();
+    }
+    catch (const DigitizerException &e)
+    {
+        SignalError(e.what());
+    }
+
 
     m_thread_exit_code = ADQR_EOK;
     for (;;)
     {
-        ProcessMessages();
-        ProcessWatcherMessages();
-
-#ifdef ENABLE_SYSMAN
-        /* Can't go faster than 10 Hz unless we change the wait but that should suffice. */
-        UpdateSystemManagerObjects();
-#endif
+        try
+        {
+            /* Can't go faster than 10 Hz unless we change the wait but that should suffice. */
+            ProcessMessages();
+            ProcessWatcherMessages();
+            UpdateSystemManagerObjects();
+        }
+        catch (const DigitizerException &e)
+        {
+            SignalError(e.what());
+        }
 
         /* We implement the sleep using the stop event to be able to immediately
-            react to the event being set. */
+           react to the event being set. */
         if (m_should_stop.wait_for(std::chrono::milliseconds(100)) == std::future_status::ready)
             break;
     }
 
     StopDataAcquisition();
+}
+
+void Digitizer::SignalError(const std::string &message)
+{
+    /* TODO: Propagate message in some other way? We just write it to stderr for now. */
+    std::fprintf(stderr, "%s", fmt::format("ERROR: {}\n", message).c_str());
+    m_read_queue.EmplaceWrite(DigitizerMessageId::ERR);
 }
 
 void Digitizer::ProcessMessages()
@@ -265,8 +283,6 @@ void Digitizer::ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watch
 
 void Digitizer::InitializeSystemManagerObjects()
 {
-    /* FIXME: fprintf into exceptions? */
-
     /* Populate a sensor tree w/ the static information and set up the sensor readings. */
     SensorTree sensor_tree;
     m_sensor_records.clear();
@@ -276,10 +292,7 @@ void Digitizer::InitializeSystemManagerObjects()
                                             SystemManagerCommand::SENSOR_GET_NOF_SENSORS, NULL,
                                             0, &nof_sensors, sizeof(nof_sensors));
     if (result != ADQ_EOK)
-    {
-        std::fprintf(stderr, "Failed to read the number of sensors, status %d.\n", result);
-        return;
-    }
+        throw DigitizerException(fmt::format("SENSOR_GET_NOF_SENSORS failed, status {}.", result));
 
     std::vector<uint32_t> sensor_map(nof_sensors + 1); /* +1 for EOM */
     result = ADQ_SmTransactionImmediate(m_id.handle, m_id.index,
@@ -287,10 +300,7 @@ void Digitizer::InitializeSystemManagerObjects()
                                         NULL, 0, sensor_map.data(),
                                         sizeof(sensor_map[0]) * sensor_map.size());
     if (result != ADQ_EOK)
-    {
-        std::fprintf(stderr, "Failed to read the sensor map, status %d.\n", result);
-        return;
-    }
+        throw DigitizerException(fmt::format("SENSOR_GET_MAP failed, status {}.", result));
 
     /* Resize to remove EOM, then walk through the sensor map, retrieving the
        static information about each sensor. While we have a flat sequence of
@@ -307,10 +317,7 @@ void Digitizer::InitializeSystemManagerObjects()
                                             SystemManagerCommand::SENSOR_GET_INFO, &sensor_id,
                                             sizeof(sensor_id), &information, sizeof(information));
         if (result != ADQ_EOK)
-        {
-            std::fprintf(stderr, "Failed to read sensor information, status %d.\n", result);
-            return;
-        }
+            throw DigitizerException(fmt::format("SENSOR_GET_INFO, status {}.", result));
 
         /* If we encounter a new group, read its information and create new entry. */
         if (information.group_id != group_id)
@@ -321,11 +328,7 @@ void Digitizer::InitializeSystemManagerObjects()
                                                 &information.group_id, sizeof(information.group_id),
                                                 &group_information, sizeof(group_information));
             if (result != ADQ_EOK)
-            {
-                std::fprintf(stderr, "Failed to read group information information, status %d.\n",
-                             result);
-                return;
-            }
+                throw DigitizerException(fmt::format("SENSOR_GET_GROUP_INFO, status {}.", result));
 
             sensor_tree.emplace_back(group_information.id, group_information.label);
             group_id = group_information.id;
@@ -360,7 +363,6 @@ void Digitizer::UpdateSystemManagerObjects()
                                               SystemManagerCommand::SENSOR_GET_VALUE,
                                               &arg, sizeof(arg), &value, sizeof(value));
 
-            /* FIXME: SYSMAN_EOK? */
             if (sensor.status != 0)
             {
                 /* FIXME: Error code to text description? */
@@ -368,9 +370,12 @@ void Digitizer::UpdateSystemManagerObjects()
             }
             else
             {
-                /* FIXME: Configurable value or do we even need a cap? It's a
-                          very small amount of data compared to the records. */
-                if (sensor.y.size() > 1000)
+                /* TODO: Maybe a configurable value? */
+                /* Storing 10 hours of sensor data (1 Hz sampling rate) will
+                   mean that a single sensor consumes at most about 0.5 MB of
+                   memory. I think that's reasonable if you let it run that
+                   long. */
+                if (sensor.y.size() > 60 * 60 * 10)
                 {
                     sensor.y.erase(sensor.y.begin());
                     sensor.x.erase(sensor.x.begin());
@@ -410,7 +415,7 @@ void Digitizer::StartDataAcquisition()
         if (result != ADQ_EOK)
             throw DigitizerException(fmt::format("ADQ_GetParameters failed, result {}.", result));
     }
-    catch (const DigitizerException &e)
+    catch (const DigitizerException &)
     {
         StopDataAcquisition();
         throw;
@@ -529,7 +534,7 @@ void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &messag
             ConfigureDefaultAcquisition();
             StartDataAcquisition();
         }
-        catch (const DigitizerException &e)
+        catch (const DigitizerException &)
         {
             SetState(DigitizerState::IDLE);
             throw;
@@ -543,7 +548,7 @@ void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &messag
             SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
             StartDataAcquisition();
         }
-        catch (const DigitizerException &e)
+        catch (const DigitizerException &)
         {
             SetState(DigitizerState::IDLE);
             throw;
@@ -558,7 +563,7 @@ void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &messag
             SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
             StartDataAcquisition();
         }
-        catch (const DigitizerException &e)
+        catch (const DigitizerException &)
         {
             SetState(DigitizerState::IDLE);
             throw;
@@ -577,36 +582,27 @@ void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &messag
 
 void Digitizer::HandleMessageInState(const struct DigitizerMessage &message)
 {
-    try
+    switch (m_state)
     {
-        switch (m_state)
-        {
-        case DigitizerState::NOT_ENUMERATED:
-            HandleMessageInNotEnumerated(message);
-            break;
+    case DigitizerState::NOT_ENUMERATED:
+        HandleMessageInNotEnumerated(message);
+        break;
 
-        case DigitizerState::ENUMERATION:
-            HandleMessageInEnumeration(message);
-            break;
+    case DigitizerState::ENUMERATION:
+        HandleMessageInEnumeration(message);
+        break;
 
-        case DigitizerState::IDLE:
-            HandleMessageInIdle(message);
-            break;
+    case DigitizerState::IDLE:
+        HandleMessageInIdle(message);
+        break;
 
-        case DigitizerState::ACQUISITION:
-            HandleMessageInAcquisition(message);
-            break;
-        }
-
-        /* If the message was processed successfully, we send the 'all clear'. */
-        m_read_queue.EmplaceWrite(DigitizerMessageId::CLEAR);
+    case DigitizerState::ACQUISITION:
+        HandleMessageInAcquisition(message);
+        break;
     }
-    catch (const DigitizerException &e)
-    {
-        /* TODO: Propagate message in some other way? We just write it to stderr for now. */
-        std::fprintf(stderr, "%s", fmt::format("ERROR: {}\n", e.what()).c_str());
-        m_read_queue.EmplaceWrite(DigitizerMessageId::ERR);
-    }
+
+    /* If the message was processed successfully, we send the 'all clear'. */
+    m_read_queue.EmplaceWrite(DigitizerMessageId::CLEAR);
 }
 
 void Digitizer::ConfigureInternalReference()

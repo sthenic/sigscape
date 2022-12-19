@@ -212,6 +212,7 @@ private:
     ThreadSafeQueue<std::shared_ptr<std::vector<SensorRecord>>> m_sensor_record_queue;
     std::chrono::high_resolution_clock::time_point m_sensor_last_record_timestamp;
 
+    void SignalError(const std::string &message);
     void ProcessMessages();
     void ProcessWatcherMessages();
     void ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watcher,

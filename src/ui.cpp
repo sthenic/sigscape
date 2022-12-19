@@ -918,7 +918,7 @@ void Ui::RenderSensorGroup(SensorGroupUiState &group, bool is_first)
     }
 
     int flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
-    if (!ImGui::TreeNodeEx(group.label.c_str(), flags))
+    bool node_open = ImGui::TreeNodeEx(group.label.c_str(), flags);
         return;
 
     if (ImGui::BeginPopupContextItem())
@@ -931,13 +931,16 @@ void Ui::RenderSensorGroup(SensorGroupUiState &group, bool is_first)
         ImGui::EndPopup();
     }
 
+    if (!node_open)
+      return;
+
     flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
             ImGuiTableFlags_BordersInnerV;
 
     if (ImGui::BeginTable(fmt::format("Sensors##{}", group.label).c_str(), 2, flags))
     {
         ImGui::TableSetupColumn("Sensor", ImGuiTableColumnFlags_WidthFixed,
-                                6 * ImGui::CalcTextSize("x").x);
+                                24 * ImGui::CalcTextSize("x").x);
         ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
 
         for (auto &[sensor_id, sensor] : group.sensors)
@@ -1023,42 +1026,11 @@ void Ui::RenderSensors()
         }
     }
 
-    /* Split into two groups for a more compact presentation. */
-    std::vector<uint32_t> left;
-    std::vector<uint32_t> right;
+    bool is_first = true;
     for (auto &[group_id, group] : ui->sensor_groups)
     {
-        if (left.size() > right.size())
-            right.push_back(group_id);
-        else
-            left.push_back(group_id);
-    }
-
-    /* Left column */
-    if (ImGui::BeginChild("SensorsLeft", ImVec2(ImGui::GetContentRegionAvail().x * 0.5f, 0), true,
-                          ImGuiWindowFlags_NoScrollbar))
-    {
-        bool is_first = true;
-        for (auto &group_id : left)
-        {
-            RenderSensorGroup(ui->sensor_groups[group_id], is_first);
-            is_first = false;
-        }
-
-        ImGui::EndChild();
-    }
-
-    /* Right column */
-    ImGui::SameLine();
-    if (ImGui::BeginChild("SensorsRight", ImVec2(0, 0), true))
-    {
-        bool is_first = true;
-        for (auto &group_id : right)
-        {
-            RenderSensorGroup(ui->sensor_groups[group_id], is_first);
-            is_first = false;
-        }
-        ImGui::EndChild();
+        RenderSensorGroup(group, is_first);
+        is_first = false;
     }
 }
 
@@ -1574,8 +1546,7 @@ void Ui::PlotSensorsSelected()
                 if (!sensor.is_plotted)
                     continue;
 
-                const auto label =
-                    fmt::format("{}:{}:{}", digitizer.ui.identifier, group.label[0], sensor.label);
+                const auto label = fmt::format("{}:{}", digitizer.ui.identifier, sensor.label);
                 ImPlot::PlotLine(label.c_str(), sensor.record.x.data(), sensor.record.y.data(),
                                  sensor.record.x.size());
             }

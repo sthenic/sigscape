@@ -713,7 +713,8 @@ void Digitizer::ConfigureDefaultAcquisition()
 
         transfer.channel[i].metadata_enabled = 1;
         transfer.channel[i].nof_buffers = ADQ_MAX_NOF_BUFFERS;
-        transfer.channel[i].record_size = 2 * acquisition.channel[i].record_length;
+        transfer.channel[i].record_size = acquisition.channel[i].bytes_per_sample
+                                          * acquisition.channel[i].record_length;
         transfer.channel[i].record_buffer_size = transfer.channel[i].record_size;
         transfer.channel[i].metadata_buffer_size = sizeof(ADQGen4RecordHeader);
 

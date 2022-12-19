@@ -19,15 +19,23 @@ enum SystemManagerCommand
 struct SystemManagerSensorInformation
 {
     uint32_t id;
-    uint32_t group_id;
-    char label[16];
+    char label[32];
     char unit[8];
+    uint32_t group_id;
+    uint8_t reserved[16];
 };
 
 struct SystemManagerSensorGroupInformation
 {
     uint32_t id;
-    char label[16];
+    char label[32];
+};
+
+struct SystemManagerSensorCaptureSample
+{
+  uint32_t id;
+  uint32_t time;
+  float value;
 };
 
 #define SENSOR_FORMAT_INT (0u)

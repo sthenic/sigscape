@@ -75,6 +75,15 @@ private:
         std::map<uint32_t, SensorUiState> sensors;
     };
 
+    struct BootStatusUiState
+    {
+        BootStatusUiState() = default;
+
+        int state;
+        std::string state_description;
+        std::vector<BootEntry> boot_entries;
+    };
+
     /* Representation of a digitizer's state in the UI. */
     struct DigitizerUiState
     {
@@ -90,6 +99,7 @@ private:
         bool popup_initialize_would_overwrite;
         bool is_selected;
 
+        BootStatusUiState boot_status;
         std::map<uint32_t, SensorGroupUiState> sensor_groups;
         std::vector<ChannelUiState> channels;
     };
@@ -147,6 +157,7 @@ private:
     void RenderMarkers();
     void RenderMemory();
     void RenderSensorGroup(SensorGroupUiState &group, bool is_first);
+    void RenderBootStatus();
     void RenderSensors();
     void RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size);
 

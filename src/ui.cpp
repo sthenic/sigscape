@@ -87,6 +87,7 @@ Ui::DigitizerUiState::DigitizerUiState()
     , set_clock_system_color(ImGui::GetStyleColorVec4(ImGuiCol_Button))
     , popup_initialize_would_overwrite(false)
     , is_selected(false)
+    , boot_status()
     , sensor_groups{}
     , channels{}
 {
@@ -354,6 +355,12 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
         digitizer.ui.sensor_groups.clear();
         for (const auto &group : message.sensor_tree)
             digitizer.ui.sensor_groups.try_emplace(group.id, group.label, group.sensors);
+        break;
+
+    case DigitizerMessageId::BOOT_STATUS:
+        digitizer.ui.boot_status.state = message.ivalue;
+        digitizer.ui.boot_status.state_description = std::move(message.str);
+        digitizer.ui.boot_status.boot_entries = std::move(message.boot_entries);
         break;
 
     default:
@@ -1033,6 +1040,27 @@ void Ui::RenderSensors()
     }
 }
 
+void Ui::RenderBootStatus()
+{
+    DigitizerUiState *ui = NULL;
+    for (auto &digitizer : m_digitizers)
+    {
+        if (digitizer.ui.is_selected && digitizer.ui.boot_status.boot_entries.size() > 0)
+        {
+            ui = &digitizer.ui;
+            break;
+        }
+    }
+
+    if (ui == NULL)
+    {
+        ImGui::Text("No data to display.");
+        return;
+    }
+
+    /* FIXME: Implement */
+}
+
 void Ui::RenderTools(const ImVec2 &position, const ImVec2 &size)
 {
     ImGui::SetNextWindowPos(position);
@@ -1061,8 +1089,7 @@ void Ui::RenderTools(const ImVec2 &position, const ImVec2 &size)
 
         if (ImGui::BeginTabItem("Boot"))
         {
-            /* FIXME: Implement */
-            WIP();
+            RenderBootStatus();
             ImGui::EndTabItem();
         }
 

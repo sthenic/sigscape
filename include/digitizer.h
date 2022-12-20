@@ -35,6 +35,7 @@ enum class DigitizerMessageId
     CONFIGURATION,
     INITIALIZE_WOULD_OVERWRITE,
     SENSOR_TREE,
+    BOOT_STATUS,
     /* The world -> digitizer */
     SET_INTERNAL_REFERENCE,
     SET_EXTERNAL_REFERENCE,
@@ -90,6 +91,21 @@ struct SensorGroup
 
 typedef std::vector<SensorGroup> SensorTree;
 
+struct BootEntry
+{
+    BootEntry(uint32_t id, const char *label, int32_t status)
+        : id(id)
+        , status(status)
+        , label(label)
+        , note()
+    {}
+
+    uint32_t id;
+    int32_t status;
+    std::string label;
+    std::string note;
+};
+
 struct DigitizerMessage
 {
     /* Default constructor (for receiving messages). */
@@ -103,6 +119,7 @@ struct DigitizerMessage
         , ivalue()
         , window_type()
         , sensor_tree()
+        , boot_entries{}
     {}
 
     /* Create a state message. */
@@ -113,6 +130,7 @@ struct DigitizerMessage
         , ivalue()
         , window_type()
         , sensor_tree()
+        , boot_entries{}
     {}
 
     /* Create a string message. */
@@ -123,6 +141,7 @@ struct DigitizerMessage
         , ivalue()
         , window_type()
         , sensor_tree()
+        , boot_entries{}
     {}
 
     /* Create an integer message. */
@@ -133,6 +152,7 @@ struct DigitizerMessage
         , ivalue(ivalue)
         , window_type()
         , sensor_tree()
+        , boot_entries{}
     {}
 
     /* Create a window message. */
@@ -143,12 +163,30 @@ struct DigitizerMessage
         , ivalue()
         , window_type(window_type)
         , sensor_tree()
+        , boot_entries{}
     {}
 
     /* Create a sensor identification message, taking ownership of the sensor information. */
     DigitizerMessage(DigitizerMessageId id, SensorTree &&sensor_tree)
         : id(id)
+        , state()
+        , str()
+        , ivalue()
+        , window_type()
         , sensor_tree(std::move(sensor_tree))
+        , boot_entries{}
+    {}
+
+    /* Create a message holding all the boot statuses. */
+    DigitizerMessage(DigitizerMessageId id, int state, const char *state_description,
+                     std::vector<BootEntry> &&boot_entries)
+        : id(id)
+        , state()
+        , str(state_description)
+        , ivalue(state)
+        , window_type()
+        , sensor_tree()
+        , boot_entries(std::move(boot_entries))
     {}
 
     DigitizerMessageId id;
@@ -157,6 +195,7 @@ struct DigitizerMessage
     int ivalue;
     WindowType window_type;
     SensorTree sensor_tree;
+    std::vector<BootEntry> boot_entries;
 };
 
 class Digitizer : public MessageThread<Digitizer, DigitizerMessage>
@@ -219,6 +258,8 @@ private:
                                 std::shared_ptr<std::string> &str,
                                 DigitizerMessageId dirty_id);
 
+    void InitializeSystemManagerBootStatus();
+    void InitializeSystemManagerSensors();
     void InitializeSystemManagerObjects();
     void UpdateSystemManagerObjects();
 

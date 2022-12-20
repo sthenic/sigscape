@@ -9,6 +9,11 @@
 
 enum SystemManagerCommand
 {
+  BOOT_GET_NOF_ENTRIES = 0x0020,
+  BOOT_GET_MAP = 0x0021,
+  BOOT_GET_INFO = 0x0022,
+  GET_STATE = 0x0030,
+  GET_STATE_INFO = 0x0035,
   SENSOR_GET_NOF_SENSORS = 0x0300,
   SENSOR_GET_MAP = 0x0301,
   SENSOR_GET_VALUE = 0x0303,
@@ -38,6 +43,18 @@ struct SystemManagerSensorCaptureSample
   float value;
 };
 
+struct SystemManagerBootInformation
+{
+    uint32_t id;
+    char label[32];
+    int32_t status;
+};
+
+struct SystemManagerStateInformation
+{
+    char label[32];
+};
+
 #define SENSOR_FORMAT_INT (0u)
 #define SENSOR_FORMAT_FLOAT (1u)
 
@@ -45,16 +62,6 @@ struct ArgSensorGetValue
 {
     uint32_t id;
     uint32_t format;
-};
-
-struct ArgSensorGetInfo
-{
-    uint32_t id;
-};
-
-struct ArgSensorGetGroupInfo
-{
-    uint32_t id;
 };
 
 #endif

@@ -70,7 +70,10 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
             name = "INITIALIZE_WOULD_OVERWRITE";
             break;
         case DigitizerMessageId::SENSOR_TREE:
-            name = "SENSOR_INFORMATION";
+            name = "SENSOR_TREE";
+            break;
+        case DigitizerMessageId::BOOT_STATUS:
+            name = "BOOT_STATUS";
             break;
         case DigitizerMessageId::SET_INTERNAL_REFERENCE:
             name = "SET_INTERNAL_REFERENCE";
@@ -281,7 +284,61 @@ void Digitizer::ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watch
     }
 }
 
-void Digitizer::InitializeSystemManagerObjects()
+void Digitizer::InitializeSystemManagerBootStatus()
+{
+    std::vector<BootEntry> boot_entries;
+
+    uint32_t nof_entries;
+    int result = ADQ_SmTransactionImmediate(m_id.handle, m_id.index,
+                                            SystemManagerCommand::BOOT_GET_NOF_ENTRIES, NULL, 0,
+                                            &nof_entries, sizeof(nof_entries));
+    if (result != ADQ_EOK)
+        throw DigitizerException(fmt::format("BOOT_GET_NOF_ENTRIES failed, status {}.", result));
+
+    std::vector<uint32_t> boot_map(nof_entries + 1); /* +1 for EOM */
+    result = ADQ_SmTransactionImmediate(m_id.handle, m_id.index,
+                                        SystemManagerCommand::BOOT_GET_MAP,
+                                        NULL, 0, boot_map.data(),
+                                        sizeof(boot_map[0]) * boot_map.size());
+    if (result != ADQ_EOK)
+        throw DigitizerException(fmt::format("BOOT_GET_MAP failed, status {}.", result));
+
+    boot_map.resize(nof_entries);
+    for (auto &boot_id : boot_map)
+    {
+        struct SystemManagerBootInformation boot_information;
+        result = ADQ_SmTransactionImmediate(m_id.handle, m_id.index,
+                                            SystemManagerCommand::BOOT_GET_INFO, &boot_id,
+                                            sizeof(boot_id), &boot_information,
+                                            sizeof(boot_information));
+        if (result != ADQ_EOK)
+            throw DigitizerException(fmt::format("BOOT_GET_INFO, status {}.", result));
+
+        boot_entries.emplace_back(boot_id, boot_information.label, boot_information.status);
+
+        /* FIXME: Error code to text description? */
+        if (boot_information.status != 0)
+            boot_entries.back().note = "I'm a descriptive error message!";
+    }
+
+    int32_t state;
+    result = ADQ_SmTransactionImmediate(m_id.handle, m_id.index, SystemManagerCommand::GET_STATE,
+                                        NULL, 0, &state, sizeof(state));
+    if (result != ADQ_EOK)
+        throw DigitizerException(fmt::format("GET_STATE, status {}.", result));
+
+    struct SystemManagerStateInformation state_information;
+    result = ADQ_SmTransactionImmediate(m_id.handle, m_id.index,
+                                        SystemManagerCommand::GET_STATE_INFO, &state, sizeof(state),
+                                        &state_information, sizeof(state_information));
+    if (result != ADQ_EOK)
+        throw DigitizerException(fmt::format("GET_STATE_INFO, status {}.", result));
+
+    m_read_queue.EmplaceWrite(DigitizerMessageId::BOOT_STATUS, state, state_information.label,
+                              std::move(boot_entries));
+}
+
+void Digitizer::InitializeSystemManagerSensors()
 {
     /* Populate a sensor tree w/ the static information and set up the sensor readings. */
     SensorTree sensor_tree;
@@ -335,11 +392,17 @@ void Digitizer::InitializeSystemManagerObjects()
         }
 
         sensor_tree.back().sensors.emplace_back(information.id, information.group_id,
-                                                    information.label, information.unit);
+                                                information.label, information.unit);
         m_sensor_records.emplace_back(information.id, information.group_id);
     }
 
     m_read_queue.EmplaceWrite(DigitizerMessageId::SENSOR_TREE, std::move(sensor_tree));
+}
+
+void Digitizer::InitializeSystemManagerObjects()
+{
+    InitializeSystemManagerBootStatus();
+    InitializeSystemManagerSensors();
 }
 
 void Digitizer::UpdateSystemManagerObjects()

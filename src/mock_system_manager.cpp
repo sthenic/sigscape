@@ -30,26 +30,53 @@
 #define SENSOR_GROUP_ID_TEMPERATURE (3u)
 #define SENSOR_GROUP_ID_POWER (4u)
 
+#define BOOT_ID_EOM (0u)
+
+#define BOOT_ID_CLOCK (1u)
+#define BOOT_ID_SPI (2u)
+#define BOOT_ID_I2C (3u)
+#define BOOT_ID_REGULATORS (4u)
+#define BOOT_ID_ERR (4u)
+
 MockSystemManager::MockSystemManager() :
     m_random_generator(std::chrono::steady_clock::now().time_since_epoch().count()),
-    m_sensor_map{SENSOR_ID_0V95,
-                 SENSOR_ID_3V3,
-                 SENSOR_ID_5V0,
-                 SENSOR_ID_2V6A_NEG,
-                 SENSOR_ID_CURRENT_0V95,
-                 SENSOR_ID_CURRENT_3V3,
-                 SENSOR_ID_CURRENT_5V0,
-                 SENSOR_ID_CURRENT_2V6A_NEG,
-                 SENSOR_ID_TEMPERATURE_ADC1,
-                 SENSOR_ID_TEMPERATURE_ADC2,
-                 SENSOR_ID_TEMPERATURE_FPGA,
-                 SENSOR_ID_TEMPERATURE_DCDC,
-                 SENSOR_ID_TEMPERATURE_ETMP,
-                 SENSOR_ID_POWER_0V95,
-                 SENSOR_ID_POWER_3V3,
-                 SENSOR_ID_POWER_5V0,
-                 SENSOR_ID_POWER_2V6A_NEG,
-                 SENSOR_ID_EOM},
+    m_sensor_map{
+        SENSOR_ID_0V95,
+        SENSOR_ID_3V3,
+        SENSOR_ID_5V0,
+        SENSOR_ID_2V6A_NEG,
+        SENSOR_ID_CURRENT_0V95,
+        SENSOR_ID_CURRENT_3V3,
+        SENSOR_ID_CURRENT_5V0,
+        SENSOR_ID_CURRENT_2V6A_NEG,
+        SENSOR_ID_TEMPERATURE_ADC1,
+        SENSOR_ID_TEMPERATURE_ADC2,
+        SENSOR_ID_TEMPERATURE_FPGA,
+        SENSOR_ID_TEMPERATURE_DCDC,
+        SENSOR_ID_TEMPERATURE_ETMP,
+        SENSOR_ID_POWER_0V95,
+        SENSOR_ID_POWER_3V3,
+        SENSOR_ID_POWER_5V0,
+        SENSOR_ID_POWER_2V6A_NEG,
+        SENSOR_ID_EOM
+    },
+
+    m_boot_map{
+        BOOT_ID_CLOCK,
+        BOOT_ID_SPI,
+        BOOT_ID_I2C,
+        BOOT_ID_REGULATORS,
+        BOOT_ID_ERR,
+        BOOT_ID_EOM
+    },
+
+    m_boot_information{
+        {BOOT_ID_CLOCK, {BOOT_ID_CLOCK, "Clock system", 0}},
+        {BOOT_ID_SPI, {BOOT_ID_SPI, "SPI bus", 0}},
+        {BOOT_ID_I2C, {BOOT_ID_I2C, "I2C bus", 0}},
+        {BOOT_ID_REGULATORS, {BOOT_ID_REGULATORS, "Voltage regulators", 0}},
+        {BOOT_ID_ERR, {BOOT_ID_ERR, "Deliberate error", -344}}
+    },
 
     m_sensor_group_information{
         {SENSOR_GROUP_ID_VOLTAGE, {SENSOR_GROUP_ID_VOLTAGE, "Voltage"}},
@@ -221,6 +248,58 @@ int MockSystemManager::HandleMessage()
         }
         break;
     }
+
+    case SystemManagerCommand::BOOT_GET_NOF_ENTRIES:
+    {
+        /* -1 for the EOM */
+        auto nof_entries = static_cast<uint32_t>(m_boot_map.size() - 1);
+        m_read_queue.EmplaceWrite(&nof_entries, sizeof(nof_entries));
+        break;
+    }
+
+    case SystemManagerCommand::BOOT_GET_MAP:
+    {
+        m_read_queue.EmplaceWrite(m_boot_map.data(), sizeof(m_boot_map[0]) * m_boot_map.size());
+        break;
+    }
+
+    case SystemManagerCommand::BOOT_GET_INFO:
+    {
+        if (message.data.size() != sizeof(uint32_t))
+        {
+            printf("Invalid arugment length for BOOT_GET_INFO: %zu != %zu.\n",
+                    message.data.size(), sizeof(uint32_t));
+            m_read_queue.EmplaceWrite(-1);
+        }
+
+        auto id = reinterpret_cast<const uint32_t *>(message.data.data());
+        if (m_sensor_information.count(*id) > 0)
+        {
+            const auto &information = m_boot_information.at(*id);
+            m_read_queue.EmplaceWrite(&information, sizeof(information));
+        }
+        else
+        {
+            printf("Unknown boot id %" PRIu32 ".\n", *id);
+            m_read_queue.EmplaceWrite(-1);
+        }
+        break;
+    }
+
+    case SystemManagerCommand::GET_STATE:
+    {
+        int32_t state = 10;
+        m_read_queue.EmplaceWrite(&state, sizeof(state));
+        break;
+    }
+
+    case SystemManagerCommand::GET_STATE_INFO:
+    {
+        struct SystemManagerStateInformation information = {"Done"};
+        m_read_queue.EmplaceWrite(&information, sizeof(information));
+        break;
+    }
+
     default:
     {
         printf("Unsupported system manager command 0x%04X.\n", static_cast<int>(message.cmd));

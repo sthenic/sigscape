@@ -17,7 +17,7 @@
 #define SENSOR_ID_TEMPERATURE_ADC2 (21u)
 #define SENSOR_ID_TEMPERATURE_FPGA (22u)
 #define SENSOR_ID_TEMPERATURE_DCDC (23u)
-#define SENSOR_ID_TEMPERATURE_ETMP (24u) /* Sensor always returning an error (for testing). */
+#define SENSOR_ID_TEMPERATURE_ERROR (24u) /* Sensor always returning an error (for testing). */
 
 #define SENSOR_ID_POWER_0V95 (30u)
 #define SENSOR_ID_POWER_3V3 (31u)
@@ -36,7 +36,7 @@
 #define BOOT_ID_SPI (2u)
 #define BOOT_ID_I2C (3u)
 #define BOOT_ID_REGULATORS (4u)
-#define BOOT_ID_ERR (4u)
+#define BOOT_ID_ERROR (5u)
 
 MockSystemManager::MockSystemManager() :
     m_random_generator(std::chrono::steady_clock::now().time_since_epoch().count()),
@@ -53,7 +53,7 @@ MockSystemManager::MockSystemManager() :
         SENSOR_ID_TEMPERATURE_ADC2,
         SENSOR_ID_TEMPERATURE_FPGA,
         SENSOR_ID_TEMPERATURE_DCDC,
-        SENSOR_ID_TEMPERATURE_ETMP,
+        SENSOR_ID_TEMPERATURE_ERROR,
         SENSOR_ID_POWER_0V95,
         SENSOR_ID_POWER_3V3,
         SENSOR_ID_POWER_5V0,
@@ -66,7 +66,7 @@ MockSystemManager::MockSystemManager() :
         BOOT_ID_SPI,
         BOOT_ID_I2C,
         BOOT_ID_REGULATORS,
-        BOOT_ID_ERR,
+        BOOT_ID_ERROR,
         BOOT_ID_EOM
     },
 
@@ -75,7 +75,7 @@ MockSystemManager::MockSystemManager() :
         {BOOT_ID_SPI, {BOOT_ID_SPI, "SPI bus", 0}},
         {BOOT_ID_I2C, {BOOT_ID_I2C, "I2C bus", 0}},
         {BOOT_ID_REGULATORS, {BOOT_ID_REGULATORS, "Voltage regulators", 0}},
-        {BOOT_ID_ERR, {BOOT_ID_ERR, "Deliberate error", -344}}
+        {BOOT_ID_ERROR, {BOOT_ID_ERROR, "Deliberate error", -344}}
     },
 
     m_sensor_group_information{
@@ -98,7 +98,7 @@ MockSystemManager::MockSystemManager() :
         {SENSOR_ID_TEMPERATURE_ADC2, {SENSOR_ID_TEMPERATURE_ADC2, "ADC2 temperature", "degC", SENSOR_GROUP_ID_TEMPERATURE, {}}},
         {SENSOR_ID_TEMPERATURE_FPGA, {SENSOR_ID_TEMPERATURE_FPGA, "FPGA temperature", "degC", SENSOR_GROUP_ID_TEMPERATURE, {}}},
         {SENSOR_ID_TEMPERATURE_DCDC, {SENSOR_ID_TEMPERATURE_DCDC, "DCDC temperature", "degC", SENSOR_GROUP_ID_TEMPERATURE, {}}},
-        {SENSOR_ID_TEMPERATURE_ETMP, {SENSOR_ID_TEMPERATURE_ETMP, "ETMP temperature", "degC", SENSOR_GROUP_ID_TEMPERATURE, {}}},
+        {SENSOR_ID_TEMPERATURE_ERROR, {SENSOR_ID_TEMPERATURE_ERROR, "Error temperature", "degC", SENSOR_GROUP_ID_TEMPERATURE, {}}},
         {SENSOR_ID_POWER_0V95, {SENSOR_ID_POWER_0V95, "+0V95 power", "W", SENSOR_GROUP_ID_POWER, {}}},
         {SENSOR_ID_POWER_3V3, {SENSOR_ID_POWER_3V3, "+3V3 power", "W", SENSOR_GROUP_ID_POWER, {}}},
         {SENSOR_ID_POWER_5V0, {SENSOR_ID_POWER_5V0, "+5V0 power", "W", SENSOR_GROUP_ID_POWER, {}}},
@@ -123,9 +123,6 @@ MockSystemManager::MockSystemManager() :
               {SENSOR_ID_POWER_2V6A_NEG, std::normal_distribution(2.6f * 0.32f, 0.1f)}}
 {
 }
-
-MockSystemManager::~MockSystemManager()
-{}
 
 void MockSystemManager::MainLoop()
 {
@@ -176,7 +173,7 @@ int MockSystemManager::HandleMessage()
 
         /* Intentionally return an error for one of the sensors. */
         auto arg = reinterpret_cast<ArgSensorGetValue *>(message.data.data());
-        if (arg->id == SENSOR_ID_TEMPERATURE_ETMP)
+        if (arg->id == SENSOR_ID_TEMPERATURE_ERROR)
         {
             m_read_queue.EmplaceWrite(-271);
             break;
@@ -235,15 +232,15 @@ int MockSystemManager::HandleMessage()
             m_read_queue.EmplaceWrite(-1);
         }
 
-        auto id = reinterpret_cast<const uint32_t *>(message.data.data());
-        if (m_sensor_group_information.count(*id) > 0)
+        auto id = *reinterpret_cast<const uint32_t *>(message.data.data());
+        if (m_sensor_group_information.count(id) > 0)
         {
-            const auto &information = m_sensor_group_information.at(*id);
+            const auto &information = m_sensor_group_information.at(id);
             m_read_queue.EmplaceWrite(&information, sizeof(information));
         }
         else
         {
-            printf("Unknown sensor id %" PRIu32 ".\n", *id);
+            printf("Unknown sensor id %" PRIu32 ".\n", id);
             m_read_queue.EmplaceWrite(-1);
         }
         break;
@@ -272,15 +269,15 @@ int MockSystemManager::HandleMessage()
             m_read_queue.EmplaceWrite(-1);
         }
 
-        auto id = reinterpret_cast<const uint32_t *>(message.data.data());
-        if (m_sensor_information.count(*id) > 0)
+        auto id = *reinterpret_cast<const uint32_t *>(message.data.data());
+        if (m_boot_information.count(id) > 0)
         {
-            const auto &information = m_boot_information.at(*id);
+            const auto &information = m_boot_information.at(id);
             m_read_queue.EmplaceWrite(&information, sizeof(information));
         }
         else
         {
-            printf("Unknown boot id %" PRIu32 ".\n", *id);
+            printf("Unknown boot id %" PRIu32 ".\n", id);
             m_read_queue.EmplaceWrite(-1);
         }
         break;

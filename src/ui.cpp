@@ -1058,7 +1058,43 @@ void Ui::RenderBootStatus()
         return;
     }
 
-    /* FIXME: Implement */
+    ImGui::Text(fmt::format("In state '{}' ({})", ui->boot_status.state_description,
+                            ui->boot_status.state));
+    ImGui::Separator();
+
+    int flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
+                ImGuiTableFlags_BordersInnerV;
+
+    if (ImGui::BeginTable("Boot", 2, flags))
+    {
+        ImGui::TableSetupColumn("Boot", ImGuiTableColumnFlags_WidthFixed,
+                                24 * ImGui::CalcTextSize("x").x);
+        ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed);
+
+        for (const auto &boot_entry : ui->boot_status.boot_entries)
+        {
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::Selectable(boot_entry.label.c_str(), false, ImGuiSelectableFlags_SpanAllColumns);
+
+            if (boot_entry.status != 0 && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+                ImGui::SetTooltip("%s", boot_entry.note.c_str());
+
+            ImGui::TableSetColumnIndex(1);
+            if (boot_entry.status != 0)
+            {
+                ImGui::Text(fmt::format("Error {}", boot_entry.status));
+                ImGui::SameLine();
+                ImGui::TextDisabled("(?)");
+            }
+            else
+            {
+                ImGui::Text("OK");
+            }
+        }
+
+        ImGui::EndTable();
+    }
 }
 
 void Ui::RenderTools(const ImVec2 &position, const ImVec2 &size)

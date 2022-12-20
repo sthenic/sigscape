@@ -429,25 +429,23 @@ void Digitizer::UpdateSystemManagerObjects()
             if (sensor.status != 0)
             {
                 /* FIXME: Error code to text description? */
-                sensor.note = "Error description";
+                sensor.note = "I'm a descriptive error message!";
+                continue;
             }
-            else
-            {
-                /* TODO: Maybe a configurable value? */
-                /* Storing 10 hours of sensor data (1 Hz sampling rate) will
-                   mean that a single sensor consumes at most about 0.5 MB of
-                   memory. I think that's reasonable if you let it run that
-                   long. */
-                if (sensor.y.size() > 60 * 60 * 10)
-                {
-                    sensor.y.erase(sensor.y.begin());
-                    sensor.x.erase(sensor.x.begin());
-                }
 
-                sensor.y.emplace_back(value);
-                double last = (sensor.x.size() > 0) ? sensor.x.back() : 0;
-                sensor.x.emplace_back(last + sensor.step);
+            /* TODO: Maybe a configurable value? */
+            /* Storing 10 hours of sensor data (1 Hz sampling rate) will mean
+               that a single sensor consumes at most about 0.5 MB of memory. I
+               think that's reasonable if you let it run that long. */
+            if (sensor.y.size() > 60 * 60 * 10)
+            {
+                sensor.y.erase(sensor.y.begin());
+                sensor.x.erase(sensor.x.begin());
             }
+
+            sensor.y.emplace_back(value);
+            double last = (sensor.x.size() > 0) ? sensor.x.back() : 0;
+            sensor.x.emplace_back(last + sensor.step);
         }
 
         /* Make a copy of the current sensor records and push a shared pointer

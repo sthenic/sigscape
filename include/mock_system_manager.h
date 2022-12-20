@@ -71,7 +71,7 @@ class MockSystemManager : public MessageThread<MockSystemManager, SystemManagerM
 {
 public:
     MockSystemManager();
-    ~MockSystemManager();
+    ~MockSystemManager() = default;
 
     /* Making copies of an object of this type is not allowed. */
     MockSystemManager(const MockSystemManager &other) = delete;

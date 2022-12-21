@@ -110,7 +110,7 @@ void DataProcessing::MainLoop()
             processed_record->time_domain->estimated_trigger_frequency = estimated_trigger_frequency;
             processed_record->time_domain->estimated_throughput = estimated_throughput;
 
-            if (m_persistence.size() >= CLOUD_SIZE)
+            if (m_persistence.size() >= PERSISTENCE_SIZE)
                 m_persistence.pop_back();
             m_persistence.push_front(processed_record->time_domain);
             processed_record->persistence = std::make_shared<Persistence>(m_persistence);

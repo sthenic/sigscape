@@ -25,16 +25,6 @@ int Generator::SetSamplingFrequency(double sampling_frequency)
     return ADQR_EOK;
 }
 
-int Generator::WaitForBuffer(ADQGen4Record *&buffer, int timeout)
-{
-    return m_read_queue.Read(buffer, timeout);
-}
-
-int Generator::ReturnBuffer(ADQGen4Record *buffer)
-{
-    return m_write_queue.Write(buffer);
-}
-
 void Generator::MainLoop()
 {
     m_thread_exit_code = ADQR_EOK;

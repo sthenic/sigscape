@@ -63,8 +63,16 @@ public:
         return m_thread_exit_code;
     }
 
-    virtual int WaitForBuffer(T *&buffer, int timeout) = 0;
-    virtual int ReturnBuffer(T *buffer) = 0;
+    /* We provide a default implementation of the outward facing queue interface. */
+    virtual int WaitForBuffer(T *&buffer, int timeout)
+    {
+        return m_read_queue.Read(buffer, timeout);
+    }
+
+    virtual int ReturnBuffer(T *buffer)
+    {
+        return m_write_queue.Write(buffer);
+    }
 
 protected:
     std::thread m_thread;

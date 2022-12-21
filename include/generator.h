@@ -52,8 +52,6 @@ public:
 
     int SetParameters(const Parameters &parameters);
     int SetSamplingFrequency(double sampling_frequency);
-    int WaitForBuffer(ADQGen4Record *&buffer, int timeout) override;
-    int ReturnBuffer(ADQGen4Record *buffer) override;
     void MainLoop() override;
 
 private:

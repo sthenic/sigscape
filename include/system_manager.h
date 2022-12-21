@@ -46,12 +46,13 @@ struct SystemManagerSensorCaptureSample
 struct SystemManagerBootInformation
 {
     uint32_t id;
-    char label[32];
     int32_t status;
+    char label[32];
 };
 
 struct SystemManagerStateInformation
 {
+    uint32_t id;
     char label[32];
 };
 

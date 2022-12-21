@@ -71,11 +71,11 @@ MockSystemManager::MockSystemManager() :
     },
 
     m_boot_information{
-        {BOOT_ID_CLOCK, {BOOT_ID_CLOCK, "Clock system", 0}},
-        {BOOT_ID_SPI, {BOOT_ID_SPI, "SPI bus", 0}},
-        {BOOT_ID_I2C, {BOOT_ID_I2C, "I2C bus", 0}},
-        {BOOT_ID_REGULATORS, {BOOT_ID_REGULATORS, "Voltage regulators", 0}},
-        {BOOT_ID_ERROR, {BOOT_ID_ERROR, "Deliberate error", -344}}
+        {BOOT_ID_CLOCK, {BOOT_ID_CLOCK, 0, "Clock system"}},
+        {BOOT_ID_SPI, {BOOT_ID_SPI, 0, "SPI bus"}},
+        {BOOT_ID_I2C, {BOOT_ID_I2C, 0, "I2C bus"}},
+        {BOOT_ID_REGULATORS, {BOOT_ID_REGULATORS, 0, "Voltage regulators"}},
+        {BOOT_ID_ERROR, {BOOT_ID_ERROR, -344, "Deliberate error"}}
     },
 
     m_sensor_group_information{
@@ -292,7 +292,7 @@ int MockSystemManager::HandleMessage()
 
     case SystemManagerCommand::GET_STATE_INFO:
     {
-        struct SystemManagerStateInformation information = {"Done"};
+        struct SystemManagerStateInformation information = {10, "Done"};
         m_read_queue.EmplaceWrite(&information, sizeof(information));
         break;
     }

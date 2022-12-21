@@ -1065,10 +1065,13 @@ void Ui::RenderBootStatus()
     int flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
                 ImGuiTableFlags_BordersInnerV;
 
+    /* Increase the horizontal cell padding. */
+    ImGui::PushStyleVar(ImGuiStyleVar_CellPadding,
+                        ImGui::GetStyle().CellPadding + ImVec2(3.0, 0.0));
+
     if (ImGui::BeginTable("Boot", 2, flags))
     {
-        ImGui::TableSetupColumn("Boot", ImGuiTableColumnFlags_WidthFixed,
-                                24 * ImGui::CalcTextSize("x").x);
+        ImGui::TableSetupColumn("Boot", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed);
 
         for (const auto &boot_entry : ui->boot_status.boot_entries)
@@ -1095,6 +1098,8 @@ void Ui::RenderBootStatus()
 
         ImGui::EndTable();
     }
+
+    ImGui::PopStyleVar();
 }
 
 void Ui::RenderTools(const ImVec2 &position, const ImVec2 &size)
@@ -1965,6 +1970,11 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
 
                 ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
                                         ImGuiTableFlags_BordersInnerV;
+
+                /* Increase the horizontal cell padding. */
+                ImGui::PushStyleVar(ImGuiStyleVar_CellPadding,
+                                    ImGui::GetStyle().CellPadding + ImVec2(3.0, 0.0));
+
                 if (ImGui::BeginTable("Metrics", 4, flags))
                 {
                     ImGui::TableSetupColumn("Metric", ImGuiTableColumnFlags_WidthFixed);
@@ -2044,6 +2054,8 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
 
                     ImGui::EndTable();
                 }
+
+                ImGui::PopStyleVar();
 
                 if ((ui.is_muted || IsAnySolo()) && !ui.is_solo)
                     ImGui::PopStyleColor();

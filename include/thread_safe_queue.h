@@ -191,6 +191,12 @@ public:
         return (m_capacity > 0) && (m_queue.size() >= m_capacity);
     }
 
+    bool IsEmpty()
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        return m_queue.empty();
+    }
+
 private:
     std::promise<void> m_signal_stop;
     std::future<void> m_should_stop;

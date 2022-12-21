@@ -474,7 +474,10 @@ void DataProcessing::AnalyzeTimeDomain(ProcessedRecord *record)
             record->time_domain_metrics.min = y;
 
         record->time_domain_metrics.mean += y;
+        record->time_domain_metrics.rms += y * y;
     }
 
     record->time_domain_metrics.mean /= static_cast<double>(record->time_domain->y.size());
+    record->time_domain_metrics.rms /= static_cast<double>(record->time_domain->y.size());
+    record->time_domain_metrics.rms = std::sqrt(record->time_domain_metrics.rms);
 }

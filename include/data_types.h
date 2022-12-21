@@ -215,6 +215,7 @@ struct ProcessedRecord
         double max;
         double min;
         double mean;
+        double rms;
     } time_domain_metrics;
 
     struct FrequencyDomainMetrics

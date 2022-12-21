@@ -2005,14 +2005,6 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                     ImGui::TableSetColumnIndex(2);
                     ImGui::Text(Format::TimeDomainY(record->range_min, DIGITS, false));
 
-                    ImGui::TableNextRow();
-                    ImGui::TableSetColumnIndex(0);
-                    ImGui::Text("Mean");
-                    ImGui::TableSetColumnIndex(1);
-                    ImGui::Text(Format::TimeDomainY(metrics.mean, DIGITS, false));
-                    ImGui::TableSetColumnIndex(2);
-                    ImGui::Text(Format::TimeDomainY(record->range_mid, DIGITS, false));
-
                     const double peak_to_peak = metrics.max - metrics.min;
                     const double peak_to_peak_range = record->range_max - record->range_min;
                     ImGui::TableNextRow();
@@ -2025,6 +2017,20 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                     ImGui::TableSetColumnIndex(3);
                     ImGui::Text(fmt::format("{:" + DIGITS + "f} %",
                                             100.0 * peak_to_peak / peak_to_peak_range));
+
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("Mean");
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text(Format::TimeDomainY(metrics.mean, DIGITS, false));
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text(Format::TimeDomainY(record->range_mid, DIGITS, false));
+
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("RMS");
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text(Format::TimeDomainY(metrics.rms, DIGITS, false));
 
                     /* FIXME: Hide these behind some 'show extra' toggle. */
                     ImGui::TableNextRow();

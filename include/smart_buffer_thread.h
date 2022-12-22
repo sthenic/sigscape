@@ -72,6 +72,11 @@ public:
         return m_write_queue.Write(buffer);
     }
 
+    int GetTimeSinceLastActivity(int &milliseconds)
+    {
+        return m_read_queue.GetTimeSinceLastActivity(milliseconds);
+    }
+
 protected:
     std::thread m_thread;
     std::promise<void> m_signal_stop;

@@ -3,7 +3,8 @@
    default). In the persistent mode, the last value remains on the read port
    until there's a new value to present. Perhaps a niche feature, but it can be
    used to represent a state in the reading thread that's controlled by the
-   writing thread. */
+   writing thread. The queue also has an activity detection mechanism (measuring
+   on the write port) that can be queried in a thread-safe manner. */
 
 #ifndef THREAD_SAFE_QUEUE_H_V53B5L
 #define THREAD_SAFE_QUEUE_H_V53B5L
@@ -13,6 +14,7 @@
 #include <queue>
 #include <mutex>
 #include <future>
+#include <chrono>
 
 template <typename T>
 class ThreadSafeQueue
@@ -26,6 +28,7 @@ public:
         , m_queue()
         , m_capacity(capacity)
         , m_is_persistent(is_persistent)
+        , m_last_write_timestamp()
     {
     }
 
@@ -45,6 +48,7 @@ public:
         m_queue = {}; /* TODO: Not ok if we ever want to have stuff prequeued. */
         m_signal_stop = std::promise<void>();
         m_should_stop = m_signal_stop.get_future();
+        m_last_write_timestamp = std::chrono::high_resolution_clock::now();
         m_is_started = true;
         return ADQR_EOK;
     }
@@ -137,6 +141,7 @@ public:
                     lock.lock();
                     if (m_queue.size() < m_capacity)
                     {
+                        m_last_write_timestamp = std::chrono::high_resolution_clock::now();
                         m_queue.push(value);
                         return ADQR_EOK;
                     }
@@ -159,6 +164,7 @@ public:
                     lock.lock();
                     if (m_queue.size() < m_capacity)
                     {
+                        m_last_write_timestamp = std::chrono::high_resolution_clock::now();
                         m_queue.push(value);
                         return ADQR_EOK;
                     }
@@ -173,6 +179,7 @@ public:
             }
         }
 
+        m_last_write_timestamp = std::chrono::high_resolution_clock::now();
         m_queue.push(value);
         return ADQR_EOK;
     }
@@ -197,6 +204,18 @@ public:
         return m_queue.empty();
     }
 
+    int GetTimeSinceLastActivity(int &milliseconds)
+    {
+        if (!m_is_started)
+            return ADQR_ENOTREADY;
+
+        std::unique_lock<std::mutex> lock(m_mutex);
+        auto now = std::chrono::high_resolution_clock::now();
+        auto delta_ms = static_cast<double>((now - m_last_write_timestamp).count()) / 1e6;
+        milliseconds = static_cast<int>(delta_ms);
+        return ADQR_EOK;
+    }
+
 private:
     std::promise<void> m_signal_stop;
     std::future<void> m_should_stop;
@@ -205,6 +224,7 @@ private:
     std::queue<T> m_queue;
     size_t m_capacity;
     bool m_is_persistent;
+    std::chrono::high_resolution_clock::time_point m_last_write_timestamp;
 
     int Pop(T &value)
     {

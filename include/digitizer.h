@@ -36,6 +36,7 @@ enum class DigitizerMessageId
     INITIALIZE_WOULD_OVERWRITE,
     SENSOR_TREE,
     BOOT_STATUS,
+    NO_ACTIVITY,
     /* The world -> digitizer */
     SET_INTERNAL_REFERENCE,
     SET_EXTERNAL_REFERENCE,
@@ -245,6 +246,8 @@ private:
 
     /* The digitizer's data processing threads, one per channel. */
     std::vector<std::unique_ptr<DataProcessing>> m_processing_threads;
+    int m_no_activity_threshold_ms;
+    bool m_notified_no_activity;
 
     /* Sensor records. */
     std::vector<SensorRecord> m_sensor_records;
@@ -262,6 +265,7 @@ private:
     void InitializeSystemManagerSensors();
     void InitializeSystemManagerObjects();
     void UpdateSystemManagerObjects();
+    void CheckActivity();
 
     void StartDataAcquisition();
     void StopDataAcquisition();
@@ -285,6 +289,8 @@ private:
     void InitializeFileWatchers(const struct ADQConstantParameters &constant);
 
     static constexpr double SENSOR_SAMPLING_PERIOD_MS = 1000.0;
+    static constexpr int DEFAULT_ACTIVITY_THRESHOLD_MS = 1000;
+    static constexpr int ACTIVITY_HYSTERESIS_MS = 500;
 };
 
 #endif

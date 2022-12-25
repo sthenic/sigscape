@@ -75,6 +75,9 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
         case DigitizerMessageId::BOOT_STATUS:
             name = "BOOT_STATUS";
             break;
+        case DigitizerMessageId::NO_ACTIVITY:
+            name = "NO_ACTIVITY";
+            break;
         case DigitizerMessageId::SET_INTERNAL_REFERENCE:
             name = "SET_INTERNAL_REFERENCE";
             break;
@@ -126,6 +129,8 @@ Digitizer::Digitizer(void *handle, int index)
     , m_watchers{}
     , m_parameters{}
     , m_processing_threads{}
+    , m_no_activity_threshold_ms(DEFAULT_ACTIVITY_THRESHOLD_MS)
+    , m_notified_no_activity(false)
     , m_sensor_records{}
     , m_sensor_record_queue()
     , m_sensor_last_record_timestamp(std::chrono::high_resolution_clock::now())
@@ -221,6 +226,7 @@ void Digitizer::MainLoop()
             ProcessMessages();
             ProcessWatcherMessages();
             UpdateSystemManagerObjects();
+            CheckActivity();
         }
         catch (const DigitizerException &e)
         {
@@ -454,6 +460,35 @@ void Digitizer::UpdateSystemManagerObjects()
     }
 }
 
+void Digitizer::CheckActivity()
+{
+    /* Loop through the processing threads, querying the time since the last
+       record was passed along. If we haven't seen any data for a while, we send
+       a 'no activity' message to to UI and also take the opportunity to update
+       the threshold based on the current value. This regulates itself to a slow
+       trigger rate. */
+    int milliseconds_max = -1;
+    for (auto &thread : m_processing_threads)
+    {
+        int milliseconds;
+        if (ADQR_EOK != thread->GetTimeSinceLastActivity(milliseconds))
+            continue;
+        milliseconds_max = (std::max)(milliseconds_max, milliseconds);
+    }
+
+    if (milliseconds_max > m_no_activity_threshold_ms + ACTIVITY_HYSTERESIS_MS)
+    {
+        m_read_queue.EmplaceWrite(DigitizerMessageId::NO_ACTIVITY);
+        m_no_activity_threshold_ms = milliseconds_max;
+        m_notified_no_activity = true;
+    }
+    else if (m_notified_no_activity && milliseconds_max + ACTIVITY_HYSTERESIS_MS < m_no_activity_threshold_ms)
+    {
+        m_read_queue.EmplaceWrite(DigitizerMessageId::CLEAR);
+        m_notified_no_activity = false;
+    }
+}
+
 void Digitizer::StartDataAcquisition()
 {
     try
@@ -475,6 +510,10 @@ void Digitizer::StartDataAcquisition()
         result = ADQ_StartDataAcquisition(m_id.handle, m_id.index);
         if (result != ADQ_EOK)
             throw DigitizerException(fmt::format("ADQ_GetParameters failed, result {}.", result));
+
+        /* Reset the activity monitoring. */
+        m_no_activity_threshold_ms = DEFAULT_ACTIVITY_THRESHOLD_MS;
+        m_notified_no_activity = false;
     }
     catch (const DigitizerException &)
     {

@@ -363,6 +363,11 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
         digitizer.ui.boot_status.boot_entries = std::move(message.boot_entries);
         break;
 
+    case DigitizerMessageId::NO_ACTIVITY:
+        digitizer.ui.event = "NO ACTIVITY";
+        digitizer.ui.event_color = COLOR_WOW_PURPLE;
+        break;
+
     default:
         /* These are not expected as a message from a digitizer thread. */
         break;

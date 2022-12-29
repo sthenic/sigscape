@@ -5,6 +5,7 @@
 #include "backends/imgui_impl_opengl3.h"
 #include "imgui.h"
 #include "implot.h"
+#include "imfilebrowser.h"
 #include "GL/gl3w.h"
 #include <GLFW/glfw3.h>
 
@@ -14,6 +15,7 @@
 #include "format.h"
 
 #include <vector>
+#include <filesystem>
 
 class Ui
 {
@@ -41,6 +43,7 @@ private:
     struct ChannelUiState
     {
         ChannelUiState(int &nof_channels_total);
+        void SaveToFile(const std::filesystem::path &path);
 
         ImVec4 color;
         bool is_selected;
@@ -50,6 +53,7 @@ private:
         bool is_persistence_enabled;
         bool is_time_domain_visible;
         bool is_frequency_domain_visible;
+        bool should_save_to_file;
         std::shared_ptr<ProcessedRecord> record;
         std::vector<std::shared_ptr<ProcessedRecord>> memory;
     };
@@ -131,6 +135,8 @@ private:
     UnitsPerDivision m_frequency_domain_units_per_division;
     UnitsPerDivision m_sensor_units_per_division;
 
+    ImGui::FileBrowser m_file_browser;
+
     void ClearChannelSelection();
     bool IsAnySolo() const;
 
@@ -204,6 +210,8 @@ private:
     void RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size);
     void RenderApplicationMetrics(const ImVec2 &position, const ImVec2 &size);
+
+    static std::string NowAsIso8601();
 
     static constexpr float FIRST_COLUMN_RELATIVE_WIDTH = 0.2f;
     static constexpr float SECOND_COLUMN_RELATIVE_WIDTH = 0.6f;

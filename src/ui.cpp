@@ -2,9 +2,11 @@
 #include "implot_internal.h" /* To be able to get item visibility state. */
 
 #include "fmt/format.h"
+#include "nlohmann/json.hpp"
 #include <cinttypes>
 #include <cmath>
 #include <ctime>
+#include <fstream>
 
 const ImVec4 Ui::COLOR_GREEN = {0.0f, 1.0f, 0.5f, 0.6f};
 const ImVec4 Ui::COLOR_RED = {1.0f, 0.0f, 0.2f, 0.6f};
@@ -51,6 +53,7 @@ Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     , is_persistence_enabled(false)
     , is_time_domain_visible(true)
     , is_frequency_domain_visible(true)
+    , should_save_to_file(false)
     , record(NULL)
     , memory{}
 {
@@ -58,6 +61,42 @@ Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
         is_selected = true;
 
     color = ImPlot::GetColormapColor(nof_channels_total++);
+}
+
+void Ui::ChannelUiState::SaveToFile(const std::filesystem::path &path)
+{
+    /* FIXME: Display errors in some user friendly way. */
+    /* TODO: Prevent saving if the existing extension is not '.json'? */
+    /* TODO: Popup if the file already exists? */
+
+    /* Append '.json' if needed. */
+    std::filesystem::path lpath(path);
+    if (!lpath.has_extension())
+        lpath.replace_extension(".json");
+
+    nlohmann::json json;
+    json["label"] = record->label;
+    json["time_domain"]["units"] = {"s", "mV"}; /* TODO: Embed into record? */
+    json["time_domain"]["x"] = record->time_domain->x;
+    json["time_domain"]["y"] = record->time_domain->y;
+    json["frequency_domain"]["units"] = {"Hz", "dBFS"}; /* TODO: Embed into record? */
+    json["frequency_domain"]["x"] = record->frequency_domain->x;
+    json["frequency_domain"]["y"] = record->frequency_domain->y;
+
+    /* TODO: Stringify header? */
+
+    std::ofstream ofs(lpath, std::ios::trunc);
+    if (ofs.fail())
+    {
+        printf("Failed to open file '%s'.\n", lpath.c_str());
+        return;
+    }
+
+    ofs << json.dump(4).c_str() << "\n";
+    ofs.close();
+
+    printf("%s\n",
+           fmt::format("Saved {} record data in '{}'.", record->label, lpath.string()).c_str());
 }
 
 Ui::SensorUiState::SensorUiState(const std::string &label, const std::string &unit)
@@ -109,6 +148,8 @@ Ui::Ui()
     , m_time_domain_units_per_division()
     , m_frequency_domain_units_per_division()
     , m_sensor_units_per_division()
+    , m_file_browser(ImGuiFileBrowserFlags_EnterNewFilename | ImGuiFileBrowserFlags_CreateNewDir |
+                     ImGuiFileBrowserFlags_CloseOnEsc)
 {
 }
 
@@ -174,25 +215,11 @@ void Ui::Render(float width, float height)
     {
         m_save_to_file = false;
 
-        time_t now;
-        time(&now);
-        std::string now_as_iso8601(32, '\0');
-        size_t result = std::strftime(now_as_iso8601.data(), now_as_iso8601.size(), "%FT%H%M%S",
-                                      std::localtime(&now));
-        if (result > 0)
-        {
-            /* Remember to strip the null terminator. */
-            now_as_iso8601.resize(result);
-            const std::string filename = "adqrapid_" + now_as_iso8601 + ".png";
-            if (SaveToFile(filename))
-                printf("%s\n", fmt::format("Saved current view as '{}'.", filename).c_str());
-            else
-                printf("%s\n", fmt::format("Failed to save PNG image '{}'.", filename).c_str());
-        }
+        const std::string filename = "adqrapid_" + NowAsIso8601() + ".png";
+        if (SaveToFile(filename))
+            printf("%s\n", fmt::format("Saved current view as '{}'.", filename).c_str());
         else
-        {
-            printf("Failed to generate an ISO8601 filename.\n");
-        }
+            printf("%s\n", fmt::format("Failed to save PNG image '{}'.", filename).c_str());
     }
 }
 
@@ -508,6 +535,20 @@ void Ui::RenderPopups()
     {
         if (m_digitizers[i].ui.popup_initialize_would_overwrite)
             RenderPopupInitializeWouldOverwrite(i);
+
+        /* FIXME: Improve this? Generalize to get/pass the UI objects instead? */
+        for (auto &chui : m_digitizers[i].ui.channels)
+        {
+            if (chui.should_save_to_file)
+            {
+                m_file_browser.Display();
+                if (m_file_browser.HasSelected())
+                {
+                    chui.SaveToFile(m_file_browser.GetSelected());
+                    chui.should_save_to_file = false;
+                }
+            }
+        }
     }
 }
 
@@ -1955,9 +1996,25 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                 ImGui::MenuItem("Solo", "", &ui.is_solo);
                 ImGui::MenuItem("Mute", "", &ui.is_muted);
                 ImGui::MenuItem("Sample markers", "", &ui.is_sample_markers_enabled);
+
                 if (ImGui::MenuItem("Add to memory"))
                     ui.memory.push_back(ui.record);
+
                 ImGui::MenuItem("Persistence", "", &ui.is_persistence_enabled);
+
+                if (ImGui::MenuItem("Save to file..."))
+                {
+                    /* Open the file browsing dialog with a prefilled filename for fast saving. */
+                    ui.should_save_to_file = true;
+                    m_file_browser.SetTitle(
+                        fmt::format("Save {} record to file...", digitizer.ui.identifier));
+                    m_file_browser.SetTypeFilters({".json"});
+                    m_file_browser.Open();
+                    std::string filename = fmt::format("{}_{}.json", ui.record->label,
+                                                       NowAsIso8601());
+                    std::replace(filename.begin(), filename.end(), ' ', '_');
+                    m_file_browser.SetInputName(filename);
+                }
                 ImGui::EndPopup();
             }
 
@@ -2256,4 +2313,25 @@ void Ui::RenderApplicationMetrics(const ImVec2 &position, const ImVec2 &size)
     const ImGuiIO &io = ImGui::GetIO();
     ImGui::Text("Average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
     ImGui::End();
+}
+
+std::string Ui::NowAsIso8601()
+{
+    time_t now;
+    time(&now);
+    std::string now_as_iso8601(32, '\0');
+    size_t result = std::strftime(now_as_iso8601.data(), now_as_iso8601.size(), "%FT%H%M%S",
+                                  std::localtime(&now));
+    if (result > 0)
+    {
+        /* Remember to strip the null terminator. */
+        now_as_iso8601.resize(result);
+        return now_as_iso8601;
+    }
+    else
+    {
+        /* FIXME: Communicate in some other way? */
+        printf("Failed to generate an ISO8601 filename.\n");
+        return "";
+    }
 }

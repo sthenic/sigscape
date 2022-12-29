@@ -91,6 +91,13 @@ set(PNG_TESTS OFF CACHE BOOL "")
 
 FetchContent_MakeAvailable(png)
 
+FetchContent_Declare(
+    json
+    GIT_REPOSITORY https://github.com/nlohmann/json
+    GIT_TAG v3.11.2
+)
+FetchContent_MakeAvailable(json)
+
 # It doesn't work to link directly to gl3w for some reason.
 # Maybe something to do with https://github.com/skaslev/gl3w/issues/66
 # However adding the generation target as a dependency and then
@@ -132,6 +139,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${imgui_SOURCE_DIR}
     ${png_SOURCE_DIR}
     ${fmt_SOURCE_DIR}/include
+    ${json_SOURCE_DIR}/include
     simple_fft
     ${gl3w_BINARY_DIR}/include
     include

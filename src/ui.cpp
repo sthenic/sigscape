@@ -99,6 +99,16 @@ void Ui::ChannelUiState::SaveToFile(const std::filesystem::path &path)
            fmt::format("Saved {} record data in '{}'.", record->label, lpath.string()).c_str());
 }
 
+std::string Ui::ChannelUiState::GetDefaultFilename()
+{
+    auto MakeLowercase = [](unsigned char c){ return static_cast<char>(std::tolower(c)); };
+    std::string filename(record->label);
+    std::transform(filename.begin(), filename.end(), filename.begin(), MakeLowercase);
+    filename.append(fmt::format("_{}.json", NowAsIso8601()));
+    std::replace(filename.begin(), filename.end(), ' ', '_');
+    return filename;
+}
+
 Ui::SensorUiState::SensorUiState(const std::string &label, const std::string &unit)
     : is_plotted(false)
     , label(label)
@@ -2010,10 +2020,7 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                         fmt::format("Save {} record to file...", digitizer.ui.identifier));
                     m_file_browser.SetTypeFilters({".json"});
                     m_file_browser.Open();
-                    std::string filename = fmt::format("{}_{}.json", ui.record->label,
-                                                       NowAsIso8601());
-                    std::replace(filename.begin(), filename.end(), ' ', '_');
-                    m_file_browser.SetInputName(filename);
+                    m_file_browser.SetInputName(ui.GetDefaultFilename());
                 }
                 ImGui::EndPopup();
             }

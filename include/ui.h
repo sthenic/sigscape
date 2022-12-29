@@ -44,6 +44,7 @@ private:
     {
         ChannelUiState(int &nof_channels_total);
         void SaveToFile(const std::filesystem::path &path);
+        std::string GetDefaultFilename();
 
         ImVec4 color;
         bool is_selected;

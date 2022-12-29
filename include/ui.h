@@ -21,7 +21,7 @@ class Ui
 {
 public:
     Ui();
-    ~Ui();
+    ~Ui() = default;
 
     void Initialize(GLFWwindow *window, const char *glsl_version,
                     bool (* SaveToFile)(const std::string &filename));

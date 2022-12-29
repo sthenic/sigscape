@@ -145,6 +145,7 @@ Ui::DigitizerUiState::DigitizerUiState()
 Ui::Ui()
     : SaveToFile(NULL)
     , m_save_to_file(false)
+    , m_persistent_configuration()
     , m_identification()
     , m_adq_control_unit()
     , m_show_imgui_demo_window(false)
@@ -173,6 +174,9 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version,
     ImGui_ImplOpenGL3_Init(glsl_version);
     ImGui::StyleColorsDark();
     this->SaveToFile = SaveToFile;
+
+    /* Set up the ImGui configuration file. */
+    ImGui::GetIO().IniFilename = m_persistent_configuration.GetImGuiInitializationFile();
 
     /* Start device identification thread. */
     m_identification.Start();

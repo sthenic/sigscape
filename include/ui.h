@@ -9,6 +9,7 @@
 #include "GL/gl3w.h"
 #include <GLFW/glfw3.h>
 
+#include "persistent_configuration.h"
 #include "digitizer.h"
 #include "identification.h"
 #include "marker.h"
@@ -31,6 +32,7 @@ public:
 private:
     bool (* SaveToFile)(const std::string &filename);
     bool m_save_to_file;
+    PersistentConfiguration m_persistent_configuration;
     Identification m_identification;
     void *m_adq_control_unit;
     bool m_show_imgui_demo_window;

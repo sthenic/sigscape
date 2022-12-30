@@ -607,7 +607,8 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
 {
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
-    ImGui::Begin("Digitizers", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+    ImGui::Begin("Digitizers", NULL,
+                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 
     if (ImGui::Button("Select All"))
     {
@@ -685,7 +686,8 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
 {
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
-    ImGui::Begin("Command Palette", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+    ImGui::Begin("Command Palette", NULL,
+                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 
     /* FIXME: Maybe this is overkill. */
     std::stringstream ss;
@@ -1182,7 +1184,8 @@ void Ui::RenderTools(const ImVec2 &position, const ImVec2 &size)
 {
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
-    ImGui::Begin("Tools", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+    ImGui::Begin("Tools", NULL,
+                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 
     if (ImGui::BeginTabBar("Tools##TabBar", ImGuiTabBarFlags_None))
     {
@@ -1220,7 +1223,8 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
 {
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
-    ImGui::Begin("Processing Options", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+    ImGui::Begin("Processing Options", NULL,
+                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 
     static int window_idx = 2;
     static int window_idx_prev = 2;
@@ -1988,7 +1992,8 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
     /* FIXME: Move into functions? */
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
-    ImGui::Begin("Time Domain Metrics", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+    ImGui::Begin("Time Domain Metrics", NULL,
+                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 
     bool has_contents = false;
     for (auto &digitizer : m_digitizers)
@@ -2168,7 +2173,8 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
     ImGui::Begin("Frequency Domain Metrics", NULL,
-                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoNavFocus);
+                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoNavFocus |
+                     ImGuiWindowFlags_NoCollapse);
 
     bool has_contents = false;
     for (auto &digitizer : m_digitizers)
@@ -2336,7 +2342,8 @@ void Ui::RenderApplicationMetrics(const ImVec2 &position, const ImVec2 &size)
 {
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
-    ImGui::Begin("Application Metrics", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+    ImGui::Begin("Application Metrics", NULL,
+                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
     const ImGuiIO &io = ImGui::GetIO();
     ImGui::Text("Average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
     ImGui::End();

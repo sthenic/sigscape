@@ -56,7 +56,7 @@ PersistentConfiguration::PersistentConfiguration()
         ValidateDirectoryCreateIfNeeded(m_directory);
     }
 #endif
-    printf("Found persistent configuration directory '%s'.\n", m_directory.c_str());
+    printf("Using persistent configuration directory '%s'.\n", m_directory.c_str());
     m_imgui_configuration_file = m_directory + "/imgui.ini";
 }
 

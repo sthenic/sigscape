@@ -51,6 +51,7 @@ enum class DigitizerMessageId
     INITIALIZE_PARAMETERS_FORCE,
     SET_CLOCK_SYSTEM_PARAMETERS,
     SET_WINDOW_TYPE,
+    SET_CONFIGURATION_DIRECTORY,
 };
 
 enum class DigitizerState
@@ -230,6 +231,12 @@ private:
         int index;
     } m_id;
 
+    /* The directory where we store the parameter files. */
+    std::string m_configuration_directory;
+
+    /* Storage of the digitizer's constant parameters for easy reference. */
+    struct ADQConstantParameters m_constant;
+
     /* File watchers and queues to watch and propagate contents from the
        digitizer's configuration files. Anonymous structs are intentional. */
     struct
@@ -286,7 +293,7 @@ private:
     void SetParameters(const std::shared_ptr<std::string> &str, DigitizerMessageId clean_id);
     void InitializeParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher);
     void GetParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher);
-    void InitializeFileWatchers(const struct ADQConstantParameters &constant);
+    void InitializeFileWatchers();
 
     static constexpr double SENSOR_SAMPLING_PERIOD_MS = 1000.0;
     static constexpr int DEFAULT_ACTIVITY_THRESHOLD_MS = 1000;

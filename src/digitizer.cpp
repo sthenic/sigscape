@@ -117,6 +117,9 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
         case DigitizerMessageId::SET_WINDOW_TYPE:
             name = "SET_WINDOW_TYPE";
             break;
+        case DigitizerMessageId::SET_CONFIGURATION_DIRECTORY:
+            name = "SET_CONFIGURATION_DIRECTORY";
+            break;
         }
 
         return fmt::formatter<string_view>::format(name, ctx);
@@ -126,6 +129,7 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
 Digitizer::Digitizer(void *handle, int index)
     : m_state(DigitizerState::NOT_ENUMERATED)
     , m_id{handle, index}
+    , m_configuration_directory(".")
     , m_watchers{}
     , m_parameters{}
     , m_processing_threads{}
@@ -177,32 +181,29 @@ void Digitizer::MainLoop()
         return;
     }
 
-    /* Read the digitizer's constant parameters, then start the file watchers
-       for the parameter sets. */
-    struct ADQConstantParameters constant;
-    result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CONSTANT, &constant);
-    if (result != sizeof(constant))
+    /* Read the digitizer's constant parameters. */
+    result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CONSTANT, &m_constant);
+    if (result != sizeof(m_constant))
     {
         m_thread_exit_code = ADQR_EINTERNAL;
         SetState(DigitizerState::NOT_ENUMERATED);
         return;
     }
-    InitializeFileWatchers(constant);
 
     /* Instantiate one data processing thread for each digitizer channel. */
-    for (int ch = 0; ch < constant.nof_channels; ++ch)
+    for (int ch = 0; ch < m_constant.nof_channels; ++ch)
     {
-        std::string label = fmt::format("{} CH{}", constant.serial_number,
-                                                   constant.channel[ch].label);
+        std::string label = fmt::format("{} CH{}", m_constant.serial_number,
+                                                   m_constant.channel[ch].label);
         m_processing_threads.emplace_back(
-            std::make_unique<DataProcessing>(m_id.handle, m_id.index, ch, label, constant)
+            std::make_unique<DataProcessing>(m_id.handle, m_id.index, ch, label, m_constant)
         );
     }
 
     /* Signal that the digitizer was set up correctly, that we're entering the
        IDLE state and enter the main loop. */
-    m_read_queue.EmplaceWrite(DigitizerMessageId::IDENTIFIER, constant.serial_number);
-    m_read_queue.EmplaceWrite(DigitizerMessageId::NOF_CHANNELS, constant.nof_channels);
+    m_read_queue.EmplaceWrite(DigitizerMessageId::IDENTIFIER, m_constant.serial_number);
+    m_read_queue.EmplaceWrite(DigitizerMessageId::NOF_CHANNELS, m_constant.nof_channels);
     SetState(DigitizerState::IDLE);
 
     try
@@ -610,6 +611,11 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
             t->SetWindowType(message.window_type);
         break;
 
+    case DigitizerMessageId::SET_CONFIGURATION_DIRECTORY:
+        m_configuration_directory = message.str;
+        InitializeFileWatchers();
+        break;
+
     default:
         throw DigitizerException(fmt::format("Unsupported action '{}'.", message.id));
     }
@@ -888,17 +894,20 @@ void Digitizer::GetParameters(enum ADQParameterId id, const std::unique_ptr<File
     }
 }
 
-void Digitizer::InitializeFileWatchers(const struct ADQConstantParameters &constant)
+void Digitizer::InitializeFileWatchers()
 {
     auto MakeLowercase = [](unsigned char c){ return static_cast<char>(std::tolower(c)); };
 
-    std::string filename = fmt::format("./parameters_top_{}.json", constant.serial_number);
-    std::transform(filename.begin(), filename.end(), filename.begin(), MakeLowercase);
-    m_watchers.top = std::make_unique<FileWatcher>(filename);
+    std::string serial_number(m_constant.serial_number);
+    std::transform(serial_number.begin(), serial_number.end(), serial_number.begin(),
+                   MakeLowercase);
 
-    filename = fmt::format("./parameters_clock_system_{}.json", constant.serial_number);
-    std::transform(filename.begin(), filename.end(), filename.begin(), MakeLowercase);
-    m_watchers.clock_system = std::make_unique<FileWatcher>(filename);
+    /* Creating new file watchers will destroy the old ones (correctly stopping the threads). */
+    m_watchers.top = std::make_unique<FileWatcher>(
+        fmt::format("{}/parameters_top_{}.json", m_configuration_directory, serial_number));
+
+    m_watchers.clock_system = std::make_unique<FileWatcher>(
+        fmt::format("{}/parameters_clock_system_{}.json", m_configuration_directory, serial_number));
 
     m_parameters.top = std::make_shared<std::string>("");
     m_parameters.clock_system = std::make_shared<std::string>("");

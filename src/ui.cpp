@@ -309,7 +309,11 @@ void Ui::HandleMessage(const IdentificationMessage &message)
     m_adq_control_unit = message.handle;
 
     for (const auto &d : m_digitizers)
+    {
         d.interface->Start();
+        d.interface->EmplaceMessage(DigitizerMessageId::SET_CONFIGURATION_DIRECTORY,
+                                    m_persistent_configuration.GetDirectory());
+    }
 
     /* FIXME: Remove since debug convenience */
     m_digitizers.front().ui.is_selected = true;

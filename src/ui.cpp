@@ -409,8 +409,15 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
         digitizer.ui.event_color = COLOR_WOW_PURPLE;
         break;
 
+    case DigitizerMessageId::PARAMETERS_FILENAME:
+        ImGui::LogToClipboard();
+        ImGui::LogText("%s", message.str.c_str());
+        ImGui::LogFinish();
+        break;
+
     default:
         /* These are not expected as a message from a digitizer thread. */
+        printf("%s\n", fmt::format("Unsupported message id '{}'.", message.id).c_str());
         break;
     }
 }
@@ -751,6 +758,15 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
     ImGui::SameLine();
     if (ImGui::Button("External\nClock", COMMAND_PALETTE_BUTTON_SIZE))
         PushMessage(DigitizerMessageId::SET_EXTERNAL_CLOCK);
+
+    /* Third row */
+    /* FIXME: Only first selected? */
+    if (ImGui::Button("Copy Top\nFilename", COMMAND_PALETTE_BUTTON_SIZE))
+        PushMessage(DigitizerMessageId::GET_TOP_PARAMETERS_FILENAME);
+
+    ImGui::SameLine();
+    if (ImGui::Button("Copy Clock\nSystem\nFilename", COMMAND_PALETTE_BUTTON_SIZE))
+        PushMessage(DigitizerMessageId::GET_CLOCK_SYSTEM_PARAMETERS_FILENAME);
 
     if (!any_selected)
         ImGui::EndDisabled();

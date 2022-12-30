@@ -9,6 +9,11 @@ FileWatcher::FileWatcher(const std::string &path)
 {
 }
 
+const std::string &FileWatcher::GetPath()
+{
+    return m_path;
+}
+
 void FileWatcher::MainLoop()
 {
     m_thread_exit_code = ADQR_EOK;

@@ -37,6 +37,7 @@ enum class DigitizerMessageId
     SENSOR_TREE,
     BOOT_STATUS,
     NO_ACTIVITY,
+    PARAMETERS_FILENAME,
     /* The world -> digitizer */
     SET_INTERNAL_REFERENCE,
     SET_EXTERNAL_REFERENCE,
@@ -52,6 +53,8 @@ enum class DigitizerMessageId
     SET_CLOCK_SYSTEM_PARAMETERS,
     SET_WINDOW_TYPE,
     SET_CONFIGURATION_DIRECTORY,
+    GET_TOP_PARAMETERS_FILENAME,
+    GET_CLOCK_SYSTEM_PARAMETERS_FILENAME,
 };
 
 enum class DigitizerState
@@ -265,8 +268,7 @@ private:
     void ProcessMessages();
     void ProcessWatcherMessages();
     void ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watcher,
-                                std::shared_ptr<std::string> &str,
-                                DigitizerMessageId dirty_id);
+                                std::shared_ptr<std::string> &str, DigitizerMessageId dirty_id);
 
     void InitializeSystemManagerBootStatus();
     void InitializeSystemManagerSensors();
@@ -298,6 +300,114 @@ private:
     static constexpr double SENSOR_SAMPLING_PERIOD_MS = 1000.0;
     static constexpr int DEFAULT_ACTIVITY_THRESHOLD_MS = 1000;
     static constexpr int ACTIVITY_HYSTERESIS_MS = 500;
+};
+
+template<>
+struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
+{
+    template <typename FmtContext>
+    auto format(DigitizerMessageId id, FmtContext &ctx)
+    {
+        string_view name = "unknown";
+        switch (id)
+        {
+        case DigitizerMessageId::DIRTY_TOP_PARAMETERS:
+            name = "DIRTY_TOP_PARAMETERS";
+            break;
+        case DigitizerMessageId::DIRTY_CLOCK_SYSTEM_PARAMETERS:
+            name = "DIRTY_CLOCK_SYSTEM_PARAMETERS";
+            break;
+        case DigitizerMessageId::CLEAN_TOP_PARAMETERS:
+            name = "CLEAN_TOP_PARAMETERS";
+            break;
+        case DigitizerMessageId::CLEAN_CLOCK_SYSTEM_PARAMETERS:
+            name = "CLEAN_CLOCK_SYSTEM_PARAMETERS";
+            break;
+        case DigitizerMessageId::IDENTIFIER:
+            name = "IDENTIFIER";
+            break;
+        case DigitizerMessageId::NOF_CHANNELS:
+            name = "NOF_CHANNELS";
+            break;
+        case DigitizerMessageId::STATE:
+            name = "STATE";
+            break;
+        case DigitizerMessageId::ERR:
+            name = "ERROR";
+            break;
+        case DigitizerMessageId::CLEAR:
+            name = "CLEAR";
+            break;
+        case DigitizerMessageId::CONFIGURATION:
+            name = "CONFIGURATION";
+            break;
+        case DigitizerMessageId::INITIALIZE_WOULD_OVERWRITE:
+            name = "INITIALIZE_WOULD_OVERWRITE";
+            break;
+        case DigitizerMessageId::SENSOR_TREE:
+            name = "SENSOR_TREE";
+            break;
+        case DigitizerMessageId::BOOT_STATUS:
+            name = "BOOT_STATUS";
+            break;
+        case DigitizerMessageId::NO_ACTIVITY:
+            name = "NO_ACTIVITY";
+            break;
+        case DigitizerMessageId::PARAMETERS_FILENAME:
+            name = "PARAMETERS_FILENAME";
+            break;
+        case DigitizerMessageId::SET_INTERNAL_REFERENCE:
+            name = "SET_INTERNAL_REFERENCE";
+            break;
+        case DigitizerMessageId::SET_EXTERNAL_REFERENCE:
+            name = "SET_EXTERNAL_REFERENCE";
+            break;
+        case DigitizerMessageId::SET_EXTERNAL_CLOCK:
+            name = "SET_EXTERNAL_CLOCK";
+            break;
+        case DigitizerMessageId::DEFAULT_ACQUISITION:
+            name = "DEFAULT_ACQUISITION";
+            break;
+        case DigitizerMessageId::START_ACQUISITION:
+            name = "START_ACQUISITION";
+            break;
+        case DigitizerMessageId::STOP_ACQUISITION:
+            name = "STOP_ACQUISITION";
+            break;
+        case DigitizerMessageId::SET_PARAMETERS:
+            name = "SET_PARAMETERS";
+            break;
+        case DigitizerMessageId::GET_PARAMETERS:
+            name = "GET_PARAMETERS";
+            break;
+        case DigitizerMessageId::VALIDATE_PARAMETERS:
+            name = "VALIDATE_PARAMETERS";
+            break;
+        case DigitizerMessageId::INITIALIZE_PARAMETERS:
+            name = "INITIALIZE_PARAMETERS";
+            break;
+        case DigitizerMessageId::INITIALIZE_PARAMETERS_FORCE:
+            name = "INITIALIZE_PARAMETERS_FORCE";
+            break;
+        case DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
+            name = "SET_CLOCK_SYSTEM_PARAMETERS";
+            break;
+        case DigitizerMessageId::SET_WINDOW_TYPE:
+            name = "SET_WINDOW_TYPE";
+            break;
+        case DigitizerMessageId::SET_CONFIGURATION_DIRECTORY:
+            name = "SET_CONFIGURATION_DIRECTORY";
+            break;
+        case DigitizerMessageId::GET_TOP_PARAMETERS_FILENAME:
+            name = "GET_TOP_PARAMETERS_FILENAME";
+            break;
+        case DigitizerMessageId::GET_CLOCK_SYSTEM_PARAMETERS_FILENAME:
+            name = "GET_CLOCK_SYSTEM_PARAMETERS_FILENAME";
+            break;
+        }
+
+        return fmt::formatter<string_view>::format(name, ctx);
+    }
 };
 
 #endif

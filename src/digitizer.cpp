@@ -592,6 +592,16 @@ void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &messag
             t->SetWindowType(message.window_type);
         break;
 
+    case DigitizerMessageId::GET_TOP_PARAMETERS_FILENAME:
+        m_read_queue.EmplaceWrite(DigitizerMessageId::PARAMETERS_FILENAME,
+                                  m_watchers.top->GetPath());
+        break;
+
+    case DigitizerMessageId::GET_CLOCK_SYSTEM_PARAMETERS_FILENAME:
+        m_read_queue.EmplaceWrite(DigitizerMessageId::PARAMETERS_FILENAME,
+                                  m_watchers.clock_system->GetPath());
+        break;
+
     default:
         throw DigitizerException(fmt::format("Unsupported action '{}'.", message.id));
     }

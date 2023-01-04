@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <cctype>
 #include <stdexcept>
+#include <ctime>
 
 /* A private exception type that we use for simplified control flow within this class. */
 class DigitizerException : public std::runtime_error
@@ -352,7 +353,8 @@ void Digitizer::UpdateSystemManagerObjects()
             }
 
             sensor.y.emplace_back(value);
-            double last = (sensor.x.size() > 0) ? sensor.x.back() : 0;
+            double last = (sensor.x.size() > 0) ? sensor.x.back()
+                                                : static_cast<double>(std::time(NULL));
             sensor.x.emplace_back(last + sensor.step);
         }
 

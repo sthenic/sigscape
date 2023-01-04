@@ -1431,12 +1431,21 @@ void Ui::GetUnitsPerDivision(const std::string &title, UnitsPerDivision &units_p
     const auto &axis_x = ImPlot::GetPlot(title.c_str())->Axes[ImAxis_X1];
     const auto &axis_y = ImPlot::GetPlot(title.c_str())->Axes[ImAxis_Y1];
 
-    if (axis_x.Ticker.TickCount() > 1)
+    /* A small workaround is needed to handle the fact that using a 'time
+       scaled' axis (which we use for the sensor plot) repeats the first tick
+       twice giving a delta of zero when we use [1] - [0]. For all practical
+       purposes we should always have a tick count >2 so we expect to hit the
+       first case pretty much every time. */
+    if (axis_x.Ticker.TickCount() > 2)
+        units_per_division.x = axis_x.Ticker.Ticks[2].PlotPos - axis_x.Ticker.Ticks[1].PlotPos;
+    else if (axis_x.Ticker.TickCount() > 1)
         units_per_division.x = axis_x.Ticker.Ticks[1].PlotPos - axis_x.Ticker.Ticks[0].PlotPos;
     else
         units_per_division.x = axis_x.Range.Size();
 
-    if (axis_y.Ticker.TickCount() > 1)
+    if (axis_y.Ticker.TickCount() > 2)
+        units_per_division.y = axis_y.Ticker.Ticks[2].PlotPos - axis_y.Ticker.Ticks[1].PlotPos;
+    else if (axis_y.Ticker.TickCount() > 1)
         units_per_division.y = axis_y.Ticker.Ticks[1].PlotPos - axis_y.Ticker.Ticks[0].PlotPos;
     else
         units_per_division.y = axis_y.Range.Size();
@@ -1722,6 +1731,10 @@ void Ui::RenderSensorPlot()
         ImPlot::SetupLegend(ImPlotLocation_NorthEast, ImPlotLegendFlags_Sort);
         ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric, (void *)"s");
         ImPlot::SetupAxis(ImAxis_X1, NULL, ImPlotAxisFlags_AutoFit);
+        ImPlot::SetupAxisScale(ImAxis_X1, ImPlotScale_Time);
+        ImPlot::GetStyle().Use24HourClock = true;
+        ImPlot::GetStyle().UseISO8601 = true;
+        ImPlot::GetStyle().UseLocalTime = true;
         PlotSensorsSelected();
 
         /* FIXME: Vertical units? Probably multiple axes. */

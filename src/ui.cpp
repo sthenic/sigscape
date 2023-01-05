@@ -1715,7 +1715,15 @@ void Ui::RenderSensorPlot()
     ImPlot::PushStyleVar(ImPlotStyleVar_FitPadding, ImVec2(0.0f, 0.1f));
     if (ImPlot::BeginPlot("Sensors##Plot", ImVec2(-1, -1), ImPlotFlags_NoTitle))
     {
-        if (ImGui::BeginDragDropTarget())
+        ImPlot::SetupLegend(ImPlotLocation_NorthEast, ImPlotLegendFlags_Sort);
+        ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric, (void *)"s");
+        ImPlot::SetupAxis(ImAxis_X1, NULL, ImPlotAxisFlags_AutoFit);
+        ImPlot::SetupAxisScale(ImAxis_X1, ImPlotScale_Time);
+        ImPlot::GetStyle().Use24HourClock = true;
+        ImPlot::GetStyle().UseISO8601 = true;
+        ImPlot::GetStyle().UseLocalTime = true;
+
+        if (ImPlot::BeginDragDropTargetPlot())
         {
             const ImGuiPayload *payload = ImGui::AcceptDragDropPayload("SENSOR");
             if (payload != NULL)
@@ -1725,16 +1733,9 @@ void Ui::RenderSensorPlot()
                 auto data = *static_cast<bool **>(payload->Data);
                 *data = true;
             }
-            ImGui::EndDragDropTarget();
+            ImPlot::EndDragDropTarget();
         }
 
-        ImPlot::SetupLegend(ImPlotLocation_NorthEast, ImPlotLegendFlags_Sort);
-        ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric, (void *)"s");
-        ImPlot::SetupAxis(ImAxis_X1, NULL, ImPlotAxisFlags_AutoFit);
-        ImPlot::SetupAxisScale(ImAxis_X1, ImPlotScale_Time);
-        ImPlot::GetStyle().Use24HourClock = true;
-        ImPlot::GetStyle().UseISO8601 = true;
-        ImPlot::GetStyle().UseLocalTime = true;
         PlotSensorsSelected();
 
         /* FIXME: Vertical units? Probably multiple axes. */

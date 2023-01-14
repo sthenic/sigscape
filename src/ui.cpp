@@ -178,8 +178,8 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version,
     /* Set up the ImGui configuration file. */
     ImGui::GetIO().IniFilename = m_persistent_configuration.GetImGuiInitializationFile();
 
-    /* Start device identification thread. */
-    m_identification.Start();
+    /* Proceed with identifying the digitizers connected to the system. */
+    IdentifyDigitizers();
 }
 
 void Ui::Terminate()
@@ -189,6 +189,7 @@ void Ui::Terminate()
 
     if (m_adq_control_unit != NULL)
         DeleteADQControlUnit(m_adq_control_unit);
+    m_adq_control_unit = NULL;
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
@@ -253,6 +254,22 @@ bool Ui::IsAnySolo() const
     return result;
 }
 
+void Ui::IdentifyDigitizers()
+{
+    /* This function can be called to reinitialize the system so if there's
+       already a control unit, be sure to destroy it before starting the
+       identification thread. */
+    for (const auto &d : m_digitizers)
+        d.interface->Stop();
+
+    if (m_adq_control_unit != NULL)
+        DeleteADQControlUnit(m_adq_control_unit);
+    m_adq_control_unit = NULL;
+
+    /* (Re)start device identification thread. */
+    m_identification.Start();
+}
+
 void Ui::PushMessage(const DigitizerMessage &message, bool selected)
 {
     for (auto &digitizer : m_digitizers)
@@ -295,11 +312,13 @@ void Ui::UpdateSensors()
 
 void Ui::HandleMessage(const IdentificationMessage &message)
 {
-    /* If we get a message, the identification went well. */
+    /* If we get a message, the identification went well. Prepare to
+       reinitialize the entire user interface.*/
     for (const auto &d : m_digitizers)
         d.interface->Stop();
 
     m_digitizers.clear();
+    m_nof_channels_total = 0;
     m_time_domain_markers.clear();
     m_frequency_domain_markers.clear();
 
@@ -307,6 +326,9 @@ void Ui::HandleMessage(const IdentificationMessage &message)
         m_digitizers.emplace_back(interface);
 
     m_adq_control_unit = message.handle;
+
+    /* Stop the identification thread and start the digitizer threads. */
+    m_identification.Stop();
 
     for (const auto &d : m_digitizers)
     {
@@ -610,18 +632,24 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
     ImGui::Begin("Digitizers", NULL,
                  ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 
-    if (ImGui::Button("Select All"))
+    if (ImGui::Button("Select all"))
     {
         for (auto &digitizer : m_digitizers)
             digitizer.ui.is_selected = true;
     }
     ImGui::SameLine();
 
-    if (ImGui::Button("Deselect All"))
+    if (ImGui::Button("Deselect all"))
     {
         for (auto &digitizer : m_digitizers)
             digitizer.ui.is_selected = false;
     }
+
+    std::string label = "Reinitialize all";
+    ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - ImGui::GetCursorPosX() -
+                    ImGui::CalcTextSize(label.c_str()).x);
+    if (ImGui::Button(label.c_str()))
+        IdentifyDigitizers();
     ImGui::Separator();
 
     if (m_digitizers.size() == 0)
@@ -969,6 +997,12 @@ void Ui::MarkerTree(Markers &markers, Format::Formatter FormatX, Format::Formatt
 
 void Ui::RenderMarkers()
 {
+    if (m_time_domain_markers.empty() && m_frequency_domain_markers.empty())
+    {
+        ImGui::Text("No markers to show.");
+        return;
+    }
+
     if (ImGui::SmallButton("Remove all"))
     {
         m_time_domain_markers.clear();

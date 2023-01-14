@@ -4,6 +4,7 @@
    instantiate the object themselves or to use the CreateADQControlUnit()
    interface. We only supports one control unit for now. */
 static MockAdqApi mock_adqapi;
+static bool has_added_digitizers = false;
 
 /* Mockup control functions */
 void MockAdqApi::AddDigitizer(const std::string &serial_number,
@@ -141,6 +142,20 @@ int MockAdqApi::SmTransactionImmediate(int adq_num, uint16_t cmd, void *wr_buf, 
 
 void *CreateADQControlUnit()
 {
+    /* The first time the control unit is created, we add a few simulated
+       digitizers to the system. */
+    if (!has_added_digitizers)
+    {
+        mock_adqapi.AddDigitizer(
+            "SPD-SIM01", {ADQ_FIRMWARE_TYPE_FWDAQ, "1CH-FWDAQ"}, {2500.0}, 1, PID_ADQ32
+        );
+        mock_adqapi.AddDigitizer(
+            "SPD-SIM02", {ADQ_FIRMWARE_TYPE_FWDAQ, "2CH-FWDAQ"}, {2500.0, 1000.0}, 2, PID_ADQ36
+        );
+
+        has_added_digitizers = true;
+    }
+
     return &mock_adqapi;
 }
 

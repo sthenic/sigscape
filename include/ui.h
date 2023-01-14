@@ -143,6 +143,7 @@ private:
     void ClearChannelSelection();
     bool IsAnySolo() const;
 
+    void IdentifyDigitizers();
     void PushMessage(const DigitizerMessage &message, bool selected = true);
 
     void UpdateRecords();

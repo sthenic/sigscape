@@ -76,10 +76,10 @@ void Ui::ChannelUiState::SaveToFile(const std::filesystem::path &path)
 
     nlohmann::json json;
     json["label"] = record->label;
-    json["time_domain"]["units"] = {"s", "mV"}; /* TODO: Embed into record? */
+    json["time_domain"]["units"] = {record->time_domain->x_unit, record->time_domain->y_unit};
     json["time_domain"]["x"] = record->time_domain->x;
     json["time_domain"]["y"] = record->time_domain->y;
-    json["frequency_domain"]["units"] = {"Hz", "dBFS"}; /* TODO: Embed into record? */
+    json["frequency_domain"]["units"] = {record->frequency_domain->x_unit, record->frequency_domain->y_unit};
     json["frequency_domain"]["x"] = record->frequency_domain->x;
     json["frequency_domain"]["y"] = record->frequency_domain->y;
 
@@ -109,10 +109,9 @@ std::string Ui::ChannelUiState::GetDefaultFilename()
     return filename;
 }
 
-Ui::SensorUiState::SensorUiState(const std::string &label, const std::string &unit)
+Ui::SensorUiState::SensorUiState(const std::string &label)
     : is_plotted(false)
     , label(label)
-    , unit(unit)
     , record()
 {
 }
@@ -123,7 +122,7 @@ Ui::SensorGroupUiState::SensorGroupUiState(const std::string &label,
     , sensors{}
 {
     for (const auto &sensor : sensors)
-        SensorGroupUiState::sensors.try_emplace(sensor.id, sensor.label, sensor.unit);
+        SensorGroupUiState::sensors.try_emplace(sensor.id, sensor.label);
 }
 
 Ui::DigitizerUiState::DigitizerUiState()
@@ -1102,7 +1101,7 @@ void Ui::RenderSensorGroup(SensorGroupUiState &group, bool is_first)
             }
             else
             {
-                ImGui::Text(fmt::format("{:7.3f} {}", sensor.record.y.back(), sensor.unit));
+                ImGui::Text(fmt::format("{:7.3f} {}", sensor.record.y.back(), sensor.record.y_unit));
             }
         }
 

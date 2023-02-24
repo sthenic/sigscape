@@ -65,11 +65,10 @@ private:
     struct SensorUiState
     {
         SensorUiState() = default;
-        SensorUiState(const std::string &label, const std::string &unit);
+        SensorUiState(const std::string &label);
 
         bool is_plotted;
         std::string label;
-        std::string unit;
         SensorRecord record;
     };
 

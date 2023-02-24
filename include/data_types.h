@@ -11,6 +11,7 @@
 #include <vector>
 #include <deque>
 #include <stdexcept>
+#include <string>
 
 #ifdef NO_ADQAPI
 #include "mock_adqapi_definitions.h"
@@ -20,9 +21,13 @@
 
 struct BaseRecord
 {
-    BaseRecord(size_t count)
+    BaseRecord(size_t count, const std::string &x_unit, const std::string &y_unit)
         : x(count)
         , y(count)
+        , x_unit(x_unit)
+        , y_unit(y_unit)
+        , x_delta_unit(x_unit)
+        , y_delta_unit(y_unit)
         , step(0)
     {}
 
@@ -30,6 +35,10 @@ struct BaseRecord
 
     std::vector<double> x;
     std::vector<double> y;
+    std::string x_unit;
+    std::string y_unit;
+    std::string x_delta_unit;
+    std::string y_delta_unit;
     double step;
 };
 
@@ -39,7 +48,7 @@ struct TimeDomainRecord : public BaseRecord
     TimeDomainRecord(const struct ADQGen4Record *raw,
                      const struct ADQAnalogFrontendParametersChannel &afe,
                      double code_normalization)
-        : BaseRecord(raw->header->record_length)
+        : BaseRecord(raw->header->record_length, "s", "V")
         , header(*raw->header)
         , estimated_trigger_frequency(0)
         , estimated_throughput(0)
@@ -110,8 +119,9 @@ struct TimeDomainRecord : public BaseRecord
 struct FrequencyDomainRecord : public BaseRecord
 {
     FrequencyDomainRecord(size_t count)
-        : BaseRecord(count)
+        : BaseRecord(count, "Hz", "dBFS")
     {
+        y_delta_unit = "dB";
     }
 
     /* Delete copy constructors until we need them. */
@@ -237,15 +247,15 @@ struct ProcessedRecord
 struct SensorRecord : public BaseRecord
 {
     SensorRecord()
-        : BaseRecord(0)
+        : BaseRecord(0, "s", "N/A")
         , status(-1)
         , id()
         , group_id()
         , note("No data")
     {}
 
-    SensorRecord(uint32_t id, uint32_t group_id)
-        : BaseRecord(0)
+    SensorRecord(uint32_t id, uint32_t group_id, const std::string &y_unit)
+        : BaseRecord(0, "s", y_unit)
         , status(-1)
         , id(id)
         , group_id(group_id)

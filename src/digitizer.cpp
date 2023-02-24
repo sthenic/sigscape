@@ -301,8 +301,8 @@ void Digitizer::InitializeSystemManagerSensors()
         }
 
         sensor_tree.back().sensors.emplace_back(information.id, information.group_id,
-                                                information.label, information.unit);
-        m_sensor_records.emplace_back(information.id, information.group_id);
+                                                information.label);
+        m_sensor_records.emplace_back(information.id, information.group_id, information.unit);
     }
 
     m_read_queue.EmplaceWrite(DigitizerMessageId::SENSOR_TREE, std::move(sensor_tree));

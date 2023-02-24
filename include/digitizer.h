@@ -68,17 +68,15 @@ enum class DigitizerState
 struct Sensor
 {
     Sensor() = default;
-    Sensor(uint32_t id, uint32_t group_id, const char *label, const char *unit)
+    Sensor(uint32_t id, uint32_t group_id, const char *label)
         : id(id)
         , group_id(group_id)
         , label(label)
-        , unit(unit)
     {}
 
     uint32_t id;
     uint32_t group_id;
     std::string label;
-    std::string unit;
 };
 
 struct SensorGroup

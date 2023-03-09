@@ -151,6 +151,7 @@ struct ADQConstantParameters
   char product_options[32];
   struct ADQConstantParametersFirmware firmware;
   struct ADQConstantParametersChannel channel[ADQ_MAX_NOF_CHANNELS];
+  uint64_t dram_size;
   uint64_t magic;
 };
 
@@ -166,6 +167,29 @@ struct ADQAnalogFrontendParameters
   int32_t reserved;
   struct ADQAnalogFrontendParametersChannel channel[ADQ_MAX_NOF_CHANNELS];
   uint64_t magic;
+};
+
+enum ADQStatusId
+{
+  ADQ_STATUS_ID_RESERVED = 0,
+  ADQ_STATUS_ID_OVERFLOW = 1,
+  ADQ_STATUS_ID_DRAM = 2,
+  ADQ_STATUS_ID_ACQUISITION = 3,
+  ADQ_STATUS_ID_TEMPERATURE = 4,
+  ADQ_STATUS_ID_CLOCK_SYSTEM = 5,
+  ADQ_STATUS_ID_MAX_VAL = INT32_MAX
+};
+
+struct ADQOverflowStatus
+{
+  int32_t overflow;
+  int32_t reserved;
+};
+
+struct ADQDramStatus
+{
+  uint64_t fill;
+  uint64_t fill_max;
 };
 
 #define ADQ_PARAMETERS_MAGIC (0xAA559977AA559977ull)

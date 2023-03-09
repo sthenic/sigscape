@@ -38,6 +38,8 @@ enum class DigitizerMessageId
     BOOT_STATUS,
     NO_ACTIVITY,
     PARAMETERS_FILENAME,
+    DRAM_FILL,
+    OVERFLOW,
     /* The world -> digitizer */
     SET_INTERNAL_REFERENCE,
     SET_EXTERNAL_REFERENCE,
@@ -120,6 +122,7 @@ struct DigitizerMessage
         , state()
         , str()
         , ivalue()
+        , dvalue()
         , window_type()
         , sensor_tree()
         , boot_entries{}
@@ -131,6 +134,7 @@ struct DigitizerMessage
         , state(state)
         , str()
         , ivalue()
+        , dvalue()
         , window_type()
         , sensor_tree()
         , boot_entries{}
@@ -142,6 +146,7 @@ struct DigitizerMessage
         , state()
         , str(str)
         , ivalue()
+        , dvalue()
         , window_type()
         , sensor_tree()
         , boot_entries{}
@@ -153,6 +158,19 @@ struct DigitizerMessage
         , state()
         , str()
         , ivalue(ivalue)
+        , dvalue()
+        , window_type()
+        , sensor_tree()
+        , boot_entries{}
+    {}
+
+    /* Create a double message. */
+    DigitizerMessage(DigitizerMessageId id, double dvalue)
+        : id(id)
+        , state()
+        , str()
+        , ivalue()
+        , dvalue(dvalue)
         , window_type()
         , sensor_tree()
         , boot_entries{}
@@ -175,6 +193,7 @@ struct DigitizerMessage
         , state()
         , str()
         , ivalue()
+        , dvalue()
         , window_type()
         , sensor_tree(std::move(sensor_tree))
         , boot_entries{}
@@ -187,6 +206,7 @@ struct DigitizerMessage
         , state()
         , str(state_description)
         , ivalue(state)
+        , dvalue()
         , window_type()
         , sensor_tree()
         , boot_entries(std::move(boot_entries))
@@ -196,6 +216,7 @@ struct DigitizerMessage
     DigitizerState state;
     std::string str;
     int ivalue;
+    double dvalue;
     WindowType window_type;
     SensorTree sensor_tree;
     std::vector<BootEntry> boot_entries;
@@ -261,6 +282,7 @@ private:
     std::vector<SensorRecord> m_sensor_records;
     ThreadSafeQueue<std::shared_ptr<std::vector<SensorRecord>>> m_sensor_record_queue;
     std::chrono::high_resolution_clock::time_point m_sensor_last_record_timestamp;
+    std::chrono::high_resolution_clock::time_point m_last_status_timestamp;
 
     void SignalError(const std::string &message);
     void ProcessMessages();
@@ -273,6 +295,7 @@ private:
     void InitializeSystemManagerObjects();
     void UpdateSystemManagerObjects();
     void CheckActivity();
+    void CheckStatus();
 
     void StartDataAcquisition();
     void StopDataAcquisition();
@@ -296,6 +319,7 @@ private:
     void InitializeFileWatchers();
 
     static constexpr double SENSOR_SAMPLING_PERIOD_MS = 1000.0;
+    static constexpr double STATUS_SAMPLING_PERIOD_MS = 1000.0;
     static constexpr int DEFAULT_ACTIVITY_THRESHOLD_MS = 1000;
     static constexpr int ACTIVITY_HYSTERESIS_MS = 500;
 };
@@ -353,6 +377,12 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
             break;
         case DigitizerMessageId::PARAMETERS_FILENAME:
             name = "PARAMETERS_FILENAME";
+            break;
+        case DigitizerMessageId::DRAM_FILL:
+            name = "DRAM_FILL";
+            break;
+        case DigitizerMessageId::OVERFLOW:
+            name = "OVERFLOW";
             break;
         case DigitizerMessageId::SET_INTERNAL_REFERENCE:
             name = "SET_INTERNAL_REFERENCE";

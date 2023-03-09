@@ -40,6 +40,7 @@ Digitizer::Digitizer(void *handle, int index)
     , m_sensor_records{}
     , m_sensor_record_queue()
     , m_sensor_last_record_timestamp(std::chrono::high_resolution_clock::now())
+    , m_last_status_timestamp(std::chrono::high_resolution_clock::now())
 {
     m_sensor_record_queue.Start();
 }
@@ -130,6 +131,7 @@ void Digitizer::MainLoop()
             ProcessWatcherMessages();
             UpdateSystemManagerObjects();
             CheckActivity();
+            CheckStatus();
         }
         catch (const DigitizerException &e)
         {
@@ -368,7 +370,7 @@ void Digitizer::CheckActivity()
 {
     /* Loop through the processing threads, querying the time since the last
        record was passed along. If we haven't seen any data for a while, we send
-       a 'no activity' message to to UI and also take the opportunity to update
+       a 'no activity' message to the UI and also take the opportunity to update
        the threshold based on the current value. This regulates itself to a slow
        trigger rate. */
     int milliseconds_max = -1;
@@ -390,6 +392,40 @@ void Digitizer::CheckActivity()
     {
         m_read_queue.EmplaceWrite(DigitizerMessageId::CLEAR);
         m_notified_no_activity = false;
+    }
+}
+
+void Digitizer::CheckStatus()
+{
+    /* Only provide status updates when we're acquiring data. */
+    if (m_state != DigitizerState::ACQUISITION)
+        return;
+
+    /* Interrogate the digitizer's various statuses available through
+       GetStatus(). We emit a relevant message if we find an unexpected status
+       value, e.g. overflow. */
+    const auto now = std::chrono::high_resolution_clock::now();
+    if ( (now - m_last_status_timestamp).count() / 1e6 >= STATUS_SAMPLING_PERIOD_MS)
+    {
+        /* Update the timestamp. */
+        m_last_status_timestamp = now;
+
+        struct ADQDramStatus dram_status;
+        if (sizeof(dram_status) ==
+            ADQ_GetStatus(m_id.handle, m_id.index, ADQ_STATUS_ID_DRAM, &dram_status))
+        {
+            double fill_percent = static_cast<double>(dram_status.fill) /
+                                  static_cast<double>(m_constant.dram_size);
+            m_read_queue.EmplaceWrite(DigitizerMessageId::DRAM_FILL, fill_percent);
+        }
+
+        struct ADQOverflowStatus overflow_status;
+        if (sizeof(overflow_status) ==
+            ADQ_GetStatus(m_id.handle, m_id.index, ADQ_STATUS_ID_OVERFLOW, &overflow_status))
+        {
+            if (overflow_status.overflow)
+                m_read_queue.EmplaceWrite(DigitizerMessageId::OVERFLOW);
+        }
     }
 }
 

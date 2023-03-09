@@ -97,13 +97,14 @@ private:
 
         std::string identifier;
         std::string state;
-        std::string event;
+        std::string event; /* TODO: Make this into a queue? */
         ImVec4 state_color;
         ImVec4 event_color;
         ImVec4 set_top_color;
         ImVec4 set_clock_system_color;
         bool popup_initialize_would_overwrite;
         bool is_selected;
+        float dram_fill;
 
         BootStatusUiState boot_status;
         std::map<uint32_t, SensorGroupUiState> sensor_groups;

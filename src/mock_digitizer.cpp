@@ -32,6 +32,8 @@ MockDigitizer::MockDigitizer(const std::string &serial_number,
                              const std::vector<double> &input_range, int nof_channels)
     : m_constant{}
     , m_afe{}
+    , m_dram_status{}
+    , m_overflow_status{}
     , m_generators{}
     , m_sysman(std::make_unique<MockSystemManager>())
     , m_top_parameters(DEFAULT_TOP_PARAMETERS)
@@ -40,6 +42,7 @@ MockDigitizer::MockDigitizer(const std::string &serial_number,
     m_constant.id = ADQ_PARAMETER_ID_CONSTANT;
     m_constant.magic = ADQ_PARAMETERS_MAGIC;
     m_constant.nof_channels = nof_channels;
+    m_constant.dram_size = 8UL * 1024UL * 1024UL * 1024UL;
 
     std::strncpy(m_constant.serial_number, serial_number.c_str(),
                  std::min(sizeof(m_constant.serial_number), serial_number.size() + 1));
@@ -68,6 +71,9 @@ int MockDigitizer::SetupDevice()
 
 int MockDigitizer::StartDataAcquisition()
 {
+    m_dram_status = {};
+    m_overflow_status = {};
+
     for (const auto &g : m_generators)
         g->Start();
 
@@ -140,6 +146,39 @@ int MockDigitizer::GetParameters(enum ADQParameterId id, void *const parameters)
     }
     else
     {
+        return ADQ_EUNSUPPORTED;
+    }
+}
+
+int MockDigitizer::GetStatus(enum ADQStatusId id, void *const status)
+{
+    if (status == NULL)
+        return ADQ_EINVAL;
+
+    switch (id)
+    {
+    case ADQ_STATUS_ID_OVERFLOW:
+        std::memcpy(status, &m_overflow_status, sizeof(m_overflow_status));
+        return sizeof(m_overflow_status);
+
+    case ADQ_STATUS_ID_DRAM:
+        /* TODO: For now, just increase by 512 MiB for each call. */
+        if (m_dram_status.fill < m_constant.dram_size)
+        {
+            m_dram_status.fill += 512 * 1024 * 1024;
+            m_dram_status.fill_max = m_dram_status.fill;
+            if (m_dram_status.fill >= m_constant.dram_size)
+                m_overflow_status.overflow = 1;
+        }
+
+        std::memcpy(status, &m_dram_status, sizeof(m_dram_status));
+        return sizeof(m_dram_status);
+
+    case ADQ_STATUS_ID_RESERVED:
+    case ADQ_STATUS_ID_ACQUISITION:
+    case ADQ_STATUS_ID_TEMPERATURE:
+    case ADQ_STATUS_ID_CLOCK_SYSTEM:
+    default:
         return ADQ_EUNSUPPORTED;
     }
 }

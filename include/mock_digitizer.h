@@ -25,6 +25,7 @@ public:
     int ReturnRecordBuffer(int channel, void *buffer);
 
     int GetParameters(enum ADQParameterId id, void *const parameters);
+    int GetStatus(enum ADQStatusId id, void *const status);
 
     int InitializeParametersString(enum ADQParameterId id, char *const string, size_t length, int format);
     int SetParametersString(const char *const string, size_t length);
@@ -36,6 +37,8 @@ public:
 private:
     struct ADQConstantParameters m_constant;
     struct ADQAnalogFrontendParameters m_afe;
+    struct ADQDramStatus m_dram_status;
+    struct ADQOverflowStatus m_overflow_status;
     std::vector<std::unique_ptr<Generator>> m_generators;
     std::unique_ptr<MockSystemManager> m_sysman;
     static const std::string DEFAULT_TOP_PARAMETERS;

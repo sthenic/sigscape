@@ -89,6 +89,14 @@ int MockAdqApi::GetParameters(int adq_num, enum ADQParameterId id, void *const p
     return m_digitizers[adq_num - 1]->GetParameters(id, parameters);
 }
 
+int MockAdqApi::GetStatus(int adq_num, enum ADQStatusId id, void *const status)
+{
+    /* -1 to follow the convention of the ADQAPI. */
+    if ((adq_num == 0) || (adq_num > static_cast<int>(m_digitizers.size())))
+        return ADQ_EINVAL;
+    return m_digitizers[adq_num - 1]->GetStatus(id, status);
+}
+
 int MockAdqApi::InitializeParametersString(int adq_num, enum ADQParameterId id, char *const string,
                                            size_t length, int format)
 {
@@ -224,6 +232,13 @@ int ADQ_GetParameters(void *adq_cu, int adq_num, enum ADQParameterId id, void *c
     if (adq_cu == NULL)
         return ADQ_EINVAL;
     return static_cast<MockAdqApi *>(adq_cu)->GetParameters(adq_num, id, parameters);
+}
+
+int ADQ_GetStatus(void *adq_cu, int adq_num, enum ADQStatusId id, void *const status)
+{
+    if (adq_cu == NULL)
+        return ADQ_EINVAL;
+    return static_cast<MockAdqApi *>(adq_cu)->GetStatus(adq_num, id, status);
 }
 
 int ADQ_InitializeParametersString(void *adq_cu, int adq_num, enum ADQParameterId id, char *const string, size_t length, int format)

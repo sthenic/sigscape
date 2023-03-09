@@ -135,6 +135,7 @@ Ui::DigitizerUiState::DigitizerUiState()
     , set_clock_system_color(ImGui::GetStyleColorVec4(ImGuiCol_Button))
     , popup_initialize_would_overwrite(false)
     , is_selected(false)
+    , dram_fill(0.0f)
     , boot_status()
     , sensor_groups{}
     , channels{}
@@ -437,6 +438,15 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
         ImGui::LogFinish();
         break;
 
+    case DigitizerMessageId::DRAM_FILL:
+        digitizer.ui.dram_fill = static_cast<float>(message.dvalue);
+        break;
+
+    case DigitizerMessageId::OVERFLOW:
+        digitizer.ui.event = "OVERFLOW";
+        digitizer.ui.event_color = COLOR_RED;
+        break;
+
     default:
         /* These are not expected as a message from a digitizer thread. */
         printf("%s\n", fmt::format("Unsupported message id '{}'.", message.id).c_str());
@@ -708,8 +718,15 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
                 ImGui::AlignTextToFramePadding();
                 ImGui::Text("DRAM");
                 ImGui::SameLine();
-                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, COLOR_GREEN);
-                ImGui::ProgressBar(0.68f);
+                if (digitizer.ui.dram_fill < 0.5f)
+                    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, COLOR_GREEN);
+                else if (digitizer.ui.dram_fill < 0.8f)
+                    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, COLOR_ORANGE);
+                else
+                    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, COLOR_RED);
+                ImGui::ProgressBar(digitizer.ui.dram_fill);
+                ImGui::PopStyleColor();
+
                 ImGui::TreePop();
             }
         }

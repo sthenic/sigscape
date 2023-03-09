@@ -646,7 +646,7 @@ void Digitizer::ConfigureInternalReference()
         throw DigitizerException(fmt::format("Failed to initialize clock system parameters, result {}.", result));
 
     clock_system.clock_generator = ADQ_CLOCK_GENERATOR_INTERNAL_PLL;
-    clock_system.reference_source = ADQ_CLOCK_REFERENCE_SOURCE_INTERNAL;
+    clock_system.reference_source = ADQ_REFERENCE_CLOCK_SOURCE_INTERNAL;
 
     result = ADQ_SetParameters(m_id.handle, m_id.index, &clock_system);
     if (result != sizeof(clock_system))
@@ -666,7 +666,7 @@ void Digitizer::ConfigureExternalReference()
         throw DigitizerException(fmt::format("Failed to initialize clock system parameters, result {}.", result));
 
     clock_system.clock_generator = ADQ_CLOCK_GENERATOR_INTERNAL_PLL;
-    clock_system.reference_source = ADQ_CLOCK_REFERENCE_SOURCE_PORT_CLK;
+    clock_system.reference_source = ADQ_REFERENCE_CLOCK_SOURCE_PORT_CLK;
     clock_system.reference_frequency = 10e6;
     clock_system.low_jitter_mode_enabled = 1;
 

@@ -336,8 +336,9 @@ void Ui::HandleMessage(const IdentificationMessage &message)
                                     m_persistent_configuration.GetDirectory());
     }
 
-    /* FIXME: Remove since debug convenience */
-    m_digitizers.front().ui.is_selected = true;
+    /* FIXME: Remove since debug convenience? */
+    if (m_digitizers.size() > 0)
+        m_digitizers.front().ui.is_selected = true;
 }
 
 void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)

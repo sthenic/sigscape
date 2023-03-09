@@ -193,5 +193,6 @@ struct ADQDramStatus
 };
 
 #define ADQ_PARAMETERS_MAGIC (0xAA559977AA559977ull)
+#define ADQ_RECORD_STATUS_OVERRANGE (1u << 2)
 
 #endif

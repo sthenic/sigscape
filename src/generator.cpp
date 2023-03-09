@@ -53,7 +53,11 @@ void Generator::MainLoop()
         record->header->time_unit = 25e-12f; /* TODO: 25ps steps for now */
         record->header->sampling_period = static_cast<uint64_t>(
             1.0 / (record->header->time_unit * m_sampling_frequency) + 0.5);
-        NoisySine(*record, m_parameters.record_length);
+
+        bool overrange;
+        NoisySine(*record, m_parameters.record_length, overrange);
+        if (overrange)
+            record->header->record_status |= ADQ_RECORD_STATUS_OVERRANGE;
 
         /* Add to the outgoing queue. */
         m_read_queue.Write(record);
@@ -68,10 +72,11 @@ void Generator::MainLoop()
     }
 }
 
-void Generator::NoisySine(ADQGen4Record &record, size_t count)
+void Generator::NoisySine(ADQGen4Record &record, size_t count, bool &overrange)
 {
     /* Generate a noisy sine wave of the input length. */
     /* TODO: Only 16-bit datatype for now. */
+    overrange = false;
     const Parameters::SineWave &sine = m_parameters.sine;
     int16_t *data = static_cast<int16_t *>(record.data);
     for (size_t i = 0; i < count; ++i)
@@ -86,6 +91,9 @@ void Generator::NoisySine(ADQGen4Record &record, size_t count)
             for (int hd = 2; hd <= 5; ++hd)
                 y += 0.1 / (1 << hd) * std::sin(2 * M_PI * hd * sine.frequency * x + sine.phase);
         }
+
+        if (y > 1.0 || y < -1.0)
+            overrange = true;
 
         if (y > 0)
             data[i] = static_cast<int16_t>((std::min)(32768.0 * y, 32767.0));

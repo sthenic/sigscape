@@ -60,7 +60,7 @@ private:
     Parameters m_parameters;
     double m_sampling_frequency;
 
-    void NoisySine(ADQGen4Record &record, size_t count);
+    void NoisySine(ADQGen4Record &record, size_t count, bool &overrange);
 };
 
 #endif

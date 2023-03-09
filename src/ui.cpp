@@ -2122,6 +2122,14 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                 ImGui::EndPopup();
             }
 
+            if (ui.record->time_domain->header.record_status & ADQ_RECORD_STATUS_OVERRANGE)
+            {
+                ImGui::SameLine();
+                ImGui::PushStyleColor(ImGuiCol_Button, COLOR_RED);
+                ImGui::SmallButton("OVERRANGE");
+                ImGui::PopStyleColor();
+            }
+
             if (node_open)
             {
                 if ((ui.is_muted || IsAnySolo()) && !ui.is_solo)

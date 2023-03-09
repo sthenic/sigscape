@@ -658,53 +658,60 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
     }
     else
     {
-        ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings;
-        if (ImGui::BeginTable("Digitizers", 3, flags))
+        for (auto &digitizer : m_digitizers)
         {
-            const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
-            ImGui::TableSetupColumn("Identifier",
-                                    ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoHide,
-                                    TEXT_BASE_WIDTH * 14.0f);
-            ImGui::TableSetupColumn("State", ImGuiTableColumnFlags_WidthFixed,
-                                    TEXT_BASE_WIDTH * 14.0f);
-            ImGui::TableSetupColumn("Event");
-            ImGui::TableHeadersRow();
+            int flags = ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow |
+                        ImGuiTreeNodeFlags_SpanAvailWidth;
 
-            for (auto &digitizer : m_digitizers)
+            if (digitizer.ui.is_selected)
+                flags |= ImGuiTreeNodeFlags_Selected;
+
+            /* Specify a certain row height by adding a dummy element. */
+            float pos = ImGui::GetCursorPosX();
+            ImGui::Dummy(ImVec2(0.0f, 20.0f));
+            ImGui::SameLine();
+            ImGui::SetCursorPosX(pos);
+            ImGui::AlignTextToFramePadding();
+            bool node_open = ImGui::TreeNodeEx(digitizer.ui.identifier.c_str(), flags);
+
+            if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
             {
-                ImGui::TableNextColumn();
-                if (ImGui::Selectable(digitizer.ui.identifier.c_str(), digitizer.ui.is_selected,
-                                      ImGuiSelectableFlags_SpanAllColumns))
+                /* Clear all selections unless CTRL is not held during the process. */
+                if (!ImGui::GetIO().KeyCtrl)
                 {
-                    /* Clear all if CTRL is not held during the press. */
-                    if (!ImGui::GetIO().KeyCtrl)
-                    {
-                        for (auto &d : m_digitizers)
-                            d.ui.is_selected = false;
-                    }
-
-                    /* Toggle the selection state. */
-                    digitizer.ui.is_selected ^= true;
+                    for (auto &d : m_digitizers)
+                        d.ui.is_selected = false;
                 }
 
-                ImGui::TableNextColumn();
-                if (digitizer.ui.state.size() > 0)
-                {
-                    ImGui::PushStyleColor(ImGuiCol_Button, digitizer.ui.state_color);
-                    ImGui::SmallButton(digitizer.ui.state.c_str());
-                    ImGui::PopStyleColor();
-                }
-
-                ImGui::TableNextColumn();
-                if (digitizer.ui.event.size() > 0)
-                {
-                    ImGui::PushStyleColor(ImGuiCol_Button, digitizer.ui.event_color);
-                    ImGui::SmallButton(digitizer.ui.event.c_str());
-                    ImGui::PopStyleColor();
-                }
-                ImGui::TableNextRow();
+                /* Toggle the selection state. */
+                digitizer.ui.is_selected ^= true;
             }
-            ImGui::EndTable();
+
+            if (digitizer.ui.state.size() > 0)
+            {
+                ImGui::SameLine();
+                ImGui::PushStyleColor(ImGuiCol_Button, digitizer.ui.state_color);
+                ImGui::SmallButton(digitizer.ui.state.c_str());
+                ImGui::PopStyleColor();
+            }
+
+            if (digitizer.ui.event.size() > 0)
+            {
+                ImGui::SameLine();
+                ImGui::PushStyleColor(ImGuiCol_Button, digitizer.ui.event_color);
+                ImGui::SmallButton(digitizer.ui.event.c_str());
+                ImGui::PopStyleColor();
+            }
+
+            if (node_open)
+            {
+                ImGui::AlignTextToFramePadding();
+                ImGui::Text("DRAM");
+                ImGui::SameLine();
+                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, COLOR_GREEN);
+                ImGui::ProgressBar(0.68f);
+                ImGui::TreePop();
+            }
         }
     }
     ImGui::End();

@@ -2013,7 +2013,8 @@ void Ui::PlotWaterfallSelected()
         const double TOP_RIGHT = ui->record->time_domain->sampling_frequency / 2;
         ImPlot::PlotHeatmap("heat", ui->record->waterfall->data.data(),
                             static_cast<int>(ui->record->waterfall->rows),
-                            static_cast<int>(ui->record->waterfall->columns), -100, 0, NULL,
+                            static_cast<int>(ui->record->waterfall->columns),
+                            ui->record->frequency_domain_metrics.noise, 0, NULL,
                             ImPlotPoint(0, 0), ImPlotPoint(TOP_RIGHT, 1));
         return;
     }

@@ -45,6 +45,7 @@ enum class DigitizerMessageId
     SET_EXTERNAL_REFERENCE,
     SET_EXTERNAL_CLOCK,
     DEFAULT_ACQUISITION,
+    FORCE_ACQUISITION,
     START_ACQUISITION,
     STOP_ACQUISITION,
     SET_PARAMETERS, /* FIXME: Probably rename this SET_TOP_PARAMETERS */
@@ -313,6 +314,7 @@ private:
     void ConfigureExternalReference();
     void ConfigureExternalClock();
     void ConfigureDefaultAcquisition();
+    void ForceAcquisition();
     void SetParameters(const std::shared_ptr<std::string> &str, DigitizerMessageId clean_id);
     void InitializeParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher);
     void GetParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher);
@@ -395,6 +397,9 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
             break;
         case DigitizerMessageId::DEFAULT_ACQUISITION:
             name = "DEFAULT_ACQUISITION";
+            break;
+        case DigitizerMessageId::FORCE_ACQUISITION:
+            name = "FORCE_ACQUISITION";
             break;
         case DigitizerMessageId::START_ACQUISITION:
             name = "START_ACQUISITION";

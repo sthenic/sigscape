@@ -30,7 +30,7 @@ public:
     int InitializeParametersString(enum ADQParameterId id, char *const string, size_t length, int format);
     int SetParametersString(const char *const string, size_t length);
     int GetParametersString(enum ADQParameterId id, char *const string, size_t length, int format);
-    int ValidateParametersString( const char *const string, size_t length);
+    int ValidateParametersString(const char *const string, size_t length);
 
     int SmTransaction(uint16_t cmd, void *wr_buf, size_t wr_buf_len, void *rd_buf, size_t rd_buf_len);
     int SmTransactionImmediate(uint16_t cmd, void *wr_buf, size_t wr_buf_len, void *rd_buf, size_t rd_buf_len);

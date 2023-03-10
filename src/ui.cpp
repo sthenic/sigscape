@@ -787,7 +787,8 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
 
     /* Second row */
     ImGui::BeginDisabled();
-    ImGui::Button("Set\nSelection", COMMAND_PALETTE_BUTTON_SIZE);
+    if (ImGui::Button("Force", COMMAND_PALETTE_BUTTON_SIZE))
+        PushMessage(DigitizerMessageId::FORCE_ACQUISITION);
     ImGui::EndDisabled();
 
     ImGui::SameLine();

@@ -523,6 +523,10 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
         ConfigureDefaultAcquisition();
         break;
 
+    case DigitizerMessageId::FORCE_ACQUISITION:
+        ForceAcquisition();
+        break;
+
     case DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
         SetParameters(m_parameters.clock_system, DigitizerMessageId::CLEAN_CLOCK_SYSTEM_PARAMETERS);
         SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
@@ -588,6 +592,19 @@ void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &messag
             StopDataAcquisition();
             ConfigureDefaultAcquisition();
             StartDataAcquisition();
+        }
+        catch (const DigitizerException &)
+        {
+            SetState(DigitizerState::IDLE);
+            throw;
+        }
+        break;
+
+    case DigitizerMessageId::FORCE_ACQUISITION:
+        try
+        {
+            StopDataAcquisition();
+            ForceAcquisition();
         }
         catch (const DigitizerException &)
         {
@@ -736,6 +753,7 @@ void Digitizer::ConfigureDefaultAcquisition()
 #ifdef NO_ADQAPI
     throw DigitizerException("ConfigureDefaultAcquisition() not implemented.");
 #else
+    /* FIXME: Not needed */
     struct ADQConstantParameters constant;
     int result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CONSTANT, &constant);
     if (result != sizeof(constant))
@@ -803,6 +821,12 @@ void Digitizer::ConfigureDefaultAcquisition()
     if (result != sizeof(readout))
         throw DigitizerException(fmt::format("Failed to set readout parameters, result {}.", result));
 #endif
+}
+
+void Digitizer::ForceAcquisition()
+{
+    /* FIXME: Implement */
+    throw DigitizerException("ForceAcquisition() not implemented.");
 }
 
 void Digitizer::SetParameters(const std::shared_ptr<std::string> &str, DigitizerMessageId clean_id)

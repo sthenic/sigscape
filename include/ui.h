@@ -57,6 +57,9 @@ private:
         bool is_time_domain_visible;
         bool is_frequency_domain_visible;
         bool should_save_to_file;
+        bool should_auto_fit_time_domain;
+        bool should_auto_fit_frequency_domain;
+        bool should_auto_fit_waterfall;
         std::shared_ptr<ProcessedRecord> record;
         std::vector<std::shared_ptr<ProcessedRecord>> memory;
     };

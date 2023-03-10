@@ -54,6 +54,9 @@ Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     , is_time_domain_visible(true)
     , is_frequency_domain_visible(true)
     , should_save_to_file(false)
+    , should_auto_fit_time_domain(true)
+    , should_auto_fit_frequency_domain(true)
+    , should_auto_fit_waterfall(true)
     , record(NULL)
     , memory{}
 {
@@ -1545,6 +1548,12 @@ void Ui::PlotTimeDomainSelected()
 
     for (auto &[i, ch, ui] : FilterUiStates())
     {
+        if (ui->should_auto_fit_time_domain)
+        {
+            ImPlot::SetNextAxesToFit();
+            ui->should_auto_fit_time_domain = false;
+        }
+
         /* FIXME: A rough value to switch off persistent plotting when the
                     window contains too many samples, heavily tanking the
                     performance. */
@@ -1886,6 +1895,12 @@ void Ui::PlotFourierTransformSelected()
 
     for (auto &[i, ch, ui] : FilterUiStates())
     {
+        if (ui->should_auto_fit_frequency_domain)
+        {
+            ImPlot::SetNextAxesToFit();
+            ui->should_auto_fit_frequency_domain = false;
+        }
+
         ImPlot::PushStyleColor(ImPlotCol_Line, ui->color);
         ImPlot::PlotLine(ui->record->label.c_str(), ui->record->frequency_domain->x.data(),
                          ui->record->frequency_domain->y.data(),
@@ -1987,6 +2002,13 @@ void Ui::PlotWaterfallSelected()
     {
         /* FIXME: Y-axis scale (probably time delta?) */
         const auto &[i, ch, ui] = filtered_ui.back();
+
+        if (ui->should_auto_fit_waterfall)
+        {
+            ImPlot::SetNextAxesToFit();
+            ui->should_auto_fit_waterfall = false;
+        }
+
         const double TOP_RIGHT = ui->record->time_domain->sampling_frequency / 2;
         ImPlot::PlotHeatmap("heat", ui->record->waterfall->data.data(),
                             static_cast<int>(ui->record->waterfall->rows),

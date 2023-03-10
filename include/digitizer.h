@@ -70,10 +70,10 @@ enum class DigitizerState
 struct Sensor
 {
     Sensor() = default;
-    Sensor(uint32_t id, uint32_t group_id, const char *label)
+    Sensor(uint32_t id, uint32_t group_id, const char (&label)[32])
         : id(id)
         , group_id(group_id)
-        , label(label)
+        , label(label, 0, sizeof(label))
     {}
 
     uint32_t id;
@@ -84,9 +84,9 @@ struct Sensor
 struct SensorGroup
 {
     SensorGroup() = default;
-    SensorGroup(uint32_t id, const char *label)
+    SensorGroup(uint32_t id, const char (&label)[32])
         : id(id)
-        , label(label)
+        , label(label, 0, sizeof(label))
     {}
 
     uint32_t id;
@@ -98,10 +98,10 @@ typedef std::vector<SensorGroup> SensorTree;
 
 struct BootEntry
 {
-    BootEntry(uint32_t id, const char *label, int32_t status)
+    BootEntry(uint32_t id, const char (&label)[32], int32_t status)
         : id(id)
         , status(status)
-        , label(label)
+        , label(label, 0, sizeof(label))
         , note()
     {}
 
@@ -200,11 +200,11 @@ struct DigitizerMessage
     {}
 
     /* Create a message holding all the boot statuses. */
-    DigitizerMessage(DigitizerMessageId id, int state, const char *state_description,
+    DigitizerMessage(DigitizerMessageId id, int state, const char (&state_description)[32],
                      std::vector<BootEntry> &&boot_entries)
         : id(id)
         , state()
-        , str(state_description)
+        , str(state_description, 0, sizeof(state_description))
         , ivalue(state)
         , dvalue()
         , window_type()

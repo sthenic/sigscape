@@ -273,11 +273,11 @@ void Ui::IdentifyDigitizers()
     m_identification.Start();
 }
 
-void Ui::PushMessage(const DigitizerMessage &message, bool selected)
+void Ui::PushMessage(const DigitizerMessage &message, bool only_selected)
 {
     for (auto &digitizer : m_digitizers)
     {
-        if (selected && !digitizer.ui.is_selected)
+        if (only_selected && !digitizer.ui.is_selected)
             continue;
         digitizer.interface->PushMessage(message);
     }

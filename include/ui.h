@@ -147,7 +147,7 @@ private:
     bool IsAnySolo() const;
 
     void IdentifyDigitizers();
-    void PushMessage(const DigitizerMessage &message, bool selected = true);
+    void PushMessage(const DigitizerMessage &message, bool only_selected = true);
 
     void UpdateRecords();
     void UpdateSensors();

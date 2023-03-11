@@ -13,6 +13,52 @@
 #include <cinttypes>
 #include <set>
 
+DataProcessing::Tone::Tone(const ProcessedRecord *record, double f, size_t nof_skirt_bins)
+    : power{}
+    , frequency{}
+    , idx{}
+    , idx_fraction{}
+    , idx_low{}
+    , idx_high{}
+    , values{}
+{
+    /* We use the same approach as for the tone analysis identifying the
+       fundamental tone (with interpolation). We assume that the processed
+       record's frequency domain contents has values converted to decibels full
+       scale, so have to reverse that conversion for the surrounding bins. Still
+       it's more efficient to do it this way than to loop over the entire
+       spectrum again just to convert to decibels. */
+
+    if (record != NULL)
+    {
+        const auto &y = record->frequency_domain->y;
+        const auto &bin_range = record->frequency_domain->step;
+        const int lidx = static_cast<int>(f / bin_range + 0.5); /* FIXME: std::round? */
+
+        idx_low = static_cast<size_t>((std::max)(lidx - static_cast<int>(nof_skirt_bins), 0));
+        idx_high = (std::min)(lidx + nof_skirt_bins, record->frequency_domain->x.size() - 1);
+
+        double numerator = 0.0;
+        double denominator = 0.0;
+        for (size_t i = idx_low; i <= idx_high; ++i)
+        {
+            const double bin_power = std::pow(10, y[i] / 10);
+            numerator += static_cast<double>(i - idx_low) * bin_power;
+            denominator += bin_power;
+            values.push_back(bin_power);
+        }
+
+        const double center_of_mass = static_cast<double>(idx_low) + (numerator / denominator);
+        idx = static_cast<size_t>(center_of_mass + 0.5);
+        idx_fraction = center_of_mass - static_cast<double>(idx);
+        frequency = bin_range * center_of_mass;
+
+        /* This power estimation does not take overlaps into account. This must
+           be handled separately. */
+        power = denominator;
+    }
+}
+
 DataProcessing::DataProcessing(void *handle, int index, int channel, const std::string &label,
                                const struct ADQConstantParameters &constant)
     : m_handle(handle)
@@ -249,7 +295,6 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
     PlaceHarmonics(fundamental, record, harmonics);
     ResolveOverlaps(dc, fundamental, harmonics, metrics.overlap);
 
-    /* Remove the power of the fundamental tone from the total noise power. */
     double harmonic_distortion_power = 0.0;
     auto &y = record->frequency_domain->y;
     for (auto &harmonic : harmonics)
@@ -260,6 +305,9 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
         harmonic_distortion_power += harmonic.power;
         metrics.harmonics.push_back(std::make_pair(harmonic.frequency, y[harmonic.idx]));
     }
+
+    /* Remove the power of the fundamental tone and other spectral components
+       from the total noise power. */
     const double noise_power = total_power - fundamental.power - dc.power - harmonic_distortion_power;
 
     /* FIXME: Linear interpolation? */
@@ -390,47 +438,17 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
 void DataProcessing::PlaceHarmonics(const Tone &fundamental, const ProcessedRecord *record,
                                     std::vector<Tone> &harmonics)
 {
-    const auto &y = record->frequency_domain->y;
-    const auto &bin_range = record->frequency_domain->step;
-
-    /* Analyze the harmonics where we only look at HD2 to HD5. We use the same
-       approach as for the tone analysis above, with an interpolation. Though we
-       have to reverse the conversion to decibel for the surrounding bins. Still
-       it's more efficient to do it this way than to loop over the entire
-       spectrum again just to convert to decibels. */
-
+    /* Analyze the harmonics. We only look at HD2 to HD5. */
     for (int hd = 2; hd <= 5; ++hd)
     {
         const double f = FoldFrequency(fundamental.frequency * hd,
                                        record->time_domain->sampling_frequency);
-        const int idx = static_cast<int>(f / bin_range + 0.5);
-        Tone harmonic{};
-
-        harmonic.idx_low = static_cast<size_t>((std::max)(idx - static_cast<int>(m_nof_skirt_bins), 0));
-        harmonic.idx_high = (std::min)(idx + m_nof_skirt_bins, record->frequency_domain->x.size() - 1);
-
-        double numerator = 0.0;
-        double denominator = 0.0;
-        for (size_t i = harmonic.idx_low; i <= harmonic.idx_high; ++i)
-        {
-            const double power = std::pow(10, y[i] / 10);
-            numerator += static_cast<double>(i - harmonic.idx_low) * power;
-            denominator += power;
-            harmonic.values.push_back(power);
-        }
-
-        const double center_of_mass = static_cast<double>(harmonic.idx_low) + (numerator / denominator);
-        harmonic.idx = static_cast<size_t>(center_of_mass + 0.5);
-        harmonic.idx_fraction = center_of_mass - static_cast<double>(harmonic.idx);
-        harmonic.frequency = bin_range * center_of_mass;
-        /* We'll determine the total power once we resolve the overlaps. */
-        harmonic.power = 0.0;
-        harmonics.push_back(harmonic);
+        harmonics.emplace_back(record, f, m_nof_skirt_bins);
     }
 }
 
 void DataProcessing::ResolveOverlaps(const Tone &dc, const Tone &fundamental,
-                                    std::vector<Tone> &harmonics, bool &overlap)
+                                     std::vector<Tone> &harmonics, bool &overlap)
 {
     /* Now we have to figure out if these tones overlap in any way. If they do,
        we mark the metrics as 'not trustworthy' but still perform the

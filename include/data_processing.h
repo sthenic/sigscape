@@ -52,6 +52,9 @@ private:
 
     struct Tone
     {
+        Tone() = default;
+        Tone(const ProcessedRecord *record, double frequency, size_t nof_skirt_bins);
+
         double power;
         double frequency;
         size_t idx;

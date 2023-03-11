@@ -2001,7 +2001,7 @@ void Ui::PlotWaterfallSelected()
     const auto filtered_ui = FilterUiStates();
     if (!filtered_ui.empty())
     {
-        /* FIXME: Y-axis scale (probably time delta?) */
+        /* TODO: Y-axis scale (probably time delta?) */
         const auto &[i, ch, ui] = filtered_ui.back();
 
         if (ui->should_auto_fit_waterfall)
@@ -2014,7 +2014,7 @@ void Ui::PlotWaterfallSelected()
         ImPlot::PlotHeatmap("heat", ui->record->waterfall->data.data(),
                             static_cast<int>(ui->record->waterfall->rows),
                             static_cast<int>(ui->record->waterfall->columns),
-                            ui->record->frequency_domain_metrics.noise, 0, NULL,
+                            ui->record->frequency_domain_metrics.noise, 0.0, NULL,
                             ImPlotPoint(0, 0), ImPlotPoint(TOP_RIGHT, 1));
         return;
     }
@@ -2022,15 +2022,24 @@ void Ui::PlotWaterfallSelected()
 
 void Ui::RenderWaterfallPlot()
 {
+    const int LEGEND_WIDTH = 70;
+    const int PLOT_WIDTH = ImGui::GetWindowContentRegionMax().x - LEGEND_WIDTH;
+    const int PLOT_FLAGS = ImPlotFlags_NoTitle | ImPlotFlags_NoLegend;
+
     ImPlot::PushColormap("Plasma");
-    if (ImPlot::BeginPlot("Waterfall##plot", ImVec2(-1, -1), ImPlotFlags_NoTitle | ImPlotFlags_NoLegend))
+    if (ImPlot::BeginPlot("Waterfall##plot", ImVec2(PLOT_WIDTH, -1), PLOT_FLAGS))
     {
-        static const ImPlotAxisFlags FLAGS = ImPlotAxisFlags_NoGridLines;
-        ImPlot::SetupAxes(NULL, NULL, FLAGS, FLAGS);
+        const ImPlotAxisFlags X1_FLAGS = ImPlotAxisFlags_NoGridLines;
+        const ImPlotAxisFlags Y1_FLAGS = ImPlotAxisFlags_NoGridLines |
+                                         ImPlotAxisFlags_NoTickLabels |
+                                         ImPlotAxisFlags_NoTickMarks;
+        ImPlot::SetupAxes(NULL, NULL, X1_FLAGS, Y1_FLAGS);
         ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric, (void *)"Hz");
         PlotWaterfallSelected();
         ImPlot::EndPlot();
     }
+    ImGui::SameLine();
+    ImPlot::ColormapScale(" ##waterfallscale", -100, 0, ImVec2(LEGEND_WIDTH, -1));
     ImPlot::PopColormap();
 }
 

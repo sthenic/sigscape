@@ -3,12 +3,12 @@ project(adq-rapid VERSION 1.0)
 add_executable(${PROJECT_NAME})
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-option(NO_ADQAPI "Compile with the ADQAPI as a dependency. With this set to ON, only the simulator mode is available." OFF)
+option(MOCK_ADQAPI "With this set to ON, only the simulator mode is available." OFF)
 
 if (UNIX)
     if (APPLE)
       target_compile_definitions(${PROJECT_NAME} PRIVATE SIMULATION_ONLY)
-      set(NO_ADQAPI ON)
+      set(MOCK_ADQAPI ON)
     else()
       find_package(PkgConfig REQUIRED)
       find_package(OpenGL REQUIRED)
@@ -150,9 +150,9 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     IMGUI_IMPL_OPENGL_LOADER_GL3W
 )
 
-if(NO_ADQAPI)
-    message(STATUS "Using NO_ADQAPI (no ADQAPI dependency).")
-    target_compile_definitions(${PROJECT_NAME} PRIVATE NO_ADQAPI)
+if(MOCK_ADQAPI)
+    message(STATUS "Using MOCK_ADQAPI (no ADQAPI dependency).")
+    target_compile_definitions(${PROJECT_NAME} PRIVATE MOCK_ADQAPI)
     target_sources(${PROJECT_NAME} PRIVATE
         src/mock_adqapi.cpp
         src/mock_digitizer.cpp
@@ -176,7 +176,7 @@ endif()
 
 # ADQAPI localization
 # FIXME: Add option to build the API as a first-hand choice.
-if (NOT NO_ADQAPI)
+if (NOT MOCK_ADQAPI)
     if (UNIX)
         find_library(ADQAPI_LIBRARY
             NAMES libadq libadq.so

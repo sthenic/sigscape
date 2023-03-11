@@ -11,7 +11,7 @@
 #include "file_watcher.h"
 #include "system_manager.h"
 
-#ifdef NO_ADQAPI
+#ifdef MOCK_ADQAPI
 #include "mock_adqapi.h"
 #else
 #include "ADQAPI.h"

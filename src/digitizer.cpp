@@ -689,7 +689,7 @@ void Digitizer::HandleMessageInState(const struct DigitizerMessage &message)
 
 void Digitizer::ConfigureInternalReference()
 {
-#ifdef NO_ADQAPI
+#ifdef MOCK_ADQAPI
     throw DigitizerException("ConfigureInternalReference() not implemented.");
 #else
     struct ADQClockSystemParameters clock_system;
@@ -709,7 +709,7 @@ void Digitizer::ConfigureInternalReference()
 
 void Digitizer::ConfigureExternalReference()
 {
-#ifdef NO_ADQAPI
+#ifdef MOCK_ADQAPI
     throw DigitizerException("ConfigureExternalReference() not implemented.");
 #else
     struct ADQClockSystemParameters clock_system;
@@ -731,7 +731,7 @@ void Digitizer::ConfigureExternalReference()
 
 void Digitizer::ConfigureExternalClock()
 {
-#ifdef NO_ADQAPI
+#ifdef MOCK_ADQAPI
     throw DigitizerException("ConfigureExternalClock() not implemented.");
 #else
     struct ADQClockSystemParameters clock_system;
@@ -750,7 +750,7 @@ void Digitizer::ConfigureExternalClock()
 
 void Digitizer::ConfigureDefaultAcquisition()
 {
-#ifdef NO_ADQAPI
+#ifdef MOCK_ADQAPI
     throw DigitizerException("ConfigureDefaultAcquisition() not implemented.");
 #else
     /* FIXME: Not needed */

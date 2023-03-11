@@ -3,7 +3,7 @@
 #include "fft.h"
 #include "fft_settings.h"
 
-#ifdef NO_ADQAPI
+#ifdef MOCK_ADQAPI
 #include "mock_adqapi.h"
 #else
 #include "ADQAPI.h"

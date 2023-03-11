@@ -13,7 +13,7 @@
 #include <stdexcept>
 #include <string>
 
-#ifdef NO_ADQAPI
+#ifdef MOCK_ADQAPI
 #include "mock_adqapi_definitions.h"
 #else
 #include "ADQAPI.h"

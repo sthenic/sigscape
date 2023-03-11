@@ -51,6 +51,8 @@ Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     , is_solo(false)
     , is_sample_markers_enabled(false)
     , is_persistence_enabled(false)
+    , is_harmonics_annotated(true)
+    , is_interleaving_spurs_annotated(true)
     , is_time_domain_visible(true)
     , is_frequency_domain_visible(true)
     , should_save_to_file(false)
@@ -1941,13 +1943,20 @@ void Ui::PlotFourierTransformSelected()
         if (ui->is_frequency_domain_visible)
         {
             Annotate(ui->record->frequency_domain_metrics.fundamental, "Fund.");
-            Annotate(ui->record->frequency_domain_metrics.gain_spur, "TIx");
-            Annotate(ui->record->frequency_domain_metrics.offset_spur, "TIo");
 
-            for (size_t j = 0; j < ui->record->frequency_domain_metrics.harmonics.size(); ++j)
+            if (ui->is_interleaving_spurs_annotated)
             {
-                Annotate(ui->record->frequency_domain_metrics.harmonics[j],
-                         fmt::format("HD{}", j + 2));
+                Annotate(ui->record->frequency_domain_metrics.gain_spur, "TIx");
+                Annotate(ui->record->frequency_domain_metrics.offset_spur, "TIo");
+            }
+
+            if (ui->is_harmonics_annotated)
+            {
+                for (size_t j = 0; j < ui->record->frequency_domain_metrics.harmonics.size(); ++j)
+                {
+                    Annotate(ui->record->frequency_domain_metrics.harmonics[j],
+                            fmt::format("HD{}", j + 2));
+                }
             }
 
             for (auto &[id, marker] : m_frequency_domain_markers)
@@ -2332,6 +2341,32 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
             {
                 ClearChannelSelection();
                 ui.is_selected = !ui.is_selected;
+            }
+
+            if (ImGui::BeginPopupContextItem())
+            {
+                if (ui.is_harmonics_annotated ^ ui.is_interleaving_spurs_annotated)
+                {
+                    if (ImGui::MenuItem("Annotations off"))
+                    {
+                        ui.is_harmonics_annotated = false;
+                        ui.is_interleaving_spurs_annotated = false;
+                    }
+                }
+                else
+                {
+                    bool toggle_on = !ui.is_harmonics_annotated;
+                    if (ImGui::MenuItem(fmt::format("Annotations {}", toggle_on ? "on" : "off").c_str()))
+                    {
+                        ui.is_harmonics_annotated = toggle_on;
+                        ui.is_interleaving_spurs_annotated = toggle_on;
+                    }
+                }
+
+                ImGui::MenuItem("Annotate harmonics", "", &ui.is_harmonics_annotated);
+                ImGui::MenuItem("Annotate interleaving spurs", "",
+                                &ui.is_interleaving_spurs_annotated);
+                ImGui::EndPopup();
             }
 
             if (node_open)

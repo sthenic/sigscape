@@ -54,6 +54,8 @@ private:
         bool is_solo;
         bool is_sample_markers_enabled;
         bool is_persistence_enabled;
+        bool is_harmonics_annotated;
+        bool is_interleaving_spurs_annotated;
         bool is_time_domain_visible;
         bool is_frequency_domain_visible;
         bool should_save_to_file;

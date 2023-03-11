@@ -1625,6 +1625,9 @@ void Ui::PlotTimeDomainSelected()
                             Format::Metric(marker.x, "{:g} {}s", 1e-3));
                 DrawMarkerY(marker_id++, &marker.y, marker.color, marker.thickness,
                             Format::TimeDomainY(marker.y), ImPlotDragToolFlags_NoInputs);
+
+                ImPlot::Annotation(marker.x, ImPlot::GetPlotLimits().Y.Max, ImVec4(0, 0, 0, 0),
+                                   ImVec2(10, 10), false, "T%zu", id);
             }
 
             if (ui->is_selected)
@@ -1957,6 +1960,9 @@ void Ui::PlotFourierTransformSelected()
                             Format::Metric(marker.x, "{:.2f} {}Hz", 1e6));
                 DrawMarkerY(marker_id++, &marker.y, marker.color, marker.thickness,
                             Format::FrequencyDomainY(marker.y), ImPlotDragToolFlags_NoInputs);
+
+                ImPlot::Annotation(marker.x, ImPlot::GetPlotLimits().Y.Max, ImVec4(0, 0, 0, 0),
+                                   ImVec2(10, 10), false, "F%zu", id);
             }
 
             if (ui->is_selected)

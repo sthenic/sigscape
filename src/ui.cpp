@@ -1995,7 +1995,7 @@ void Ui::RenderFourierTransformPlot()
     ImPlot::PopStyleVar();
 }
 
-void Ui::PlotWaterfallSelected()
+void Ui::PlotWaterfallSelected(double &scale_min, double &scale_max)
 {
     /* Only plot the selected channel, which will be at the back of the filtered UI states. */
     const auto filtered_ui = FilterUiStates();
@@ -2010,11 +2010,14 @@ void Ui::PlotWaterfallSelected()
             ui->should_auto_fit_waterfall = false;
         }
 
+        scale_min = std::round(ui->record->frequency_domain_metrics.noise_moving_average);
+        scale_max = 0.0;
+
         const double TOP_RIGHT = ui->record->time_domain->sampling_frequency / 2;
         ImPlot::PlotHeatmap("heat", ui->record->waterfall->data.data(),
                             static_cast<int>(ui->record->waterfall->rows),
                             static_cast<int>(ui->record->waterfall->columns),
-                            ui->record->frequency_domain_metrics.noise, 0.0, NULL,
+                            scale_min, scale_max, NULL,
                             ImPlotPoint(0, 0), ImPlotPoint(TOP_RIGHT, 1));
         return;
     }
@@ -2025,6 +2028,8 @@ void Ui::RenderWaterfallPlot()
     const int LEGEND_WIDTH = 70;
     const int PLOT_WIDTH = ImGui::GetWindowContentRegionMax().x - LEGEND_WIDTH;
     const int PLOT_FLAGS = ImPlotFlags_NoTitle | ImPlotFlags_NoLegend;
+    double scale_min = -100;
+    double scale_max = 0;
 
     ImPlot::PushColormap("Plasma");
     if (ImPlot::BeginPlot("Waterfall##plot", ImVec2(PLOT_WIDTH, -1), PLOT_FLAGS))
@@ -2035,11 +2040,11 @@ void Ui::RenderWaterfallPlot()
                                          ImPlotAxisFlags_NoTickMarks;
         ImPlot::SetupAxes(NULL, NULL, X1_FLAGS, Y1_FLAGS);
         ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric, (void *)"Hz");
-        PlotWaterfallSelected();
+        PlotWaterfallSelected(scale_min, scale_max);
         ImPlot::EndPlot();
     }
     ImGui::SameLine();
-    ImPlot::ColormapScale(" ##waterfallscale", -100, 0, ImVec2(LEGEND_WIDTH, -1));
+    ImPlot::ColormapScale(" ##waterfallscale", scale_min, scale_max, ImVec2(LEGEND_WIDTH, -1));
     ImPlot::PopColormap();
 }
 

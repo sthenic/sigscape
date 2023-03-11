@@ -26,6 +26,7 @@ private:
     static const size_t WATERFALL_SIZE = 20;
     static const size_t NOF_SKIRT_BINS_DEFAULT = 5;
     static const size_t PERSISTENCE_SIZE = 30;
+    static const size_t NOISE_MOVING_AVERAGE_SIZE = 50;
     void *m_handle;
     int m_index;
     int m_channel;
@@ -37,6 +38,7 @@ private:
     size_t m_nof_skirt_bins;
     std::deque<std::shared_ptr<FrequencyDomainRecord>> m_waterfall;
     std::deque<std::shared_ptr<TimeDomainRecord>> m_persistence;
+    std::deque<double> m_noise_moving_average;
 
     template <typename T>
     static size_t NextPowerOfTwo(T i);

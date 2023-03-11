@@ -26,6 +26,7 @@ DataProcessing::DataProcessing(void *handle, int index, int channel, const std::
     , m_nof_skirt_bins(NOF_SKIRT_BINS_DEFAULT)
     , m_waterfall{}
     , m_persistence{}
+    , m_noise_moving_average{}
 {
 }
 
@@ -259,7 +260,7 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
         harmonic_distortion_power += harmonic.power;
         metrics.harmonics.push_back(std::make_pair(harmonic.frequency, y[harmonic.idx]));
     }
-    double noise_power = total_power - fundamental.power - dc.power - harmonic_distortion_power;
+    const double noise_power = total_power - fundamental.power - dc.power - harmonic_distortion_power;
 
     /* FIXME: Linear interpolation? */
     metrics.fundamental = std::make_pair(fundamental.frequency, y[fundamental.idx]);
@@ -271,6 +272,15 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
     metrics.sfdr_dbfs = -y[spur.idx];
     metrics.sfdr_dbc = y[fundamental.idx] - y[spur.idx];
     metrics.noise = 10.0 * std::log10(noise_power / static_cast<double>(fft.size()));
+    metrics.noise_moving_average = 0;
+
+    if (m_noise_moving_average.size() >= NOISE_MOVING_AVERAGE_SIZE)
+        m_noise_moving_average.pop_back();
+    m_noise_moving_average.push_front(metrics.noise);
+
+    const double normalization = static_cast<double>(m_noise_moving_average.size());
+    for (const auto &noise : m_noise_moving_average)
+        metrics.noise_moving_average += noise / normalization;
 
     /* FIXME: Adjust worst spur if it turns out that it's one of the harmonics
               that ended up within the blind spot? */

@@ -209,7 +209,7 @@ private:
     void PlotFourierTransformSelected();
     void RenderFourierTransformPlot();
 
-    void PlotWaterfallSelected();
+    void PlotWaterfallSelected(double &scale_min, double &scale_max);
     void RenderWaterfallPlot();
 
     static void RenderHeaderButtons(ChannelUiState &ui);

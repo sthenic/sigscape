@@ -240,6 +240,7 @@ struct ProcessedRecord
         double sfdr_dbfs;
         double thd;
         double noise;
+        double noise_moving_average;
         bool overlap;
     } frequency_domain_metrics;
 };

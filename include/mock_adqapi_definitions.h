@@ -126,6 +126,7 @@ enum ADQParameterId
 struct ADQConstantParametersChannel
 {
     char label[8];
+    int32_t nof_adc_cores;
     int64_t code_normalization;
 };
 

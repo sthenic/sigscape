@@ -17,7 +17,7 @@ public:
     void AddDigitizer(const std::string &serial_number,
                       const struct ADQConstantParametersFirmware &firmware,
                       const std::vector<double> &input_range, int nof_channels,
-                      enum ADQProductID_Enum pid);
+                      const std::vector<int> &nof_adc_cores, enum ADQProductID_Enum pid);
 
     /* Mocked functions. */
     int SetupDevice(int index);

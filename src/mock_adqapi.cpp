@@ -10,10 +10,10 @@ static bool has_added_digitizers = false;
 void MockAdqApi::AddDigitizer(const std::string &serial_number,
                               const struct ADQConstantParametersFirmware &firmware,
                               const std::vector<double> &input_range, int nof_channels,
-                              enum ADQProductID_Enum pid)
+                              const std::vector<int> &nof_adc_cores, enum ADQProductID_Enum pid)
 {
-    m_digitizers.push_back(
-        std::make_unique<MockDigitizer>(serial_number, firmware, input_range, nof_channels));
+    m_digitizers.push_back(std::make_unique<MockDigitizer>(serial_number, firmware, input_range,
+                                                           nof_channels, nof_adc_cores));
     m_info_list.push_back({pid});
 }
 
@@ -155,10 +155,10 @@ void *CreateADQControlUnit()
     if (!has_added_digitizers)
     {
         mock_adqapi.AddDigitizer(
-            "SPD-SIM01", {ADQ_FIRMWARE_TYPE_FWDAQ, "1CH-FWDAQ"}, {2500.0}, 1, PID_ADQ32
+            "SPD-SIM01", {ADQ_FIRMWARE_TYPE_FWDAQ, "1CH-FWDAQ"}, {2500.0}, 1, {2}, PID_ADQ32
         );
         mock_adqapi.AddDigitizer(
-            "SPD-SIM02", {ADQ_FIRMWARE_TYPE_FWDAQ, "2CH-FWDAQ"}, {2500.0, 1000.0}, 2, PID_ADQ36
+            "SPD-SIM02", {ADQ_FIRMWARE_TYPE_FWDAQ, "2CH-FWDAQ"}, {2500.0, 1000.0}, 2, {1, 2}, PID_ADQ36
         );
 
         has_added_digitizers = true;

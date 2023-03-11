@@ -17,6 +17,8 @@ trigger frequency:
     5.0, 15.0
 harmonic distortion:
     0, 1
+interleaving distortion:
+    0, 1
 noise standard deviation:
     0.1, 0.02
 )""";
@@ -234,8 +236,13 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
             return ADQR_EINVAL;
         nof_generators = std::min(nof_generators, harmonic_distortion.size());
 
+        std::vector<int> interleaving_distortion;
+        if (ADQR_EOK != ParseLine(12, parameters_str, interleaving_distortion))
+            return ADQR_EINVAL;
+        nof_generators = std::min(nof_generators, interleaving_distortion.size());
+
         std::vector<double> noise_std_dev;
-        if (ADQR_EOK != ParseLine(12, parameters_str, noise_std_dev))
+        if (ADQR_EOK != ParseLine(14, parameters_str, noise_std_dev))
             return ADQR_EINVAL;
         nof_generators = std::min(nof_generators, noise_std_dev.size());
 
@@ -248,6 +255,7 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
             parameters.back().sine.frequency = frequency[i];
             parameters.back().sine.amplitude = amplitude[i];
             parameters.back().sine.harmonic_distortion = harmonic_distortion[i] > 0;
+            parameters.back().sine.interleaving_distortion = interleaving_distortion[i] > 0;
             parameters.back().sine.noise_std_dev = noise_std_dev[i];
             parameters.back().sine.offset = 0.0;
             parameters.back().sine.phase = 0.1;

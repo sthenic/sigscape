@@ -36,6 +36,7 @@ public:
                 , phase(0.0)
                 , noise_std_dev(0.1)
                 , harmonic_distortion(true)
+                , interleaving_distortion(true)
             {};
 
             double amplitude;
@@ -44,6 +45,7 @@ public:
             double phase;
             double noise_std_dev;
             bool harmonic_distortion;
+            bool interleaving_distortion;
         } sine;
 
         size_t record_length;

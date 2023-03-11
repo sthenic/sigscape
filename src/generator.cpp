@@ -85,6 +85,12 @@ void Generator::NoisySine(ADQGen4Record &record, size_t count, bool &overrange)
         double y = (sine.amplitude * std::sin(2 * M_PI * sine.frequency * x + sine.phase) +
                     m_distribution(m_random_generator) + sine.offset);
 
+        /* Add gain and offset mismatch for every other sample. */
+        if (sine.interleaving_distortion && i % 2)
+        {
+            y = 1.03 * y + 0.03 * sine.amplitude;
+        }
+
         /* Add HD2, HD3, HD4 and HD5. */
         if (sine.harmonic_distortion)
         {

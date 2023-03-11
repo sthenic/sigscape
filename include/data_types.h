@@ -233,6 +233,8 @@ struct ProcessedRecord
         std::pair<double, double> fundamental;
         std::pair<double, double> spur;
         std::vector<std::pair<double, double>> harmonics;
+        std::pair<double, double> gain_spur;
+        std::pair<double, double> offset_spur;
         double snr;
         double sinad;
         double enob;

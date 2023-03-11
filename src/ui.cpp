@@ -1941,6 +1941,9 @@ void Ui::PlotFourierTransformSelected()
         if (ui->is_frequency_domain_visible)
         {
             Annotate(ui->record->frequency_domain_metrics.fundamental, "Fund.");
+            Annotate(ui->record->frequency_domain_metrics.gain_spur, "TIx");
+            Annotate(ui->record->frequency_domain_metrics.offset_spur, "TIo");
+
             for (size_t j = 0; j < ui->record->frequency_domain_metrics.harmonics.size(); ++j)
             {
                 Annotate(ui->record->frequency_domain_metrics.harmonics[j],
@@ -2363,88 +2366,84 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
                     ImGui::TableSetupColumn("Value1", ImGuiTableColumnFlags_WidthFixed);
                     ImGui::TableSetupColumn("Value2", ImGuiTableColumnFlags_WidthFixed);
 
-                    ImGui::TableNextColumn();
-                    ImGui::Text("SNR");
-                    ImGui::TableNextColumn();
-                    ImGui::Text(Format::FrequencyDomainDeltaY(metrics.snr));
-                    ImGui::TableNextColumn();
-                    ImGui::TableNextColumn();
-                    ImGui::Text("Fund.");
-                    ImGui::TableNextColumn();
-                    ImGui::Text(Format::FrequencyDomainX(metrics.fundamental.first));
-                    ImGui::TableNextColumn();
-                    ImGui::Text(Format::FrequencyDomainY(metrics.fundamental.second));
+                    auto MetricRow = [](const std::string (&contents)[5])
+                    {
+                        ImGui::TableNextColumn();
+                        ImGui::Text(contents[0]);
+                        ImGui::TableNextColumn();
+                        ImGui::Text(contents[1]);
+                        ImGui::TableNextColumn();
+                        ImGui::TableNextColumn();
+                        ImGui::Text(contents[2]);
+                        ImGui::TableNextColumn();
+                        ImGui::Text(contents[3]);
+                        ImGui::TableNextColumn();
+                        ImGui::Text(contents[4]);
+                    };
 
-                    ImGui::TableNextColumn();
-                    ImGui::Text("SINAD");
-                    ImGui::TableNextColumn();
-                    ImGui::Text(Format::FrequencyDomainDeltaY(metrics.sinad));
-                    ImGui::TableNextColumn();
-                    ImGui::TableNextColumn();
-                    ImGui::Text("HD2");
-                    ImGui::TableNextColumn();
-                    ImGui::Text(Format::FrequencyDomainX(metrics.harmonics[0].first));
-                    ImGui::TableNextColumn();
-                    ImGui::Text(Format::FrequencyDomainY(metrics.harmonics[0].second));
+                    MetricRow({
+                        "SNR",
+                        Format::FrequencyDomainDeltaY(metrics.snr),
+                        "Fund.",
+                        Format::FrequencyDomainX(metrics.fundamental.first),
+                        Format::FrequencyDomainY(metrics.fundamental.second),
+                    });
 
-                    ImGui::TableNextColumn();
-                    ImGui::Text("ENOB");
-                    ImGui::TableNextColumn();
-                    ImGui::Text(fmt::format("{: 7.2f} bits", metrics.enob));
-                    ImGui::TableNextColumn();
-                    ImGui::TableNextColumn();
-                    ImGui::Text("HD3");
-                    ImGui::TableNextColumn();
-                    ImGui::Text(Format::FrequencyDomainX(metrics.harmonics[1].first));
-                    ImGui::TableNextColumn();
-                    ImGui::Text(Format::FrequencyDomainY(metrics.harmonics[1].second));
+                    MetricRow({
+                        "SINAD",
+                        Format::FrequencyDomainDeltaY(metrics.sinad),
+                        "Spur",
+                        Format::FrequencyDomainX(metrics.spur.first),
+                        Format::FrequencyDomainY(metrics.spur.second),
+                    });
 
-                    ImGui::TableNextColumn();
-                    ImGui::Text("THD");
-                    ImGui::TableNextColumn();
-                    ImGui::Text(Format::FrequencyDomainDeltaY(metrics.thd));
-                    ImGui::TableNextColumn();
-                    ImGui::TableNextColumn();
-                    ImGui::Text("HD4");
-                    ImGui::TableNextColumn();
-                    ImGui::Text(Format::FrequencyDomainX(metrics.harmonics[2].first));
-                    ImGui::TableNextColumn();
-                    ImGui::Text(Format::FrequencyDomainY(metrics.harmonics[2].second));
+                    MetricRow({
+                        "ENOB",
+                        fmt::format("{: 7.2f} bits", metrics.enob),
+                        "HD2",
+                        Format::FrequencyDomainX(metrics.harmonics[0].first),
+                        Format::FrequencyDomainY(metrics.harmonics[0].second),
+                    });
 
-                    ImGui::TableNextColumn();
-                    ImGui::Text("SFDR");
-                    ImGui::TableNextColumn();
-                    ImGui::Text(Format::FrequencyDomainY(metrics.sfdr_dbfs));
-                    ImGui::TableNextColumn();
-                    ImGui::TableNextColumn();
-                    ImGui::Text("HD5");
-                    ImGui::TableNextColumn();
-                    ImGui::Text(Format::FrequencyDomainX(metrics.harmonics[3].first));
-                    ImGui::TableNextColumn();
-                    ImGui::Text(Format::FrequencyDomainY(metrics.harmonics[3].second));
+                    MetricRow({
+                        "THD",
+                        Format::FrequencyDomainDeltaY(metrics.thd),
+                        "HD3",
+                        Format::FrequencyDomainX(metrics.harmonics[1].first),
+                        Format::FrequencyDomainY(metrics.harmonics[1].second),
+                    });
 
-                    ImGui::TableNextColumn();
-                    ImGui::Text("Noise");
-                    ImGui::TableNextColumn();
-                    ImGui::Text(Format::FrequencyDomainY(metrics.noise));
-                    ImGui::TableNextColumn();
-                    ImGui::TableNextColumn();
-                    ImGui::Text("Spur");
-                    ImGui::TableNextColumn();
-                    ImGui::Text(Format::FrequencyDomainX(metrics.spur.first));
-                    ImGui::TableNextColumn();
-                    ImGui::Text(Format::FrequencyDomainY(metrics.spur.second));
+                    MetricRow({
+                        "SFDR",
+                        Format::FrequencyDomainY(metrics.sfdr_dbfs),
+                        "HD4",
+                        Format::FrequencyDomainX(metrics.harmonics[2].first),
+                        Format::FrequencyDomainY(metrics.harmonics[2].second),
+                    });
 
-                    ImGui::TableNextColumn();
-                    ImGui::Text("Size");
-                    ImGui::TableNextColumn();
-                    ImGui::Text(fmt::format("{:7} pts", (record->x.size() - 1) * 2));
-                    ImGui::TableNextColumn();
-                    ImGui::TableNextColumn();
-                    ImGui::Text("Bin");
-                    ImGui::TableNextColumn();
-                    ImGui::Text(Format::FrequencyDomainX(record->step));
-                    ImGui::TableNextColumn();
+                    MetricRow({
+                        "Noise",
+                        Format::FrequencyDomainY(metrics.noise),
+                        "HD5",
+                        Format::FrequencyDomainX(metrics.harmonics[3].first),
+                        Format::FrequencyDomainY(metrics.harmonics[3].second),
+                    });
+
+                    MetricRow({
+                        "Size",
+                        fmt::format("{:7} pts", (record->x.size() - 1) * 2),
+                        "TIx",
+                        Format::FrequencyDomainX(metrics.gain_spur.first),
+                        Format::FrequencyDomainY(metrics.gain_spur.second),
+                    });
+
+                    MetricRow({
+                        "Bin",
+                        Format::FrequencyDomainX(record->step),
+                        "TIo",
+                        Format::FrequencyDomainX(metrics.offset_spur.first),
+                        Format::FrequencyDomainY(metrics.offset_spur.second),
+                    });
 
                     ImGui::EndTable();
                 }

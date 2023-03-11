@@ -86,9 +86,18 @@ private:
     void PlaceHarmonics(const Tone &fundamental, const ProcessedRecord *record,
                         std::vector<Tone> &harmonics);
 
+    /* Given a fundamental tone, place the interleaving  */
+    void PlaceInterleavingSpurs(const Tone &fundamental, const ProcessedRecord *record, Tone &gain,
+                                Tone &offset);
+
     /* Resolve overlaps between the harmonics and the other spectral components. */
-    void ResolveOverlaps(const Tone &dc, const Tone &fundamental, std::vector<Tone> &harmonics,
-                         bool &overlap);
+    void ResolveHarmonicOverlaps(const Tone &dc, const Tone &fundamental,
+                                 std::vector<Tone> &harmonics, bool &overlap);
+
+    /* Resolve overlaps between the interleaving spurs and the other spectral components. */
+    void ResolveInterleavingSpurOverlaps(const Tone &dc, const Tone &fundamental,
+                                         const std::vector<Tone> &harmonics, Tone &gain,
+                                         Tone &offset, bool &overlap);
 
     /* Resolve overlap between two tones. If `tone` and `other` overlap, the
        overlapping bins in `tone` will be set to zero. */

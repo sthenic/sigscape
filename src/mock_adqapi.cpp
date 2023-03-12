@@ -162,6 +162,11 @@ void *CreateADQControlUnit()
                                                  "400-000-XYZ",
                                              },
                                              {
+                                                 ADQ_COMMUNICATION_INTERFACE_PCIE,
+                                                 3,
+                                                 8,
+                                             },
+                                             {
                                                  {"A", 2, {2500.0}, 65536},
                                              }});
 
@@ -174,6 +179,11 @@ void *CreateADQControlUnit()
                                                  "2023.1.2",
                                                  "STANDARD",
                                                  "400-001-XYZ",
+                                             },
+                                             {
+                                                 ADQ_COMMUNICATION_INTERFACE_PCIE,
+                                                 2,
+                                                 4,
                                              },
                                              {
                                                  {"A", 1, {2500.0}, 65536},

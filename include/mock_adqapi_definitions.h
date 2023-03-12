@@ -194,6 +194,29 @@ struct ADQConstantParametersFirmware
     char part_number[16];
 };
 
+enum ADQCommunicationInterface
+{
+    ADQ_COMMUNICATION_INTERFACE_PCIE = 1,
+    ADQ_COMMUNICATION_INTERFACE_USB = 2
+};
+
+struct ADQConstantParametersCommunicationInterface
+{
+    /* Convenience constructor for simulated digitizers. */
+    ADQConstantParametersCommunicationInterface() = default;
+    ADQConstantParametersCommunicationInterface(enum ADQCommunicationInterface type, int link_width,
+                                                int link_generation)
+        : type(type)
+        , link_width(static_cast<int32_t>(link_width))
+        , link_generation(static_cast<int32_t>(link_generation))
+    {};
+
+    enum ADQCommunicationInterface type;
+    int32_t link_width;
+    int32_t link_generation;
+};
+
+
 /* A reduced version of the set of constant parameters. */
 struct ADQConstantParameters
 {
@@ -202,6 +225,7 @@ struct ADQConstantParameters
     ADQConstantParameters(const std::string &serial_number, const std::string &product_name,
                           const std::string &product_options,
                           const struct ADQConstantParametersFirmware &firmware,
+                          const struct ADQConstantParametersCommunicationInterface &interface,
                           const std::vector<struct ADQConstantParametersChannel> &channel)
         : id(ADQ_PARAMETER_ID_CONSTANT)
         , nof_channels(static_cast<int32_t>(channel.size()))
@@ -209,6 +233,7 @@ struct ADQConstantParameters
         , product_name{}
         , product_options{}
         , firmware(firmware)
+        , interface(interface)
         , channel{}
         , dram_size(8ul * 1024ul * 1024ul * 1024ul)
         , magic(ADQ_PARAMETERS_MAGIC)
@@ -232,6 +257,7 @@ struct ADQConstantParameters
     char product_name[32];
     char product_options[32];
     struct ADQConstantParametersFirmware firmware;
+    struct ADQConstantParametersCommunicationInterface interface;
     struct ADQConstantParametersChannel channel[ADQ_MAX_NOF_CHANNELS];
     uint64_t dram_size;
     uint64_t magic;

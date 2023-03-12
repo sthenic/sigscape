@@ -353,7 +353,8 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
     switch (message.id)
     {
     case DigitizerMessageId::CONSTANT_PARAMETERS:
-        digitizer.ui.identifier = message.constant_parameters.serial_number; /* FIXME: product_name */
+        digitizer.ui.identifier = fmt::format("{} ({})", message.constant_parameters.product_name,
+                                              message.constant_parameters.serial_number);
         digitizer.ui.channels.clear();
         for (int ch = 0; ch < message.constant_parameters.nof_channels; ++ch)
             digitizer.ui.channels.emplace_back(m_nof_channels_total);
@@ -1163,9 +1164,9 @@ void Ui::RenderSensors()
     ImGui::Text("Sensor information for %s", ui->identifier.c_str());
     ImGui::SameLine(ImGui::GetWindowContentRegionMax().x -
                     2 * ImGui::GetStyle().ItemInnerSpacing.x -
-                    ImGui::CalcTextSize("Remove from plot").x);
+                    ImGui::CalcTextSize("Unplot").x);
 
-    if (ImGui::SmallButton("Remove from plot"))
+    if (ImGui::SmallButton("Unplot"))
     {
         for (auto &[group_id, group] : ui->sensor_groups)
         {
@@ -1290,6 +1291,7 @@ void Ui::RenderStaticInformation()
         Row("Serial number", ui->constant.serial_number);
         Row("Name", ui->constant.product_name);
         Row("Options", ui->constant.product_options);
+        Row("Channels", fmt::format("{}", ui->constant.nof_channels));
         Row("DRAM", fmt::format("{:.2f} MiB", ui->constant.dram_size / 1024.0 / 1024.0));
 
         ImGui::EndTable();
@@ -1302,7 +1304,20 @@ void Ui::RenderStaticInformation()
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
 
-            Row("Type", fmt::format("{}", (int)ui->constant.firmware.type)); /* FIXME: Stringify */
+            auto Stringify = [](enum ADQFirmwareType firmware) -> std::string
+            {
+                switch (firmware)
+                {
+                case ADQ_FIRMWARE_TYPE_FWDAQ:
+                    return "FWDAQ";
+                case ADQ_FIRMWARE_TYPE_FWATD:
+                    return "FWATD";
+                default:
+                    return "Unknown";
+                }
+            };
+
+            Row("Type",Stringify(ui->constant.firmware.type));
             Row("Name", ui->constant.firmware.name);
             Row("Customization", ui->constant.firmware.customization);
             Row("Part number", ui->constant.firmware.part_number);
@@ -1311,14 +1326,42 @@ void Ui::RenderStaticInformation()
         }
     }
 
+    if (ImGui::CollapsingHeader("Channels"))
+    {
+        WIP(); /* FIXME: */
+    }
+
     if (ImGui::CollapsingHeader("Clock System"))
     {
         WIP(); /* FIXME: */
     }
 
-    if (ImGui::CollapsingHeader("Interface"))
+    if (ImGui::CollapsingHeader("Interface", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        WIP(); /* FIXME: */
+        if (ImGui::BeginTable(fmt::format("StaticInterface", ui->identifier).c_str(), 2, flags))
+        {
+            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
+            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
+
+            auto Stringify = [](enum ADQCommunicationInterface interface) -> std::string
+            {
+                switch (interface)
+                {
+                case ADQ_COMMUNICATION_INTERFACE_PCIE:
+                    return "PCIe";
+                case ADQ_COMMUNICATION_INTERFACE_USB:
+                    return "USB";
+                default:
+                    return "Unknown";
+                }
+            };
+
+            Row("Type", Stringify(ui->constant.interface.type));
+            Row("Link generation", fmt::format("{}", ui->constant.interface.link_generation));
+            Row("Link width", fmt::format("{}", ui->constant.interface.link_width));
+
+            ImGui::EndTable();
+        }
     }
 }
 

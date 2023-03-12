@@ -14,10 +14,7 @@ public:
     MockAdqApi() = default;
 
     /* Mockup control functions. */
-    void AddDigitizer(const std::string &serial_number,
-                      const struct ADQConstantParametersFirmware &firmware,
-                      const std::vector<double> &input_range, int nof_channels,
-                      const std::vector<int> &nof_adc_cores, enum ADQProductID_Enum pid);
+    void AddDigitizer(enum ADQProductID_Enum pid, const struct ADQConstantParameters &constant);
 
     /* Mocked functions. */
     int SetupDevice(int index);

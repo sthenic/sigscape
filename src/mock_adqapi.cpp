@@ -7,14 +7,11 @@ static MockAdqApi mock_adqapi;
 static bool has_added_digitizers = false;
 
 /* Mockup control functions */
-void MockAdqApi::AddDigitizer(const std::string &serial_number,
-                              const struct ADQConstantParametersFirmware &firmware,
-                              const std::vector<double> &input_range, int nof_channels,
-                              const std::vector<int> &nof_adc_cores, enum ADQProductID_Enum pid)
+void MockAdqApi::AddDigitizer(enum ADQProductID_Enum pid,
+                              const struct ADQConstantParameters &constant)
 {
-    m_digitizers.push_back(std::make_unique<MockDigitizer>(serial_number, firmware, input_range,
-                                                           nof_channels, nof_adc_cores));
     m_info_list.push_back({pid});
+    m_digitizers.push_back(std::make_unique<MockDigitizer>(constant));
 }
 
 /* Mocked functions */
@@ -154,13 +151,34 @@ void *CreateADQControlUnit()
        digitizers to the system. */
     if (!has_added_digitizers)
     {
-        mock_adqapi.AddDigitizer(
-            "SPD-SIM01", {ADQ_FIRMWARE_TYPE_FWDAQ, "1CH-FWDAQ"}, {2500.0}, 1, {2}, PID_ADQ32
-        );
-        mock_adqapi.AddDigitizer(
-            "SPD-SIM02", {ADQ_FIRMWARE_TYPE_FWDAQ, "2CH-FWDAQ"}, {2500.0, 1000.0}, 2, {1, 2}, PID_ADQ36
-        );
+        mock_adqapi.AddDigitizer(PID_ADQ32, {"SPD-SIM01",
+                                             "ADQ32",
+                                             "-SG2G5-BW1G0",
+                                             {
+                                                 ADQ_FIRMWARE_TYPE_FWDAQ,
+                                                 "1CH-FWDAQ",
+                                                 "2023.1.3",
+                                                 "STANDARD",
+                                                 "400-000-XYZ",
+                                             },
+                                             {
+                                                 {"A", 2, {2500.0}, 65536},
+                                             }});
 
+        mock_adqapi.AddDigitizer(PID_ADQ36, {"SPD-SIM02",
+                                             "ADQ36",
+                                             "-SG2G5-BW2G5",
+                                             {
+                                                 ADQ_FIRMWARE_TYPE_FWDAQ,
+                                                 "2CH-FWDAQ",
+                                                 "2023.1.2",
+                                                 "STANDARD",
+                                                 "400-001-XYZ",
+                                             },
+                                             {
+                                                 {"A", 1, {2500.0}, 65536},
+                                                 {"B", 2, {1000.0}, 65536},
+                                             }});
         has_added_digitizers = true;
     }
 

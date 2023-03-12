@@ -3,7 +3,6 @@
 #include <cstring>
 #include <sstream>
 #include <type_traits>
-#include <cstring>
 
 const std::string MockDigitizer::DEFAULT_TOP_PARAMETERS =
 R"""(TOP
@@ -29,11 +28,8 @@ sampling frequency:
     500e6, 500e6
 )""";
 
-MockDigitizer::MockDigitizer(const std::string &serial_number,
-                             const struct ADQConstantParametersFirmware &firmware,
-                             const std::vector<double> &input_range, int nof_channels,
-                             const std::vector<int> &nof_adc_cores)
-    : m_constant{}
+MockDigitizer::MockDigitizer(const struct ADQConstantParameters &constant)
+    : m_constant(constant)
     , m_afe{}
     , m_dram_status{}
     , m_overflow_status{}
@@ -42,24 +38,13 @@ MockDigitizer::MockDigitizer(const std::string &serial_number,
     , m_top_parameters(DEFAULT_TOP_PARAMETERS)
     , m_clock_system_parameters(DEFAULT_CLOCK_SYSTEM_PARAMETERS)
 {
-    m_constant.id = ADQ_PARAMETER_ID_CONSTANT;
-    m_constant.magic = ADQ_PARAMETERS_MAGIC;
-    m_constant.nof_channels = nof_channels;
-    m_constant.dram_size = 8UL * 1024UL * 1024UL * 1024UL;
-
-    std::strncpy(m_constant.serial_number, serial_number.c_str(),
-                 std::min(sizeof(m_constant.serial_number), serial_number.size() + 1));
-
-    m_constant.firmware = firmware;
     m_afe.id = ADQ_PARAMETER_ID_ANALOG_FRONTEND;
     m_afe.magic = ADQ_PARAMETERS_MAGIC;
 
-    for (int ch = 0; ch < nof_channels; ++ch)
+    for (int ch = 0; ch < constant.nof_channels; ++ch)
     {
-        m_constant.channel[ch].label[0] = "ABCDEFGH"[ch];
-        m_constant.channel[ch].code_normalization = 65536;
-        m_constant.channel[ch].nof_adc_cores = nof_adc_cores[ch];
-        m_afe.channel[ch].input_range = input_range[ch];
+        /* 'Activate' the first input range entry. */
+        m_afe.channel[ch].input_range = constant.channel[ch].input_range[0];
         m_afe.channel[ch].dc_offset = 0;
         m_generators.push_back(std::make_unique<Generator>());
     }

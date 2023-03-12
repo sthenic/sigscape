@@ -27,8 +27,7 @@ enum class DigitizerMessageId
     DIRTY_CLOCK_SYSTEM_PARAMETERS,
     CLEAN_TOP_PARAMETERS,
     CLEAN_CLOCK_SYSTEM_PARAMETERS,
-    IDENTIFIER,
-    NOF_CHANNELS,
+    CONSTANT_PARAMETERS,
     STATE,
     ERR,
     CLEAR,
@@ -127,6 +126,7 @@ struct DigitizerMessage
         , window_type()
         , sensor_tree()
         , boot_entries{}
+        , constant_parameters()
     {}
 
     /* Create a state message. */
@@ -139,6 +139,7 @@ struct DigitizerMessage
         , window_type()
         , sensor_tree()
         , boot_entries{}
+        , constant_parameters()
     {}
 
     /* Create a string message. */
@@ -151,6 +152,7 @@ struct DigitizerMessage
         , window_type()
         , sensor_tree()
         , boot_entries{}
+        , constant_parameters()
     {}
 
     /* Create an integer message. */
@@ -163,6 +165,7 @@ struct DigitizerMessage
         , window_type()
         , sensor_tree()
         , boot_entries{}
+        , constant_parameters()
     {}
 
     /* Create a double message. */
@@ -175,6 +178,7 @@ struct DigitizerMessage
         , window_type()
         , sensor_tree()
         , boot_entries{}
+        , constant_parameters()
     {}
 
     /* Create a window message. */
@@ -186,6 +190,7 @@ struct DigitizerMessage
         , window_type(window_type)
         , sensor_tree()
         , boot_entries{}
+        , constant_parameters()
     {}
 
     /* Create a sensor identification message, taking ownership of the sensor information. */
@@ -198,6 +203,7 @@ struct DigitizerMessage
         , window_type()
         , sensor_tree(std::move(sensor_tree))
         , boot_entries{}
+        , constant_parameters()
     {}
 
     /* Create a message holding all the boot statuses. */
@@ -211,6 +217,20 @@ struct DigitizerMessage
         , window_type()
         , sensor_tree()
         , boot_entries(std::move(boot_entries))
+        , constant_parameters()
+    {}
+
+    /* Create a message holding the digitizer's constant parameters. */
+    DigitizerMessage(DigitizerMessageId id, const struct ADQConstantParameters &constant_parameters)
+        : id(id)
+        , state()
+        , str()
+        , ivalue()
+        , dvalue()
+        , window_type()
+        , sensor_tree()
+        , boot_entries{}
+        , constant_parameters(constant_parameters)
     {}
 
     DigitizerMessageId id;
@@ -221,6 +241,7 @@ struct DigitizerMessage
     WindowType window_type;
     SensorTree sensor_tree;
     std::vector<BootEntry> boot_entries;
+    struct ADQConstantParameters constant_parameters;
 };
 
 class Digitizer : public MessageThread<Digitizer, DigitizerMessage>
@@ -347,11 +368,8 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
         case DigitizerMessageId::CLEAN_CLOCK_SYSTEM_PARAMETERS:
             name = "CLEAN_CLOCK_SYSTEM_PARAMETERS";
             break;
-        case DigitizerMessageId::IDENTIFIER:
-            name = "IDENTIFIER";
-            break;
-        case DigitizerMessageId::NOF_CHANNELS:
-            name = "NOF_CHANNELS";
+        case DigitizerMessageId::CONSTANT_PARAMETERS:
+            name = "CONSTANT_PARAMETERS";
             break;
         case DigitizerMessageId::STATE:
             name = "STATE";

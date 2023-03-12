@@ -70,7 +70,6 @@ void Digitizer::MainLoop()
     /* When the main loop is started, we assume ownership of the digitizer with
        the identifier we were given when this object was constructed. We begin
        by enumerating the digitizer, completing its initial setup procedure. */
-    m_read_queue.EmplaceWrite(DigitizerMessageId::IDENTIFIER, "Unknown");
     SetState(DigitizerState::ENUMERATION);
 
     /* Performing this operation in a thread safe manner requires that
@@ -105,8 +104,7 @@ void Digitizer::MainLoop()
 
     /* Signal that the digitizer was set up correctly, that we're entering the
        IDLE state and enter the main loop. */
-    m_read_queue.EmplaceWrite(DigitizerMessageId::IDENTIFIER, m_constant.serial_number);
-    m_read_queue.EmplaceWrite(DigitizerMessageId::NOF_CHANNELS, m_constant.nof_channels);
+    m_read_queue.EmplaceWrite(DigitizerMessageId::CONSTANT_PARAMETERS, m_constant);
     SetState(DigitizerState::IDLE);
 
     try

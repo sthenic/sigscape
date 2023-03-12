@@ -351,13 +351,10 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
 {
     switch (message.id)
     {
-    case DigitizerMessageId::IDENTIFIER:
-        digitizer.ui.identifier = std::move(message.str);
-        break;
-
-    case DigitizerMessageId::NOF_CHANNELS:
+    case DigitizerMessageId::CONSTANT_PARAMETERS:
+        digitizer.ui.identifier = message.constant_parameters.serial_number;
         digitizer.ui.channels.clear();
-        for (int ch = 0; ch < message.ivalue; ++ch)
+        for (int ch = 0; ch < message.constant_parameters.nof_channels; ++ch)
             digitizer.ui.channels.emplace_back(m_nof_channels_total);
         break;
 
@@ -385,6 +382,7 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
         case DigitizerState::ENUMERATION:
             digitizer.ui.state = "ENUMERATION";
             digitizer.ui.state_color = COLOR_PURPLE;
+            digitizer.ui.identifier = "Unknown";
             break;
         case DigitizerState::IDLE:
             digitizer.ui.state = "IDLE";

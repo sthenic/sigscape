@@ -100,6 +100,7 @@ private:
     {
         DigitizerUiState();
 
+        struct ADQConstantParameters constant;
         std::string identifier;
         std::string state;
         std::string event; /* TODO: Make this into a queue? */
@@ -173,6 +174,7 @@ private:
     void RenderMemory();
     void RenderSensorGroup(SensorGroupUiState &group, bool is_first);
     void RenderBootStatus();
+    void RenderStaticInformation();
     void RenderSensors();
     void RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size);
 

@@ -131,7 +131,8 @@ Ui::SensorGroupUiState::SensorGroupUiState(const std::string &label,
 }
 
 Ui::DigitizerUiState::DigitizerUiState()
-    : identifier("")
+    : constant{}
+    , identifier("")
     , state("")
     , event("")
     , state_color(COLOR_GREEN)
@@ -352,10 +353,11 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
     switch (message.id)
     {
     case DigitizerMessageId::CONSTANT_PARAMETERS:
-        digitizer.ui.identifier = message.constant_parameters.serial_number;
+        digitizer.ui.identifier = message.constant_parameters.serial_number; /* FIXME: product_name */
         digitizer.ui.channels.clear();
         for (int ch = 0; ch < message.constant_parameters.nof_channels; ++ch)
             digitizer.ui.channels.emplace_back(m_nof_channels_total);
+        digitizer.ui.constant = std::move(message.constant_parameters);
         break;
 
     case DigitizerMessageId::CONFIGURATION:
@@ -1158,7 +1160,7 @@ void Ui::RenderSensors()
         return;
     }
 
-    ImGui::Text("Sensor data for %s", ui->identifier.c_str());
+    ImGui::Text("Sensor information for %s", ui->identifier.c_str());
     ImGui::SameLine(ImGui::GetWindowContentRegionMax().x -
                     2 * ImGui::GetStyle().ItemInnerSpacing.x -
                     ImGui::CalcTextSize("Remove from plot").x);
@@ -1171,6 +1173,8 @@ void Ui::RenderSensors()
                 sensor.is_plotted = false;
         }
     }
+
+    ImGui::Separator();
 
     bool is_first = true;
     for (auto &[group_id, group] : ui->sensor_groups)
@@ -1198,6 +1202,8 @@ void Ui::RenderBootStatus()
         return;
     }
 
+    ImGui::Text("Boot information for %s", ui->identifier.c_str());
+    ImGui::Separator();
     ImGui::Text(fmt::format("In state '{}' ({})", ui->boot_status.state_description,
                             ui->boot_status.state));
     ImGui::Separator();
@@ -1242,6 +1248,80 @@ void Ui::RenderBootStatus()
     ImGui::PopStyleVar();
 }
 
+void Ui::RenderStaticInformation()
+{
+    DigitizerUiState *ui = NULL;
+    for (auto &digitizer : m_digitizers)
+    {
+        if (digitizer.ui.is_selected)
+        {
+            ui = &digitizer.ui;
+            break;
+        }
+    }
+
+    if (ui == NULL)
+    {
+        ImGui::Text("No data to display.");
+        return;
+    }
+
+    ImGui::Text("Static information for %s", ui->identifier.c_str());
+    ImGui::Separator();
+
+    auto Row = [](const std::string &label, const std::string &value)
+    {
+        ImGui::TableNextRow();
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text(label);
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text(value);
+    };
+
+    ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
+                            ImGuiTableFlags_BordersInnerV;
+
+    if (ImGui::BeginTable(fmt::format("Static", ui->identifier).c_str(), 2, flags))
+    {
+        ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
+
+
+        Row("Serial number", ui->constant.serial_number);
+        Row("Name", ui->constant.product_name);
+        Row("Options", ui->constant.product_options);
+        Row("DRAM", fmt::format("{:.2f} MiB", ui->constant.dram_size / 1024.0 / 1024.0));
+
+        ImGui::EndTable();
+    }
+
+    if (ImGui::CollapsingHeader("Firmware", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        if (ImGui::BeginTable(fmt::format("StaticFirmware", ui->identifier).c_str(), 2, flags))
+        {
+            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
+            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
+
+            Row("Type", fmt::format("{}", (int)ui->constant.firmware.type)); /* FIXME: Stringify */
+            Row("Name", ui->constant.firmware.name);
+            Row("Customization", ui->constant.firmware.customization);
+            Row("Part number", ui->constant.firmware.part_number);
+
+            ImGui::EndTable();
+        }
+    }
+
+    if (ImGui::CollapsingHeader("Clock System"))
+    {
+        WIP(); /* FIXME: */
+    }
+
+    if (ImGui::CollapsingHeader("Interface"))
+    {
+        WIP(); /* FIXME: */
+    }
+}
+
 void Ui::RenderTools(const ImVec2 &position, const ImVec2 &size)
 {
     ImGui::SetNextWindowPos(position);
@@ -1272,6 +1352,12 @@ void Ui::RenderTools(const ImVec2 &position, const ImVec2 &size)
         if (ImGui::BeginTabItem("Boot"))
         {
             RenderBootStatus();
+            ImGui::EndTabItem();
+        }
+
+        if (ImGui::BeginTabItem("Static"))
+        {
+            RenderStaticInformation();
             ImGui::EndTabItem();
         }
 

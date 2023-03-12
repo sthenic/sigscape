@@ -1326,9 +1326,46 @@ void Ui::RenderStaticInformation()
         }
     }
 
-    if (ImGui::CollapsingHeader("Channels"))
+    if (ImGui::CollapsingHeader("Channels", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        WIP(); /* FIXME: */
+        if (ImGui::BeginTable(fmt::format("StaticChannel", ui->identifier).c_str(),
+                              1 + ui->constant.nof_channels, flags))
+        {
+            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
+            for (int i = 0; i < ui->constant.nof_channels; ++i)
+            {
+                ImGui::TableSetupColumn(fmt::format("CH {}", ui->constant.channel[i].label).c_str(),
+                                        ImGuiTableColumnFlags_WidthStretch);
+            }
+            ImGui::TableHeadersRow();
+
+            auto ChannelRow = [&](const std::string &label,
+                                  const std::function<std::string(int)> &f)
+            {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Text(label);
+                for (int i = 0; i < ui->constant.nof_channels; ++i)
+                {
+                    ImGui::TableSetColumnIndex(i + 1);
+                    ImGui::Text(f(i));
+                }
+            };
+
+            ChannelRow("Base sampling rate", [&](int i) -> std::string {
+                return Format::FrequencyDomainX(ui->constant.channel[i].base_sampling_rate, "7.2", false);
+            });
+
+            ChannelRow("Input range", [&](int i) -> std::string {
+                return Format::TimeDomainY(ui->constant.channel[i].input_range[0] / 1e3, "7.2", false);
+            });
+
+            ChannelRow("ADC cores", [&](int i) -> std::string {
+                return fmt::format("{}", ui->constant.channel[i].nof_adc_cores);
+            });
+
+            ImGui::EndTable();
+        }
     }
 
     if (ImGui::CollapsingHeader("Clock System"))

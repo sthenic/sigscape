@@ -141,6 +141,7 @@ struct ADQConstantParametersChannel
         : label{}
         , nof_adc_cores(static_cast<int32_t>(nof_adc_cores))
         , code_normalization(static_cast<int64_t>(code_normalization))
+        , base_sampling_rate(2.5e9)
         , input_range{}
     {
         std::memcpy(this->label, label.c_str(),
@@ -153,6 +154,7 @@ struct ADQConstantParametersChannel
     char label[8];
     int32_t nof_adc_cores;
     int64_t code_normalization;
+    double base_sampling_rate;
     double input_range[ADQ_MAX_NOF_INPUT_RANGES];
 };
 

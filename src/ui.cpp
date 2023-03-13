@@ -1393,9 +1393,9 @@ void Ui::RenderStaticInformation()
                 }
             };
 
-            Row("Type", Stringify(ui->constant.interface.type));
-            Row("Link generation", fmt::format("{}", ui->constant.interface.link_generation));
-            Row("Link width", fmt::format("{}", ui->constant.interface.link_width));
+            Row("Type", Stringify(ui->constant.communication_interface.type));
+            Row("Link generation", fmt::format("{}", ui->constant.communication_interface.link_generation));
+            Row("Link width", fmt::format("{}", ui->constant.communication_interface.link_width));
 
             ImGui::EndTable();
         }

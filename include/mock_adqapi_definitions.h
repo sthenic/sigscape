@@ -235,7 +235,7 @@ struct ADQConstantParameters
         , product_name{}
         , product_options{}
         , firmware(firmware)
-        , interface(interface)
+        , communication_interface(interface)
         , channel{}
         , dram_size(8ul * 1024ul * 1024ul * 1024ul)
         , magic(ADQ_PARAMETERS_MAGIC)
@@ -259,7 +259,7 @@ struct ADQConstantParameters
     char product_name[32];
     char product_options[32];
     struct ADQConstantParametersFirmware firmware;
-    struct ADQConstantParametersCommunicationInterface interface;
+    struct ADQConstantParametersCommunicationInterface communication_interface;
     struct ADQConstantParametersChannel channel[ADQ_MAX_NOF_CHANNELS];
     uint64_t dram_size;
     uint64_t magic;

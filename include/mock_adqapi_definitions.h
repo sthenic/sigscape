@@ -7,6 +7,7 @@
 #include <string>
 #include <cstring>
 #include <vector>
+#include <algorithm>
 
 #define ADQ_MAX_NOF_CHANNELS 8
 #define ADQ_MAX_NOF_INPUT_RANGES 8

@@ -144,6 +144,7 @@ private:
     UnitsPerDivision m_frequency_domain_units_per_division;
     UnitsPerDivision m_sensor_units_per_division;
 
+    uint32_t m_api_revision;
     ImGui::FileBrowser m_file_browser;
 
     void ClearChannelSelection();

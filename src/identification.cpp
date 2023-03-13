@@ -2,6 +2,9 @@
 
 void Identification::MainLoop()
 {
+    /* FIXME: Compatibility verification */
+    uint32_t revision = ADQAPI_GetRevision();
+
     void *handle = CreateADQControlUnit();
     if (handle == NULL)
     {
@@ -43,6 +46,6 @@ void Identification::MainLoop()
 
     /* Forward the control unit handle along with digitizer objects. */
     /* FIXME: Propagate errors? */
-    m_read_queue.Write({handle, digitizers});
+    m_read_queue.Write({handle, revision, digitizers});
     m_thread_exit_code = ADQR_EOK;
 }

@@ -202,6 +202,12 @@ void DeleteADQControlUnit(void *adq_cu)
     return;
 }
 
+/*  */
+uint32_t ADQAPI_GetRevision()
+{
+    return 0xdeadbeefu;
+}
+
 /* ADQControlUnit_ interface */
 int ADQControlUnit_SetupDevice(void *adq_cu, int adq_num)
 {

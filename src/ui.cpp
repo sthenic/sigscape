@@ -165,6 +165,7 @@ Ui::Ui()
     , m_time_domain_units_per_division()
     , m_frequency_domain_units_per_division()
     , m_sensor_units_per_division()
+    , m_api_revision(0)
     , m_file_browser(ImGuiFileBrowserFlags_EnterNewFilename | ImGuiFileBrowserFlags_CreateNewDir |
                      ImGuiFileBrowserFlags_CloseOnEsc)
 {
@@ -332,6 +333,7 @@ void Ui::HandleMessage(const IdentificationMessage &message)
         m_digitizers.emplace_back(interface);
 
     m_adq_control_unit = message.handle;
+    m_api_revision = message.revision;
 
     /* Stop the identification thread and start the digitizer threads. */
     m_identification.Stop();
@@ -1252,25 +1254,6 @@ void Ui::RenderBootStatus()
 
 void Ui::RenderStaticInformation()
 {
-    DigitizerUiState *ui = NULL;
-    for (auto &digitizer : m_digitizers)
-    {
-        if (digitizer.ui.is_selected)
-        {
-            ui = &digitizer.ui;
-            break;
-        }
-    }
-
-    if (ui == NULL)
-    {
-        ImGui::Text("No data to display.");
-        return;
-    }
-
-    ImGui::Text("Static information for %s", ui->identifier.c_str());
-    ImGui::Separator();
-
     auto Row = [](const std::string &label, const std::string &value)
     {
         ImGui::TableNextRow();
@@ -1283,24 +1266,57 @@ void Ui::RenderStaticInformation()
     ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
                             ImGuiTableFlags_BordersInnerV;
 
-    if (ImGui::BeginTable(fmt::format("Static", ui->identifier).c_str(), 2, flags))
+    /* "Serial number" and "Customization" are the two worst case widths, both 13 characters. */
+    const float WIDTH = ImGui::CalcTextSize("Serial number").x;
+
+    if (ImGui::CollapsingHeader("Software", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
+        if (ImGui::BeginTable("Software", 2, flags))
+        {
+            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, WIDTH);
+            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
+
+            Row("API revision", fmt::format("0x{:08x}", m_api_revision));
+
+            ImGui::EndTable();
+        }
+    }
+
+    DigitizerUiState *ui = NULL;
+    for (auto &digitizer : m_digitizers)
+    {
+        if (digitizer.ui.is_selected)
+        {
+            ui = &digitizer.ui;
+            break;
+        }
+    }
+
+    if (ui == NULL)
+        return;
+
+    if (ImGui::CollapsingHeader("Digitizer",
+                                ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Leaf))
+    {
+        if (ImGui::BeginTable(fmt::format("Digitizer", ui->identifier).c_str(), 2, flags))
+        {
+            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
+            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
 
 
-        Row("Serial number", ui->constant.serial_number);
-        Row("Name", ui->constant.product_name);
-        Row("Options", ui->constant.product_options);
-        Row("Channels", fmt::format("{}", ui->constant.nof_channels));
-        Row("DRAM", fmt::format("{:.2f} MiB", ui->constant.dram_size / 1024.0 / 1024.0));
+            Row("Name", ui->constant.product_name);
+            Row("Serial number", ui->constant.serial_number);
+            Row("Options", ui->constant.product_options);
+            Row("Channels", fmt::format("{}", ui->constant.nof_channels));
+            Row("DRAM", fmt::format("{:.2f} MiB", ui->constant.dram_size / 1024.0 / 1024.0));
 
-        ImGui::EndTable();
+            ImGui::EndTable();
+        }
     }
 
     if (ImGui::CollapsingHeader("Firmware", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        if (ImGui::BeginTable(fmt::format("StaticFirmware", ui->identifier).c_str(), 2, flags))
+        if (ImGui::BeginTable("Firmware", 2, flags))
         {
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
@@ -1318,7 +1334,7 @@ void Ui::RenderStaticInformation()
                 }
             };
 
-            Row("Type",Stringify(ui->constant.firmware.type));
+            Row("Type", Stringify(ui->constant.firmware.type));
             Row("Name", ui->constant.firmware.name);
             Row("Revision", ui->constant.firmware.revision);
             Row("Customization", ui->constant.firmware.customization);
@@ -1330,8 +1346,7 @@ void Ui::RenderStaticInformation()
 
     if (ImGui::CollapsingHeader("Channels", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        if (ImGui::BeginTable(fmt::format("StaticChannel", ui->identifier).c_str(),
-                              1 + ui->constant.nof_channels, flags))
+        if (ImGui::BeginTable("Channels", 1 + ui->constant.nof_channels, flags))
         {
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
             for (int i = 0; i < ui->constant.nof_channels; ++i)
@@ -1377,7 +1392,7 @@ void Ui::RenderStaticInformation()
 
     if (ImGui::CollapsingHeader("Interface", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        if (ImGui::BeginTable(fmt::format("StaticInterface", ui->identifier).c_str(), 2, flags))
+        if (ImGui::BeginTable("Interface", 2, flags))
         {
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);

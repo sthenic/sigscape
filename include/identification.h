@@ -7,6 +7,7 @@
 struct IdentificationMessage
 {
     void *handle;
+    uint32_t revision;
     std::vector<std::shared_ptr<Digitizer>> digitizers;
 };
 

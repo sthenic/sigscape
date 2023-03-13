@@ -4,6 +4,7 @@
 #include "mock/adqapi_definitions.h"
 #include "mock/digitizer.h"
 #include <vector>
+#include <cinttypes>
 
 /* This is a tiny mockup of the ADQAPI to allow us to run without the real
    ADQAPI and a digitizer connected to the host system. */
@@ -48,6 +49,9 @@ private:
 
 void *CreateADQControlUnit();
 void DeleteADQControlUnit(void *adq_cu);
+
+/* The ADQAPI_* functions we're mocking. */
+uint32_t ADQAPI_GetRevision();
 
 /* The ADQControlUnit_* functions we're mocking. */
 int ADQControlUnit_SetupDevice(void *adq_cu, int adq_num);

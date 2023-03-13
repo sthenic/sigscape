@@ -1320,6 +1320,7 @@ void Ui::RenderStaticInformation()
 
             Row("Type",Stringify(ui->constant.firmware.type));
             Row("Name", ui->constant.firmware.name);
+            Row("Revision", ui->constant.firmware.revision);
             Row("Customization", ui->constant.firmware.customization);
             Row("Part number", ui->constant.firmware.part_number);
 

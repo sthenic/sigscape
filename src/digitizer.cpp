@@ -95,9 +95,8 @@ void Digitizer::MainLoop()
     /* Instantiate one data processing thread for each digitizer channel. */
     for (int ch = 0; ch < m_constant.nof_channels; ++ch)
     {
-        /* FIXME: Product name? */
-        std::string label = fmt::format("{} CH{}", m_constant.serial_number,
-                                                   m_constant.channel[ch].label);
+        std::string label = fmt::format("{} {} CH{}", m_constant.product_name,
+                                        m_constant.serial_number, m_constant.channel[ch].label);
         m_processing_threads.emplace_back(
             std::make_unique<DataProcessing>(m_id.handle, m_id.index, ch, label, m_constant)
         );

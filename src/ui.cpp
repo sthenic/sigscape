@@ -353,7 +353,7 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
     switch (message.id)
     {
     case DigitizerMessageId::CONSTANT_PARAMETERS:
-        digitizer.ui.identifier = fmt::format("{} ({})", message.constant_parameters.product_name,
+        digitizer.ui.identifier = fmt::format("{} {}", message.constant_parameters.product_name,
                                               message.constant_parameters.serial_number);
         digitizer.ui.channels.clear();
         for (int ch = 0; ch < message.constant_parameters.nof_channels; ++ch)

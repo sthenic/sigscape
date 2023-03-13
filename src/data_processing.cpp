@@ -534,14 +534,14 @@ void DataProcessing::ResolveOverlap(Tone &tone, const Tone &other, bool &overlap
     /* Set the overlapping bins to zero for the tone if there's an overlap. */
     if ((tone.idx_low >= other.idx_low) && (tone.idx_low <= other.idx_high))
     {
-        for (size_t j = 0; j <= (other.idx_high - tone.idx_low); ++j)
-            tone.values[j] = 0;
+        for (size_t j = 0; j <= (other.idx_high - tone.idx_low) && j < tone.values.size(); ++j)
+            tone.values.at(j) = 0;
         overlap = true;
     }
     else if ((tone.idx_high <= other.idx_high) && (tone.idx_high >= other.idx_low))
     {
         for (size_t j = (other.idx_low - tone.idx_low); j < tone.values.size(); ++j)
-            tone.values[j] = 0;
+            tone.values.at(j) = 0;
         overlap = true;
     }
 }

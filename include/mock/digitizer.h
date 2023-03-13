@@ -1,9 +1,9 @@
 #ifndef MOCK_DIGITIZER_H_STIYJN
 #define MOCK_DIGITIZER_H_STIYJN
 
-#include "generator.h"
-#include "mock_system_manager.h"
-#include "mock_adqapi_definitions.h"
+#include "mock/generator.h"
+#include "mock/system_manager.h"
+#include "mock/adqapi_definitions.h"
 #include <vector>
 
 class MockDigitizer

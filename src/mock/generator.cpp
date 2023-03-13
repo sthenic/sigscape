@@ -1,4 +1,4 @@
-#include "generator.h"
+#include "mock/generator.h"
 
 #include <cmath>
 #include <limits>

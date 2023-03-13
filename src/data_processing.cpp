@@ -4,7 +4,7 @@
 #include "fft_settings.h"
 
 #ifdef MOCK_ADQAPI
-#include "mock_adqapi.h"
+#include "mock/adqapi.h"
 #else
 #include "ADQAPI.h"
 #endif

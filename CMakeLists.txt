@@ -154,10 +154,10 @@ if(MOCK_ADQAPI)
     message(STATUS "Using MOCK_ADQAPI (no ADQAPI dependency).")
     target_compile_definitions(${PROJECT_NAME} PRIVATE MOCK_ADQAPI)
     target_sources(${PROJECT_NAME} PRIVATE
-        src/mock_adqapi.cpp
-        src/mock_digitizer.cpp
-        src/mock_system_manager.cpp
-        src/generator.cpp)
+        src/mock/adqapi.cpp
+        src/mock/digitizer.cpp
+        src/mock/system_manager.cpp
+        src/mock/generator.cpp)
 endif()
 
 if (UNIX)

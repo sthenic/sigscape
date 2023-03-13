@@ -5,7 +5,7 @@
 #include "error.h"
 
 #ifdef MOCK_ADQAPI
-#include "mock_adqapi_definitions.h"
+#include "mock/adqapi_definitions.h"
 #else
 #include "ADQAPI.h"
 #endif

@@ -2,7 +2,7 @@
 #define MOCK_SYSTEM_MANAGER_H_BINPXO
 
 #include "message_thread.h"
-#include "system_manager.h"
+#include "mock/../system_manager.h"
 
 #include <cstdint>
 #include <map>

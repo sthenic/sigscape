@@ -1,8 +1,8 @@
 #ifndef MOCK_ADQAPI_H_5FQFYM
 #define MOCK_ADQAPI_H_5FQFYM
 
-#include "mock_adqapi_definitions.h"
-#include "mock_digitizer.h"
+#include "mock/adqapi_definitions.h"
+#include "mock/digitizer.h"
 #include <vector>
 
 /* This is a tiny mockup of the ADQAPI to allow us to run without the real

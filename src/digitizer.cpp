@@ -423,7 +423,7 @@ void Digitizer::CheckStatus()
             ADQ_GetStatus(m_id.handle, m_id.index, ADQ_STATUS_ID_OVERFLOW, &overflow_status))
         {
             if (overflow_status.overflow)
-                m_read_queue.EmplaceWrite(DigitizerMessageId::OVERFLOW);
+                m_read_queue.EmplaceWrite(DigitizerMessageId::OVF);
         }
     }
 }

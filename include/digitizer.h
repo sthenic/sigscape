@@ -38,7 +38,7 @@ enum class DigitizerMessageId
     NO_ACTIVITY,
     PARAMETERS_FILENAME,
     DRAM_FILL,
-    OVERFLOW,
+    OVF,
     /* The world -> digitizer */
     SET_INTERNAL_REFERENCE,
     SET_EXTERNAL_REFERENCE,
@@ -401,8 +401,8 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
         case DigitizerMessageId::DRAM_FILL:
             name = "DRAM_FILL";
             break;
-        case DigitizerMessageId::OVERFLOW:
-            name = "OVERFLOW";
+        case DigitizerMessageId::OVF:
+            name = "OVF";
             break;
         case DigitizerMessageId::SET_INTERNAL_REFERENCE:
             name = "SET_INTERNAL_REFERENCE";

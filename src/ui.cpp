@@ -448,7 +448,7 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
         digitizer.ui.dram_fill = static_cast<float>(message.dvalue);
         break;
 
-    case DigitizerMessageId::OVERFLOW:
+    case DigitizerMessageId::OVF:
         digitizer.ui.event = "OVERFLOW";
         digitizer.ui.event_color = COLOR_RED;
         break;

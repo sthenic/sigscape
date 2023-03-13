@@ -48,6 +48,11 @@ cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -S .
 cmake --build build
 ```
 
+On Ubuntu 22.04 the following libraries are needed:
+```
+apt install libgl-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
+```
+
 ### Windows
 
 ```

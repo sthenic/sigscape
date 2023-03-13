@@ -238,7 +238,7 @@ struct ADQConstantParameters
         , firmware(firmware)
         , communication_interface(interface)
         , channel{}
-        , dram_size(8ul * 1024ul * 1024ul * 1024ul)
+        , dram_size(8ull * 1024 * 1024 * 1024)
         , magic(ADQ_PARAMETERS_MAGIC)
     {
         std::memcpy(this->serial_number, serial_number.c_str(),

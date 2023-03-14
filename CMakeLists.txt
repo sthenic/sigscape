@@ -3,7 +3,7 @@ project(adq-rapid
   VERSION 1.0
   HOMEPAGE_URL "https://github.com/sthenic/adq-rapid"
   DESCRIPTION "GUI for ADQ3 series digitizers"
-  LANGUAGES CXX
+  LANGUAGES CXX C
 )
 add_executable(${PROJECT_NAME})
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)

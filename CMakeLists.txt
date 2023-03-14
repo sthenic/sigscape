@@ -258,7 +258,7 @@ install(TARGETS ${PROJECT_NAME})
 # Include GNUInstallDirs to get CMAKE_INSTALL_DOCDIR
 include(GNUInstallDirs)
 
-# TODO: Is CMAKE_INSTALL_DOCDIR good candidate? By default is's "share/doc/<PROJECT_NAME>"
+# Install documents in CMAKE_INSTALL_DOCDIR ("share/doc/<PROJECT_NAME>")
 install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})
 install(FILES THIRD_PARTY_LICENSES.md DESTINATION ${CMAKE_INSTALL_DOCDIR})
 install(FILES README.md DESTINATION ${CMAKE_INSTALL_DOCDIR})
@@ -267,7 +267,6 @@ set(CPACK_RESOURCE_FILE_LICENSE ${CMAKE_CURRENT_SOURCE_DIR}/LICENSE)
 set(CPACK_RESOURCE_FILE_README ${CMAKE_CURRENT_SOURCE_DIR}/README.md)
 
 # Set the install diretory to "adq-rapid". The default is "adq-rapid 1.0"
-# TODO: Is this OK for linux?
 set(CPACK_PACKAGE_INSTALL_DIRECTORY ${PROJECT_NAME})
 
 set(CPACK_PACKAGE_CONTACT "Marcus Eriksson")

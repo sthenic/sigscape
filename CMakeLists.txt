@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.15)
-project(adq-rapid VERSION 1.0)
+project(adq-rapid
+  VERSION 1.0
+  HOMEPAGE_URL "https://github.com/sthenic/adq-rapid"
+  DESCRIPTION "GUI for ADQ3 series digitizers"
+  LANGUAGES CXX
+)
 add_executable(${PROJECT_NAME})
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -42,7 +47,17 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/skaslev/gl3w
   GIT_TAG 5f8d7fd191ba22ff2b60c1106d7135bb9a335533 # Some commit
 )
-FetchContent_MakeAvailable(gl3w)
+
+# The gl3w library has install targets that we don't want. There's no option to
+# disable it so the library is added manually with EXCLUDE_FROM_ALL
+#
+# The following lines correspond to FetchContent_MakeAvailable with the
+# extra EXCLUDE_FROM_ALL
+FetchContent_GetProperties(gl3w)
+if (NOT gl3w)
+  FetchContent_Populate(gl3w)
+  add_subdirectory(${gl3w_SOURCE_DIR} ${gl3w_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
 
 FetchContent_Declare(
     implot
@@ -70,6 +85,7 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/madler/zlib
     GIT_TAG v1.2.13
 )
+set(SKIP_INSTALL_ALL ON)
 FetchContent_MakeAvailable(zlib)
 
 FetchContent_Declare(
@@ -77,8 +93,6 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/glennrp/libpng
     GIT_TAG v1.6.39
 )
-
-set(SKIP_INSTALL_ALL ON)
 
 set(ZLIB_INCLUDE_DIRS ${zlib_SOURCE_DIR} ${zlib_BINARY_DIR})
 set(ZLIB_LIBRARIES zlibstatic)
@@ -238,3 +252,31 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     png_static
     ${ADQAPI_LIBRARY}
 )
+
+install(TARGETS ${PROJECT_NAME})
+
+# Include GNUInstallDirs to get CMAKE_INSTALL_DOCDIR
+include(GNUInstallDirs)
+
+# TODO: Is CMAKE_INSTALL_DOCDIR good candidate? By default is's "share/doc/<PROJECT_NAME>"
+install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})
+install(FILES THIRD_PARTY_LICENSES.md DESTINATION ${CMAKE_INSTALL_DOCDIR})
+install(FILES README.md DESTINATION ${CMAKE_INSTALL_DOCDIR})
+
+set(CPACK_RESOURCE_FILE_LICENSE ${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt)
+set(CPACK_RESOURCE_FILE_README ${CMAKE_CURRENT_SOURCE_DIR}/README.md)
+
+# Set the install diretory to "adq-rapid". The default is "adq-rapid 1.0"
+# TODO: Is this OK for linux?
+set(CPACK_PACKAGE_INSTALL_DIRECTORY ${PROJECT_NAME})
+
+# Require for NSIS start menu shortcut
+set(CPACK_PACKAGE_EXECUTABLES "${PROJECT_NAME};${PROJECT_NAME}")
+
+# The branding text at the bottom of the installer. Default is "Nullsoft Install System vX.YY")
+set(CPACK_NSIS_BRANDING_TEXT " ")
+
+# TODO: Figure of if needed?
+set(CPACK_NSIS_URL_INFO_ABOUT ${CMAKE_PROJECT_HOMEPAGE_URL})
+
+include(CPack)

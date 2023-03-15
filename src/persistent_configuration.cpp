@@ -44,7 +44,7 @@ PersistentConfiguration::PersistentConfiguration()
     ValidateDirectoryCreateIfNeeded(m_directory);
 #else
     /* If XDG_CONFIG_HOME is set, we use that, otherwise we default to
-       $HOME/.config/adq-rapid. If we fail to validate the directory, this _has_
+       $HOME/.config/sigscape. If we fail to validate the directory, this _has_
        to be because of XDG_CONFIG_HOME not pointing to a writable location.
        Again, we fall back to HOME/.config. */
     const auto default_prefix = GetEnvOrDefault("HOME") + "/.config";

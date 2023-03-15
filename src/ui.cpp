@@ -233,7 +233,7 @@ void Ui::Render(float width, float height)
     {
         m_save_to_file = false;
 
-        const std::string filename = "adqrapid_" + NowAsIso8601() + ".png";
+        const std::string filename = "sigscape_" + NowAsIso8601() + ".png";
         if (SaveToFile(filename))
             printf("%s\n", fmt::format("Saved current view as '{}'.", filename).c_str());
         else

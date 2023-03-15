@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
-project(adq-rapid
+project(sigscape
   VERSION 1.0
-  HOMEPAGE_URL "https://github.com/sthenic/adq-rapid"
+  HOMEPAGE_URL "https://github.com/sthenic/sigscape"
   DESCRIPTION "GUI for ADQ3 series digitizers"
   LANGUAGES CXX C
 )
@@ -266,7 +266,7 @@ install(FILES README.md DESTINATION ${CMAKE_INSTALL_DOCDIR})
 set(CPACK_RESOURCE_FILE_LICENSE ${CMAKE_CURRENT_SOURCE_DIR}/LICENSE)
 set(CPACK_RESOURCE_FILE_README ${CMAKE_CURRENT_SOURCE_DIR}/README.md)
 
-# Set the install diretory to "adq-rapid". The default is "adq-rapid 1.0"
+# Set the install diretory to "sigscape". The default is "sigscape 1.0"
 set(CPACK_PACKAGE_INSTALL_DIRECTORY ${PROJECT_NAME})
 
 set(CPACK_PACKAGE_CONTACT "Marcus Eriksson")

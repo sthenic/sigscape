@@ -24,7 +24,7 @@ private:
        as the return type of GetImGuiInitializationFile(). */
     std::string m_imgui_configuration_file;
 
-    inline static const std::string SUFFIX = "/adq-rapid";
+    inline static const std::string SUFFIX = "/sigscape";
 };
 
 #endif

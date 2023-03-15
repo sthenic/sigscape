@@ -1,4 +1,4 @@
-# ADQRapid
+# sigscape
 
 This application is a GUI for ADQ3 series digitizers from [Teledyne SP
 Devices](https://spdevices.com).
@@ -62,9 +62,9 @@ cmake --build build --config Release
 
 ## License
 
-This tool is free software released under the [MIT
+This application is free software released under the [MIT
 license](https://opensource.org/licenses/MIT).
 
 ## Third-party dependencies
 
-See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)
+See [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md)

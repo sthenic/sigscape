@@ -107,7 +107,7 @@ int main(int, char **)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 #endif
 
-    window = glfwCreateWindow(2140, 1200, "ADQ Rapid", NULL, NULL);
+    window = glfwCreateWindow(2140, 1200, "sigscape", NULL, NULL);
     if (window == NULL)
         return 1;
     glfwMakeContextCurrent(window);

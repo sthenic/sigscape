@@ -199,38 +199,38 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
     if (parameters_str.rfind("TOP", 0) == 0)
     {
         std::vector<double> frequency;
-        if (ADQR_EOK != ParseLine(2, parameters_str, frequency))
-            return ADQR_EINVAL;
+        if (SCAPE_EOK != ParseLine(2, parameters_str, frequency))
+            return SCAPE_EINVAL;
         size_t nof_generators = frequency.size();
 
         std::vector<double> amplitude;
-        if (ADQR_EOK != ParseLine(4, parameters_str, amplitude))
-            return ADQR_EINVAL;
+        if (SCAPE_EOK != ParseLine(4, parameters_str, amplitude))
+            return SCAPE_EINVAL;
         nof_generators = std::min(nof_generators, amplitude.size());
 
         std::vector<int> record_length;
-        if (ADQR_EOK != ParseLine(6, parameters_str, record_length))
-            return ADQR_EINVAL;
+        if (SCAPE_EOK != ParseLine(6, parameters_str, record_length))
+            return SCAPE_EINVAL;
         nof_generators = std::min(nof_generators, record_length.size());
 
         std::vector<double> trigger_frequency;
-        if (ADQR_EOK != ParseLine(8, parameters_str, trigger_frequency))
-            return ADQR_EINVAL;
+        if (SCAPE_EOK != ParseLine(8, parameters_str, trigger_frequency))
+            return SCAPE_EINVAL;
         nof_generators = std::min(nof_generators, trigger_frequency.size());
 
         std::vector<int> harmonic_distortion;
-        if (ADQR_EOK != ParseLine(10, parameters_str, harmonic_distortion))
-            return ADQR_EINVAL;
+        if (SCAPE_EOK != ParseLine(10, parameters_str, harmonic_distortion))
+            return SCAPE_EINVAL;
         nof_generators = std::min(nof_generators, harmonic_distortion.size());
 
         std::vector<int> interleaving_distortion;
-        if (ADQR_EOK != ParseLine(12, parameters_str, interleaving_distortion))
-            return ADQR_EINVAL;
+        if (SCAPE_EOK != ParseLine(12, parameters_str, interleaving_distortion))
+            return SCAPE_EINVAL;
         nof_generators = std::min(nof_generators, interleaving_distortion.size());
 
         std::vector<double> noise_std_dev;
-        if (ADQR_EOK != ParseLine(14, parameters_str, noise_std_dev))
-            return ADQR_EINVAL;
+        if (SCAPE_EOK != ParseLine(14, parameters_str, noise_std_dev))
+            return SCAPE_EINVAL;
         nof_generators = std::min(nof_generators, noise_std_dev.size());
 
         std::vector<Generator::Parameters> parameters;
@@ -260,8 +260,8 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
     else if (parameters_str.rfind("CLOCK SYSTEM", 0) == 0)
     {
         std::vector<double> sampling_frequency;
-        if (ADQR_EOK != ParseLine(2, parameters_str, sampling_frequency))
-            return ADQR_EINVAL;
+        if (SCAPE_EOK != ParseLine(2, parameters_str, sampling_frequency))
+            return SCAPE_EINVAL;
 
         for (size_t i = 0; (i < sampling_frequency.size()) && (i < m_generators.size()); ++i)
             m_generators[i]->SetSamplingFrequency(sampling_frequency[i]);
@@ -381,18 +381,18 @@ int MockDigitizer::ParseLine(int line_idx, const std::string &str, std::vector<T
                 }
                 catch (const std::invalid_argument &)
                 {
-                    return ADQR_EINVAL;
+                    return SCAPE_EINVAL;
                 }
                 catch (const std::out_of_range &)
                 {
-                    return ADQR_EINVAL;
+                    return SCAPE_EINVAL;
                 }
             }
 
-            return ADQR_EOK;
+            return SCAPE_EOK;
         }
         ++idx;
     }
 
-    return ADQR_EINVAL;
+    return SCAPE_EINVAL;
 }

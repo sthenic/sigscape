@@ -26,10 +26,10 @@ TEST_GROUP(DataProcessingGroup)
 
 TEST(DataProcessingGroup, StartStop)
 {
-    LONGS_EQUAL(ADQR_ENOTREADY, processing->Stop());
-    LONGS_EQUAL(ADQR_EOK, processing->Start());
-    LONGS_EQUAL(ADQR_ENOTREADY, processing->Start());
-    LONGS_EQUAL(ADQR_EOK, processing->Stop());
+    LONGS_EQUAL(SCAPE_ENOTREADY, processing->Stop());
+    LONGS_EQUAL(SCAPE_EOK, processing->Start());
+    LONGS_EQUAL(SCAPE_ENOTREADY, processing->Start());
+    LONGS_EQUAL(SCAPE_EOK, processing->Stop());
 }
 
 TEST(DataProcessingGroup, Records)
@@ -55,11 +55,11 @@ TEST(DataProcessingGroup, Records)
 
     ADQ_SetParametersString(&mock_adqapi, index, ss.str().c_str(), ss.str().size());
 
-    LONGS_EQUAL(ADQR_EOK, processing->Start());
+    LONGS_EQUAL(SCAPE_EOK, processing->Start());
     LONGS_EQUAL(ADQ_EOK, ADQ_StartDataAcquisition(&mock_adqapi, index));
 
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-    LONGS_EQUAL(ADQR_EOK, processing->Stop());
+    LONGS_EQUAL(SCAPE_EOK, processing->Stop());
     LONGS_EQUAL(ADQ_EOK, ADQ_StopDataAcquisition(&mock_adqapi, index));
 }
 
@@ -90,7 +90,7 @@ TEST(DataProcessingGroup, RepeatedStartStop)
 
     for (int i = 0; i < NOF_LOOPS; ++i)
     {
-        LONGS_EQUAL(ADQR_EOK, processing->Start());
+        LONGS_EQUAL(SCAPE_EOK, processing->Start());
         LONGS_EQUAL(ADQ_EOK, ADQ_StartDataAcquisition(&mock_adqapi, index));
 
         int nof_records_received = 0;
@@ -99,16 +99,16 @@ TEST(DataProcessingGroup, RepeatedStartStop)
             std::shared_ptr<ProcessedRecord> record = NULL;
             int result = processing->WaitForBuffer(record, 1000);
             CHECK(record != NULL);
-            CHECK((result == ADQR_EOK) || (result == ADQR_ELAST));
+            CHECK((result == SCAPE_EOK) || (result == SCAPE_ELAST));
 
-            if (result == ADQR_ELAST)
+            if (result == SCAPE_ELAST)
             {
                 LONGS_EQUAL(nof_records_received, record->time_domain->header.record_number);
                 nof_records_received++;
             }
         }
 
-        LONGS_EQUAL(ADQR_EOK, processing->Stop());
+        LONGS_EQUAL(SCAPE_EOK, processing->Stop());
         LONGS_EQUAL(ADQ_EOK, ADQ_StopDataAcquisition(&mock_adqapi, index));
     }
 }

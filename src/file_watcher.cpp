@@ -16,7 +16,7 @@ const std::string &FileWatcher::GetPath()
 
 void FileWatcher::MainLoop()
 {
-    m_thread_exit_code = ADQR_EOK;
+    m_thread_exit_code = SCAPE_EOK;
     for (;;)
     {
         if (std::filesystem::exists(m_path))
@@ -83,7 +83,7 @@ void FileWatcher::HandleMessages()
 {
     /* Empty the inwards facing message queue. */
     FileWatcherMessage message;
-    while (ADQR_EOK == m_write_queue.Read(message, 0))
+    while (SCAPE_EOK == m_write_queue.Read(message, 0))
     {
         switch (message.id)
         {

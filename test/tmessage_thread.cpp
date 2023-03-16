@@ -47,7 +47,7 @@ public:
         start_msg.data = NULL;
 
         int result = m_read_queue.Write(start_msg);
-        if (result != ADQR_EOK)
+        if (result != SCAPE_EOK)
         {
             printf("Failed to write the start message, result %d.\n", result);
             m_thread_exit_code = result;
@@ -62,16 +62,16 @@ public:
             /* Continue on 'ok' and 'timeout'. */
             struct Message read_msg;
             int result = m_write_queue.Read(read_msg, 10);
-            if ((result != ADQR_EOK) && (result != ADQR_EAGAIN))
+            if ((result != SCAPE_EOK) && (result != SCAPE_EAGAIN))
             {
                 m_thread_exit_code = result;
                 break;
             }
 
-            if (result == ADQR_EOK)
+            if (result == SCAPE_EOK)
             {
                 result = HandleMessage(read_msg);
-                if (result != ADQR_EOK)
+                if (result != SCAPE_EOK)
                 {
                     printf("Failed to handle message w/ id %d, result %d.\n", read_msg.id, result);
                     m_thread_exit_code = result;
@@ -93,7 +93,7 @@ public:
                 write_msg.data = data;
 
                 result = m_read_queue.Write(write_msg);
-                if (result != ADQR_EOK)
+                if (result != SCAPE_EOK)
                 {
                     printf("Failed to write new data message, result %d.\n", result);
                     m_thread_exit_code = result;
@@ -119,7 +119,7 @@ public:
             if (m_returned_data.count(data) == 0)
             {
                 printf("%p has not been returned.\n", data);
-                return ADQR_EINTERNAL;
+                return SCAPE_EINTERNAL;
             }
 
             generated_data.erase(data);
@@ -129,17 +129,17 @@ public:
         if (generated_data.size() > 0)
         {
             printf("%zu elements have not been returned.\n", generated_data.size());
-            return ADQR_EINTERNAL;
+            return SCAPE_EINTERNAL;
         }
 
         if (m_returned_data.size() > 0)
         {
             printf("%zu returned elements remain.\n", m_returned_data.size());
-            return ADQR_EINTERNAL;
+            return SCAPE_EINTERNAL;
         }
 
         FreeGeneratedData();
-        return ADQR_EOK;
+        return SCAPE_EOK;
     }
 
 private:
@@ -152,10 +152,10 @@ private:
     {
         /* We only expect to receive messages of this type. */
         if (msg.id != MESSAGE_ID_RETURN_DATA)
-            return ADQR_EINTERNAL;
+            return SCAPE_EINTERNAL;
 
         m_returned_data.insert(msg.data);
-        return ADQR_EOK;
+        return SCAPE_EOK;
     }
 
     void FreeGeneratedData()
@@ -185,10 +185,10 @@ TEST(MessageThread, FailedStart)
 {
     constexpr int CODE = -88;
     thread.Initialize(CODE, 10);
-    LONGS_EQUAL(ADQR_EOK, thread.Start());
+    LONGS_EQUAL(SCAPE_EOK, thread.Start());
 
     struct Message msg;
-    LONGS_EQUAL(ADQR_EOK, thread.WaitForMessage(msg, 1000));
+    LONGS_EQUAL(SCAPE_EOK, thread.WaitForMessage(msg, 1000));
     LONGS_EQUAL(MESSAGE_ID_FAILED_TO_START, msg.id);
     LONGS_EQUAL(CODE, msg.code);
     CHECK(msg.data == NULL);
@@ -199,27 +199,27 @@ TEST(MessageThread, RevolvingMessages)
 {
     constexpr int NOF_MESSAGES = 10;
     thread.Initialize(0, NOF_MESSAGES);
-    LONGS_EQUAL(ADQR_EOK, thread.Start());
+    LONGS_EQUAL(SCAPE_EOK, thread.Start());
 
     /* Expect the 'is started ok' message. */
     struct Message msg;
-    LONGS_EQUAL(ADQR_EOK, thread.WaitForMessage(msg, 500));
+    LONGS_EQUAL(SCAPE_EOK, thread.WaitForMessage(msg, 500));
     LONGS_EQUAL(MESSAGE_ID_IS_STARTED_OK, msg.id);
-    LONGS_EQUAL(ADQR_EOK, msg.code);
+    LONGS_EQUAL(SCAPE_EOK, msg.code);
 
     for (int i = 0; i < NOF_MESSAGES; ++i)
     {
-        LONGS_EQUAL(ADQR_EOK, thread.WaitForMessage(msg, 500));
+        LONGS_EQUAL(SCAPE_EOK, thread.WaitForMessage(msg, 500));
         LONGS_EQUAL(MESSAGE_ID_NEW_DATA, msg.id);
-        LONGS_EQUAL(ADQR_EOK, msg.code);
+        LONGS_EQUAL(SCAPE_EOK, msg.code);
 
         msg.id = MESSAGE_ID_RETURN_DATA;
-        LONGS_EQUAL(ADQR_EOK, thread.PushMessage(msg));
+        LONGS_EQUAL(SCAPE_EOK, thread.PushMessage(msg));
     }
 
     /* Expect a timeout. */
-    LONGS_EQUAL(ADQR_EAGAIN, thread.WaitForMessage(msg, 500));
+    LONGS_EQUAL(SCAPE_EAGAIN, thread.WaitForMessage(msg, 500));
     thread.Stop();
 
-    LONGS_EQUAL(ADQR_EOK, thread.VerifyComplete());
+    LONGS_EQUAL(SCAPE_EOK, thread.VerifyComplete());
 }

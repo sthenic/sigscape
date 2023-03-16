@@ -20,12 +20,12 @@ TEST_GROUP(Generator)
 
 TEST(Generator, Test0)
 {
-    LONGS_EQUAL(ADQR_EOK, generator.SetParameters(Generator::Parameters()));
-    LONGS_EQUAL(ADQR_EOK, generator.SetSamplingFrequency(500e6));
-    LONGS_EQUAL(ADQR_ENOTREADY, generator.Stop());
-    LONGS_EQUAL(ADQR_EOK, generator.Start());
-    LONGS_EQUAL(ADQR_ENOTREADY, generator.Start());
-    LONGS_EQUAL(ADQR_EOK, generator.Stop());
+    LONGS_EQUAL(SCAPE_EOK, generator.SetParameters(Generator::Parameters()));
+    LONGS_EQUAL(SCAPE_EOK, generator.SetSamplingFrequency(500e6));
+    LONGS_EQUAL(SCAPE_ENOTREADY, generator.Stop());
+    LONGS_EQUAL(SCAPE_EOK, generator.Start());
+    LONGS_EQUAL(SCAPE_ENOTREADY, generator.Start());
+    LONGS_EQUAL(SCAPE_EOK, generator.Stop());
 }
 
 TEST(Generator, Records)
@@ -38,9 +38,9 @@ TEST(Generator, Records)
     parameters.record_length = RECORD_LENGTH;
     parameters.trigger_frequency = TRIGGER_FREQUENCY;
 
-    LONGS_EQUAL(ADQR_EOK, generator.SetParameters(parameters));
-    LONGS_EQUAL(ADQR_EOK, generator.SetSamplingFrequency(500e6));
-    LONGS_EQUAL(ADQR_EOK, generator.Start());
+    LONGS_EQUAL(SCAPE_EOK, generator.SetParameters(parameters));
+    LONGS_EQUAL(SCAPE_EOK, generator.SetSamplingFrequency(500e6));
+    LONGS_EQUAL(SCAPE_EOK, generator.Start());
 
     std::vector<ADQGen4Record *> records;
     bool return_records = false;
@@ -50,16 +50,16 @@ TEST(Generator, Records)
         ADQGen4Record* record = NULL;
         int result = generator.WaitForBuffer(record, 1000);
 
-        if ((result == ADQR_EAGAIN) && !return_records)
+        if ((result == SCAPE_EAGAIN) && !return_records)
         {
             for (auto it = records.begin(); it != records.end(); ++it)
-                LONGS_EQUAL(ADQR_EOK, generator.ReturnBuffer(*it));
+                LONGS_EQUAL(SCAPE_EOK, generator.ReturnBuffer(*it));
             records.clear();
             return_records = true;
             continue;
         }
 
-        LONGS_EQUAL(ADQR_EOK, result);
+        LONGS_EQUAL(SCAPE_EOK, result);
         CHECK(record != NULL);
         LONGS_EQUAL(RECORD_LENGTH, record->header->record_length);
         LONGS_EQUAL(RECORD_LENGTH * sizeof(int16_t), record->size);
@@ -68,11 +68,11 @@ TEST(Generator, Records)
         if (!return_records)
             records.push_back(record);
         else
-            LONGS_EQUAL(ADQR_EOK, generator.ReturnBuffer(record));
+            LONGS_EQUAL(SCAPE_EOK, generator.ReturnBuffer(record));
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    LONGS_EQUAL(ADQR_EOK, generator.Stop());
+    LONGS_EQUAL(SCAPE_EOK, generator.Stop());
 }
 
 TEST(Generator, RepeatedStartStop)
@@ -88,23 +88,23 @@ TEST(Generator, RepeatedStartStop)
 
     for (int i = 0; i < NOF_LOOPS; ++i)
     {
-        LONGS_EQUAL(ADQR_EOK, generator.SetParameters(parameters));
-        LONGS_EQUAL(ADQR_EOK, generator.SetSamplingFrequency(500e6));
-        LONGS_EQUAL(ADQR_EOK, generator.Start());
+        LONGS_EQUAL(SCAPE_EOK, generator.SetParameters(parameters));
+        LONGS_EQUAL(SCAPE_EOK, generator.SetSamplingFrequency(500e6));
+        LONGS_EQUAL(SCAPE_EOK, generator.Start());
 
         int nof_records_received = 0;
         while (nof_records_received != NOF_RECORDS)
         {
             ADQGen4Record *record = NULL;
-            LONGS_EQUAL(ADQR_EOK, generator.WaitForBuffer(record, 1000));
+            LONGS_EQUAL(SCAPE_EOK, generator.WaitForBuffer(record, 1000));
             CHECK(record != NULL);
 
             LONGS_EQUAL(nof_records_received, record->header->record_number);
             nof_records_received++;
 
-            LONGS_EQUAL(ADQR_EOK, generator.ReturnBuffer(record));
+            LONGS_EQUAL(SCAPE_EOK, generator.ReturnBuffer(record));
         }
 
-        LONGS_EQUAL(ADQR_EOK, generator.Stop());
+        LONGS_EQUAL(SCAPE_EOK, generator.Stop());
     }
 }

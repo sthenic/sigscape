@@ -93,7 +93,7 @@ void DataProcessing::SetWindowType(WindowType type)
 
 void DataProcessing::MainLoop()
 {
-    m_thread_exit_code = ADQR_EOK;
+    m_thread_exit_code = SCAPE_EOK;
     auto time_point_last_record = std::chrono::high_resolution_clock::now();
 
     for (;;)
@@ -108,14 +108,14 @@ void DataProcessing::MainLoop()
                                                          (void **)&time_domain, 100, NULL);
 
         /* Continue on timeout. */
-        if ((bytes_received == ADQ_EAGAIN) || (bytes_received == ADQ_ENOTREADY) || (bytes_received == ADQR_EINTERRUPTED))
+        if ((bytes_received == ADQ_EAGAIN) || (bytes_received == ADQ_ENOTREADY) || (bytes_received == SCAPE_EINTERRUPTED))
         {
             continue;
         }
         else if (bytes_received < 0)
         {
             printf("Failed to get a time domain buffer %" PRId64 ".\n", bytes_received);
-            m_thread_exit_code = ADQR_EINTERNAL;
+            m_thread_exit_code = SCAPE_EINTERNAL;
             return;
         }
 
@@ -190,7 +190,7 @@ void DataProcessing::MainLoop()
             default:
                 printf("Unknown data format '%" PRIu8 "', aborting.\n",
                        time_domain->header->data_format);
-                m_thread_exit_code = ADQR_EINTERNAL;
+                m_thread_exit_code = SCAPE_EINTERNAL;
                 return;
             }
 

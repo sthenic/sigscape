@@ -43,24 +43,24 @@ public:
     int Start()
     {
         if (m_is_started)
-            return ADQR_ENOTREADY;
+            return SCAPE_ENOTREADY;
 
         m_queue = {}; /* TODO: Not ok if we ever want to have stuff prequeued. */
         m_signal_stop = std::promise<void>();
         m_should_stop = m_signal_stop.get_future();
         m_last_write_timestamp = std::chrono::high_resolution_clock::now();
         m_is_started = true;
-        return ADQR_EOK;
+        return SCAPE_EOK;
     }
 
     int Stop()
     {
         if (!m_is_started)
-            return ADQR_ENOTREADY;
+            return SCAPE_ENOTREADY;
 
         m_signal_stop.set_value();
         m_is_started = false;
-        return ADQR_EOK;
+        return SCAPE_EOK;
     }
 
     /* Only compiles when <T> is a pointer type. */
@@ -77,7 +77,7 @@ public:
     int Read(T &value, int timeout)
     {
         if (!m_is_started)
-            return ADQR_ENOTREADY;
+            return SCAPE_ENOTREADY;
 
         if (timeout < 0)
         {
@@ -90,7 +90,7 @@ public:
                 lock.unlock();
 
                 if (m_should_stop.wait_for(std::chrono::milliseconds(10)) == std::future_status::ready)
-                    return ADQR_EINTERRUPTED;
+                    return SCAPE_EINTERRUPTED;
             }
         }
         else if (timeout == 0)
@@ -100,7 +100,7 @@ public:
             if (m_queue.size() > 0)
                 return Pop(value);
             else
-                return ADQR_EAGAIN;
+                return SCAPE_EAGAIN;
         }
         else
         {
@@ -114,17 +114,17 @@ public:
 
                 ++waited_ms;
                 if (m_should_stop.wait_for(std::chrono::milliseconds(1)) == std::future_status::ready)
-                    return ADQR_EINTERRUPTED;
+                    return SCAPE_EINTERRUPTED;
             }
 
-            return ADQR_EAGAIN;
+            return SCAPE_EAGAIN;
         }
     }
 
     int Write(const T &value, int timeout = 0)
     {
         if (!m_is_started)
-            return ADQR_ENOTREADY;
+            return SCAPE_ENOTREADY;
 
         std::unique_lock<std::mutex> lock(m_mutex);
 
@@ -143,18 +143,18 @@ public:
                     {
                         m_last_write_timestamp = std::chrono::high_resolution_clock::now();
                         m_queue.push(value);
-                        return ADQR_EOK;
+                        return SCAPE_EOK;
                     }
                     lock.unlock();
 
                     if (m_should_stop.wait_for(std::chrono::milliseconds(10)) == std::future_status::ready)
-                        return ADQR_EINTERRUPTED;
+                        return SCAPE_EINTERRUPTED;
                 }
             }
             else if (timeout == 0)
             {
                 /* Immediate */
-                return ADQR_EAGAIN;
+                return SCAPE_EAGAIN;
             }
             else
             {
@@ -166,22 +166,22 @@ public:
                     {
                         m_last_write_timestamp = std::chrono::high_resolution_clock::now();
                         m_queue.push(value);
-                        return ADQR_EOK;
+                        return SCAPE_EOK;
                     }
                     lock.unlock();
 
                     ++waited_ms;
                     if (m_should_stop.wait_for(std::chrono::milliseconds(1)) == std::future_status::ready)
-                        return ADQR_EINTERRUPTED;
+                        return SCAPE_EINTERRUPTED;
                 }
 
-                return ADQR_EAGAIN;
+                return SCAPE_EAGAIN;
             }
         }
 
         m_last_write_timestamp = std::chrono::high_resolution_clock::now();
         m_queue.push(value);
-        return ADQR_EOK;
+        return SCAPE_EOK;
     }
 
     /* An `emplace_back`-style call, forwarding the arguments to a matching
@@ -207,13 +207,13 @@ public:
     int GetTimeSinceLastActivity(int &milliseconds)
     {
         if (!m_is_started)
-            return ADQR_ENOTREADY;
+            return SCAPE_ENOTREADY;
 
         std::unique_lock<std::mutex> lock(m_mutex);
         auto now = std::chrono::high_resolution_clock::now();
         auto delta_ms = static_cast<double>((now - m_last_write_timestamp).count()) / 1e6;
         milliseconds = static_cast<int>(delta_ms);
-        return ADQR_EOK;
+        return SCAPE_EOK;
     }
 
 private:
@@ -232,7 +232,7 @@ private:
 
         /* We only pop the entry if we're not using the persistent mode and if
            we do (tail condition), only if there's another entry in the queue.
-           If we popped the entry in the persistent mode we return ADQR_ELAST to
+           If we popped the entry in the persistent mode we return SCAPE_ELAST to
            signal that this happened. If the queue contains memory allocated on
            the heap, the reader may want to return the memory. */
 
@@ -240,10 +240,10 @@ private:
         {
             m_queue.pop();
             if (m_is_persistent)
-                return ADQR_ELAST;
+                return SCAPE_ELAST;
         }
 
-        return ADQR_EOK;
+        return SCAPE_EOK;
     }
 };
 

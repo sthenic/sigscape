@@ -306,7 +306,7 @@ void Ui::UpdateSensors()
     for (auto &digitizer : m_digitizers)
     {
         std::shared_ptr<std::vector<SensorRecord>> records;
-        if (ADQR_EOK == digitizer.interface->WaitForSensorRecords(records))
+        if (SCAPE_EOK == digitizer.interface->WaitForSensorRecords(records))
         {
             for (auto &record : *records)
             {
@@ -466,13 +466,13 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
 void Ui::HandleMessages()
 {
     IdentificationMessage identification_message;
-    if (ADQR_EOK == m_identification.WaitForMessage(identification_message, 0))
+    if (SCAPE_EOK == m_identification.WaitForMessage(identification_message, 0))
         HandleMessage(identification_message);
 
     for (auto &digitizer : m_digitizers)
     {
         DigitizerMessage digitizer_message;
-        if (ADQR_EOK == digitizer.interface->WaitForMessage(digitizer_message, 0))
+        if (SCAPE_EOK == digitizer.interface->WaitForMessage(digitizer_message, 0))
             HandleMessage(digitizer, digitizer_message);
     }
 }

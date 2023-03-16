@@ -18,7 +18,7 @@ public:
         , m_signal_stop()
         , m_should_stop()
         , m_is_running(false)
-        , m_thread_exit_code(ADQR_EINTERRUPTED)
+        , m_thread_exit_code(SCAPE_EINTERRUPTED)
         , m_nof_buffers_max(100)
         , m_mutex()
         , m_read_queue(CAPACITY, PERSISTENT)
@@ -38,7 +38,7 @@ public:
     virtual int Start()
     {
         if (m_is_running)
-            return ADQR_ENOTREADY;
+            return SCAPE_ENOTREADY;
 
         m_write_queue.Start();
         m_read_queue.Start();
@@ -46,13 +46,13 @@ public:
         m_should_stop = m_signal_stop.get_future();
         m_thread = std::thread([this]{ static_cast<C*>(this)->MainLoop(); });
         m_is_running = true;
-        return ADQR_EOK;
+        return SCAPE_EOK;
     }
 
     virtual int Stop()
     {
         if (!m_is_running)
-            return ADQR_ENOTREADY;
+            return SCAPE_ENOTREADY;
 
         m_write_queue.Stop();
         m_read_queue.Stop();
@@ -100,22 +100,22 @@ protected:
         }
         catch (const std::bad_alloc &)
         {
-            return ADQR_EINTERNAL;
+            return SCAPE_EINTERNAL;
         }
 
         /* Add a reference to the data storage. */
         m_mutex.lock();
         m_buffers.push_back(buffer);
         m_mutex.unlock();
-        return ADQR_EOK;
+        return SCAPE_EOK;
     }
 
     int ReuseOrAllocateBuffer(T *&buffer, size_t count)
     {
         /* We prioritize reusing existing memory over allocating new. */
-        if (m_write_queue.Read(buffer, 0) == ADQR_EOK)
+        if (m_write_queue.Read(buffer, 0) == SCAPE_EOK)
         {
-            return ADQR_EOK;
+            return SCAPE_EOK;
         }
         else
         {

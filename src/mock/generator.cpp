@@ -16,18 +16,18 @@ int Generator::SetParameters(const Parameters &parameters)
 {
     m_parameters = parameters;
     m_distribution = std::normal_distribution<double>(0, m_parameters.sine.noise_std_dev);
-    return ADQR_EOK;
+    return SCAPE_EOK;
 }
 
 int Generator::SetSamplingFrequency(double sampling_frequency)
 {
     m_sampling_frequency = sampling_frequency;
-    return ADQR_EOK;
+    return SCAPE_EOK;
 }
 
 void Generator::MainLoop()
 {
-    m_thread_exit_code = ADQR_EOK;
+    m_thread_exit_code = SCAPE_EOK;
     int wait_us = static_cast<int>(1000000.0 / m_parameters.trigger_frequency);
     int record_number = 0;
 
@@ -35,10 +35,10 @@ void Generator::MainLoop()
     {
         ADQGen4Record *record = NULL;
         int result = ReuseOrAllocateBuffer(record, m_parameters.record_length * sizeof(int16_t));
-        if (result != ADQR_EOK)
+        if (result != SCAPE_EOK)
         {
-            if (result == ADQR_EINTERRUPTED) /* Convert forced queue stop into an ok. */
-                m_thread_exit_code = ADQR_EOK;
+            if (result == SCAPE_EINTERRUPTED) /* Convert forced queue stop into an ok. */
+                m_thread_exit_code = SCAPE_EOK;
             else
                 m_thread_exit_code = result;
             return;

@@ -9,7 +9,7 @@ void Identification::MainLoop()
     if (handle == NULL)
     {
         printf("Failed to create an ADQControlUnit.\n");
-        m_thread_exit_code = ADQR_EINTERNAL;
+        m_thread_exit_code = SCAPE_EINTERNAL;
         return;
     }
 
@@ -20,7 +20,7 @@ void Identification::MainLoop()
     {
         printf("Failed to list devices.\n");
         DeleteADQControlUnit(handle);
-        m_thread_exit_code = ADQR_EINTERNAL;
+        m_thread_exit_code = SCAPE_EINTERNAL;
         return;
     }
 
@@ -47,5 +47,5 @@ void Identification::MainLoop()
     /* Forward the control unit handle along with digitizer objects. */
     /* FIXME: Propagate errors? */
     m_read_queue.Write({handle, revision, digitizers});
-    m_thread_exit_code = ADQR_EOK;
+    m_thread_exit_code = SCAPE_EOK;
 }

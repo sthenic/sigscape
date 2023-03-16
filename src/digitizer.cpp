@@ -55,7 +55,7 @@ Digitizer::~Digitizer()
 int Digitizer::WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedRecord> &record)
 {
     if ((channel < 0) || (channel >= static_cast<int>(m_processing_threads.size())))
-        return ADQR_EINVAL;
+        return SCAPE_EINVAL;
 
     return m_processing_threads[channel]->WaitForBuffer(record, 0);
 }
@@ -78,7 +78,7 @@ void Digitizer::MainLoop()
     int result = ADQControlUnit_SetupDevice(m_id.handle, m_id.index - 1);
     if (result != 1)
     {
-        m_thread_exit_code = ADQR_EINTERNAL;
+        m_thread_exit_code = SCAPE_EINTERNAL;
         SetState(DigitizerState::NOT_ENUMERATED);
         return;
     }
@@ -87,7 +87,7 @@ void Digitizer::MainLoop()
     result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CONSTANT, &m_constant);
     if (result != sizeof(m_constant))
     {
-        m_thread_exit_code = ADQR_EINTERNAL;
+        m_thread_exit_code = SCAPE_EINTERNAL;
         SetState(DigitizerState::NOT_ENUMERATED);
         return;
     }
@@ -119,7 +119,7 @@ void Digitizer::MainLoop()
     }
 
 
-    m_thread_exit_code = ADQR_EOK;
+    m_thread_exit_code = SCAPE_EOK;
     for (;;)
     {
         try
@@ -155,7 +155,7 @@ void Digitizer::SignalError(const std::string &message)
 void Digitizer::ProcessMessages()
 {
     DigitizerMessage message;
-    while (ADQR_EOK == m_write_queue.Read(message, 0))
+    while (SCAPE_EOK == m_write_queue.Read(message, 0))
         HandleMessageInState(message);
 }
 
@@ -172,7 +172,7 @@ void Digitizer::ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watch
                                        DigitizerMessageId dirty_id)
 {
     FileWatcherMessage message;
-    while (ADQR_EOK == watcher->WaitForMessage(message, 0))
+    while (SCAPE_EOK == watcher->WaitForMessage(message, 0))
     {
         switch (message.id)
         {
@@ -375,7 +375,7 @@ void Digitizer::CheckActivity()
     for (auto &thread : m_processing_threads)
     {
         int milliseconds;
-        if (ADQR_EOK != thread->GetTimeSinceLastActivity(milliseconds))
+        if (SCAPE_EOK != thread->GetTimeSinceLastActivity(milliseconds))
             continue;
         milliseconds_max = (std::max)(milliseconds_max, milliseconds);
     }
@@ -441,7 +441,7 @@ void Digitizer::StartDataAcquisition()
 
         for (const auto &t : m_processing_threads)
         {
-            if (ADQR_EOK != t->Start())
+            if (SCAPE_EOK != t->Start())
                 throw DigitizerException("Failed to start one of the data processing threads.");
         }
 

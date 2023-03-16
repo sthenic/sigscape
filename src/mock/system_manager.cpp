@@ -126,13 +126,13 @@ MockSystemManager::MockSystemManager() :
 
 void MockSystemManager::MainLoop()
 {
-    m_thread_exit_code = ADQR_EOK;
+    m_thread_exit_code = SCAPE_EOK;
     for (;;)
     {
         /* Handle any incoming messages. This function blocks until there's a
            message, or the process is stopped.*/
         int result = HandleMessage();
-        if (result != ADQR_EOK)
+        if (result != SCAPE_EOK)
             return;
     }
 }
@@ -142,7 +142,7 @@ int MockSystemManager::HandleMessage()
     /* Wait (indefinitely) for a new message. */
     SystemManagerMessage message;
     int result = m_write_queue.Read(message, -1);
-    if (result != ADQR_EOK)
+    if (result != SCAPE_EOK)
         return result;
 
     switch (message.cmd)
@@ -305,5 +305,5 @@ int MockSystemManager::HandleMessage()
     }
     }
 
-    return ADQR_EOK;
+    return SCAPE_EOK;
 }

@@ -69,6 +69,7 @@ DataProcessing::DataProcessing(void *handle, int index, int channel, const std::
     , m_constant{constant}
     , m_window_cache()
     , m_window_type(WindowType::FLAT_TOP)
+    , m_convert_to_volts(true)
     , m_nof_skirt_bins(NOF_SKIRT_BINS_DEFAULT)
     , m_waterfall{}
     , m_persistence{}
@@ -89,6 +90,11 @@ void DataProcessing::SetAnalogFrontendParameters(const struct ADQAnalogFrontendP
 void DataProcessing::SetWindowType(WindowType type)
 {
     m_window_type = type;
+}
+
+void DataProcessing::SetConvertToVolts(bool convert)
+{
+    m_convert_to_volts = convert;
 }
 
 void DataProcessing::MainLoop()
@@ -152,8 +158,9 @@ void DataProcessing::MainLoop()
 
             /* FIXME: Windowing in the time domain struct?  */
             /* FIXME: This can throw if data format is unsupported. */
-            processed_record->time_domain =
-                std::make_shared<TimeDomainRecord>(time_domain, m_afe, code_normalization);
+            processed_record->time_domain = std::make_shared<TimeDomainRecord>(time_domain, m_afe,
+                                                                               code_normalization,
+                                                                               m_convert_to_volts);
             processed_record->time_domain->estimated_trigger_frequency = estimated_trigger_frequency;
             processed_record->time_domain->estimated_throughput = estimated_throughput;
 

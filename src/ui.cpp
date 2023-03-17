@@ -1500,7 +1500,29 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
             PushMessage({DigitizerMessageId::SET_WINDOW_TYPE, WindowType::HANNING}, false);
             break;
         }
+
         window_idx_prev = window_idx;
+    }
+
+    static int units_idx = 0;
+    static int units_idx_prev = 0;
+    const char *units_labels[] = {"Volts", "Codes"};
+    ImGui::Combo("Vertical units", &units_idx, units_labels, IM_ARRAYSIZE(units_labels));
+
+    if (units_idx != units_idx_prev)
+    {
+        switch (units_idx)
+        {
+        case 0:
+            PushMessage({DigitizerMessageId::SET_CONVERT_TO_VOLTS, true}, false);
+            break;
+
+        case 1:
+            PushMessage({DigitizerMessageId::SET_CONVERT_TO_VOLTS, false}, false);
+            break;
+        }
+
+        units_idx_prev = units_idx;
     }
 
     ImGui::End();
@@ -1739,8 +1761,8 @@ void Ui::PlotTimeDomainSelected()
         }
 
         /* FIXME: A rough value to switch off persistent plotting when the
-                    window contains too many samples, heavily tanking the
-                    performance. */
+                  window contains too many samples, heavily tanking the
+                  performance. */
 
         bool is_persistence_performant =
             ImPlot::GetPlotLimits().Size().x / ui->record->time_domain->step < 2048;
@@ -2405,6 +2427,7 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                         }
                     };
 
+                    /* FIXME: Needs to live in the record class */
                     const std::string DIGITS = "8.2";
                     Row("Record number", {
                         fmt::format("{: >8d}", record->header.record_number)

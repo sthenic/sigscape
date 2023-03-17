@@ -47,7 +47,7 @@ struct TimeDomainRecord : public BaseRecord
 {
     TimeDomainRecord(const struct ADQGen4Record *raw,
                      const struct ADQAnalogFrontendParametersChannel &afe,
-                     double code_normalization)
+                     double code_normalization, bool convert = true)
         : BaseRecord(raw->header->record_length, "s", "V")
         , header(*raw->header)
         , estimated_trigger_frequency(0)
@@ -71,12 +71,12 @@ struct TimeDomainRecord : public BaseRecord
         {
         case ADQ_DATA_FORMAT_INT16:
             Transform(static_cast<const int16_t *>(raw->data), record_start, step,
-                      code_normalization, afe.input_range, afe.dc_offset, x, y);
+                      code_normalization, afe.input_range, afe.dc_offset, x, y, convert);
             break;
 
         case ADQ_DATA_FORMAT_INT32:
             Transform(static_cast<const int32_t *>(raw->data), record_start, step,
-                      code_normalization, afe.input_range, afe.dc_offset, x, y);
+                      code_normalization, afe.input_range, afe.dc_offset, x, y, convert);
             break;
 
         default:
@@ -93,13 +93,21 @@ struct TimeDomainRecord : public BaseRecord
     template <typename T>
     static void Transform(const T *data, double record_start, double sampling_period,
                           double code_normalization, double input_range, double dc_offset,
-                          std::vector<double> &x, std::vector<double> &y)
+                          std::vector<double> &x, std::vector<double> &y, bool convert)
     {
         for (size_t i = 0; i < x.size(); ++i)
         {
             x[i] = record_start + i * sampling_period;
-            y[i] = static_cast<double>(data[i]) / code_normalization * input_range - dc_offset;
-            y[i] /= 1e3; /* The value is in millivolts before we scale it. */
+
+            if (convert)
+            {
+                y[i] = static_cast<double>(data[i]) / code_normalization * input_range - dc_offset;
+                y[i] /= 1e3; /* The value is in millivolts before we scale it. */
+            }
+            else
+            {
+                y[i] = static_cast<double>(data[i]);
+            }
         }
     }
 

@@ -19,6 +19,7 @@ public:
 
     void SetAnalogFrontendParameters(const struct ADQAnalogFrontendParametersChannel &afe);
     void SetWindowType(WindowType type);
+    void SetConvertToVolts(bool convert);
 
     void MainLoop() override;
 
@@ -35,6 +36,7 @@ private:
     struct ADQConstantParameters m_constant;
     WindowCache m_window_cache;
     WindowType m_window_type;
+    bool m_convert_to_volts;
     size_t m_nof_skirt_bins;
     std::deque<std::shared_ptr<FrequencyDomainRecord>> m_waterfall;
     std::deque<std::shared_ptr<TimeDomainRecord>> m_persistence;

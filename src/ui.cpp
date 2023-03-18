@@ -2318,6 +2318,132 @@ void Ui::RenderHeaderButtons(ChannelUiState &ui)
     ImGui::SameLine();
 }
 
+
+std::vector<std::vector<std::string>> Ui::FormatTimeDomainMetrics(
+    const ProcessedRecord *processed_record)
+{
+    const std::string DIGITS = "8.2";
+    const auto &record = processed_record->time_domain;
+    const auto &metrics = processed_record->time_domain_metrics;
+    const double peak_to_peak = metrics.max - metrics.min;
+    const double peak_to_peak_range = record->range_max - record->range_min;
+
+    return {
+        {
+            "Record number",
+            fmt::format("{: >8d}", record->header.record_number),
+        },
+        {
+            "Maximum",
+            Format::TimeDomainY(metrics.max, DIGITS, false),
+            Format::TimeDomainY(record->range_max, DIGITS, false),
+        },
+        {
+            "Minimum",
+            Format::TimeDomainY(metrics.min, DIGITS, false),
+            Format::TimeDomainY(record->range_min, DIGITS, false),
+        },
+        {
+            "Peak-to-peak",
+            Format::TimeDomainY(peak_to_peak, DIGITS, false),
+            Format::TimeDomainY(peak_to_peak_range, DIGITS, false),
+            fmt::format("{:" + DIGITS + "f} %", 100.0 * peak_to_peak / peak_to_peak_range),
+        },
+        {
+            "Mean",
+            Format::TimeDomainY(metrics.mean, DIGITS, false),
+            Format::TimeDomainY(record->range_mid, DIGITS, false),
+        },
+        {
+            "RMS",
+            Format::TimeDomainY(metrics.rms, DIGITS, false),
+        },
+        /* TODO: Hide these behind some 'show extra' toggle? */
+        {
+            "Sampling rate",
+            Format::FrequencyDomainX(record->sampling_frequency, DIGITS, false),
+        },
+        {
+            "Sampling period",
+            Format::TimeDomainX(record->step, DIGITS, false),
+        },
+        {
+            "Trigger rate",
+            Format::FrequencyDomainX(record->estimated_trigger_frequency, DIGITS, false),
+        },
+        {
+            "Throughput",
+            Format::Metric(record->estimated_throughput, "{: " + DIGITS + "f} {}B/s", 1e6),
+        },
+    };
+}
+
+std::vector<std::vector<std::string>> Ui::FormatFrequencyDomainMetrics(
+    const ProcessedRecord *processed_record)
+{
+    const auto &record = processed_record->frequency_domain;
+    const auto &metrics = processed_record->frequency_domain_metrics;
+
+    return {
+        {
+            "SNR",
+            Format::FrequencyDomainDeltaY(metrics.snr),
+            "Fund.",
+            Format::FrequencyDomainX(metrics.fundamental.first),
+            Format::FrequencyDomainY(metrics.fundamental.second),
+        },
+        {
+            "SINAD",
+            Format::FrequencyDomainDeltaY(metrics.sinad),
+            "Spur",
+            Format::FrequencyDomainX(metrics.spur.first),
+            Format::FrequencyDomainY(metrics.spur.second),
+        },
+        {
+            "ENOB",
+            fmt::format("{: 7.2f} bits", metrics.enob) + "  ",
+            "HD2",
+            Format::FrequencyDomainX(metrics.harmonics[0].first),
+            Format::FrequencyDomainY(metrics.harmonics[0].second),
+        },
+        {
+            "THD",
+            Format::FrequencyDomainDeltaY(metrics.thd),
+            "HD3",
+            Format::FrequencyDomainX(metrics.harmonics[1].first),
+            Format::FrequencyDomainY(metrics.harmonics[1].second),
+        },
+        {
+            "SFDR",
+            Format::FrequencyDomainY(metrics.sfdr_dbfs),
+            "HD4",
+            Format::FrequencyDomainX(metrics.harmonics[2].first),
+            Format::FrequencyDomainY(metrics.harmonics[2].second),
+        },
+        {
+            "Noise",
+            Format::FrequencyDomainY(metrics.noise),
+            "HD5",
+            Format::FrequencyDomainX(metrics.harmonics[3].first),
+            Format::FrequencyDomainY(metrics.harmonics[3].second),
+        },
+        {
+            "Size",
+            fmt::format("{:7} pts", (record->x.size() - 1) * 2),
+            "TIx",
+            Format::FrequencyDomainX(metrics.gain_spur.first),
+            Format::FrequencyDomainY(metrics.gain_spur.second),
+        },
+        {
+            "Bin",
+            Format::FrequencyDomainX(record->step),
+            "TIo",
+            Format::FrequencyDomainX(metrics.offset_spur.first),
+            Format::FrequencyDomainY(metrics.offset_spur.second),
+        },
+    };
+}
+
 void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
 {
     /* FIXME: Move into functions? */
@@ -2398,9 +2524,6 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                     ImGui::PushStyleColor(ImGuiCol_Text, text_color);
                 }
 
-                const auto &record = ui.record->time_domain;
-                const auto &metrics = ui.record->time_domain_metrics;
-
                 ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
                                         ImGuiTableFlags_BordersInnerV;
 
@@ -2415,67 +2538,15 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                     ImGui::TableSetupColumn("Extra0", ImGuiTableColumnFlags_WidthFixed);
                     ImGui::TableSetupColumn("Extra1", ImGuiTableColumnFlags_WidthFixed);
 
-                    auto Row = [](const std::string &label, const std::vector<std::string> &values)
+                    for (const auto &row : FormatTimeDomainMetrics(ui.record.get()))
                     {
                         ImGui::TableNextRow();
-                        ImGui::TableSetColumnIndex(0);
-                        ImGui::Text(label);
-                        for (const auto &value : values)
+                        for (const auto &column : row)
                         {
                             ImGui::TableNextColumn();
-                            ImGui::Text(value);
+                            ImGui::Text(column);
                         }
-                    };
-
-                    /* FIXME: Needs to live in the record class */
-                    const std::string DIGITS = "8.2";
-                    Row("Record number", {
-                        fmt::format("{: >8d}", record->header.record_number)
-                    });
-
-                    Row("Maximum", {
-                        Format::TimeDomainY(metrics.max, DIGITS, false),
-                        Format::TimeDomainY(record->range_max, DIGITS, false)
-                    });
-
-                    Row("Minimum", {
-                        Format::TimeDomainY(metrics.min, DIGITS, false),
-                        Format::TimeDomainY(record->range_min, DIGITS, false)
-                    });
-
-                    const double peak_to_peak = metrics.max - metrics.min;
-                    const double peak_to_peak_range = record->range_max - record->range_min;
-                    Row("Peak-to-peak", {
-                        Format::TimeDomainY(peak_to_peak, DIGITS, false),
-                        Format::TimeDomainY(peak_to_peak_range, DIGITS, false),
-                        fmt::format("{:" + DIGITS + "f} %", 100.0 * peak_to_peak / peak_to_peak_range)
-                    });
-
-                    Row("Mean", {
-                        Format::TimeDomainY(metrics.mean, DIGITS, false),
-                        Format::TimeDomainY(record->range_mid, DIGITS, false)
-                    });
-
-                    Row("RMS", {
-                        Format::TimeDomainY(metrics.rms, DIGITS, false)
-                    });
-
-                    /* FIXME: Hide these behind some 'show extra' toggle. */
-                    Row("Sampling rate", {
-                        Format::FrequencyDomainX(record->sampling_frequency, DIGITS, false)
-                    });
-
-                    Row("Sampling period", {
-                        Format::TimeDomainX(record->step, DIGITS, false)
-                    });
-
-                    Row("Trigger rate", {
-                        Format::FrequencyDomainX(record->estimated_trigger_frequency, DIGITS, false)
-                    });
-
-                    Row("Throughput", {
-                        Format::Metric(record->estimated_throughput, "{: " + DIGITS + "f} {}B/s", 1e6)
-                    });
+                    }
 
                     ImGui::EndTable();
                 }
@@ -2560,10 +2631,7 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
 
             if (node_open)
             {
-                const auto &record = ui.record->frequency_domain;
-                const auto &metrics = ui.record->frequency_domain_metrics;
-
-                if (metrics.overlap)
+                if (ui.record->frequency_domain_metrics.overlap)
                 {
                     ImGui::PushStyleColor(ImGuiCol_Text, COLOR_ORANGE);
                     ImGui::SameLine();
@@ -2577,104 +2645,39 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
                     ImGui::PushStyleColor(ImGuiCol_Text, text_color);
                 }
 
-                ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings;
-                if (ImGui::BeginTable("Metrics", 6, flags))
+                /* Increase the horizontal cell padding. */
+                ImGui::PushStyleVar(ImGuiStyleVar_CellPadding,
+                                    ImGui::GetStyle().CellPadding + ImVec2(3.0, 0.0));
+
+                ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV |
+                                        ImGuiTableFlags_NoSavedSettings;
+
+                if (ImGui::BeginTable("Metrics", 5, flags))
                 {
-                    const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
-                    const auto METRIC_FLAGS =
-                        ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoHide;
-                    ImGui::TableSetupColumn("Metric0", METRIC_FLAGS, 6.0f * TEXT_BASE_WIDTH);
+                    ImGui::TableSetupColumn("Metric0", ImGuiTableColumnFlags_WidthFixed);
                     ImGui::TableSetupColumn("Value0", ImGuiTableColumnFlags_WidthFixed);
-                    ImGui::TableSetupColumn("Gap", ImGuiTableColumnFlags_WidthFixed, 2.0f * TEXT_BASE_WIDTH);
-                    ImGui::TableSetupColumn("Metric1", METRIC_FLAGS, 4.0f * TEXT_BASE_WIDTH);
+                    ImGui::TableSetupColumn("Metric1", ImGuiTableColumnFlags_WidthFixed);
                     ImGui::TableSetupColumn("Value1", ImGuiTableColumnFlags_WidthFixed);
                     ImGui::TableSetupColumn("Value2", ImGuiTableColumnFlags_WidthFixed);
 
-                    auto MetricRow = [](const std::string (&contents)[5])
+                    for (const auto &row : FormatFrequencyDomainMetrics(ui.record.get()))
                     {
-                        ImGui::TableNextColumn();
-                        ImGui::Text(contents[0]);
-                        ImGui::TableNextColumn();
-                        ImGui::Text(contents[1]);
-                        ImGui::TableNextColumn();
-                        ImGui::TableNextColumn();
-                        ImGui::Text(contents[2]);
-                        ImGui::TableNextColumn();
-                        ImGui::Text(contents[3]);
-                        ImGui::TableNextColumn();
-                        ImGui::Text(contents[4]);
-                    };
-
-                    MetricRow({
-                        "SNR",
-                        Format::FrequencyDomainDeltaY(metrics.snr),
-                        "Fund.",
-                        Format::FrequencyDomainX(metrics.fundamental.first),
-                        Format::FrequencyDomainY(metrics.fundamental.second),
-                    });
-
-                    MetricRow({
-                        "SINAD",
-                        Format::FrequencyDomainDeltaY(metrics.sinad),
-                        "Spur",
-                        Format::FrequencyDomainX(metrics.spur.first),
-                        Format::FrequencyDomainY(metrics.spur.second),
-                    });
-
-                    MetricRow({
-                        "ENOB",
-                        fmt::format("{: 7.2f} bits", metrics.enob),
-                        "HD2",
-                        Format::FrequencyDomainX(metrics.harmonics[0].first),
-                        Format::FrequencyDomainY(metrics.harmonics[0].second),
-                    });
-
-                    MetricRow({
-                        "THD",
-                        Format::FrequencyDomainDeltaY(metrics.thd),
-                        "HD3",
-                        Format::FrequencyDomainX(metrics.harmonics[1].first),
-                        Format::FrequencyDomainY(metrics.harmonics[1].second),
-                    });
-
-                    MetricRow({
-                        "SFDR",
-                        Format::FrequencyDomainY(metrics.sfdr_dbfs),
-                        "HD4",
-                        Format::FrequencyDomainX(metrics.harmonics[2].first),
-                        Format::FrequencyDomainY(metrics.harmonics[2].second),
-                    });
-
-                    MetricRow({
-                        "Noise",
-                        Format::FrequencyDomainY(metrics.noise),
-                        "HD5",
-                        Format::FrequencyDomainX(metrics.harmonics[3].first),
-                        Format::FrequencyDomainY(metrics.harmonics[3].second),
-                    });
-
-                    MetricRow({
-                        "Size",
-                        fmt::format("{:7} pts", (record->x.size() - 1) * 2),
-                        "TIx",
-                        Format::FrequencyDomainX(metrics.gain_spur.first),
-                        Format::FrequencyDomainY(metrics.gain_spur.second),
-                    });
-
-                    MetricRow({
-                        "Bin",
-                        Format::FrequencyDomainX(record->step),
-                        "TIo",
-                        Format::FrequencyDomainX(metrics.offset_spur.first),
-                        Format::FrequencyDomainY(metrics.offset_spur.second),
-                    });
+                        ImGui::TableNextRow();
+                        for (const auto &column : row)
+                        {
+                            ImGui::TableNextColumn();
+                            ImGui::Text(column);
+                        }
+                    }
 
                     ImGui::EndTable();
                 }
 
+                ImGui::PopStyleVar();
+
                 if ((ui.is_muted || IsAnySolo()) && !ui.is_solo)
                     ImGui::PopStyleColor();
-                if (metrics.overlap)
+                if (ui.record->frequency_domain_metrics.overlap)
                     ImGui::PopStyleColor();
 
                 ImGui::TreePop();

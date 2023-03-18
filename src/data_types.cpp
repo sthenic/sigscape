@@ -27,12 +27,14 @@ std::string Value::FormatDelta(double value, bool show_sign) const
 
 std::string Value::Format(double value, const std::string &precision, bool show_sign) const
 {
-    return Format::Metric(value, Format::String(precision, unit, show_sign), highest_prefix);
+    return Format::Metric(value, Format::String(precision, unit, show_sign), highest_prefix,
+                          lowest_prefix);
 }
 
 std::string Value::FormatDelta(double value, const std::string &precision, bool show_sign) const
 {
-    return Format::Metric(value, Format::String(precision, delta_unit, show_sign), highest_prefix);
+    return Format::Metric(value, Format::String(precision, delta_unit, show_sign), highest_prefix,
+                          lowest_prefix);
 }
 
 BaseRecord::~BaseRecord()

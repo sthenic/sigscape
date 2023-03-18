@@ -3,7 +3,8 @@
 
 #include <vector>
 
-std::string Format::Metric(double value, const std::string &format, double highest_prefix)
+std::string Format::Metric(double value, const std::string &format, double highest_prefix,
+                           double lowest_prefix)
 {
     static const std::vector<std::pair<double, const char *>> LIMITS = {
         {1e12, "T"},
@@ -24,16 +25,19 @@ std::string Format::Metric(double value, const std::string &format, double highe
        larger than the limit. If it is, we pick the corresponding prefix. If
        we've exhausted the search, we pick the last entry (smallest prefix). */
 
-    for (const auto &limit : LIMITS)
+    for (size_t i = 0; i < LIMITS.size(); ++i)
     {
-        if (limit.first > highest_prefix)
+        if (LIMITS[i].first > highest_prefix)
             continue;
 
-        if (std::fabs(value) >= limit.first)
-            return fmt::format(format, value / limit.first, limit.second);
+        bool next_is_not_allowed = i < LIMITS.size() - 1 && LIMITS[i + 1].first < lowest_prefix;
+        bool is_larger_than_limit = std::fabs(value) >= LIMITS[i].first;
+
+        if (next_is_not_allowed || is_larger_than_limit)
+            return fmt::format(format, value / LIMITS[i].first, LIMITS[i].second);
     }
 
-    return fmt::format(format, value / LIMITS.back().first, LIMITS.back().second);
+    return fmt::format(format, value / LIMITS[0].first, LIMITS[0].second);
 }
 
 /* Static member function to parametrize the construction of the fmt::format string. */

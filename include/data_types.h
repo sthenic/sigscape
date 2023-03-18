@@ -25,21 +25,19 @@ struct Value
 {
     Value() = default;
     Value(double value, const std::string &unit, const std::string &delta_unit,
-          const std::string &precision, double highest_prefix = 1e9)
+          const std::string &precision, double highest_prefix = 1e12,
+          double lowest_prefix = 1e-12)
         : value(value)
         , highest_prefix(highest_prefix)
+        , lowest_prefix(lowest_prefix)
         , precision(precision)
         , unit(unit)
         , delta_unit(delta_unit)
     {}
 
     Value(double value, const std::string &unit, const std::string &precision,
-          double highest_prefix = 1e9)
-        : value(value)
-        , highest_prefix(highest_prefix)
-        , precision(precision)
-        , unit(unit)
-        , delta_unit(unit)
+          double highest_prefix = 1e12, double lowest_prefix = 1e-12)
+        : Value(value, unit, unit, precision, highest_prefix, lowest_prefix)
     {}
 
     /* Formatter returning a string for UI presentation. */
@@ -58,6 +56,7 @@ struct Value
 
     double value;
     double highest_prefix;
+    double lowest_prefix;
     std::string precision;
     std::string unit;
     std::string delta_unit;
@@ -69,7 +68,8 @@ struct BaseRecord
     BaseRecord(size_t count, const std::string &x_unit, const std::string &y_unit,
                const std::string &x_delta_unit, const std::string &y_delta_unit,
                const std::string &x_precision, const std::string &y_precision,
-               double x_highest_prefix, double y_highest_prefix)
+               double x_highest_prefix, double y_highest_prefix,
+               double x_lowest_prefix, double y_lowest_prefix)
         : x(count)
         , y(count)
         , x_unit(x_unit)
@@ -80,14 +80,17 @@ struct BaseRecord
         , y_precision(y_precision)
         , x_highest_prefix(x_highest_prefix)
         , y_highest_prefix(y_highest_prefix)
+        , x_lowest_prefix(x_lowest_prefix)
+        , y_lowest_prefix(y_lowest_prefix)
         , step(0.0)
     {}
 
     BaseRecord(size_t count, const std::string &x_unit, const std::string &y_unit,
                const std::string &x_precision, const std::string &y_precision,
-               double x_highest_prefix, double y_highest_prefix)
+               double x_highest_prefix, double y_highest_prefix, double x_lowest_prefix,
+               double y_lowest_prefix)
         : BaseRecord(count, x_unit, y_unit, x_unit, y_unit, x_precision, y_precision,
-                     x_highest_prefix, y_highest_prefix)
+                     x_highest_prefix, y_highest_prefix, x_lowest_prefix, y_lowest_prefix)
     {}
 
     virtual ~BaseRecord() = 0;
@@ -95,13 +98,13 @@ struct BaseRecord
     /* Object-bound constructor of a value in the x-dimension. */
     Value ValueX(double value) const
     {
-        return Value(value, x_unit, x_delta_unit, x_precision, x_highest_prefix);
+        return Value(value, x_unit, x_delta_unit, x_precision, x_highest_prefix, x_lowest_prefix);
     }
 
     /* Object-bound constructor of a value in the y-dimension. */
     Value ValueY(double value) const
     {
-        return Value(value, y_unit, y_delta_unit, y_precision, y_highest_prefix);
+        return Value(value, y_unit, y_delta_unit, y_precision, y_highest_prefix, y_lowest_prefix);
     }
 
     /* Convenience functions to construct a homogenously formatted value from one of two dimensions. */
@@ -120,6 +123,8 @@ struct BaseRecord
     std::string y_precision;
     double x_highest_prefix;
     double y_highest_prefix;
+    double x_lowest_prefix;
+    double y_lowest_prefix;
     double step;
 };
 
@@ -135,7 +140,9 @@ struct TimeDomainRecord : public BaseRecord
                      convert ? "8.2" : "8.0",
                      convert ? "8.2" : "8.0",
                      convert ? 1e-3 : 1.0,
-                     convert ? 1e-3 : 1.0)
+                     convert ? 1e-3 : 1.0,
+                     convert ? 1e-12 : 1.0,
+                     convert ? 1e-12 : 1.0)
         , header(*raw->header)
         , estimated_trigger_frequency(0.0, "Hz", "8.2", 1e6)
         , estimated_throughput(0.0, "B/s", "8.2", 1e6)
@@ -240,7 +247,7 @@ struct TimeDomainRecord : public BaseRecord
 struct FrequencyDomainRecord : public BaseRecord
 {
     FrequencyDomainRecord(size_t count)
-        : BaseRecord(count, "Hz", "dBFS", "Hz", "dB", "7.2", "7.2", 1e6, 1.0)
+        : BaseRecord(count, "Hz", "dBFS", "Hz", "dB", "7.2", "7.2", 1e6, 1.0, 1.0, 1.0)
         , fundamental{}
         , spur{}
         , harmonics{}
@@ -372,7 +379,7 @@ struct ProcessedRecord
 struct SensorRecord : public BaseRecord
 {
     SensorRecord()
-        : BaseRecord(0, "s", "N/A", "8.2", "8.2", 1e9, 1e9)
+        : BaseRecord(0, "s", "N/A", "8.2", "8.2", 1e12, 1e12, 1e-12, 1e-12)
         , status(-1)
         , id()
         , group_id()
@@ -380,7 +387,7 @@ struct SensorRecord : public BaseRecord
     {}
 
     SensorRecord(uint32_t id, uint32_t group_id, const std::string &y_unit)
-        : BaseRecord(0, "s", y_unit, "8.2", "8.2", 1e9, 1e9)
+        : BaseRecord(0, "s", y_unit, "8.2", "8.2", 1.0, 1e12, 1e-12, 1e-12)
         , status(-1)
         , id(id)
         , group_id(group_id)

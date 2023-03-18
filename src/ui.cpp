@@ -1753,9 +1753,22 @@ void Ui::PlotTimeDomainSelected()
 {
     /* We need a (globally) unique id for each marker. */
     int marker_id = 0;
+    bool first = true;
 
     for (auto &[i, ch, ui] : FilterUiStates())
     {
+        /* One-shot configuration to sample units (assuming to be equal for all
+           records in this domain) and to set up the plot axes. */
+        if (first)
+        {
+            const auto &record = ui->record->time_domain;
+            ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric, record->x_unit.data());
+            ImPlot::SetupAxisFormat(ImAxis_Y1, Format::Metric, record->y_unit.data());
+            m_time_domain_units_per_division.x_unit = record->x_delta_unit;
+            m_time_domain_units_per_division.y_unit = record->y_delta_unit;
+            first = false;
+        }
+
         if (ui->should_auto_fit_time_domain)
         {
             ImPlot::SetNextAxesToFit();
@@ -1829,9 +1842,9 @@ void Ui::PlotTimeDomainSelected()
                 ImPlot::DragPoint(0, &marker.x.value, &marker.y.value, marker.color,
                                   3.0f + marker.thickness, ImPlotDragToolFlags_NoInputs);
                 DrawMarkerX(marker_id++, &marker.x.value, marker.color, marker.thickness,
-                            marker.x.Format(".2"));
+                            marker.x.Format());
                 DrawMarkerY(marker_id++, &marker.y.value, marker.color, marker.thickness,
-                            marker.y.Format("8.2"), ImPlotDragToolFlags_NoInputs);
+                            marker.y.Format(), ImPlotDragToolFlags_NoInputs);
 
                 ImPlot::Annotation(marker.x.value, ImPlot::GetPlotLimits().Y.Max,
                                    ImVec4(0, 0, 0, 0), ImVec2(10, 10), false, "T%zu", id);
@@ -1945,16 +1958,17 @@ void Ui::RenderChannelPlot()
     if (ImPlot::BeginPlot("Channels##Plot", ImVec2(-1, -1), ImPlotFlags_NoTitle))
     {
         ImPlot::SetupLegend(ImPlotLocation_NorthEast, ImPlotLegendFlags_Sort);
-        ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric, (void *)"s");
-        ImPlot::SetupAxisFormat(ImAxis_Y1, Format::Metric, (void *)"V");
         PlotTimeDomainSelected();
         RemoveDoubleClickedMarkers(m_time_domain_markers);
 
-        const auto str =
-            fmt::format("{}/div\n{}/div",
-                        Format::Metric(m_time_domain_units_per_division.y, "{:6.2f} {}V", 1),
-                        Format::Metric(m_time_domain_units_per_division.x, "{:6.2f} {}s", 1));
-        RenderUnitsPerDivision(str);
+        /* FIXME: Perhaps `Value` but custom precision needed. */
+        // const auto str = fmt::format(
+        //     "{}/div\n{}/div",
+        //     Format::Metric(m_time_domain_units_per_division.y,
+        //                    "{:6.2f} {}" + m_time_domain_units_per_division.y_unit),
+        //     Format::Metric(m_time_domain_units_per_division.x,
+        //                    "{:6.2f} {}" + m_time_domain_units_per_division.x_unit));
+        RenderUnitsPerDivision(m_time_domain_units_per_division.Format());
 
         ImPlot::EndPlot();
 
@@ -2089,7 +2103,7 @@ void Ui::Annotate(const std::tuple<Value, Value> &point, const std::string &labe
              jitter but can introduce even larger jumps for noisy data. */
     const auto &[x, y] = point;
     ImPlot::Annotation(x.value, y.value, ImVec4(0, 0, 0, 0), ImVec2(0, -5), false, "%s",
-                       y.Format(".2").c_str());
+                       y.Format(".2").c_str()); /* FIXME: */
     ImPlot::Annotation(x.value, y.value, ImVec4(0, 0, 0, 0),
                        ImVec2(0, -5 - ImGui::GetTextLineHeight()), false, "%s",
                        x.Format(".2").c_str());
@@ -2106,9 +2120,21 @@ void Ui::PlotFourierTransformSelected()
 {
     /* We need a (globally) unique id for each marker. */
     int marker_id = 0;
+    bool first = true;
 
     for (auto &[i, ch, ui] : FilterUiStates())
     {
+        /* One-shot configuration to sample units (assuming to be equal for all
+           records in this domain) and to set up the plot axes. */
+        if (first)
+        {
+            const auto &record = ui->record->frequency_domain;
+            ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric, record->x_unit.data());
+            m_frequency_domain_units_per_division.x_unit = record->x_delta_unit;
+            m_frequency_domain_units_per_division.y_unit = record->y_delta_unit;
+            first = false;
+        }
+
         if (ui->should_auto_fit_frequency_domain)
         {
             ImPlot::SetNextAxesToFit();
@@ -2174,12 +2200,12 @@ void Ui::PlotFourierTransformSelected()
 
                 SnapX(marker.x.value, ui->record->frequency_domain.get(), marker.x.value, marker.y.value);
 
-                ImPlot::DragPoint(0, &marker.x.value, &marker.y.value, marker.color, 3.0f + marker.thickness,
-                                  ImPlotDragToolFlags_NoInputs);
+                ImPlot::DragPoint(0, &marker.x.value, &marker.y.value, marker.color,
+                                  3.0f + marker.thickness, ImPlotDragToolFlags_NoInputs);
                 DrawMarkerX(marker_id++, &marker.x.value, marker.color, marker.thickness,
-                            marker.x.Format(".2"));
+                            marker.x.Format());
                 DrawMarkerY(marker_id++, &marker.y.value, marker.color, marker.thickness,
-                            marker.y.Format("7.2"), ImPlotDragToolFlags_NoInputs);
+                            marker.y.Format(), ImPlotDragToolFlags_NoInputs);
 
                 ImPlot::Annotation(marker.x.value, ImPlot::GetPlotLimits().Y.Max,
                                    ImVec4(0, 0, 0, 0), ImVec2(10, 10), false, "F%zu", id);
@@ -2202,15 +2228,9 @@ void Ui::RenderFourierTransformPlot()
         ImPlot::SetupLegend(ImPlotLocation_NorthEast, ImPlotLegendFlags_Sort);
         ImPlot::SetupAxisLimits(ImAxis_Y1, -100.0, 10.0);
         ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, 1e9);
-        ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric, (void *)"Hz");
         PlotFourierTransformSelected();
         RemoveDoubleClickedMarkers(m_frequency_domain_markers);
-
-        const auto str =
-            fmt::format("{}/div\n{}/div",
-                        Format::Metric(m_frequency_domain_units_per_division.y, "{:6.2f} {}dB"),
-                        Format::Metric(m_frequency_domain_units_per_division.x, "{:6.2f} {}Hz"));
-        RenderUnitsPerDivision(str);
+        RenderUnitsPerDivision(m_frequency_domain_units_per_division.Format());
 
         ImPlot::EndPlot();
 
@@ -2229,6 +2249,7 @@ void Ui::PlotWaterfallSelected(double &scale_min, double &scale_max)
     {
         /* TODO: Y-axis scale (probably time delta?) */
         const auto &[i, ch, ui] = filtered_ui.back();
+        ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric, ui->record->frequency_domain->x_unit.data());
 
         if (ui->should_auto_fit_waterfall)
         {
@@ -2265,7 +2286,6 @@ void Ui::RenderWaterfallPlot()
                                          ImPlotAxisFlags_NoTickLabels |
                                          ImPlotAxisFlags_NoTickMarks;
         ImPlot::SetupAxes(NULL, NULL, X1_FLAGS, Y1_FLAGS);
-        ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric, (void *)"Hz");
         PlotWaterfallSelected(scale_min, scale_max);
         ImPlot::EndPlot();
     }

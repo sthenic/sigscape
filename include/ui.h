@@ -136,8 +136,19 @@ private:
 
     struct UnitsPerDivision
     {
+        std::string Format()
+        {
+            return fmt::format(
+                "{}/div\n{}/div",
+                Format::Metric(y, "{:6.2f} {}" + y_unit),
+                Format::Metric(x, "{:6.2f} {}" + x_unit)
+            );
+        }
+
         double x;
         double y;
+        std::string x_unit;
+        std::string y_unit;
     };
 
     UnitsPerDivision m_time_domain_units_per_division;

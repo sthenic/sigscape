@@ -42,19 +42,14 @@ struct Value
         , delta_unit(unit)
     {}
 
+    /* Formatter returning a string for UI presentation. */
+    std::string Format(bool show_sign = false) const;
+
     /* Format another value as if it had the properties of this one. This is
        useful when needing to format a derived value, e.g. the result of a
        calculation involving this value. */
-    /* FIXME: Include the precision? Good idea? */
-    // std::string Format(double other, const std::string &precision, bool show_sign = false) const;
-    // std::string FormatDelta(double other, const std::string &precision, bool show_sign = false) const;
-
     std::string Format(double other, bool show_sign = false) const;
     std::string FormatDelta(double other, bool show_sign = false) const;
-
-    /* Formatter returning a string for UI presentation. */
-    // std::string Format(const std::string &precision, bool show_sign = false) const;
-    std::string Format(bool show_sign = false) const;
 
     double value;
     double highest_prefix;
@@ -131,7 +126,7 @@ struct TimeDomainRecord : public BaseRecord
                      double code_normalization, bool convert = true)
         : BaseRecord(raw->header->record_length,
                      convert ? "s" : "S",
-                     convert ? "V" : "Codes",
+                     convert ? "V" : "C",
                      convert ? "8.2" : "6.0",
                      convert ? "8.2" : "6.0",
                      convert ? 1e-3 : 1.0,

@@ -888,7 +888,7 @@ void CenteredTextInCell(const std::string &str)
     ImGui::Text(str);
 }
 
-void Ui::MarkerTree(Markers &markers, Format::Formatter FormatX, Format::Formatter FormatY)
+void Ui::MarkerTree(Markers &markers)
 {
     if (markers.empty())
         return;
@@ -969,8 +969,9 @@ void Ui::MarkerTree(Markers &markers, Format::Formatter FormatX, Format::Formatt
 
         ImGui::SameLine();
         const float LINE_START = ImGui::GetCursorPosX();
-        ImGui::Text(fmt::format("{}{} {}, {}", markers.prefix, id, FormatX(marker.x, false),
-                                FormatY(marker.y, false)));
+        /* FIXME: "DIGITS" */
+        ImGui::Text(fmt::format("{}{} {}, {}", markers.prefix, id, marker.x.Format("8.2"),
+                                marker.y.Format("8.2")));
 
         const auto &ui = m_digitizers[marker.digitizer].ui.channels[marker.channel];
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 30.0f -
@@ -997,16 +998,17 @@ void Ui::MarkerTree(Markers &markers, Format::Formatter FormatX, Format::Formatt
                     for (auto id : marker.deltas)
                     {
                         const auto &delta_marker = markers.at(id);
-                        const double delta_x = delta_marker.x - marker.x;
-                        const double delta_y = delta_marker.y - marker.y;
+                        const double delta_x = delta_marker.x.value - marker.x.value;
+                        const double delta_y = delta_marker.y.value - marker.y.value;
 
                         ImGui::TableNextRow();
                         ImGui::TableSetColumnIndex(0);
                         ImGui::SetCursorPosX(LINE_START - ImGui::CalcTextSize("d").x);
                         ImGui::Text(fmt::format("d{}{}", markers.prefix, delta_marker.id));
                         ImGui::TableSetColumnIndex(1);
-                        ImGui::Text(
-                            fmt::format(" {}, {}", FormatX(delta_x, true), FormatY(delta_y, true)));
+                        ImGui::Text(fmt::format(" {}, {}",
+                                                marker.x.FormatDelta(delta_x, "8.2", true),
+                                                marker.y.FormatDelta(delta_y, "8.2", true)));
                     }
 
                     ImGui::EndTable();
@@ -1043,8 +1045,8 @@ void Ui::RenderMarkers()
         m_frequency_domain_markers.clear();
     }
 
-    MarkerTree(m_time_domain_markers, Format::TimeDomainX, Format::TimeDomainY);
-    MarkerTree(m_frequency_domain_markers, Format::FrequencyDomainX, Format::FrequencyDomainY);
+    MarkerTree(m_time_domain_markers);
+    MarkerTree(m_frequency_domain_markers);
 }
 
 void Ui::RenderMemory()
@@ -1370,11 +1372,11 @@ void Ui::RenderStaticInformation()
             };
 
             ChannelRow("Base sampling rate", [&](int i) -> std::string {
-                return Format::FrequencyDomainX(ui->constant.channel[i].base_sampling_rate, "7.2", false);
+                return Format::Metric(ui->constant.channel[i].base_sampling_rate, "{:7.2f} {}Hz", 1e6);
             });
 
             ChannelRow("Input range", [&](int i) -> std::string {
-                return Format::TimeDomainY(ui->constant.channel[i].input_range[0] / 1e3, "7.2", false);
+                return Format::Metric(ui->constant.channel[i].input_range[0] / 1e3, "{:7.2f} {}V", 1e-3);
             });
 
             ChannelRow("ADC cores", [&](int i) -> std::string {
@@ -1822,17 +1824,17 @@ void Ui::PlotTimeDomainSelected()
                 if (marker.digitizer != i || marker.channel != ch)
                     continue;
 
-                SnapX(marker.x, ui->record->time_domain.get(), marker.x, marker.y);
+                SnapX(marker.x.value, ui->record->time_domain.get(), marker.x.value, marker.y.value);
 
-                ImPlot::DragPoint(0, &marker.x, &marker.y, marker.color, 3.0f + marker.thickness,
-                                  ImPlotDragToolFlags_NoInputs);
-                DrawMarkerX(marker_id++, &marker.x, marker.color, marker.thickness,
-                            Format::Metric(marker.x, "{:g} {}s", 1e-3));
-                DrawMarkerY(marker_id++, &marker.y, marker.color, marker.thickness,
-                            Format::TimeDomainY(marker.y), ImPlotDragToolFlags_NoInputs);
+                ImPlot::DragPoint(0, &marker.x.value, &marker.y.value, marker.color,
+                                  3.0f + marker.thickness, ImPlotDragToolFlags_NoInputs);
+                DrawMarkerX(marker_id++, &marker.x.value, marker.color, marker.thickness,
+                            marker.x.Format(".2"));
+                DrawMarkerY(marker_id++, &marker.y.value, marker.color, marker.thickness,
+                            marker.y.Format("8.2"), ImPlotDragToolFlags_NoInputs);
 
-                ImPlot::Annotation(marker.x, ImPlot::GetPlotLimits().Y.Max, ImVec4(0, 0, 0, 0),
-                                   ImVec2(10, 10), false, "T%zu", id);
+                ImPlot::Annotation(marker.x.value, ImPlot::GetPlotLimits().Y.Max,
+                                   ImVec4(0, 0, 0, 0), ImVec2(10, 10), false, "T%zu", id);
             }
 
             if (ui->is_selected)
@@ -1867,8 +1869,8 @@ void Ui::MaybeAddMarker(size_t digitizer, size_t channel, const BaseRecord *reco
         /* FIXME: Probably need to consider the initial x/y-values to be
                   special. Otherwise, the marker can seem to wander a bit if the
                   signal is noisy. */
-
-        markers.insert(digitizer, channel, index, record->x[index], record->y[index]);
+        markers.insert(digitizer, channel, index, record->ValueX(record->x[index]),
+                       record->ValueY(record->y[index]));
         markers.is_adding = true;
         markers.is_dragging = false;
     }
@@ -1881,11 +1883,12 @@ void Ui::MaybeAddMarker(size_t digitizer, size_t channel, const BaseRecord *reco
             size_t index;
             GetClosestSampleIndex(ImPlot::GetPlotMousePos().x, ImPlot::GetPlotMousePos().y, record,
                                   ImPlot::GetPlotLimits(), index);
-            markers.insert(digitizer, channel, index, record->x[index], record->y[index], true);
+            markers.insert(digitizer, channel, index, record->ValueX(record->x[index]),
+                           record->ValueY(record->y[index]), true);
         }
 
         markers.is_dragging = true;
-        markers.last().x = ImPlot::GetPlotMousePos().x;
+        markers.last().x.value = ImPlot::GetPlotMousePos().x;
     }
 
     if (markers.is_adding && ImGui::IsMouseReleased(0))
@@ -1901,7 +1904,7 @@ bool Ui::IsHoveredAndDoubleClicked(const Marker &marker)
        while inside these limits, we remove the marker. This needs to be called
        within a current plot that also contains the provided marker. */
 
-    const auto lmarker = ImPlot::PlotToPixels(marker.x, marker.y);
+    const auto lmarker = ImPlot::PlotToPixels(marker.x.value, marker.y.value);
     const auto limits = ImPlot::GetPlotLimits();
     const auto upper_left = ImPlot::PlotToPixels(limits.X.Min, limits.Y.Max);
     const auto lower_right = ImPlot::PlotToPixels(limits.X.Max, limits.Y.Min);
@@ -2078,22 +2081,24 @@ void Ui::RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size)
     ImGui::End();
 }
 
-void Ui::Annotate(const std::pair<double, double> &point, const std::string &label)
+void Ui::Annotate(const std::tuple<Value, Value> &point, const std::string &label)
 {
     /* TODO: We need some form of low-pass filter for the y-coordinates. For
              high update rates (~60 Hz) the annotations jitter quite a lot. Just
              naively rounding them to the nearest integer remove some of the
              jitter but can introduce even larger jumps for noisy data. */
-    ImPlot::Annotation(point.first, point.second, ImVec4(0, 0, 0, 0),
-                       ImVec2(0, -5), false, "%.2f dBFS", point.second);
-    ImPlot::Annotation(point.first, point.second, ImVec4(0, 0, 0, 0),
-                       ImVec2(0, -5 - ImGui::GetTextLineHeight()), false,
-                       "%s", Format::Metric(point.first, "{:.2f} {}Hz", 1e6).c_str());
+    const auto &[x, y] = point;
+    ImPlot::Annotation(x.value, y.value, ImVec4(0, 0, 0, 0), ImVec2(0, -5), false, "%s",
+                       y.Format(".2").c_str());
+    ImPlot::Annotation(x.value, y.value, ImVec4(0, 0, 0, 0),
+                       ImVec2(0, -5 - ImGui::GetTextLineHeight()), false, "%s",
+                       x.Format(".2").c_str());
+
     if (label.size() > 0)
     {
-        ImPlot::Annotation(point.first, point.second, ImVec4(0, 0, 0, 0),
-                           ImVec2(0, -5 - 2 * ImGui::GetTextLineHeight()), true,
-                           "%s", label.c_str());
+        ImPlot::Annotation(x.value, y.value, ImVec4(0, 0, 0, 0),
+                           ImVec2(0, -5 - 2 * ImGui::GetTextLineHeight()), true, "%s",
+                           label.c_str());
     }
 }
 
@@ -2145,19 +2150,19 @@ void Ui::PlotFourierTransformSelected()
 
         if (ui->is_frequency_domain_visible)
         {
-            Annotate(ui->record->frequency_domain_metrics.fundamental, "Fund.");
+            Annotate(ui->record->frequency_domain->fundamental, "Fund.");
 
             if (ui->is_interleaving_spurs_annotated)
             {
-                Annotate(ui->record->frequency_domain_metrics.gain_spur, "TIx");
-                Annotate(ui->record->frequency_domain_metrics.offset_spur, "TIo");
+                Annotate(ui->record->frequency_domain->gain_spur, "TIx");
+                Annotate(ui->record->frequency_domain->offset_spur, "TIo");
             }
 
             if (ui->is_harmonics_annotated)
             {
-                for (size_t j = 0; j < ui->record->frequency_domain_metrics.harmonics.size(); ++j)
+                for (size_t j = 0; j < ui->record->frequency_domain->harmonics.size(); ++j)
                 {
-                    Annotate(ui->record->frequency_domain_metrics.harmonics[j],
+                    Annotate(ui->record->frequency_domain->harmonics[j],
                             fmt::format("HD{}", j + 2));
                 }
             }
@@ -2167,17 +2172,17 @@ void Ui::PlotFourierTransformSelected()
                 if (marker.digitizer != i || marker.channel != ch)
                     continue;
 
-                SnapX(marker.x, ui->record->frequency_domain.get(), marker.x, marker.y);
+                SnapX(marker.x.value, ui->record->frequency_domain.get(), marker.x.value, marker.y.value);
 
-                ImPlot::DragPoint(0, &marker.x, &marker.y, marker.color, 3.0f + marker.thickness,
+                ImPlot::DragPoint(0, &marker.x.value, &marker.y.value, marker.color, 3.0f + marker.thickness,
                                   ImPlotDragToolFlags_NoInputs);
-                DrawMarkerX(marker_id++, &marker.x, marker.color, marker.thickness,
-                            Format::Metric(marker.x, "{:.2f} {}Hz", 1e6));
-                DrawMarkerY(marker_id++, &marker.y, marker.color, marker.thickness,
-                            Format::FrequencyDomainY(marker.y), ImPlotDragToolFlags_NoInputs);
+                DrawMarkerX(marker_id++, &marker.x.value, marker.color, marker.thickness,
+                            marker.x.Format(".2"));
+                DrawMarkerY(marker_id++, &marker.y.value, marker.color, marker.thickness,
+                            marker.y.Format("7.2"), ImPlotDragToolFlags_NoInputs);
 
-                ImPlot::Annotation(marker.x, ImPlot::GetPlotLimits().Y.Max, ImVec4(0, 0, 0, 0),
-                                   ImVec2(10, 10), false, "F%zu", id);
+                ImPlot::Annotation(marker.x.value, ImPlot::GetPlotLimits().Y.Max,
+                                   ImVec4(0, 0, 0, 0), ImVec2(10, 10), false, "F%zu", id);
             }
 
             if (ui->is_selected)
@@ -2231,10 +2236,10 @@ void Ui::PlotWaterfallSelected(double &scale_min, double &scale_max)
             ui->should_auto_fit_waterfall = false;
         }
 
-        scale_min = std::round(ui->record->frequency_domain_metrics.noise_moving_average);
+        scale_min = std::round(ui->record->frequency_domain->noise_moving_average.value);
         scale_max = 0.0;
 
-        const double TOP_RIGHT = ui->record->time_domain->sampling_frequency / 2;
+        const double TOP_RIGHT = ui->record->time_domain->sampling_frequency.value / 2;
         ImPlot::PlotHeatmap("heat", ui->record->waterfall->data.data(),
                             static_cast<int>(ui->record->waterfall->rows),
                             static_cast<int>(ui->record->waterfall->columns),
@@ -2324,9 +2329,8 @@ std::vector<std::vector<std::string>> Ui::FormatTimeDomainMetrics(
 {
     const std::string DIGITS = "8.2";
     const auto &record = processed_record->time_domain;
-    const auto &metrics = processed_record->time_domain_metrics;
-    const double peak_to_peak = metrics.max - metrics.min;
-    const double peak_to_peak_range = record->range_max - record->range_min;
+    const double peak_to_peak = record->max.value - record->min.value;
+    const double peak_to_peak_range = record->range_max.value - record->range_min.value;
 
     return {
         {
@@ -2335,45 +2339,45 @@ std::vector<std::vector<std::string>> Ui::FormatTimeDomainMetrics(
         },
         {
             "Maximum",
-            Format::TimeDomainY(metrics.max, DIGITS, false),
-            Format::TimeDomainY(record->range_max, DIGITS, false),
+            record->max.Format(DIGITS),
+            record->range_max.Format(DIGITS),
         },
         {
             "Minimum",
-            Format::TimeDomainY(metrics.min, DIGITS, false),
-            Format::TimeDomainY(record->range_min, DIGITS, false),
+            record->min.Format(DIGITS),
+            record->range_min.Format(DIGITS),
         },
         {
             "Peak-to-peak",
-            Format::TimeDomainY(peak_to_peak, DIGITS, false),
-            Format::TimeDomainY(peak_to_peak_range, DIGITS, false),
-            fmt::format("{:" + DIGITS + "f} %", 100.0 * peak_to_peak / peak_to_peak_range),
+            record->max.Format(peak_to_peak, DIGITS),
+            record->range_max.Format(peak_to_peak_range, DIGITS),
+            fmt::format("{:6.2f} %", 100.0 * peak_to_peak / peak_to_peak_range),
         },
         {
             "Mean",
-            Format::TimeDomainY(metrics.mean, DIGITS, false),
-            Format::TimeDomainY(record->range_mid, DIGITS, false),
+            record->mean.Format(DIGITS),
+            record->range_mid.Format(DIGITS),
         },
         {
             "RMS",
-            Format::TimeDomainY(metrics.rms, DIGITS, false),
+            record->rms.Format(DIGITS),
         },
         /* TODO: Hide these behind some 'show extra' toggle? */
         {
             "Sampling rate",
-            Format::FrequencyDomainX(record->sampling_frequency, DIGITS, false),
+            record->sampling_frequency.Format(DIGITS),
         },
         {
             "Sampling period",
-            Format::TimeDomainX(record->step, DIGITS, false),
+            record->FormatX(record->step, DIGITS),
         },
         {
             "Trigger rate",
-            Format::FrequencyDomainX(record->estimated_trigger_frequency, DIGITS, false),
+            record->estimated_trigger_frequency.Format(DIGITS),
         },
         {
             "Throughput",
-            Format::Metric(record->estimated_throughput, "{: " + DIGITS + "f} {}B/s", 1e6),
+            record->estimated_throughput.Format(DIGITS),
         },
     };
 }
@@ -2382,64 +2386,64 @@ std::vector<std::vector<std::string>> Ui::FormatFrequencyDomainMetrics(
     const ProcessedRecord *processed_record)
 {
     const auto &record = processed_record->frequency_domain;
-    const auto &metrics = processed_record->frequency_domain_metrics;
+    const std::string DIGITS = "7.2";
 
     return {
         {
             "SNR",
-            Format::FrequencyDomainDeltaY(metrics.snr),
+            record->snr.Format(DIGITS),
             "Fund.",
-            Format::FrequencyDomainX(metrics.fundamental.first),
-            Format::FrequencyDomainY(metrics.fundamental.second),
+            std::get<0>(record->fundamental).Format(DIGITS),
+            std::get<1>(record->fundamental).Format(DIGITS), /* FIXME: mDBFS wrong */
         },
         {
             "SINAD",
-            Format::FrequencyDomainDeltaY(metrics.sinad),
+            record->sinad.Format(DIGITS),
             "Spur",
-            Format::FrequencyDomainX(metrics.spur.first),
-            Format::FrequencyDomainY(metrics.spur.second),
+            std::get<0>(record->spur).Format(DIGITS),
+            std::get<1>(record->spur).Format(DIGITS),
         },
         {
             "ENOB",
-            fmt::format("{: 7.2f} bits", metrics.enob) + "  ",
+            record->enob.Format(DIGITS) + "  ", /* Padding for table */
             "HD2",
-            Format::FrequencyDomainX(metrics.harmonics[0].first),
-            Format::FrequencyDomainY(metrics.harmonics[0].second),
+            std::get<0>(record->harmonics.at(0)).Format(DIGITS),
+            std::get<1>(record->harmonics.at(0)).Format(DIGITS),
         },
         {
             "THD",
-            Format::FrequencyDomainDeltaY(metrics.thd),
+            record->thd.Format(DIGITS),
             "HD3",
-            Format::FrequencyDomainX(metrics.harmonics[1].first),
-            Format::FrequencyDomainY(metrics.harmonics[1].second),
+            std::get<0>(record->harmonics.at(1)).Format(DIGITS),
+            std::get<1>(record->harmonics.at(1)).Format(DIGITS),
         },
         {
             "SFDR",
-            Format::FrequencyDomainY(metrics.sfdr_dbfs),
+            record->sfdr_dbfs.Format(DIGITS),
             "HD4",
-            Format::FrequencyDomainX(metrics.harmonics[2].first),
-            Format::FrequencyDomainY(metrics.harmonics[2].second),
+            std::get<0>(record->harmonics.at(2)).Format(DIGITS),
+            std::get<1>(record->harmonics.at(2)).Format(DIGITS),
         },
         {
             "Noise",
-            Format::FrequencyDomainY(metrics.noise),
+            record->noise.Format(DIGITS),
             "HD5",
-            Format::FrequencyDomainX(metrics.harmonics[3].first),
-            Format::FrequencyDomainY(metrics.harmonics[3].second),
+            std::get<0>(record->harmonics.at(3)).Format(DIGITS),
+            std::get<1>(record->harmonics.at(3)).Format(DIGITS),
         },
         {
             "Size",
             fmt::format("{:7} pts", (record->x.size() - 1) * 2),
             "TIx",
-            Format::FrequencyDomainX(metrics.gain_spur.first),
-            Format::FrequencyDomainY(metrics.gain_spur.second),
+            std::get<0>(record->gain_spur).Format(DIGITS),
+            std::get<1>(record->gain_spur).Format(DIGITS),
         },
         {
             "Bin",
-            Format::FrequencyDomainX(record->step),
+            record->FormatX(record->step, DIGITS),
             "TIo",
-            Format::FrequencyDomainX(metrics.offset_spur.first),
-            Format::FrequencyDomainY(metrics.offset_spur.second),
+            std::get<0>(record->offset_spur).Format(DIGITS),
+            std::get<1>(record->offset_spur).Format(DIGITS),
         },
     };
 }
@@ -2631,7 +2635,7 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
 
             if (node_open)
             {
-                if (ui.record->frequency_domain_metrics.overlap)
+                if (ui.record->frequency_domain->overlap)
                 {
                     ImGui::PushStyleColor(ImGuiCol_Text, COLOR_ORANGE);
                     ImGui::SameLine();
@@ -2677,7 +2681,7 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
 
                 if ((ui.is_muted || IsAnySolo()) && !ui.is_solo)
                     ImGui::PopStyleColor();
-                if (ui.record->frequency_domain_metrics.overlap)
+                if (ui.record->frequency_domain->overlap)
                     ImGui::PopStyleColor();
 
                 ImGui::TreePop();

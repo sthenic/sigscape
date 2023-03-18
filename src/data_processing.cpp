@@ -161,8 +161,8 @@ void DataProcessing::MainLoop()
             processed_record->time_domain = std::make_shared<TimeDomainRecord>(time_domain, m_afe,
                                                                                code_normalization,
                                                                                m_convert_to_volts);
-            processed_record->time_domain->estimated_trigger_frequency = estimated_trigger_frequency;
-            processed_record->time_domain->estimated_throughput = estimated_throughput;
+            processed_record->time_domain->estimated_trigger_frequency.value = estimated_trigger_frequency;
+            processed_record->time_domain->estimated_throughput.value = estimated_throughput;
 
             if (m_persistence.size() >= PERSISTENCE_SIZE)
                 m_persistence.pop_back();
@@ -173,7 +173,7 @@ void DataProcessing::MainLoop()
             processed_record->frequency_domain =
                 std::make_shared<FrequencyDomainRecord>(FFT_LENGTH / 2 + 1);
             processed_record->frequency_domain->step =
-                processed_record->time_domain->sampling_frequency / static_cast<double>(FFT_LENGTH);
+                processed_record->time_domain->sampling_frequency.value / static_cast<double>(FFT_LENGTH);
 
             /* Windowing and scaling to [-1, 1] for the correct FFT values. We
                use the raw data again since the processed time domain record
@@ -298,14 +298,15 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
     ProcessAndIdentify(fft, record, dc, fundamental, spur, total_power);
 
     std::vector<Tone> harmonics{};
-    auto &metrics = record->frequency_domain_metrics;
-    metrics = {};
     PlaceHarmonics(fundamental, record, harmonics);
-    ResolveHarmonicOverlaps(dc, fundamental, harmonics, metrics.overlap);
+
+    auto &frequency_domain = record->frequency_domain;
+    frequency_domain->overlap = false;
+    ResolveHarmonicOverlaps(dc, fundamental, harmonics, frequency_domain->overlap);
 
     /* Reevaluate the power now that overlaps have been resolved. */
     double harmonic_distortion_power = 0.0;
-    auto &y = record->frequency_domain->y;
+    const auto &y = frequency_domain->y;
 
     for (auto &harmonic : harmonics)
     {
@@ -313,7 +314,11 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
         for (const auto &v : harmonic.values)
             harmonic.power += v;
         harmonic_distortion_power += harmonic.power;
-        metrics.harmonics.emplace_back(harmonic.frequency, y[harmonic.idx]);
+
+        frequency_domain->harmonics.emplace_back(
+            frequency_domain->ValueX(harmonic.frequency),
+            frequency_domain->ValueY(y[harmonic.idx])
+        );
     }
 
     /* FIXME: Manual opt-out from interleaving analysis? */
@@ -322,7 +327,7 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
     Tone offset_spur{};
     PlaceInterleavingSpurs(fundamental, record, gain_spur, offset_spur);
     ResolveInterleavingSpurOverlaps(dc, fundamental, harmonics, gain_spur, offset_spur,
-                                    metrics.overlap);
+                                    frequency_domain->overlap);
     gain_spur.power = 0.0;
     for (const auto &v : gain_spur.values)
         gain_spur.power += v;
@@ -333,8 +338,15 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
         offset_spur.power += v;
     interleaving_spur_power += offset_spur.power;
 
-    metrics.gain_spur = {gain_spur.frequency, y[gain_spur.idx]};
-    metrics.offset_spur = {offset_spur.frequency, y[offset_spur.idx]};
+    frequency_domain->gain_spur = {
+        frequency_domain->ValueX(gain_spur.frequency),
+        frequency_domain->ValueY(y[gain_spur.idx]),
+    };
+
+    frequency_domain->offset_spur = {
+        frequency_domain->ValueX(offset_spur.frequency),
+        frequency_domain->ValueY(y[offset_spur.idx]),
+    };
 
     /* Remove the power of the fundamental tone and other spectral components
        from the total noise power. */
@@ -342,25 +354,33 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
                                harmonic_distortion_power - interleaving_spur_power;
 
     /* FIXME: Linear interpolation? */
-    metrics.fundamental = std::make_pair(fundamental.frequency, y[fundamental.idx]);
-    metrics.spur = std::make_pair(spur.frequency, y[spur.idx]);
-    metrics.snr = 10.0 * std::log10(fundamental.power / noise_power);
-    metrics.thd = 10.0 * std::log10(fundamental.power / harmonic_distortion_power);
-    metrics.sinad = 10.0 * std::log10(fundamental.power / (noise_power + harmonic_distortion_power +
-                                                           interleaving_spur_power));
-    metrics.enob = (metrics.sinad - 1.76) / 6.02;
-    metrics.sfdr_dbfs = -y[spur.idx];
-    metrics.sfdr_dbc = y[fundamental.idx] - y[spur.idx];
-    metrics.noise = 10.0 * std::log10(noise_power / static_cast<double>(fft.size()));
-    metrics.noise_moving_average = 0;
+    frequency_domain->fundamental = {
+        frequency_domain->ValueX(fundamental.frequency),
+        frequency_domain->ValueY(y[fundamental.idx]),
+    };
+
+    frequency_domain->spur = {
+        frequency_domain->ValueX(spur.frequency),
+        frequency_domain->ValueY(y[spur.idx]),
+    };
+
+    frequency_domain->snr.value = 10.0 * std::log10(fundamental.power / noise_power);
+    frequency_domain->thd.value = 10.0 * std::log10(fundamental.power / harmonic_distortion_power);
+    frequency_domain->sinad.value = 10.0 * std::log10(fundamental.power /
+                                                      (noise_power + harmonic_distortion_power + interleaving_spur_power));
+    frequency_domain->enob.value = (frequency_domain->sinad.value - 1.76) / 6.02;
+    frequency_domain->sfdr_dbfs.value = -y[spur.idx];
+    frequency_domain->sfdr_dbc.value = y[fundamental.idx] - y[spur.idx];
+    frequency_domain->noise.value = 10.0 * std::log10(noise_power / static_cast<double>(fft.size()));
+    frequency_domain->noise_moving_average.value = 0;
 
     if (m_noise_moving_average.size() >= NOISE_MOVING_AVERAGE_SIZE)
         m_noise_moving_average.pop_back();
-    m_noise_moving_average.push_front(metrics.noise);
+    m_noise_moving_average.push_front(frequency_domain->noise.value);
 
     const double normalization = static_cast<double>(m_noise_moving_average.size());
     for (const auto &noise : m_noise_moving_average)
-        metrics.noise_moving_average += noise / normalization;
+        frequency_domain->noise_moving_average.value += noise / normalization;
 
     /* FIXME: Adjust worst spur if it turns out that it's one of the harmonics
               that ended up within the blind spot? */
@@ -474,7 +494,7 @@ void DataProcessing::PlaceHarmonics(const Tone &fundamental, const ProcessedReco
     for (int hd = 2; hd <= 5; ++hd)
     {
         const double f = FoldFrequency(fundamental.frequency * hd,
-                                       record->time_domain->sampling_frequency);
+                                       record->time_domain->sampling_frequency.value);
         harmonics.emplace_back(record, f, m_nof_skirt_bins);
     }
 }
@@ -484,13 +504,14 @@ void DataProcessing::PlaceInterleavingSpurs(const Tone &fundamental, const Proce
 {
     /* Estimate the interleaving gain spur. */
     const double f_gain = FoldFrequency(
-        fundamental.frequency + record->time_domain->sampling_frequency / 2,
-        record->time_domain->sampling_frequency
+        fundamental.frequency + record->time_domain->sampling_frequency.value / 2,
+        record->time_domain->sampling_frequency.value
     );
     gain = std::move(Tone(record, f_gain, m_nof_skirt_bins));
 
     /* Estimate the interleaving offset spur. */
-    offset = std::move(Tone(record, record->time_domain->sampling_frequency / 2, m_nof_skirt_bins));
+    offset = std::move(
+        Tone(record, record->time_domain->sampling_frequency.value / 2, m_nof_skirt_bins));
 }
 
 void DataProcessing::ResolveHarmonicOverlaps(const Tone &dc, const Tone &fundamental,
@@ -555,19 +576,20 @@ void DataProcessing::ResolveOverlap(Tone &tone, const Tone &other, bool &overlap
 
 void DataProcessing::AnalyzeTimeDomain(ProcessedRecord *record)
 {
-    for (const auto &y : record->time_domain->y)
+    auto &time_domain = record->time_domain;
+    for (const auto &y : time_domain->y)
     {
-        if (y > record->time_domain_metrics.max)
-            record->time_domain_metrics.max = y;
+        if (y > time_domain->max.value)
+            time_domain->max.value = y;
 
-        if (y < record->time_domain_metrics.min)
-            record->time_domain_metrics.min = y;
+        if (y < time_domain->min.value)
+            time_domain->min.value = y;
 
-        record->time_domain_metrics.mean += y;
-        record->time_domain_metrics.rms += y * y;
+        time_domain->mean.value += y;
+        time_domain->rms.value += y * y;
     }
 
-    record->time_domain_metrics.mean /= static_cast<double>(record->time_domain->y.size());
-    record->time_domain_metrics.rms /= static_cast<double>(record->time_domain->y.size());
-    record->time_domain_metrics.rms = std::sqrt(record->time_domain_metrics.rms);
+    time_domain->mean.value /= static_cast<double>(time_domain->y.size());
+    time_domain->rms.value /= static_cast<double>(time_domain->y.size());
+    time_domain->rms.value = std::sqrt(time_domain->rms.value);
 }

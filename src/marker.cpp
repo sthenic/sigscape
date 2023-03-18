@@ -1,6 +1,7 @@
 #include "marker.h"
 
-Marker::Marker(size_t id, size_t digitizer, size_t channel, size_t sample, double x, double y)
+Marker::Marker(size_t id, size_t digitizer, size_t channel, size_t sample, const Value &x,
+               const Value &y)
     : id(id)
     , digitizer(digitizer)
     , channel(channel)
@@ -36,8 +37,8 @@ bool Markers::empty() const
     return markers.empty();
 }
 
-void Markers::insert(size_t digitizer, size_t channel, size_t sample, double x, double y,
-                     bool add_delta_to_last)
+void Markers::insert(size_t digitizer, size_t channel, size_t sample, const Value &x,
+                     const Value &y, bool add_delta_to_last)
 {
     if (add_delta_to_last)
         last_marker->second.deltas.insert(next_id);

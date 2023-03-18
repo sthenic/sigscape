@@ -44,12 +44,17 @@ struct Value
 
     /* Formatter returning a string for UI presentation. */
     std::string Format(bool show_sign = false) const;
+    std::string Format(const char *precision, bool show_sign = false) const;
+    std::string Format(const std::string &precision, bool show_sign = false) const;
 
     /* Format another value as if it had the properties of this one. This is
        useful when needing to format a derived value, e.g. the result of a
        calculation involving this value. */
-    std::string Format(double other, bool show_sign = false) const;
-    std::string FormatDelta(double other, bool show_sign = false) const;
+    std::string Format(double value, bool show_sign = false) const;
+    std::string FormatDelta(double value, bool show_sign = false) const;
+
+    std::string Format(double value, const std::string &precision, bool show_sign = false) const;
+    std::string FormatDelta(double value, const std::string &precision, bool show_sign = false) const;
 
     double value;
     double highest_prefix;
@@ -127,8 +132,8 @@ struct TimeDomainRecord : public BaseRecord
         : BaseRecord(raw->header->record_length,
                      convert ? "s" : "S",
                      convert ? "V" : "C",
-                     convert ? "8.2" : "6.0",
-                     convert ? "8.2" : "6.0",
+                     convert ? "8.2" : "8.0",
+                     convert ? "8.2" : "8.0",
                      convert ? 1e-3 : 1.0,
                      convert ? 1e-3 : 1.0)
         , header(*raw->header)
@@ -250,6 +255,8 @@ struct FrequencyDomainRecord : public BaseRecord
         , thd(0.0, "dB", "7.2", 1.0)
         , noise(0.0, "dBFS", "7.2", 1.0)
         , noise_moving_average(0.0, "dBFS", "7.2", 1.0)
+        , size(0.0, "pts", "7.0", 1.0)
+        , bin(0.0, "Hz", "7.2", 1e6)
     {}
 
     /* Delete copy constructors until we need them. */
@@ -270,6 +277,8 @@ struct FrequencyDomainRecord : public BaseRecord
     Value thd;
     Value noise;
     Value noise_moving_average;
+    Value size;
+    Value bin;
     bool overlap;
 };
 

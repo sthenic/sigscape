@@ -164,7 +164,7 @@ Ui::Ui()
     , m_frequency_domain_markers("Frequency Domain", "F")
     , m_time_domain_units_per_division()
     , m_frequency_domain_units_per_division()
-    , m_sensor_units_per_division()
+    , m_sensor_units_per_division{0.0, 0.0, "s", "?"}
     , m_api_revision(0)
     , m_file_browser(ImGuiFileBrowserFlags_EnterNewFilename | ImGuiFileBrowserFlags_CreateNewDir |
                      ImGuiFileBrowserFlags_CloseOnEsc)
@@ -969,9 +969,8 @@ void Ui::MarkerTree(Markers &markers)
 
         ImGui::SameLine();
         const float LINE_START = ImGui::GetCursorPosX();
-        /* FIXME: "DIGITS" */
-        ImGui::Text(fmt::format("{}{} {}, {}", markers.prefix, id, marker.x.Format("8.2"),
-                                marker.y.Format("8.2")));
+        ImGui::Text(fmt::format("{}{} {}, {}", markers.prefix, id, marker.x.Format(),
+                                marker.y.Format()));
 
         const auto &ui = m_digitizers[marker.digitizer].ui.channels[marker.channel];
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 30.0f -
@@ -1842,7 +1841,7 @@ void Ui::PlotTimeDomainSelected()
                 ImPlot::DragPoint(0, &marker.x.value, &marker.y.value, marker.color,
                                   3.0f + marker.thickness, ImPlotDragToolFlags_NoInputs);
                 DrawMarkerX(marker_id++, &marker.x.value, marker.color, marker.thickness,
-                            marker.x.Format());
+                            marker.x.Format(".2"));
                 DrawMarkerY(marker_id++, &marker.y.value, marker.color, marker.thickness,
                             marker.y.Format(), ImPlotDragToolFlags_NoInputs);
 
@@ -1960,14 +1959,6 @@ void Ui::RenderChannelPlot()
         ImPlot::SetupLegend(ImPlotLocation_NorthEast, ImPlotLegendFlags_Sort);
         PlotTimeDomainSelected();
         RemoveDoubleClickedMarkers(m_time_domain_markers);
-
-        /* FIXME: Perhaps `Value` but custom precision needed. */
-        // const auto str = fmt::format(
-        //     "{}/div\n{}/div",
-        //     Format::Metric(m_time_domain_units_per_division.y,
-        //                    "{:6.2f} {}" + m_time_domain_units_per_division.y_unit),
-        //     Format::Metric(m_time_domain_units_per_division.x,
-        //                    "{:6.2f} {}" + m_time_domain_units_per_division.x_unit));
         RenderUnitsPerDivision(m_time_domain_units_per_division.Format());
 
         ImPlot::EndPlot();
@@ -2032,10 +2023,10 @@ void Ui::RenderSensorPlot()
         PlotSensorsSelected();
 
         /* FIXME: Vertical units? Probably multiple axes. */
-        const auto str =
-            fmt::format("{:6.2f} ?/div\n{}/div", m_sensor_units_per_division.y,
-                        Format::Metric(m_sensor_units_per_division.x, "{:6.2f} {}s", 1));
-        RenderUnitsPerDivision(str);
+        // const auto str =
+        //     fmt::format("{:6.2f} ?/div\n{}/div", m_sensor_units_per_division.y,
+        //                 Format::Metric(m_sensor_units_per_division.x, "{:6.2f} {}s", 1));
+        RenderUnitsPerDivision(m_sensor_units_per_division.Format());
 
         ImPlot::EndPlot();
 
@@ -2103,7 +2094,7 @@ void Ui::Annotate(const std::tuple<Value, Value> &point, const std::string &labe
              jitter but can introduce even larger jumps for noisy data. */
     const auto &[x, y] = point;
     ImPlot::Annotation(x.value, y.value, ImVec4(0, 0, 0, 0), ImVec2(0, -5), false, "%s",
-                       y.Format(".2").c_str()); /* FIXME: */
+                       y.Format(".2").c_str());
     ImPlot::Annotation(x.value, y.value, ImVec4(0, 0, 0, 0),
                        ImVec2(0, -5 - ImGui::GetTextLineHeight()), false, "%s",
                        x.Format(".2").c_str());
@@ -2203,7 +2194,7 @@ void Ui::PlotFourierTransformSelected()
                 ImPlot::DragPoint(0, &marker.x.value, &marker.y.value, marker.color,
                                   3.0f + marker.thickness, ImPlotDragToolFlags_NoInputs);
                 DrawMarkerX(marker_id++, &marker.x.value, marker.color, marker.thickness,
-                            marker.x.Format());
+                            marker.x.Format(".2"));
                 DrawMarkerY(marker_id++, &marker.y.value, marker.color, marker.thickness,
                             marker.y.Format(), ImPlotDragToolFlags_NoInputs);
 
@@ -2405,8 +2396,6 @@ std::vector<std::vector<std::string>> Ui::FormatFrequencyDomainMetrics(
     const ProcessedRecord *processed_record)
 {
     const auto &record = processed_record->frequency_domain;
-    const std::string DIGITS = "7.2";
-
     return {
         {
             "SNR",
@@ -2452,14 +2441,14 @@ std::vector<std::vector<std::string>> Ui::FormatFrequencyDomainMetrics(
         },
         {
             "Size",
-            fmt::format("{:7} pts", (record->x.size() - 1) * 2),
+            record->size.Format(),
             "TIx",
             std::get<0>(record->gain_spur).Format(),
             std::get<1>(record->gain_spur).Format(),
         },
         {
             "Bin",
-            record->FormatX(record->step, DIGITS),
+            record->bin.Format(),
             "TIo",
             std::get<0>(record->offset_spur).Format(),
             std::get<1>(record->offset_spur).Format(),

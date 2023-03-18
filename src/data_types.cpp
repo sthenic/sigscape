@@ -5,14 +5,34 @@ std::string Value::Format(bool show_sign) const
     return Format(value, show_sign);
 }
 
-std::string Value::Format(double other, bool show_sign) const
+std::string Value::Format(const char *precision, bool show_sign) const
 {
-    return Format::Metric(other, Format::String(precision, unit, show_sign), highest_prefix);
+    return Format(value, precision, show_sign);
 }
 
-std::string Value::FormatDelta(double other, bool show_sign) const
+std::string Value::Format(const std::string &precision, bool show_sign) const
 {
-    return Format::Metric(other, Format::String(precision, delta_unit, show_sign), highest_prefix);
+    return Format(value, precision, show_sign);
+}
+
+std::string Value::Format(double value, bool show_sign) const
+{
+    return Format(value, precision, show_sign);
+}
+
+std::string Value::FormatDelta(double value, bool show_sign) const
+{
+    return FormatDelta(value, precision, show_sign);
+}
+
+std::string Value::Format(double value, const std::string &precision, bool show_sign) const
+{
+    return Format::Metric(value, Format::String(precision, unit, show_sign), highest_prefix);
+}
+
+std::string Value::FormatDelta(double value, const std::string &precision, bool show_sign) const
+{
+    return Format::Metric(value, Format::String(precision, delta_unit, show_sign), highest_prefix);
 }
 
 BaseRecord::~BaseRecord()

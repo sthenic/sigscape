@@ -21,14 +21,19 @@
 
 struct BaseRecord
 {
-    BaseRecord(size_t count, const std::string &x_unit, const std::string &y_unit)
+    BaseRecord(size_t count, const std::string &x_unit, const std::string &y_unit,
+               const std::string &x_delta_unit, const std::string &y_delta_unit)
         : x(count)
         , y(count)
         , x_unit(x_unit)
         , y_unit(y_unit)
-        , x_delta_unit(x_unit)
-        , y_delta_unit(y_unit)
+        , x_delta_unit(x_delta_unit)
+        , y_delta_unit(y_delta_unit)
         , step(0)
+    {}
+
+    BaseRecord(size_t count, const std::string &x_unit, const std::string &y_unit)
+        : BaseRecord(count, x_unit, y_unit, x_unit, y_unit)
     {}
 
     virtual ~BaseRecord() = 0;
@@ -48,7 +53,9 @@ struct TimeDomainRecord : public BaseRecord
     TimeDomainRecord(const struct ADQGen4Record *raw,
                      const struct ADQAnalogFrontendParametersChannel &afe,
                      double code_normalization, bool convert = true)
-        : BaseRecord(raw->header->record_length, "s", "V")
+        : BaseRecord(raw->header->record_length,
+                     convert ? "s" : "Samples",
+                     convert ? "V" : "Codes")
         , header(*raw->header)
         , estimated_trigger_frequency(0)
         , estimated_throughput(0)
@@ -127,10 +134,8 @@ struct TimeDomainRecord : public BaseRecord
 struct FrequencyDomainRecord : public BaseRecord
 {
     FrequencyDomainRecord(size_t count)
-        : BaseRecord(count, "Hz", "dBFS")
-    {
-        y_delta_unit = "dB";
-    }
+        : BaseRecord(count, "Hz", "dBFS", "Hz", "dB")
+    {}
 
     /* Delete copy constructors until we need them. */
     FrequencyDomainRecord(const FrequencyDomainRecord &other) = delete;

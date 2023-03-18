@@ -1,18 +1,33 @@
 #include "data_types.h"
 
-std::string Value::Format(double other, const std::string &precision, bool show_sign) const
+// std::string Value::Format(double other, const std::string &lprecision, bool show_sign) const
+// {
+//     return Format::Metric(other, Format::String(lprecision, unit, show_sign), highest_prefix);
+// }
+
+// std::string Value::FormatDelta(double other, const std::string &lprecision, bool show_sign) const
+// {
+//     return Format::Metric(other, Format::String(lprecision, delta_unit, show_sign), highest_prefix);
+// }
+
+std::string Value::Format(double other, bool show_sign) const
 {
     return Format::Metric(other, Format::String(precision, unit, show_sign), highest_prefix);
 }
 
-std::string Value::FormatDelta(double other, const std::string &precision, bool show_sign) const
+std::string Value::FormatDelta(double other, bool show_sign) const
 {
     return Format::Metric(other, Format::String(precision, delta_unit, show_sign), highest_prefix);
 }
 
-std::string Value::Format(const std::string &precision, bool show_sign) const
+// std::string Value::Format(const std::string &lprecision, bool show_sign) const
+// {
+//     return Format(value, lprecision, show_sign);
+// }
+
+std::string Value::Format(bool show_sign) const
 {
-    return Format(value, precision, show_sign);
+    return Format(value, show_sign);
 }
 
 BaseRecord::~BaseRecord()

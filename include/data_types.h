@@ -23,42 +23,52 @@
 /* FIXME: Pairing a double and some properties to create a formattable value. */
 struct Value
 {
-    Value() = default; /* FIXME: Can we remove this? */
-    Value(double value, const std::string &unit, double highest_prefix = 1e9)
+    Value() = default;
+    Value(double value, const std::string &unit, const std::string &delta_unit,
+          const std::string &precision, double highest_prefix = 1e9)
         : value(value)
         , highest_prefix(highest_prefix)
+        , precision(precision)
         , unit(unit)
-        , delta_unit(unit)
+        , delta_unit(delta_unit)
     {}
 
-    Value(double value, const std::string &unit, const std::string &delta_unit,
+    Value(double value, const std::string &unit, const std::string &precision,
           double highest_prefix = 1e9)
         : value(value)
         , highest_prefix(highest_prefix)
+        , precision(precision)
         , unit(unit)
-        , delta_unit(delta_unit)
+        , delta_unit(unit)
     {}
 
     /* Format another value as if it had the properties of this one. This is
        useful when needing to format a derived value, e.g. the result of a
        calculation involving this value. */
     /* FIXME: Include the precision? Good idea? */
-    std::string Format(double other, const std::string &precision, bool show_sign = false) const;
-    std::string FormatDelta(double other, const std::string &precision, bool show_sign = false) const;
+    // std::string Format(double other, const std::string &precision, bool show_sign = false) const;
+    // std::string FormatDelta(double other, const std::string &precision, bool show_sign = false) const;
+
+    std::string Format(double other, bool show_sign = false) const;
+    std::string FormatDelta(double other, bool show_sign = false) const;
 
     /* Formatter returning a string for UI presentation. */
-    std::string Format(const std::string &precision, bool show_sign = false) const;
+    // std::string Format(const std::string &precision, bool show_sign = false) const;
+    std::string Format(bool show_sign = false) const;
 
     double value;
     double highest_prefix;
+    std::string precision;
     std::string unit;
     std::string delta_unit;
 };
 
 struct BaseRecord
 {
+    /* FIXME: Group the unit/delta/precision/prefix? */
     BaseRecord(size_t count, const std::string &x_unit, const std::string &y_unit,
                const std::string &x_delta_unit, const std::string &y_delta_unit,
+               const std::string &x_precision, const std::string &y_precision,
                double x_highest_prefix, double y_highest_prefix)
         : x(count)
         , y(count)
@@ -66,14 +76,18 @@ struct BaseRecord
         , y_unit(y_unit)
         , x_delta_unit(x_delta_unit)
         , y_delta_unit(y_delta_unit)
+        , x_precision(x_precision)
+        , y_precision(y_precision)
         , x_highest_prefix(x_highest_prefix)
         , y_highest_prefix(y_highest_prefix)
         , step(0.0)
     {}
 
     BaseRecord(size_t count, const std::string &x_unit, const std::string &y_unit,
+               const std::string &x_precision, const std::string &y_precision,
                double x_highest_prefix, double y_highest_prefix)
-        : BaseRecord(count, x_unit, y_unit, x_unit, y_unit, x_highest_prefix, y_highest_prefix)
+        : BaseRecord(count, x_unit, y_unit, x_unit, y_unit, x_precision, y_precision,
+                     x_highest_prefix, y_highest_prefix)
     {}
 
     virtual ~BaseRecord() = 0;
@@ -81,13 +95,13 @@ struct BaseRecord
     /* Object-bound constructor of a value in the x-dimension. */
     Value ValueX(double value) const
     {
-        return Value(value, x_unit, x_delta_unit, x_highest_prefix);
+        return Value(value, x_unit, x_delta_unit, x_precision, x_highest_prefix);
     }
 
     /* Object-bound constructor of a value in the y-dimension. */
     Value ValueY(double value) const
     {
-        return Value(value, y_unit, y_delta_unit, y_highest_prefix);
+        return Value(value, y_unit, y_delta_unit, y_precision, y_highest_prefix);
     }
 
     /* Convenience functions to construct a homogenously formatted value from one of two dimensions. */
@@ -102,6 +116,8 @@ struct BaseRecord
     std::string y_unit;
     std::string x_delta_unit;
     std::string y_delta_unit;
+    std::string x_precision;
+    std::string y_precision;
     double x_highest_prefix;
     double y_highest_prefix;
     double step;
@@ -114,14 +130,17 @@ struct TimeDomainRecord : public BaseRecord
                      const struct ADQAnalogFrontendParametersChannel &afe,
                      double code_normalization, bool convert = true)
         : BaseRecord(raw->header->record_length,
-                     convert ? "s" : "Samples",
+                     convert ? "s" : "S",
                      convert ? "V" : "Codes",
+                     convert ? "8.2" : "6.0",
+                     convert ? "8.2" : "6.0",
                      convert ? 1e-3 : 1.0,
                      convert ? 1e-3 : 1.0)
         , header(*raw->header)
-        , estimated_trigger_frequency(0.0, "Hz", 1e6)
-        , estimated_throughput(0.0, "B/s", 1e6)
-        , sampling_frequency(0.0, "Hz", 1e6)
+        , estimated_trigger_frequency(0.0, "Hz", "8.2", 1e6)
+        , estimated_throughput(0.0, "B/s", "8.2", 1e6)
+        , sampling_frequency(0.0, "Hz", "8.2", 1e6)
+        , sampling_period(0.0, "s", "8.2", 1e-3)
         , range_max(ValueY(0.0))
         , range_min(ValueY(0.0))
         , range_mid(ValueY(0.0))
@@ -134,11 +153,27 @@ struct TimeDomainRecord : public BaseRecord
            using a 32-bit float, we truncate any information beyond that point. */
         int time_unit_ps = static_cast<int>(raw->header->time_unit * 1e12);
         double time_unit = static_cast<double>(time_unit_ps) * 1e-12;
-        step = static_cast<double>(raw->header->sampling_period) * time_unit;
-        double record_start = static_cast<double>(raw->header->record_start) * time_unit;
 
-        /* This will be an integer number of Hz */
-        sampling_frequency.value = std::round(1.0 / step);
+        sampling_period.value = static_cast<double>(raw->header->sampling_period) * time_unit;
+        sampling_frequency.value = std::round(1.0 / sampling_period.value);
+
+        double record_start;
+        if (convert)
+        {
+            step = sampling_period.value;
+            record_start = static_cast<double>(raw->header->record_start) * time_unit;
+            range_max.value = (afe.input_range / 2 - afe.dc_offset) / 1e3;
+            range_min.value = (-afe.input_range / 2 - afe.dc_offset) / 1e3;
+            range_mid.value = (range_max.value + range_min.value) / 2;
+        }
+        else
+        {
+            step = 1.0;
+            record_start = 0.0; /* FIXME: Always start at 0? */
+            range_max.value = code_normalization / 2 - 1;
+            range_min.value = -(code_normalization / 2);
+            range_mid.value = 0.0;
+        }
 
         switch (raw->header->data_format)
         {
@@ -158,9 +193,6 @@ struct TimeDomainRecord : public BaseRecord
                             raw->header->data_format));
         }
 
-        range_max.value = (afe.input_range / 2 - afe.dc_offset) / 1e3;
-        range_min.value = (-afe.input_range / 2 - afe.dc_offset) / 1e3;
-        range_mid.value = (range_max.value + range_min.value) / 2;
     }
 
     template <typename T>
@@ -170,7 +202,7 @@ struct TimeDomainRecord : public BaseRecord
     {
         for (size_t i = 0; i < x.size(); ++i)
         {
-            x[i] = record_start + i * sampling_period;
+            x[i] = record_start + static_cast<double>(i) * sampling_period;
 
             if (convert)
             {
@@ -195,6 +227,7 @@ struct TimeDomainRecord : public BaseRecord
     Value estimated_trigger_frequency;
     Value estimated_throughput;
     Value sampling_frequency;
+    Value sampling_period;
     Value range_max;
     Value range_min;
     Value range_mid;
@@ -207,21 +240,21 @@ struct TimeDomainRecord : public BaseRecord
 struct FrequencyDomainRecord : public BaseRecord
 {
     FrequencyDomainRecord(size_t count)
-        : BaseRecord(count, "Hz", "dBFS", "Hz", "dB", 1e6, 1.0)
+        : BaseRecord(count, "Hz", "dBFS", "Hz", "dB", "7.2", "7.2", 1e6, 1.0)
         , fundamental{}
         , spur{}
         , harmonics{}
         /* FIXME: "gain_phase" */
         , gain_spur{}
         , offset_spur{}
-        , snr(0.0, "dB", 1.0)
-        , sinad(0.0, "dB", 1.0)
-        , enob(0.0, "bits", 1.0)
-        , sfdr_dbc(0.0, "dBc", 1.0)
-        , sfdr_dbfs(0.0, "dBFS", 1.0)
-        , thd(0.0, "dB", 1.0)
-        , noise(0.0, "dBFS", 1.0)
-        , noise_moving_average(0.0, "dBFS", 1.0)
+        , snr(0.0, "dB", "7.2", 1.0)
+        , sinad(0.0, "dB", "7.2", 1.0)
+        , enob(0.0, "bits", "7.2", 1.0)
+        , sfdr_dbc(0.0, "dBc", "7.2", 1.0)
+        , sfdr_dbfs(0.0, "dBFS", "7.2", 1.0)
+        , thd(0.0, "dB", "7.2", 1.0)
+        , noise(0.0, "dBFS", "7.2", 1.0)
+        , noise_moving_average(0.0, "dBFS", "7.2", 1.0)
     {}
 
     /* Delete copy constructors until we need them. */
@@ -335,7 +368,7 @@ struct ProcessedRecord
 struct SensorRecord : public BaseRecord
 {
     SensorRecord()
-        : BaseRecord(0, "s", "N/A", 1e9, 1e9)
+        : BaseRecord(0, "s", "N/A", "8.2", "8.2", 1e9, 1e9)
         , status(-1)
         , id()
         , group_id()
@@ -343,7 +376,7 @@ struct SensorRecord : public BaseRecord
     {}
 
     SensorRecord(uint32_t id, uint32_t group_id, const std::string &y_unit)
-        : BaseRecord(0, "s", y_unit, 1e9, 1e9)
+        : BaseRecord(0, "s", y_unit, "8.2", "8.2", 1e9, 1e9)
         , status(-1)
         , id(id)
         , group_id(group_id)

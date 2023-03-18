@@ -1007,8 +1007,8 @@ void Ui::MarkerTree(Markers &markers)
                         ImGui::Text(fmt::format("d{}{}", markers.prefix, delta_marker.id));
                         ImGui::TableSetColumnIndex(1);
                         ImGui::Text(fmt::format(" {}, {}",
-                                                marker.x.FormatDelta(delta_x, "8.2", true),
-                                                marker.y.FormatDelta(delta_y, "8.2", true)));
+                                                marker.x.FormatDelta(delta_x, true),
+                                                marker.y.FormatDelta(delta_y, true)));
                     }
 
                     ImGui::EndTable();
@@ -2327,9 +2327,8 @@ void Ui::RenderHeaderButtons(ChannelUiState &ui)
 std::vector<std::vector<std::string>> Ui::FormatTimeDomainMetrics(
     const ProcessedRecord *processed_record)
 {
-    const std::string DIGITS = "8.2";
     const auto &record = processed_record->time_domain;
-    const double peak_to_peak = record->max.value - record->min.value;
+    const double peak_to_peak = record->max.value - record->min.value; /* FIXME: +1.0 'unit' */
     const double peak_to_peak_range = record->range_max.value - record->range_min.value;
 
     return {
@@ -2339,45 +2338,45 @@ std::vector<std::vector<std::string>> Ui::FormatTimeDomainMetrics(
         },
         {
             "Maximum",
-            record->max.Format(DIGITS),
-            record->range_max.Format(DIGITS),
+            record->max.Format(),
+            record->range_max.Format(),
         },
         {
             "Minimum",
-            record->min.Format(DIGITS),
-            record->range_min.Format(DIGITS),
+            record->min.Format(),
+            record->range_min.Format(),
         },
         {
             "Peak-to-peak",
-            record->max.Format(peak_to_peak, DIGITS),
-            record->range_max.Format(peak_to_peak_range, DIGITS),
+            record->max.Format(peak_to_peak),
+            record->range_max.Format(peak_to_peak_range),
             fmt::format("{:6.2f} %", 100.0 * peak_to_peak / peak_to_peak_range),
         },
         {
             "Mean",
-            record->mean.Format(DIGITS),
-            record->range_mid.Format(DIGITS),
+            record->mean.Format(),
+            record->range_mid.Format(),
         },
         {
             "RMS",
-            record->rms.Format(DIGITS),
+            record->rms.Format(),
         },
         /* TODO: Hide these behind some 'show extra' toggle? */
         {
             "Sampling rate",
-            record->sampling_frequency.Format(DIGITS),
+            record->sampling_frequency.Format(),
         },
         {
             "Sampling period",
-            record->FormatX(record->step, DIGITS),
+            record->sampling_period.Format(),
         },
         {
             "Trigger rate",
-            record->estimated_trigger_frequency.Format(DIGITS),
+            record->estimated_trigger_frequency.Format(),
         },
         {
             "Throughput",
-            record->estimated_throughput.Format(DIGITS),
+            record->estimated_throughput.Format(),
         },
     };
 }
@@ -2391,59 +2390,59 @@ std::vector<std::vector<std::string>> Ui::FormatFrequencyDomainMetrics(
     return {
         {
             "SNR",
-            record->snr.Format(DIGITS),
+            record->snr.Format(),
             "Fund.",
-            std::get<0>(record->fundamental).Format(DIGITS),
-            std::get<1>(record->fundamental).Format(DIGITS), /* FIXME: mDBFS wrong */
+            std::get<0>(record->fundamental).Format(),
+            std::get<1>(record->fundamental).Format(), /* FIXME: mDBFS wrong */
         },
         {
             "SINAD",
-            record->sinad.Format(DIGITS),
+            record->sinad.Format(),
             "Spur",
-            std::get<0>(record->spur).Format(DIGITS),
-            std::get<1>(record->spur).Format(DIGITS),
+            std::get<0>(record->spur).Format(),
+            std::get<1>(record->spur).Format(),
         },
         {
             "ENOB",
-            record->enob.Format(DIGITS) + "  ", /* Padding for table */
+            record->enob.Format() + "  ", /* Padding for table */
             "HD2",
-            std::get<0>(record->harmonics.at(0)).Format(DIGITS),
-            std::get<1>(record->harmonics.at(0)).Format(DIGITS),
+            std::get<0>(record->harmonics.at(0)).Format(),
+            std::get<1>(record->harmonics.at(0)).Format(),
         },
         {
             "THD",
-            record->thd.Format(DIGITS),
+            record->thd.Format(),
             "HD3",
-            std::get<0>(record->harmonics.at(1)).Format(DIGITS),
-            std::get<1>(record->harmonics.at(1)).Format(DIGITS),
+            std::get<0>(record->harmonics.at(1)).Format(),
+            std::get<1>(record->harmonics.at(1)).Format(),
         },
         {
             "SFDR",
-            record->sfdr_dbfs.Format(DIGITS),
+            record->sfdr_dbfs.Format(),
             "HD4",
-            std::get<0>(record->harmonics.at(2)).Format(DIGITS),
-            std::get<1>(record->harmonics.at(2)).Format(DIGITS),
+            std::get<0>(record->harmonics.at(2)).Format(),
+            std::get<1>(record->harmonics.at(2)).Format(),
         },
         {
             "Noise",
-            record->noise.Format(DIGITS),
+            record->noise.Format(),
             "HD5",
-            std::get<0>(record->harmonics.at(3)).Format(DIGITS),
-            std::get<1>(record->harmonics.at(3)).Format(DIGITS),
+            std::get<0>(record->harmonics.at(3)).Format(),
+            std::get<1>(record->harmonics.at(3)).Format(),
         },
         {
             "Size",
             fmt::format("{:7} pts", (record->x.size() - 1) * 2),
             "TIx",
-            std::get<0>(record->gain_spur).Format(DIGITS),
-            std::get<1>(record->gain_spur).Format(DIGITS),
+            std::get<0>(record->gain_spur).Format(),
+            std::get<1>(record->gain_spur).Format(),
         },
         {
             "Bin",
             record->FormatX(record->step, DIGITS),
             "TIo",
-            std::get<0>(record->offset_spur).Format(DIGITS),
-            std::get<1>(record->offset_spur).Format(DIGITS),
+            std::get<0>(record->offset_spur).Format(),
+            std::get<1>(record->offset_spur).Format(),
         },
     };
 }

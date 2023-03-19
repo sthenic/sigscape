@@ -54,7 +54,7 @@ enum class DigitizerMessageId
     INITIALIZE_PARAMETERS_FORCE,
     SET_CLOCK_SYSTEM_PARAMETERS,
     SET_WINDOW_TYPE,
-    SET_CONVERT_TO_VOLTS,
+    SET_CONVERT_DATA,
     SET_CONFIGURATION_DIRECTORY,
     GET_TOP_PARAMETERS_FILENAME,
     GET_CLOCK_SYSTEM_PARAMETERS_FILENAME,
@@ -472,8 +472,8 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
         case DigitizerMessageId::SET_WINDOW_TYPE:
             name = "SET_WINDOW_TYPE";
             break;
-        case DigitizerMessageId::SET_CONVERT_TO_VOLTS:
-            name = "SET_CONVERT_TO_VOLTS";
+        case DigitizerMessageId::SET_CONVERT_DATA:
+            name = "SET_CONVERT_DATA";
             break;
         case DigitizerMessageId::SET_CONFIGURATION_DIRECTORY:
             name = "SET_CONFIGURATION_DIRECTORY";

@@ -1508,26 +1508,9 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
         window_idx_prev = window_idx;
     }
 
-    static int units_idx = 0;
-    static int units_idx_prev = 0;
-    const char *units_labels[] = {"Volts", "Codes"};
-    ImGui::Combo("Vertical units", &units_idx, units_labels, IM_ARRAYSIZE(units_labels));
-
-    if (units_idx != units_idx_prev)
-    {
-        switch (units_idx)
-        {
-        case 0:
-            PushMessage({DigitizerMessageId::SET_CONVERT_TO_VOLTS, true}, false);
-            break;
-
-        case 1:
-            PushMessage({DigitizerMessageId::SET_CONVERT_TO_VOLTS, false}, false);
-            break;
-        }
-
-        units_idx_prev = units_idx;
-    }
+    static bool convert_data = true;
+    if (ImGui::Checkbox("Convert data", &convert_data))
+        PushMessage({DigitizerMessageId::SET_CONVERT_DATA, convert_data}, false);
 
     ImGui::End();
 }

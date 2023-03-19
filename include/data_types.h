@@ -20,8 +20,9 @@
 #include "ADQAPI.h"
 #endif
 
-
-/* FIXME: Pairing a double and some properties to create a formattable value. */
+/* The `Value` type groups together a `double` with a few properties to greatly
+   simplify its formatting for UI presentation. This is handled through the
+   various `Format` functions. */
 struct Value
 {
     struct Properties
@@ -118,19 +119,22 @@ struct BaseRecord
 /* A time domain record. */
 struct TimeDomainRecord : public BaseRecord
 {
+    inline static const std::string PRECISION = "8.2";
+    inline static const std::string PRECISION_UNCONVERTED = "8.0";
+
     TimeDomainRecord(const struct ADQGen4Record *raw,
                      const struct ADQAnalogFrontendParametersChannel &afe,
                      double code_normalization, bool convert = true)
         : BaseRecord(raw->header->record_length,
-                     convert ? Value::Properties{"s", "8.2", 1e-3, 1e-12}
-                             : Value::Properties{"S", "8.0", 1.0, 1.0},
-                     convert ? Value::Properties{"V", "8.2", 1e-3, 1e-12}
-                             : Value::Properties{"C", "8.0", 1.0, 1.0})
+                     convert ? Value::Properties{"s", PRECISION, 1e-3, 1e-12}
+                             : Value::Properties{"S", PRECISION_UNCONVERTED, 1.0, 1.0},
+                     convert ? Value::Properties{"V", PRECISION, 1e-3, 1e-12}
+                             : Value::Properties{"C", PRECISION_UNCONVERTED, 1.0, 1.0})
         , header(*raw->header)
-        , estimated_trigger_frequency(0.0, {"Hz", "8.2", 1e6})
-        , estimated_throughput(0.0, {"B/s", "8.2", 1e6})
-        , sampling_frequency(0.0, {"Hz", "8.2", 1e6})
-        , sampling_period(0.0, {"s", "8.2", 1e-3})
+        , estimated_trigger_frequency(0.0, {"Hz", PRECISION, 1e6})
+        , estimated_throughput(0.0, {"B/s", PRECISION, 1e6})
+        , sampling_frequency(0.0, {"Hz", PRECISION, 1e6})
+        , sampling_period(0.0, {"s", PRECISION, 1e-3})
         , range_max(ValueY(0.0))
         , range_min(ValueY(0.0))
         , range_mid(ValueY(0.0))
@@ -227,38 +231,30 @@ struct TimeDomainRecord : public BaseRecord
     Value rms;
 };
 
+
 struct FrequencyDomainRecord : public BaseRecord
 {
+    inline static const std::string PRECISION = "7.2";
+
     FrequencyDomainRecord(size_t count)
         : BaseRecord(count,
-                     {
-                         "Hz",
-                         "7.2",
-                         1e6,
-                         1.0,
-                     },
-                     {
-                         "dBFS",
-                         "dB",
-                         "7.2",
-                         1.0,
-                         1.0,
-                     })
+                     Value::Properties{"Hz", PRECISION, 1e6, 1.0},
+                     Value::Properties{"dBFS", "dB", PRECISION, 1.0, 1.0})
         , fundamental{}
         , spur{}
         , harmonics{} /* FIXME: "gain_phase" */
         , gain_spur{}
         , offset_spur{}
-        , snr(0.0, {"dB", "7.2", 1.0})
-        , sinad(0.0, {"dB", "7.2", 1.0})
-        , enob(0.0, {"bits", "7.2", 1.0})
-        , sfdr_dbc(0.0, {"dBc", "7.2", 1.0})
-        , sfdr_dbfs(0.0, {"dBFS", "7.2", 1.0})
-        , thd(0.0, {"dB", "7.2", 1.0})
-        , noise(0.0, {"dBFS", "7.2", 1.0})
-        , noise_moving_average(0.0, {"dBFS", "7.2", 1.0})
+        , snr(0.0, {"dB", PRECISION, 1.0})
+        , sinad(0.0, {"dB", PRECISION, 1.0})
+        , enob(0.0, {"bits", PRECISION, 1.0})
+        , sfdr_dbc(0.0, {"dBc", PRECISION, 1.0})
+        , sfdr_dbfs(0.0, {"dBFS", PRECISION, 1.0})
+        , thd(0.0, {"dB", PRECISION, 1.0})
+        , noise(0.0, {"dBFS", PRECISION, 1.0})
+        , noise_moving_average(0.0, {"dBFS", PRECISION, 1.0})
         , size(0.0, {"pts", "7.0", 1.0})
-        , bin(0.0, {"Hz", "7.2", 1e6})
+        , bin(0.0, {"Hz", PRECISION, 1e6})
     {}
 
     /* Delete copy constructors until we need them. */

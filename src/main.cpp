@@ -76,7 +76,7 @@ static bool SavePng(const std::string &filename, uint8_t *pixels, int width, int
     return true;
 }
 
-static bool SaveToFile(const std::string &filename)
+static bool Screenshot(const std::string &filename)
 {
     int width;
     int height;
@@ -120,7 +120,7 @@ int main(int, char **)
     }
 
     Ui ui;
-    ui.Initialize(window, glsl_version, SaveToFile);
+    ui.Initialize(window, glsl_version, Screenshot);
 
     while (!glfwWindowShouldClose(window))
     {

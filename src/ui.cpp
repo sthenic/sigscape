@@ -151,8 +151,8 @@ Ui::DigitizerUiState::DigitizerUiState()
 }
 
 Ui::Ui()
-    : SaveToFile(NULL)
-    , m_save_to_file(false)
+    : Screenshot(NULL)
+    , m_screenshot_phases({false, false, {false, ""}})
     , m_persistent_configuration()
     , m_identification()
     , m_adq_control_unit()
@@ -174,7 +174,7 @@ Ui::Ui()
 }
 
 void Ui::Initialize(GLFWwindow *window, const char *glsl_version,
-                    bool (*SaveToFile)(const std::string &filename))
+                    bool (*Screenshot)(const std::string &filename))
 {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -182,7 +182,7 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version,
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
     ImGui::StyleColorsDark();
-    this->SaveToFile = SaveToFile;
+    this->Screenshot = Screenshot;
 
     /* Set up the ImGui configuration file. */
     ImGui::GetIO().IniFilename = m_persistent_configuration.GetImGuiInitializationFile();
@@ -230,16 +230,23 @@ void Ui::Render(float width, float height)
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-    /* FIXME: Obviously improve this... */
-    if (m_save_to_file && SaveToFile)
-    {
-        m_save_to_file = false;
+    /* The screenshot operation has three phases. Here we deal with the last two
+       phases. Phase two is just a transition to delay the actual screenshot to
+       the next render. We have to do it this way because otherwise, the dialog
+       we had open in phase one would still be on the screen. */
+    auto &[first, second, third] = m_screenshot_phases;
+    auto &[trigger, filename] = third;
 
-        const std::string filename = "sigscape_" + NowAsIso8601() + ".png";
-        if (SaveToFile(filename))
-            printf("%s\n", fmt::format("Saved current view as '{}'.", filename).c_str());
-        else
+    if (second)
+    {
+        second = false;
+        trigger = true;
+    }
+    else if (trigger && Screenshot)
+    {
+        if (!Screenshot(filename))
             printf("%s\n", fmt::format("Failed to save PNG image '{}'.", filename).c_str());
+        trigger = false;
     }
 }
 
@@ -482,19 +489,25 @@ void Ui::HandleMessages()
 void Ui::RenderMenuBar()
 {
     ImGui::BeginMainMenuBar();
-    if (ImGui::MenuItem("Save"))
+    if (ImGui::MenuItem("Screenshot"))
     {
         /* We have to postpone the saving until the very end of the 'global'
            render function, i.e. until the frame buffer has received all its
            contents. */
-        m_save_to_file = true;
+        m_file_browser.SetTitle("Save screenshot to file...");
+        m_file_browser.SetTypeFilters({".png"});
+        m_file_browser.Open();
+        m_file_browser.SetInputName("sigscape_" + NowAsIso8601() + ".png");
+        std::get<0>(m_screenshot_phases) = true;
     }
+
     if (ImGui::BeginMenu("Demo"))
     {
         ImGui::MenuItem("ImGui", NULL, &m_show_imgui_demo_window);
         ImGui::MenuItem("ImPlot", NULL, &m_show_implot_demo_window);
         ImGui::EndMenu();
     }
+
     if (ImGui::BeginMenu("Style"))
     {
         static int style_idx = 0;
@@ -612,6 +625,19 @@ void Ui::RenderPopups()
                     chui.should_save_to_file = false;
                 }
             }
+        }
+    }
+
+    /* The first phase of the screenshot operation is to determine the filename. */
+    auto &[first, second, third] = m_screenshot_phases;
+    if (first)
+    {
+        m_file_browser.Display();
+        if (m_file_browser.HasSelected())
+        {
+            first = false;
+            second = true;
+            third = {false, m_file_browser.GetSelected()};
         }
     }
 }

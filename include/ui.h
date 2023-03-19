@@ -25,13 +25,13 @@ public:
     ~Ui() = default;
 
     void Initialize(GLFWwindow *window, const char *glsl_version,
-                    bool (* SaveToFile)(const std::string &filename));
+                    bool (* Screenshot)(const std::string &filename));
     void Render(float width, float height);
     void Terminate();
 
 private:
-    bool (* SaveToFile)(const std::string &filename);
-    bool m_save_to_file;
+    bool (* Screenshot)(const std::string &filename);
+    std::tuple<bool, bool, std::tuple<bool, std::string>> m_screenshot_phases;
     PersistentConfiguration m_persistent_configuration;
     Identification m_identification;
     void *m_adq_control_unit;

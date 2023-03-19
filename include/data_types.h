@@ -103,12 +103,6 @@ struct BaseRecord
         return Value(value, y_properties);
     }
 
-    /* Convenience functions to construct a homogenously formatted value from one of two dimensions. */
-    std::string FormatX(double value, const std::string &precision, bool show_sign = false) const;
-    std::string FormatDeltaX(double value, const std::string &precision, bool show_sign = false) const;
-    std::string FormatY(double value, const std::string &precision, bool show_sign = false) const;
-    std::string FormatDeltaY(double value, const std::string &precision, bool show_sign = false) const;
-
     std::vector<double> x;
     std::vector<double> y;
     Value::Properties x_properties;

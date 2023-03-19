@@ -39,27 +39,3 @@ std::string Value::FormatDelta(double value, const std::string &precision, bool 
 
 BaseRecord::~BaseRecord()
 {}
-
-std::string BaseRecord::FormatX(double value, const std::string &precision, bool show_sign) const
-{
-    return Format::Metric(value, Format::String(precision, x_properties.unit, show_sign),
-                          x_properties.highest_prefix);
-}
-
-std::string BaseRecord::FormatDeltaX(double value, const std::string &precision, bool show_sign) const
-{
-    return Format::Metric(value, Format::String(precision, x_properties.delta_unit, show_sign),
-                          x_properties.highest_prefix);
-}
-
-std::string BaseRecord::FormatY(double value, const std::string &precision, bool show_sign) const
-{
-    return Format::Metric(value, Format::String(precision, y_properties.unit, show_sign),
-                          y_properties.highest_prefix);
-}
-
-std::string BaseRecord::FormatDeltaY(double value, const std::string &precision, bool show_sign) const
-{
-    return Format::Metric(value, Format::String(precision, y_properties.delta_unit, show_sign),
-                          y_properties.highest_prefix);
-}

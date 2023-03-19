@@ -325,24 +325,24 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
 
     /* FIXME: Manual opt-out from interleaving analysis? */
     double interleaving_spur_power = 0.0;
-    Tone gain_spur{};
+    Tone gain_phase_spur{};
     Tone offset_spur{};
-    PlaceInterleavingSpurs(fundamental, record, gain_spur, offset_spur);
-    ResolveInterleavingSpurOverlaps(dc, fundamental, harmonics, gain_spur, offset_spur,
+    PlaceInterleavingSpurs(fundamental, record, gain_phase_spur, offset_spur);
+    ResolveInterleavingSpurOverlaps(dc, fundamental, harmonics, gain_phase_spur, offset_spur,
                                     frequency_domain->overlap);
-    gain_spur.power = 0.0;
-    for (const auto &v : gain_spur.values)
-        gain_spur.power += v;
-    interleaving_spur_power += gain_spur.power;
+    gain_phase_spur.power = 0.0;
+    for (const auto &v : gain_phase_spur.values)
+        gain_phase_spur.power += v;
+    interleaving_spur_power += gain_phase_spur.power;
 
     offset_spur.power = 0.0;
     for (const auto &v : offset_spur.values)
         offset_spur.power += v;
     interleaving_spur_power += offset_spur.power;
 
-    frequency_domain->gain_spur = {
-        frequency_domain->ValueX(gain_spur.frequency),
-        frequency_domain->ValueY(y[gain_spur.idx]),
+    frequency_domain->gain_phase_spur = {
+        frequency_domain->ValueX(gain_phase_spur.frequency),
+        frequency_domain->ValueY(y[gain_phase_spur.idx]),
     };
 
     frequency_domain->offset_spur = {

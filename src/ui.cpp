@@ -2171,7 +2171,7 @@ void Ui::PlotFourierTransformSelected()
 
             if (ui->is_interleaving_spurs_annotated)
             {
-                Annotate(ui->record->frequency_domain->gain_spur, "TIx");
+                Annotate(ui->record->frequency_domain->gain_phase_spur, "TIx");
                 Annotate(ui->record->frequency_domain->offset_spur, "TIo");
             }
 
@@ -2444,8 +2444,8 @@ std::vector<std::vector<std::string>> Ui::FormatFrequencyDomainMetrics(
             "Size",
             record->size.Format(),
             "TIx",
-            std::get<0>(record->gain_spur).Format(),
-            std::get<1>(record->gain_spur).Format(),
+            std::get<0>(record->gain_phase_spur).Format(),
+            std::get<1>(record->gain_phase_spur).Format(),
         },
         {
             "Bin",

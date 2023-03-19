@@ -236,8 +236,8 @@ struct FrequencyDomainRecord : public BaseRecord
                      Value::Properties{"dBFS", "dB", PRECISION, 1.0, 1.0})
         , fundamental{}
         , spur{}
-        , harmonics{} /* FIXME: "gain_phase" */
-        , gain_spur{}
+        , harmonics{}
+        , gain_phase_spur{}
         , offset_spur{}
         , snr(0.0, {"dB", PRECISION, 1.0})
         , sinad(0.0, {"dB", PRECISION, 1.0})
@@ -259,7 +259,7 @@ struct FrequencyDomainRecord : public BaseRecord
     std::tuple<Value, Value> fundamental;
     std::tuple<Value, Value> spur;
     std::vector<std::tuple<Value, Value>> harmonics;
-    std::tuple<Value, Value> gain_spur;
+    std::tuple<Value, Value> gain_phase_spur;
     std::tuple<Value, Value> offset_spur;
     Value snr;
     Value sinad;

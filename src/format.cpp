@@ -3,7 +3,8 @@
 
 #include <vector>
 
-std::string Format::Metric(double value, const std::string &format, double highest_prefix)
+std::string Format::Metric(double value, const std::string &format, double highest_prefix,
+                           double lowest_prefix)
 {
     static const std::vector<std::pair<double, const char *>> LIMITS = {
         {1e12, "T"},
@@ -24,82 +25,28 @@ std::string Format::Metric(double value, const std::string &format, double highe
        larger than the limit. If it is, we pick the corresponding prefix. If
        we've exhausted the search, we pick the last entry (smallest prefix). */
 
-    for (const auto &limit : LIMITS)
+    for (size_t i = 0; i < LIMITS.size(); ++i)
     {
-        if (limit.first > highest_prefix)
+        if (LIMITS[i].first > highest_prefix)
             continue;
 
-        if (std::fabs(value) >= limit.first)
-            return fmt::format(format, value / limit.first, limit.second);
+        bool next_is_not_allowed = i < LIMITS.size() - 1 && LIMITS[i + 1].first < lowest_prefix;
+        bool is_larger_than_limit = std::fabs(value) >= LIMITS[i].first;
+
+        if (next_is_not_allowed || is_larger_than_limit)
+            return fmt::format(format, value / LIMITS[i].first, LIMITS[i].second);
     }
 
-    return fmt::format(format, value / LIMITS.back().first, LIMITS.back().second);
+    return fmt::format(format, value / LIMITS[0].first, LIMITS[0].second);
 }
 
-std::string Format::TimeDomainX(double value, const std::string &format, bool show_sign)
+/* Static member function to parametrize the construction of the fmt::format string. */
+std::string Format::String(const std::string &precision, const std::string &unit, bool show_sign)
 {
-    std::string lformat = "{:>-" + format + "f} {}s";
+    std::string format = "{:>-" + precision + "f} {}" + unit;
     if (show_sign)
-        lformat[3] = '+';
-    return Metric(value, lformat, 1e-3);
-}
-
-std::string Format::TimeDomainX(double value, bool show_sign)
-{
-    return TimeDomainX(value, "7.2", show_sign);
-}
-
-std::string Format::TimeDomainY(double value, const std::string &format, bool show_sign)
-{
-    std::string lformat = "{:>-" + format + "f} {}V";
-    if (show_sign)
-        lformat[3] = '+';
-    return Metric(value, lformat, 1e-3);
-}
-
-std::string Format::TimeDomainY(double value, bool show_sign)
-{
-    return TimeDomainY(value, "8.2", show_sign);
-}
-
-std::string Format::FrequencyDomainX(double value, const std::string &format, bool show_sign)
-{
-    std::string lformat = "{:>-" + format + "f} {}Hz";
-    if (show_sign)
-        lformat[3] = '+';
-    return Metric(value, lformat, 1e6);
-}
-
-
-std::string Format::FrequencyDomainX(double value, bool show_sign)
-{
-    return FrequencyDomainX(value, "7.2", show_sign);
-}
-
-std::string Format::FrequencyDomainY(double value, const std::string &format, bool show_sign)
-{
-    std::string lformat = "{:>-" + format + "f} dBFS";
-    if (show_sign)
-        lformat[3] = '+';
-    return fmt::format(lformat, value);
-}
-
-std::string Format::FrequencyDomainY(double value, bool show_sign)
-{
-    return FrequencyDomainY(value, "7.2", show_sign);
-}
-
-std::string Format::FrequencyDomainDeltaY(double value, const std::string &format, bool show_sign)
-{
-    std::string lformat = "{:>-" + format + "f} dB";
-    if (show_sign)
-        lformat[3] = '+';
-    return fmt::format(lformat, value);
-}
-
-std::string Format::FrequencyDomainDeltaY(double value, bool show_sign)
-{
-    return FrequencyDomainDeltaY(value, "7.2", show_sign);
+        format[3] = '+';
+    return format;
 }
 
 int Format::Metric(double value, char *tick_label, int size, void *data)

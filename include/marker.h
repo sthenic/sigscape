@@ -1,13 +1,14 @@
 #ifndef MARKER_H_DJMQPF
 #define MARKER_H_DJMQPF
 
+#include "data_types.h"
+#include "imgui.h"
+#include "implot.h"
+
 #include <set>
 #include <cstddef>
 #include <string>
 #include <map>
-
-#include "imgui.h"
-#include "implot.h"
 
 enum class MarkerKind
 {
@@ -18,7 +19,8 @@ enum class MarkerKind
 struct Marker
 {
     Marker() = default;
-    Marker(size_t id, size_t digitizer, size_t channel, size_t sample, double x, double y);
+    Marker(size_t id, size_t digitizer, size_t channel, size_t sample, const Value &x,
+           const Value &y);
 
     size_t id;
     size_t digitizer;
@@ -26,8 +28,8 @@ struct Marker
     size_t sample;
     ImVec4 color;
     float thickness;
-    double x;
-    double y;
+    Value x;
+    Value y;
     std::set<size_t> deltas;
 };
 
@@ -39,7 +41,7 @@ struct Markers
 {
     Markers(const std::string &label, const std::string &prefix);
 
-    void insert(size_t digitizer, size_t channel, size_t sample, double x, double y,
+    void insert(size_t digitizer, size_t channel, size_t sample, const Value &x, const Value &y,
                 bool add_delta_to_last = false);
 
     void clear();

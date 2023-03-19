@@ -54,6 +54,7 @@ enum class DigitizerMessageId
     INITIALIZE_PARAMETERS_FORCE,
     SET_CLOCK_SYSTEM_PARAMETERS,
     SET_WINDOW_TYPE,
+    SET_CONVERT_DATA,
     SET_CONFIGURATION_DIRECTORY,
     GET_TOP_PARAMETERS_FILENAME,
     GET_CLOCK_SYSTEM_PARAMETERS_FILENAME,
@@ -123,6 +124,7 @@ struct DigitizerMessage
         , str()
         , ivalue()
         , dvalue()
+        , bvalue()
         , window_type()
         , sensor_tree()
         , boot_entries{}
@@ -136,6 +138,7 @@ struct DigitizerMessage
         , str()
         , ivalue()
         , dvalue()
+        , bvalue()
         , window_type()
         , sensor_tree()
         , boot_entries{}
@@ -149,6 +152,7 @@ struct DigitizerMessage
         , str(str)
         , ivalue()
         , dvalue()
+        , bvalue()
         , window_type()
         , sensor_tree()
         , boot_entries{}
@@ -162,6 +166,7 @@ struct DigitizerMessage
         , str()
         , ivalue(ivalue)
         , dvalue()
+        , bvalue()
         , window_type()
         , sensor_tree()
         , boot_entries{}
@@ -175,6 +180,21 @@ struct DigitizerMessage
         , str()
         , ivalue()
         , dvalue(dvalue)
+        , bvalue()
+        , window_type()
+        , sensor_tree()
+        , boot_entries{}
+        , constant_parameters()
+    {}
+
+    /* Create a boolean message. */
+    DigitizerMessage(DigitizerMessageId id, bool bvalue)
+        : id(id)
+        , state()
+        , str()
+        , ivalue()
+        , dvalue()
+        , bvalue(bvalue)
         , window_type()
         , sensor_tree()
         , boot_entries{}
@@ -187,6 +207,8 @@ struct DigitizerMessage
         , state()
         , str()
         , ivalue()
+        , dvalue()
+        , bvalue()
         , window_type(window_type)
         , sensor_tree()
         , boot_entries{}
@@ -200,6 +222,7 @@ struct DigitizerMessage
         , str()
         , ivalue()
         , dvalue()
+        , bvalue()
         , window_type()
         , sensor_tree(std::move(sensor_tree))
         , boot_entries{}
@@ -214,6 +237,7 @@ struct DigitizerMessage
         , str(state_description, 0, sizeof(state_description))
         , ivalue(state)
         , dvalue()
+        , bvalue()
         , window_type()
         , sensor_tree()
         , boot_entries(std::move(boot_entries))
@@ -227,6 +251,7 @@ struct DigitizerMessage
         , str()
         , ivalue()
         , dvalue()
+        , bvalue()
         , window_type()
         , sensor_tree()
         , boot_entries{}
@@ -238,6 +263,7 @@ struct DigitizerMessage
     std::string str;
     int ivalue;
     double dvalue;
+    bool bvalue;
     WindowType window_type;
     SensorTree sensor_tree;
     std::vector<BootEntry> boot_entries;
@@ -445,6 +471,9 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
             break;
         case DigitizerMessageId::SET_WINDOW_TYPE:
             name = "SET_WINDOW_TYPE";
+            break;
+        case DigitizerMessageId::SET_CONVERT_DATA:
+            name = "SET_CONVERT_DATA";
             break;
         case DigitizerMessageId::SET_CONFIGURATION_DIRECTORY:
             name = "SET_CONFIGURATION_DIRECTORY";

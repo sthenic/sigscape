@@ -136,8 +136,19 @@ private:
 
     struct UnitsPerDivision
     {
+        std::string Format()
+        {
+            return fmt::format(
+                "{}/div\n{}/div",
+                Format::Metric(y, "{:6.2f} {}" + y_unit),
+                Format::Metric(x, "{:6.2f} {}" + x_unit)
+            );
+        }
+
         double x;
         double y;
+        std::string x_unit;
+        std::string y_unit;
     };
 
     UnitsPerDivision m_time_domain_units_per_division;
@@ -181,7 +192,7 @@ private:
 
     void Reduce(double xsize, double sampling_frequency, int &count, int &stride);
 
-    void MarkerTree(Markers &markers, Format::Formatter FormatX, Format::Formatter FormatY);
+    void MarkerTree(Markers &markers);
 
     std::vector<std::tuple<size_t, size_t, ChannelUiState *>> FilterUiStates();
     static void GetUnitsPerDivision(const std::string &title, UnitsPerDivision &units_per_division);
@@ -210,7 +221,7 @@ private:
     void RenderTimeDomain(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size);
 
-    void Annotate(const std::pair<double, double> &point, const std::string &label = "");
+    void Annotate(const std::tuple<Value, Value> &point, const std::string &label = "");
     void PlotFourierTransformSelected();
     void RenderFourierTransformPlot();
 
@@ -218,6 +229,11 @@ private:
     void RenderWaterfallPlot();
 
     static void RenderHeaderButtons(ChannelUiState &ui);
+
+    std::vector<std::vector<std::string>> FormatTimeDomainMetrics(
+        const ProcessedRecord *processed_record);
+    std::vector<std::vector<std::string>> FormatFrequencyDomainMetrics(
+        const ProcessedRecord *processed_record);
 
     void RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size);

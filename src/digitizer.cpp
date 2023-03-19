@@ -552,6 +552,11 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
             t->SetWindowType(message.window_type);
         break;
 
+    case DigitizerMessageId::SET_CONVERT_DATA:
+        for (const auto &t : m_processing_threads)
+            t->SetConvertData(message.bvalue);
+        break;
+
     case DigitizerMessageId::SET_CONFIGURATION_DIRECTORY:
         m_configuration_directory = message.str;
         InitializeFileWatchers();
@@ -643,6 +648,11 @@ void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &messag
     case DigitizerMessageId::SET_WINDOW_TYPE:
         for (const auto &t : m_processing_threads)
             t->SetWindowType(message.window_type);
+        break;
+
+    case DigitizerMessageId::SET_CONVERT_DATA:
+        for (const auto &t : m_processing_threads)
+            t->SetConvertData(message.bvalue);
         break;
 
     case DigitizerMessageId::GET_TOP_PARAMETERS_FILENAME:

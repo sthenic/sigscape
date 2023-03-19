@@ -1,5 +1,4 @@
-#ifndef MARKER_H_DJMQPF
-#define MARKER_H_DJMQPF
+#pragma once
 
 #include "data_types.h"
 #include "imgui.h"
@@ -73,6 +72,3 @@ struct Markers
     std::map<size_t, Marker> markers;
     std::map<size_t, Marker>::iterator last_marker;
 };
-
-
-#endif

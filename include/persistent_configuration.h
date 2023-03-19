@@ -1,7 +1,6 @@
 /* A wrapper around managing the persistent configuration. */
 
-#ifndef PERSISTENT_CONFIGURATION_H_1KUG68
-#define PERSISTENT_CONFIGURATION_H_1KUG68
+#pragma once
 
 #include <string>
 
@@ -26,5 +25,3 @@ private:
 
     inline static const std::string SUFFIX = "/sigscape";
 };
-
-#endif

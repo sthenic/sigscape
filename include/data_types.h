@@ -1,5 +1,4 @@
-#ifndef DATA_TYPES_H_WSKIC4
-#define DATA_TYPES_H_WSKIC4
+#pragma once
 
 #include "fmt/format.h"
 #include "format.h"
@@ -384,5 +383,3 @@ struct SensorRecord : public BaseRecord
     uint32_t group_id; /* FIXME: Prob not needed */
     std::string note;
 };
-
-#endif

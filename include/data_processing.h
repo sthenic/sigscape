@@ -1,5 +1,4 @@
-#ifndef DATA_PROCESSING_H_J8UO0P
-#define DATA_PROCESSING_H_J8UO0P
+#pragma once
 
 #include "smart_buffer_thread.h"
 #include "window.h"
@@ -108,5 +107,3 @@ private:
     /* Analyze the time domain data. */
     void AnalyzeTimeDomain(ProcessedRecord *record);
 };
-
-#endif

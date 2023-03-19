@@ -1,5 +1,4 @@
-#ifndef FORMAT_H_QPXLOO
-#define FORMAT_H_QPXLOO
+#pragma once
 
 #include <string>
 
@@ -17,5 +16,3 @@ std::string String(const std::string &precision, const std::string &unit, bool s
 /* Only user for ImPlot axis formatting. */
 int Metric(double value, char *tick_label, int size, void *data);
 };
-
-#endif

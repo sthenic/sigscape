@@ -1,5 +1,4 @@
-#ifndef IDENTIFICATION_H_N0GKBL
-#define IDENTIFICATION_H_N0GKBL
+#pragma once
 
 #include "message_thread.h"
 #include "digitizer.h"
@@ -17,5 +16,3 @@ public:
     Identification() = default;
     void MainLoop() override;
 };
-
-#endif

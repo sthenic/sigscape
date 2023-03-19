@@ -1,5 +1,4 @@
-#ifndef GENERATOR_H_69EMSR
-#define GENERATOR_H_69EMSR
+#pragma once
 
 #include "buffer_thread.h"
 #include "error.h"
@@ -64,6 +63,3 @@ private:
 
     void NoisySine(ADQGen4Record &record, size_t count, bool &overrange);
 };
-
-#endif
-

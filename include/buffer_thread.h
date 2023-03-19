@@ -1,7 +1,6 @@
 /* This design is based on CRTP (https://en.wikipedia.org/wiki/Curiously_recurring_template_pattern). */
 
-#ifndef BUFFER_THREAD_H_69EMSR
-#define BUFFER_THREAD_H_69EMSR
+#pragma once
 
 #include "thread_safe_queue.h"
 #include "error.h"
@@ -140,5 +139,3 @@ protected:
 
     virtual void MainLoop() = 0;
 };
-
-#endif

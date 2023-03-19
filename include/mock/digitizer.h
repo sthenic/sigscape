@@ -1,5 +1,4 @@
-#ifndef MOCK_DIGITIZER_H_STIYJN
-#define MOCK_DIGITIZER_H_STIYJN
+#pragma once
 
 #include "mock/generator.h"
 #include "mock/system_manager.h"
@@ -47,5 +46,3 @@ private:
     template<typename T>
     int ParseLine(int line_idx, const std::string &str, std::vector<T> &values);
 };
-
-#endif

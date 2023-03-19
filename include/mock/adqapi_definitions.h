@@ -1,5 +1,4 @@
-#ifndef MOCK_ADQAPI_DEFINITIONS_H_RVFILE
-#define MOCK_ADQAPI_DEFINITIONS_H_RVFILE
+#pragma once
 
 #include <cinttypes>
 #include <memory>
@@ -302,5 +301,3 @@ struct ADQDramStatus
     uint64_t fill;
     uint64_t fill_max;
 };
-
-#endif

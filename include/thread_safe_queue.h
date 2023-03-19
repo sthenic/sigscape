@@ -6,8 +6,7 @@
    writing thread. The queue also has an activity detection mechanism (measuring
    on the write port) that can be queried in a thread-safe manner. */
 
-#ifndef THREAD_SAFE_QUEUE_H_V53B5L
-#define THREAD_SAFE_QUEUE_H_V53B5L
+#pragma once
 
 #include "error.h"
 
@@ -246,5 +245,3 @@ private:
         return SCAPE_EOK;
     }
 };
-
-#endif

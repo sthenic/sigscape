@@ -1,5 +1,4 @@
-#ifndef FILE_WATCHER_H_XPOJEM
-#define FILE_WATCHER_H_XPOJEM
+#pragma once
 
 #include "message_thread.h"
 
@@ -37,5 +36,3 @@ private:
     void WriteContents(const std::string &str);
     void HandleMessages();
 };
-
-#endif

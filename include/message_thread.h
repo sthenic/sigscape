@@ -1,7 +1,6 @@
 /* This design is based on CRTP (https://en.wikipedia.org/wiki/Curiously_recurring_template_pattern). */
 
-#ifndef MESSAGE_THREAD_H_GXBSCP
-#define MESSAGE_THREAD_H_GXBSCP
+#pragma once
 
 #include "thread_safe_queue.h"
 
@@ -90,5 +89,3 @@ protected:
 
     virtual void MainLoop() = 0;
 };
-
-#endif

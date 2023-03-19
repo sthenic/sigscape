@@ -1,5 +1,4 @@
-#ifndef WINDOW_H_DT9K5B
-#define WINDOW_H_DT9K5B
+#pragma once
 
 #include <map>
 #include <memory>
@@ -44,5 +43,3 @@ private:
     std::map<size_t, std::shared_ptr<Window>> hanning_windows;
     std::map<size_t, std::shared_ptr<Window>> flat_top_windows;
 };
-
-#endif

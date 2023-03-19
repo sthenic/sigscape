@@ -1,5 +1,4 @@
-#ifndef SYSTEM_MANAGER_H_DI4WW9
-#define SYSTEM_MANAGER_H_DI4WW9
+#pragma once
 
 #include <cstdint>
 
@@ -64,5 +63,3 @@ struct ArgSensorGetValue
     uint32_t id;
     uint32_t format;
 };
-
-#endif

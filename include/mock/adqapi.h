@@ -1,5 +1,4 @@
-#ifndef MOCK_ADQAPI_H_5FQFYM
-#define MOCK_ADQAPI_H_5FQFYM
+#pragma once
 
 #include "mock/adqapi_definitions.h"
 #include "mock/digitizer.h"
@@ -78,5 +77,3 @@ int ADQ_SmTransaction(void *adq_cu, int adq_num, uint16_t cmd, void *wr_buf, siz
 
 int ADQ_SmTransactionImmediate(void *adq_cu, int adq_num, uint16_t cmd, void *wr_buf,
                                size_t wr_buf_len, void *rd_buf, size_t rd_buf_len);
-
-#endif

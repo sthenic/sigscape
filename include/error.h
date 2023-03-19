@@ -1,5 +1,4 @@
-#ifndef ERROR_H_E94S9C
-#define ERROR_H_E94S9C
+#pragma once
 
 #define SCAPE_ELAST (1) /* Used by the thread safe persistent queue to signal the last time an element is returned. */
 #define SCAPE_EOK (0) /* OK */
@@ -12,5 +11,3 @@
 #define SCAPE_EEXTERNAL (-7) /* External errors, e.g. from OS-level operations */
 #define SCAPE_EUNSUPPORTED (-8) /* Operation not supported by the device. */
 #define SCAPE_EINTERNAL (-9) /* Internal errors, cannot be addressed by the user. */
-
-#endif

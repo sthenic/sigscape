@@ -2,8 +2,7 @@
  * An abstract base class that defines the interface of a digitizer.
  */
 
-#ifndef DIGITIZER_H_TMDVZV
-#define DIGITIZER_H_TMDVZV
+#pragma once
 
 #include "message_thread.h"
 #include "data_types.h"
@@ -489,5 +488,3 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
         return fmt::formatter<string_view>::format(name, ctx);
     }
 };
-
-#endif

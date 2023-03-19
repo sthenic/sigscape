@@ -1,5 +1,4 @@
-#ifndef UI_H_TLXUOY
-#define UI_H_TLXUOY
+#pragma once
 
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_opengl3.h"
@@ -265,5 +264,3 @@ private:
     static const ImVec4 COLOR_WOW_PURPLE;
     static const ImVec4 COLOR_WOW_TAN;
 };
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef MOCK_SYSTEM_MANAGER_H_BINPXO
-#define MOCK_SYSTEM_MANAGER_H_BINPXO
+#pragma once
 
 #include "message_thread.h"
 #include "mock/../system_manager.h"
@@ -91,5 +90,3 @@ private:
 
     int HandleMessage();
 };
-
-#endif

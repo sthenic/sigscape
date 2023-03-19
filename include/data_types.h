@@ -20,24 +20,43 @@
 #include "ADQAPI.h"
 #endif
 
+
 /* FIXME: Pairing a double and some properties to create a formattable value. */
 struct Value
 {
-    Value() = default;
-    Value(double value, const std::string &unit, const std::string &delta_unit,
-          const std::string &precision, double highest_prefix = 1e12,
-          double lowest_prefix = 1e-12)
-        : value(value)
-        , highest_prefix(highest_prefix)
-        , lowest_prefix(lowest_prefix)
-        , precision(precision)
-        , unit(unit)
-        , delta_unit(delta_unit)
-    {}
+    struct Properties
+    {
+        Properties() = default;
+        Properties(std::string unit,
+                   std::string delta_unit,
+                   std::string precision,
+                   double highest_prefix = 1e12,
+                   double lowest_prefix = 1e-12)
+            : unit(unit)
+            , delta_unit(delta_unit)
+            , precision(precision)
+            , highest_prefix(highest_prefix)
+            , lowest_prefix(lowest_prefix)
+        {}
 
-    Value(double value, const std::string &unit, const std::string &precision,
-          double highest_prefix = 1e12, double lowest_prefix = 1e-12)
-        : Value(value, unit, unit, precision, highest_prefix, lowest_prefix)
+        Properties(std::string unit,
+                   std::string precision,
+                   double highest_prefix = 1e12,
+                   double lowest_prefix = 1e-12)
+            : Properties(unit, unit, precision, highest_prefix, lowest_prefix)
+        {}
+
+        std::string unit;
+        std::string delta_unit;
+        std::string precision;
+        double highest_prefix;
+        double lowest_prefix;
+    };
+
+    Value() = default;
+    Value(double value, const Properties &properties)
+        : value(value)
+        , properties(properties)
     {}
 
     /* Formatter returning a string for UI presentation. */
@@ -55,42 +74,18 @@ struct Value
     std::string FormatDelta(double value, const std::string &precision, bool show_sign = false) const;
 
     double value;
-    double highest_prefix;
-    double lowest_prefix;
-    std::string precision;
-    std::string unit;
-    std::string delta_unit;
+    Properties properties;
 };
 
 struct BaseRecord
 {
-    /* FIXME: Group the unit/delta/precision/prefix? */
-    BaseRecord(size_t count, const std::string &x_unit, const std::string &y_unit,
-               const std::string &x_delta_unit, const std::string &y_delta_unit,
-               const std::string &x_precision, const std::string &y_precision,
-               double x_highest_prefix, double y_highest_prefix,
-               double x_lowest_prefix, double y_lowest_prefix)
+    BaseRecord(size_t count, const Value::Properties &x_properties,
+               const Value::Properties &y_properties)
         : x(count)
         , y(count)
-        , x_unit(x_unit)
-        , y_unit(y_unit)
-        , x_delta_unit(x_delta_unit)
-        , y_delta_unit(y_delta_unit)
-        , x_precision(x_precision)
-        , y_precision(y_precision)
-        , x_highest_prefix(x_highest_prefix)
-        , y_highest_prefix(y_highest_prefix)
-        , x_lowest_prefix(x_lowest_prefix)
-        , y_lowest_prefix(y_lowest_prefix)
+        , x_properties(x_properties)
+        , y_properties(y_properties)
         , step(0.0)
-    {}
-
-    BaseRecord(size_t count, const std::string &x_unit, const std::string &y_unit,
-               const std::string &x_precision, const std::string &y_precision,
-               double x_highest_prefix, double y_highest_prefix, double x_lowest_prefix,
-               double y_lowest_prefix)
-        : BaseRecord(count, x_unit, y_unit, x_unit, y_unit, x_precision, y_precision,
-                     x_highest_prefix, y_highest_prefix, x_lowest_prefix, y_lowest_prefix)
     {}
 
     virtual ~BaseRecord() = 0;
@@ -98,33 +93,25 @@ struct BaseRecord
     /* Object-bound constructor of a value in the x-dimension. */
     Value ValueX(double value) const
     {
-        return Value(value, x_unit, x_delta_unit, x_precision, x_highest_prefix, x_lowest_prefix);
+        return Value(value, x_properties);
     }
 
     /* Object-bound constructor of a value in the y-dimension. */
     Value ValueY(double value) const
     {
-        return Value(value, y_unit, y_delta_unit, y_precision, y_highest_prefix, y_lowest_prefix);
+        return Value(value, y_properties);
     }
 
     /* Convenience functions to construct a homogenously formatted value from one of two dimensions. */
-    std::string FormatX(double value, const std::string &precision, bool show_sign = false);
-    std::string FormatDeltaX(double value, const std::string &precision, bool show_sign = false);
-    std::string FormatY(double value, const std::string &precision, bool show_sign = false);
-    std::string FormatDeltaY(double value, const std::string &precision, bool show_sign = false);
+    std::string FormatX(double value, const std::string &precision, bool show_sign = false) const;
+    std::string FormatDeltaX(double value, const std::string &precision, bool show_sign = false) const;
+    std::string FormatY(double value, const std::string &precision, bool show_sign = false) const;
+    std::string FormatDeltaY(double value, const std::string &precision, bool show_sign = false) const;
 
     std::vector<double> x;
     std::vector<double> y;
-    std::string x_unit;
-    std::string y_unit;
-    std::string x_delta_unit;
-    std::string y_delta_unit;
-    std::string x_precision;
-    std::string y_precision;
-    double x_highest_prefix;
-    double y_highest_prefix;
-    double x_lowest_prefix;
-    double y_lowest_prefix;
+    Value::Properties x_properties;
+    Value::Properties y_properties;
     double step;
 };
 
@@ -135,19 +122,15 @@ struct TimeDomainRecord : public BaseRecord
                      const struct ADQAnalogFrontendParametersChannel &afe,
                      double code_normalization, bool convert = true)
         : BaseRecord(raw->header->record_length,
-                     convert ? "s" : "S",
-                     convert ? "V" : "C",
-                     convert ? "8.2" : "8.0",
-                     convert ? "8.2" : "8.0",
-                     convert ? 1e-3 : 1.0,
-                     convert ? 1e-3 : 1.0,
-                     convert ? 1e-12 : 1.0,
-                     convert ? 1e-12 : 1.0)
+                     convert ? Value::Properties{"s", "8.2", 1e-3, 1e-12}
+                             : Value::Properties{"S", "8.0", 1.0, 1.0},
+                     convert ? Value::Properties{"V", "8.2", 1e-3, 1e-12}
+                             : Value::Properties{"C", "8.0", 1.0, 1.0})
         , header(*raw->header)
-        , estimated_trigger_frequency(0.0, "Hz", "8.2", 1e6)
-        , estimated_throughput(0.0, "B/s", "8.2", 1e6)
-        , sampling_frequency(0.0, "Hz", "8.2", 1e6)
-        , sampling_period(0.0, "s", "8.2", 1e-3)
+        , estimated_trigger_frequency(0.0, {"Hz", "8.2", 1e6})
+        , estimated_throughput(0.0, {"B/s", "8.2", 1e6})
+        , sampling_frequency(0.0, {"Hz", "8.2", 1e6})
+        , sampling_period(0.0, {"s", "8.2", 1e-3})
         , range_max(ValueY(0.0))
         , range_min(ValueY(0.0))
         , range_mid(ValueY(0.0))
@@ -247,23 +230,35 @@ struct TimeDomainRecord : public BaseRecord
 struct FrequencyDomainRecord : public BaseRecord
 {
     FrequencyDomainRecord(size_t count)
-        : BaseRecord(count, "Hz", "dBFS", "Hz", "dB", "7.2", "7.2", 1e6, 1.0, 1.0, 1.0)
+        : BaseRecord(count,
+                     {
+                         "Hz",
+                         "7.2",
+                         1e6,
+                         1.0,
+                     },
+                     {
+                         "dBFS",
+                         "dB",
+                         "7.2",
+                         1.0,
+                         1.0,
+                     })
         , fundamental{}
         , spur{}
-        , harmonics{}
-        /* FIXME: "gain_phase" */
+        , harmonics{} /* FIXME: "gain_phase" */
         , gain_spur{}
         , offset_spur{}
-        , snr(0.0, "dB", "7.2", 1.0)
-        , sinad(0.0, "dB", "7.2", 1.0)
-        , enob(0.0, "bits", "7.2", 1.0)
-        , sfdr_dbc(0.0, "dBc", "7.2", 1.0)
-        , sfdr_dbfs(0.0, "dBFS", "7.2", 1.0)
-        , thd(0.0, "dB", "7.2", 1.0)
-        , noise(0.0, "dBFS", "7.2", 1.0)
-        , noise_moving_average(0.0, "dBFS", "7.2", 1.0)
-        , size(0.0, "pts", "7.0", 1.0)
-        , bin(0.0, "Hz", "7.2", 1e6)
+        , snr(0.0, {"dB", "7.2", 1.0})
+        , sinad(0.0, {"dB", "7.2", 1.0})
+        , enob(0.0, {"bits", "7.2", 1.0})
+        , sfdr_dbc(0.0, {"dBc", "7.2", 1.0})
+        , sfdr_dbfs(0.0, {"dBFS", "7.2", 1.0})
+        , thd(0.0, {"dB", "7.2", 1.0})
+        , noise(0.0, {"dBFS", "7.2", 1.0})
+        , noise_moving_average(0.0, {"dBFS", "7.2", 1.0})
+        , size(0.0, {"pts", "7.0", 1.0})
+        , bin(0.0, {"Hz", "7.2", 1e6})
     {}
 
     /* Delete copy constructors until we need them. */
@@ -379,7 +374,7 @@ struct ProcessedRecord
 struct SensorRecord : public BaseRecord
 {
     SensorRecord()
-        : BaseRecord(0, "s", "N/A", "8.2", "8.2", 1e12, 1e12, 1e-12, 1e-12)
+        : BaseRecord(0, {"s", "8.2"}, {"N/A", "8.2"})
         , status(-1)
         , id()
         , group_id()
@@ -387,7 +382,7 @@ struct SensorRecord : public BaseRecord
     {}
 
     SensorRecord(uint32_t id, uint32_t group_id, const std::string &y_unit)
-        : BaseRecord(0, "s", y_unit, "8.2", "8.2", 1.0, 1e12, 1e-12, 1e-12)
+        : BaseRecord(0, {"s", "8.2", 1.0}, {y_unit, "8.2"})
         , status(-1)
         , id(id)
         , group_id(group_id)

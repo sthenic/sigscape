@@ -81,10 +81,12 @@ void Ui::ChannelUiState::SaveToFile(const std::filesystem::path &path)
 
     nlohmann::json json;
     json["label"] = record->label;
-    json["time_domain"]["units"] = {record->time_domain->x_unit, record->time_domain->y_unit};
+    json["time_domain"]["units"] = {record->time_domain->x_properties.unit,
+                                    record->time_domain->y_properties.unit};
     json["time_domain"]["x"] = record->time_domain->x;
     json["time_domain"]["y"] = record->time_domain->y;
-    json["frequency_domain"]["units"] = {record->frequency_domain->x_unit, record->frequency_domain->y_unit};
+    json["frequency_domain"]["units"] = {record->frequency_domain->x_properties.unit,
+                                         record->frequency_domain->y_properties.unit};
     json["frequency_domain"]["x"] = record->frequency_domain->x;
     json["frequency_domain"]["y"] = record->frequency_domain->y;
 
@@ -1137,7 +1139,8 @@ void Ui::RenderSensorGroup(SensorGroupUiState &group, bool is_first)
             }
             else
             {
-                ImGui::Text(fmt::format("{:7.3f} {}", sensor.record.y.back(), sensor.record.y_unit));
+                ImGui::Text(fmt::format("{:7.3f} {}", sensor.record.y.back(),
+                                        sensor.record.y_properties.unit));
             }
         }
 
@@ -1761,10 +1764,10 @@ void Ui::PlotTimeDomainSelected()
         if (first)
         {
             const auto &record = ui->record->time_domain;
-            ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric, record->x_unit.data());
-            ImPlot::SetupAxisFormat(ImAxis_Y1, Format::Metric, record->y_unit.data());
-            m_time_domain_units_per_division.x_unit = record->x_delta_unit;
-            m_time_domain_units_per_division.y_unit = record->y_delta_unit;
+            ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric, record->x_properties.unit.data());
+            ImPlot::SetupAxisFormat(ImAxis_Y1, Format::Metric, record->y_properties.unit.data());
+            m_time_domain_units_per_division.x_unit = record->x_properties.delta_unit;
+            m_time_domain_units_per_division.y_unit = record->y_properties.delta_unit;
             first = false;
         }
 
@@ -2023,9 +2026,6 @@ void Ui::RenderSensorPlot()
         PlotSensorsSelected();
 
         /* FIXME: Vertical units? Probably multiple axes. */
-        // const auto str =
-        //     fmt::format("{:6.2f} ?/div\n{}/div", m_sensor_units_per_division.y,
-        //                 Format::Metric(m_sensor_units_per_division.x, "{:6.2f} {}s", 1));
         RenderUnitsPerDivision(m_sensor_units_per_division.Format());
 
         ImPlot::EndPlot();
@@ -2120,9 +2120,9 @@ void Ui::PlotFourierTransformSelected()
         if (first)
         {
             const auto &record = ui->record->frequency_domain;
-            ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric, record->x_unit.data());
-            m_frequency_domain_units_per_division.x_unit = record->x_delta_unit;
-            m_frequency_domain_units_per_division.y_unit = record->y_delta_unit;
+            ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric, record->x_properties.unit.data());
+            m_frequency_domain_units_per_division.x_unit = record->x_properties.delta_unit;
+            m_frequency_domain_units_per_division.y_unit = record->y_properties.delta_unit;
             first = false;
         }
 
@@ -2240,7 +2240,8 @@ void Ui::PlotWaterfallSelected(double &scale_min, double &scale_max)
     {
         /* TODO: Y-axis scale (probably time delta?) */
         const auto &[i, ch, ui] = filtered_ui.back();
-        ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric, ui->record->frequency_domain->x_unit.data());
+        ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric,
+                                ui->record->frequency_domain->x_properties.unit.data());
 
         if (ui->should_auto_fit_waterfall)
         {

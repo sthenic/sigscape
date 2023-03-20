@@ -1,7 +1,7 @@
 #pragma once
 
 #include "message_thread.h"
-#include "mock/../system_manager.h"
+#include "../system_manager.h"
 
 #include <cstdint>
 #include <map>

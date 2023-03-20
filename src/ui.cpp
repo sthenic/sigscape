@@ -2472,6 +2472,34 @@ std::vector<std::vector<std::string>> Ui::FormatFrequencyDomainMetrics(
     };
 }
 
+void Ui::CopyFreqencyDomainMetricsToClipboard(const ProcessedRecord *processed_record)
+{
+    const auto &record = processed_record->frequency_domain;
+    ImGui::LogToClipboard();
+    ImGui::LogText("%s\n", processed_record->label.c_str());
+    ImGui::LogText("SNR,%s\n", record->snr.FormatCsv().c_str());
+    ImGui::LogText("SINAD,%s\n", record->sinad.FormatCsv().c_str());
+    ImGui::LogText("ENOB,%s\n", record->enob.FormatCsv().c_str());
+    ImGui::LogText("THD,%s\n", record->thd.FormatCsv().c_str());
+    ImGui::LogText("SFDR,%s\n", record->sfdr_dbfs.FormatCsv().c_str());
+    ImGui::LogText("Noise,%s\n", record->noise.FormatCsv().c_str());
+    ImGui::LogText("Fund.,%s,%s\n", std::get<0>(record->fundamental).FormatCsv().c_str(),
+                                    std::get<1>(record->fundamental).FormatCsv().c_str());
+    ImGui::LogText("HD2,%s,%s\n", std::get<0>(record->harmonics.at(0)).FormatCsv().c_str(),
+                                  std::get<1>(record->harmonics.at(0)).FormatCsv().c_str());
+    ImGui::LogText("HD3,%s,%s\n", std::get<0>(record->harmonics.at(1)).FormatCsv().c_str(),
+                                  std::get<1>(record->harmonics.at(1)).FormatCsv().c_str());
+    ImGui::LogText("HD4,%s,%s\n", std::get<0>(record->harmonics.at(2)).FormatCsv().c_str(),
+                                  std::get<1>(record->harmonics.at(2)).FormatCsv().c_str());
+    ImGui::LogText("HD5,%s,%s\n", std::get<0>(record->harmonics.at(3)).FormatCsv().c_str(),
+                                  std::get<1>(record->harmonics.at(3)).FormatCsv().c_str());
+    ImGui::LogText("TIx,%s,%s\n", std::get<0>(record->gain_phase_spur).FormatCsv().c_str(),
+                                  std::get<1>(record->gain_phase_spur).FormatCsv().c_str());
+    ImGui::LogText("TIo,%s,%s\n", std::get<0>(record->offset_spur).FormatCsv().c_str(),
+                                  std::get<1>(record->offset_spur).FormatCsv().c_str());
+    ImGui::LogFinish();
+}
+
 void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
 {
     /* FIXME: Move into functions? */
@@ -2654,6 +2682,10 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
                 ImGui::MenuItem("Annotate harmonics", "", &ui.is_harmonics_annotated);
                 ImGui::MenuItem("Annotate interleaving spurs", "",
                                 &ui.is_interleaving_spurs_annotated);
+
+                if (ImGui::MenuItem("Copy metrics"))
+                    CopyFreqencyDomainMetricsToClipboard(ui.record.get());
+
                 ImGui::EndPopup();
             }
 

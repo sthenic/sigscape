@@ -64,6 +64,9 @@ struct Value
     std::string Format(const char *precision, bool show_sign = false) const;
     std::string Format(const std::string &precision, bool show_sign = false) const;
 
+    /* Formatter returning a CSV string as "Value,Unit". */
+    std::string FormatCsv() const;
+
     /* Format another value as if it had the properties of this one. This is
        useful when needing to format a derived value, e.g. the result of a
        calculation involving this value. */

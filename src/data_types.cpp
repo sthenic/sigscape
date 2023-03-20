@@ -5,6 +5,11 @@ std::string Value::Format(bool show_sign) const
     return Format(value, show_sign);
 }
 
+std::string Value::FormatCsv() const
+{
+    return fmt::format("{:g},{}", value, properties.unit);
+}
+
 std::string Value::Format(const char *precision, bool show_sign) const
 {
     return Format(value, precision, show_sign);

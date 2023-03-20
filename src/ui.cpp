@@ -134,7 +134,7 @@ Ui::SensorGroupUiState::SensorGroupUiState(const std::string &label,
 
 Ui::DigitizerUiState::DigitizerUiState()
     : constant{}
-    , identifier("")
+    , identifier("Unknown")
     , state("")
     , event("")
     , state_color(COLOR_GREEN)

@@ -56,9 +56,6 @@ Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     , is_time_domain_visible(true)
     , is_frequency_domain_visible(true)
     , should_save_to_file(false)
-    , should_auto_fit_time_domain(true)
-    , should_auto_fit_frequency_domain(true)
-    , should_auto_fit_waterfall(true)
     , record(NULL)
     , memory{}
 {
@@ -167,6 +164,9 @@ Ui::Ui()
     , m_time_domain_units_per_division()
     , m_frequency_domain_units_per_division()
     , m_sensor_units_per_division{0.0, 0.0, "s", "?"}
+    , m_should_auto_fit_time_domain(true)
+    , m_should_auto_fit_frequency_domain(true)
+    , m_should_auto_fit_waterfall(true)
     , m_api_revision(0)
     , m_file_browser(ImGuiFileBrowserFlags_EnterNewFilename | ImGuiFileBrowserFlags_CreateNewDir |
                      ImGuiFileBrowserFlags_CloseOnEsc)
@@ -1780,11 +1780,10 @@ void Ui::PlotTimeDomainSelected()
             first = false;
         }
 
-        if (ui->should_auto_fit_time_domain)
-        {
-            ImPlot::SetNextAxesToFit();
-            ui->should_auto_fit_time_domain = false;
-        }
+        /* Unset the automatic auto fit as soon as we know we have something to
+           plot (it's already been armed at this point). */
+        if (m_should_auto_fit_time_domain)
+          m_should_auto_fit_time_domain = false;
 
         /* FIXME: A rough value to switch off persistent plotting when the
                   window contains too many samples, heavily tanking the
@@ -1965,6 +1964,9 @@ void Ui::RemoveDoubleClickedMarkers(Markers &markers)
 
 void Ui::RenderChannelPlot()
 {
+    if (m_should_auto_fit_time_domain)
+        ImPlot::SetNextAxesToFit();
+
     ImPlot::PushStyleVar(ImPlotStyleVar_FitPadding, ImVec2(0.0f, 0.1f));
     if (ImPlot::BeginPlot("Channels##Plot", ImVec2(-1, -1), ImPlotFlags_NoTitle))
     {
@@ -2135,11 +2137,10 @@ void Ui::PlotFourierTransformSelected()
             first = false;
         }
 
-        if (ui->should_auto_fit_frequency_domain)
-        {
-            ImPlot::SetNextAxesToFit();
-            ui->should_auto_fit_frequency_domain = false;
-        }
+        /* Unset the automatic auto fit as soon as we know we have something to
+           plot (it's already been armed at this point). */
+        if (m_should_auto_fit_frequency_domain)
+          m_should_auto_fit_frequency_domain = false;
 
         ImPlot::PushStyleColor(ImPlotCol_Line, ui->color);
         ImPlot::PlotLine(ui->record->label.c_str(), ui->record->frequency_domain->x.data(),
@@ -2222,6 +2223,9 @@ void Ui::PlotFourierTransformSelected()
 
 void Ui::RenderFourierTransformPlot()
 {
+    if (m_should_auto_fit_frequency_domain)
+        ImPlot::SetNextAxesToFit();
+
     ImPlot::PushStyleVar(ImPlotStyleVar_FitPadding, ImVec2(0.0f, 0.2f));
     if (ImPlot::BeginPlot("FFT##plot", ImVec2(-1, -1), ImPlotFlags_NoTitle))
     {
@@ -2252,11 +2256,10 @@ void Ui::PlotWaterfallSelected(double &scale_min, double &scale_max)
         ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric,
                                 ui->record->frequency_domain->x_properties.unit.data());
 
-        if (ui->should_auto_fit_waterfall)
-        {
-            ImPlot::SetNextAxesToFit();
-            ui->should_auto_fit_waterfall = false;
-        }
+        /* Unset the automatic auto fit as soon as we know we have something to
+           plot (it's already been armed at this point). */
+        if (m_should_auto_fit_waterfall)
+          m_should_auto_fit_waterfall = false;
 
         scale_min = std::round(ui->record->frequency_domain->noise_moving_average.value);
         scale_max = 0.0;
@@ -2278,6 +2281,9 @@ void Ui::RenderWaterfallPlot()
     const int PLOT_FLAGS = ImPlotFlags_NoTitle | ImPlotFlags_NoLegend;
     double scale_min = -100;
     double scale_max = 0;
+
+    if (m_should_auto_fit_waterfall)
+        ImPlot::SetNextAxesToFit();
 
     ImPlot::PushColormap("Plasma");
     if (ImPlot::BeginPlot("Waterfall##plot", ImVec2(PLOT_WIDTH, -1), PLOT_FLAGS))

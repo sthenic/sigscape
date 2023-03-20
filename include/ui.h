@@ -58,9 +58,6 @@ private:
         bool is_time_domain_visible;
         bool is_frequency_domain_visible;
         bool should_save_to_file;
-        bool should_auto_fit_time_domain;
-        bool should_auto_fit_frequency_domain;
-        bool should_auto_fit_waterfall;
         std::shared_ptr<ProcessedRecord> record;
         std::vector<std::shared_ptr<ProcessedRecord>> memory;
     };
@@ -150,9 +147,13 @@ private:
         std::string y_unit;
     };
 
+    /* FIXME: Maybe wrap into a struct for plot properties? + markers */
     UnitsPerDivision m_time_domain_units_per_division;
     UnitsPerDivision m_frequency_domain_units_per_division;
     UnitsPerDivision m_sensor_units_per_division;
+    bool m_should_auto_fit_time_domain;
+    bool m_should_auto_fit_frequency_domain;
+    bool m_should_auto_fit_waterfall;
 
     uint32_t m_api_revision;
     ImGui::FileBrowser m_file_browser;

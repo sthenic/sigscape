@@ -637,7 +637,7 @@ void Ui::RenderPopups()
         {
             first = false;
             second = true;
-            third = {false, m_file_browser.GetSelected()};
+            third = {false, m_file_browser.GetSelected().string()};
         }
     }
 }

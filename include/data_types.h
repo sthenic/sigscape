@@ -67,11 +67,11 @@ struct Value
     /* Format another value as if it had the properties of this one. This is
        useful when needing to format a derived value, e.g. the result of a
        calculation involving this value. */
-    std::string Format(double value, bool show_sign = false) const;
-    std::string FormatDelta(double value, bool show_sign = false) const;
+    std::string Format(double other, bool show_sign = false) const;
+    std::string FormatDelta(double other, bool show_sign = false) const;
 
-    std::string Format(double value, const std::string &precision, bool show_sign = false) const;
-    std::string FormatDelta(double value, const std::string &precision, bool show_sign = false) const;
+    std::string Format(double other, const std::string &precision, bool show_sign = false) const;
+    std::string FormatDelta(double other, const std::string &precision, bool show_sign = false) const;
 
     double value;
     Properties properties;

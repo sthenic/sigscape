@@ -24,7 +24,7 @@ public:
     ~Ui() = default;
 
     void Initialize(GLFWwindow *window, const char *glsl_version,
-                    bool (* Screenshot)(const std::string &filename));
+                    bool (* ScreenshotCallback)(const std::string &filename));
     void Render(float width, float height);
     void Terminate();
 

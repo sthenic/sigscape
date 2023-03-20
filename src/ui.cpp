@@ -39,7 +39,7 @@ static inline void Text(const std::string &str)
 
 static void WIP()
 {
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0, 0.2, 0.2, 1.0));
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.2f, 0.2f, 1.0f));
     ImGui::Text("WORK IN PROGRESS");
     ImGui::PopStyleColor();
 }
@@ -92,7 +92,7 @@ void Ui::ChannelUiState::SaveToFile(const std::filesystem::path &path)
     std::ofstream ofs(lpath, std::ios::trunc);
     if (ofs.fail())
     {
-        printf("Failed to open file '%s'.\n", lpath.c_str());
+        printf("Failed to open file '%s'.\n", lpath.string().c_str());
         return;
     }
 
@@ -174,7 +174,7 @@ Ui::Ui()
 }
 
 void Ui::Initialize(GLFWwindow *window, const char *glsl_version,
-                    bool (*Screenshot)(const std::string &filename))
+                    bool (*ScreenshotCallback)(const std::string &filename))
 {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -182,7 +182,7 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version,
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
     ImGui::StyleColorsDark();
-    this->Screenshot = Screenshot;
+    Screenshot = ScreenshotCallback;
 
     /* Set up the ImGui configuration file. */
     ImGui::GetIO().IniFilename = m_persistent_configuration.GetImGuiInitializationFile();
@@ -305,7 +305,7 @@ void Ui::UpdateRecords()
     /* Attempt to update the set of processed records for each digitizer. */
     for (auto &digitizer : m_digitizers)
     {
-        for (size_t ch = 0; ch < digitizer.ui.channels.size(); ++ch)
+        for (int ch = 0; ch < static_cast<int>(digitizer.ui.channels.size()); ++ch)
             digitizer.interface->WaitForProcessedRecord(ch, digitizer.ui.channels[ch].record);
     }
 }
@@ -954,8 +954,8 @@ void Ui::MarkerTree(Markers &markers)
                           ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
         ImGui::SameLine();
 
-        int flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnDoubleClick |
-                    ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+        flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnDoubleClick |
+                ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
 
         bool node_open =
             ImGui::TreeNodeEx(fmt::format("##node{}", marker.id, markers.label).c_str(), flags);
@@ -1014,17 +1014,16 @@ void Ui::MarkerTree(Markers &markers)
         {
             if (!marker.deltas.empty())
             {
-                const auto flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
-                                   ImGuiTableFlags_NoPadInnerX | ImGuiTableFlags_NoPadOuterX;
-                if (ImGui::BeginTable(fmt::format("##table{}{}", markers.label, id).c_str(), 2,
-                                      flags))
+                flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
+                        ImGuiTableFlags_NoPadInnerX | ImGuiTableFlags_NoPadOuterX;
+                if (ImGui::BeginTable(fmt::format("##table{}{}", markers.label, id).c_str(), 2, flags))
                 {
                     ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
                     ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
 
-                    for (auto id : marker.deltas)
+                    for (auto delta_id : marker.deltas)
                     {
-                        const auto &delta_marker = markers.at(id);
+                        const auto &delta_marker = markers.at(delta_id);
                         const double delta_x = delta_marker.x.value - marker.x.value;
                         const double delta_y = delta_marker.y.value - marker.y.value;
 
@@ -1798,7 +1797,7 @@ void Ui::PlotTimeDomainSelected()
             for (const auto &c : ui->record->persistence->data)
             {
                 ImPlot::PlotScatter(ui->record->label.c_str(), c->x.data(), c->y.data(),
-                                    c->x.size());
+                                    static_cast<int>(c->x.size()));
             }
             ImPlot::PopStyleVar();
         }
@@ -1809,7 +1808,8 @@ void Ui::PlotTimeDomainSelected()
 
             ImPlot::PushStyleColor(ImPlotCol_Line, ui->color);
             ImPlot::PlotLine(ui->record->label.c_str(), ui->record->time_domain->x.data(),
-                             ui->record->time_domain->y.data(), ui->record->time_domain->x.size());
+                             ui->record->time_domain->y.data(),
+                             static_cast<int>(ui->record->time_domain->x.size()));
             ImPlot::PopStyleColor();
         }
 
@@ -1828,7 +1828,7 @@ void Ui::PlotTimeDomainSelected()
                 const std::string label = fmt::format("M{} {}", m, memory_record->label);
                 ImPlot::PlotLine(label.c_str(), memory_record->time_domain->x.data(),
                                  memory_record->time_domain->y.data(),
-                                 memory_record->time_domain->x.size());
+                                 static_cast<int>(memory_record->time_domain->x.size()));
             }
             ImPlot::PopStyleColor();
         }
@@ -2002,7 +2002,7 @@ void Ui::PlotSensorsSelected()
 
                 const auto label = fmt::format("{}:{}", digitizer.ui.identifier, sensor.label);
                 ImPlot::PlotLine(label.c_str(), sensor.record.x.data(), sensor.record.y.data(),
-                                 sensor.record.x.size());
+                                 static_cast<int>(sensor.record.x.size()));
             }
         }
     }
@@ -2145,7 +2145,7 @@ void Ui::PlotFourierTransformSelected()
         ImPlot::PushStyleColor(ImPlotCol_Line, ui->color);
         ImPlot::PlotLine(ui->record->label.c_str(), ui->record->frequency_domain->x.data(),
                          ui->record->frequency_domain->y.data(),
-                         ui->record->frequency_domain->x.size());
+                         static_cast<int>(ui->record->frequency_domain->x.size()));
         ImPlot::PopStyleColor();
 
         /* Plot any waveforms in memory. */
@@ -2163,7 +2163,7 @@ void Ui::PlotFourierTransformSelected()
                 const std::string label = fmt::format("M{} {}", m, memory_record->label);
                 ImPlot::PlotLine(label.c_str(), memory_record->frequency_domain->x.data(),
                                  memory_record->frequency_domain->y.data(),
-                                 memory_record->frequency_domain->x.size());
+                                 static_cast<int>(memory_record->frequency_domain->x.size()));
             }
             ImPlot::PopStyleColor();
         }
@@ -2276,8 +2276,8 @@ void Ui::PlotWaterfallSelected(double &scale_min, double &scale_max)
 
 void Ui::RenderWaterfallPlot()
 {
-    const int LEGEND_WIDTH = 70;
-    const int PLOT_WIDTH = ImGui::GetWindowContentRegionMax().x - LEGEND_WIDTH;
+    const float LEGEND_WIDTH = 70.0f;
+    const float PLOT_WIDTH = ImGui::GetWindowContentRegionMax().x - LEGEND_WIDTH;
     const int PLOT_FLAGS = ImPlotFlags_NoTitle | ImPlotFlags_NoLegend;
     double scale_min = -100;
     double scale_max = 0;
@@ -2286,7 +2286,7 @@ void Ui::RenderWaterfallPlot()
         ImPlot::SetNextAxesToFit();
 
     ImPlot::PushColormap("Plasma");
-    if (ImPlot::BeginPlot("Waterfall##plot", ImVec2(PLOT_WIDTH, -1), PLOT_FLAGS))
+    if (ImPlot::BeginPlot("Waterfall##plot", ImVec2(PLOT_WIDTH, -1.0f), PLOT_FLAGS))
     {
         const ImPlotAxisFlags X1_FLAGS = ImPlotAxisFlags_NoGridLines;
         const ImPlotAxisFlags Y1_FLAGS = ImPlotAxisFlags_NoGridLines |
@@ -2297,7 +2297,7 @@ void Ui::RenderWaterfallPlot()
         ImPlot::EndPlot();
     }
     ImGui::SameLine();
-    ImPlot::ColormapScale(" ##waterfallscale", scale_min, scale_max, ImVec2(LEGEND_WIDTH, -1));
+    ImPlot::ColormapScale(" ##waterfallscale", scale_min, scale_max, ImVec2(LEGEND_WIDTH, -1.0f));
     ImPlot::PopColormap();
 }
 
@@ -2310,13 +2310,13 @@ void Ui::RenderHeaderButtons(ChannelUiState &ui)
     auto Button = [](const std::string &label, bool &state)
     {
         auto button_color = COLOR_WOW_RED;
-        button_color.w = 0.8;
+        button_color.w = 0.8f;
 
         auto hovered_color = button_color;
-        hovered_color.w = 1.0;
+        hovered_color.w = 1.0f;
 
         auto active_color = button_color;
-        active_color.w = 0.8;
+        active_color.w = 0.8f;
 
         bool lstate = state;
         if (lstate)
@@ -2552,8 +2552,8 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                     ImGui::PushStyleColor(ImGuiCol_Text, text_color);
                 }
 
-                ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
-                                        ImGuiTableFlags_BordersInnerV;
+                flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
+                        ImGuiTableFlags_BordersInnerV;
 
                 /* Increase the horizontal cell padding. */
                 ImGui::PushStyleVar(ImGuiStyleVar_CellPadding,
@@ -2677,8 +2677,8 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
                 ImGui::PushStyleVar(ImGuiStyleVar_CellPadding,
                                     ImGui::GetStyle().CellPadding + ImVec2(3.0, 0.0));
 
-                ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV |
-                                        ImGuiTableFlags_NoSavedSettings;
+                flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV |
+                        ImGuiTableFlags_NoSavedSettings;
 
                 if (ImGui::BeginTable("Metrics", 5, flags))
                 {

@@ -35,8 +35,8 @@ DataProcessing::Tone::Tone(const ProcessedRecord *record, double f, size_t nof_s
         const auto &bin_range = record->frequency_domain->step;
         const int lidx = static_cast<int>(f / bin_range + 0.5); /* FIXME: std::round? */
 
-        idx_low = static_cast<size_t>((std::max)(lidx - static_cast<int>(nof_skirt_bins), 0));
-        idx_high = (std::min)(lidx + nof_skirt_bins, record->frequency_domain->x.size() - 1);
+        idx_low = static_cast<size_t>(std::max(lidx - static_cast<int>(nof_skirt_bins), 0));
+        idx_high = std::min(lidx + nof_skirt_bins, record->frequency_domain->x.size() - 1);
 
         double numerator = 0.0;
         double denominator = 0.0;

@@ -377,7 +377,7 @@ void Digitizer::CheckActivity()
         int milliseconds;
         if (SCAPE_EOK != thread->GetTimeSinceLastActivity(milliseconds))
             continue;
-        milliseconds_max = (std::max)(milliseconds_max, milliseconds);
+        milliseconds_max = std::max(milliseconds_max, milliseconds);
     }
 
     if (milliseconds_max > m_no_activity_threshold_ms + ACTIVITY_HYSTERESIS_MS)

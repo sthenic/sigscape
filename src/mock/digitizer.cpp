@@ -179,12 +179,12 @@ int MockDigitizer::InitializeParametersString(enum ADQParameterId id, char *cons
     if (id == ADQ_PARAMETER_ID_TOP)
     {
         std::strncpy(string, DEFAULT_TOP_PARAMETERS.c_str(), length);
-        return static_cast<int>((std::min)(DEFAULT_TOP_PARAMETERS.size() + 1, length));
+        return static_cast<int>(std::min(DEFAULT_TOP_PARAMETERS.size() + 1, length));
     }
     else if (id == ADQ_PARAMETER_ID_CLOCK_SYSTEM)
     {
         std::strncpy(string, DEFAULT_CLOCK_SYSTEM_PARAMETERS.c_str(), length);
-        return static_cast<int>((std::min)(DEFAULT_CLOCK_SYSTEM_PARAMETERS.size() + 1, length));
+        return static_cast<int>(std::min(DEFAULT_CLOCK_SYSTEM_PARAMETERS.size() + 1, length));
     }
     else
     {
@@ -288,12 +288,12 @@ int MockDigitizer::GetParametersString(enum ADQParameterId id, char *const strin
     if (id == ADQ_PARAMETER_ID_TOP)
     {
         std::strncpy(string, m_top_parameters.c_str(), length);
-        return static_cast<int>((std::min)(m_top_parameters.size() + 1, length));
+        return static_cast<int>(std::min(m_top_parameters.size() + 1, length));
     }
     else if (id == ADQ_PARAMETER_ID_CLOCK_SYSTEM)
     {
         std::strncpy(string, m_clock_system_parameters.c_str(), length);
-        return static_cast<int>((std::min)(m_clock_system_parameters.size() + 1, length));
+        return static_cast<int>(std::min(m_clock_system_parameters.size() + 1, length));
     }
     else
     {

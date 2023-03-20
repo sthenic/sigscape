@@ -145,7 +145,7 @@ struct ADQConstantParametersChannel
         , input_range{}
     {
         std::memcpy(this->label, label.c_str(),
-                    (std::min)(sizeof(this->label) - 1, label.size() + 1));
+                    std::min(sizeof(this->label) - 1, label.size() + 1));
 
         for (size_t i = 0; i < input_range.size() && i < ADQ_MAX_NOF_INPUT_RANGES; ++i)
             this->input_range[i] = input_range[i];
@@ -177,16 +177,16 @@ struct ADQConstantParametersFirmware
         , customization{}
         , part_number{}
     {
-        std::memcpy(this->name, name.c_str(), (std::min)(sizeof(this->name) - 1, name.size() + 1));
+        std::memcpy(this->name, name.c_str(), std::min(sizeof(this->name) - 1, name.size() + 1));
 
         std::memcpy(this->revision, revision.c_str(),
-                    (std::min)(sizeof(this->revision) - 1, revision.size() + 1));
+                    std::min(sizeof(this->revision) - 1, revision.size() + 1));
 
         std::memcpy(this->customization, customization.c_str(),
-                    (std::min)(sizeof(this->customization) - 1, customization.size() + 1));
+                    std::min(sizeof(this->customization) - 1, customization.size() + 1));
 
         std::memcpy(this->part_number, part_number.c_str(),
-                    (std::min)(sizeof(this->part_number) - 1, part_number.size() + 1));
+                    std::min(sizeof(this->part_number) - 1, part_number.size() + 1));
     };
 
     enum ADQFirmwareType type;
@@ -241,13 +241,13 @@ struct ADQConstantParameters
         , magic(ADQ_PARAMETERS_MAGIC)
     {
         std::memcpy(this->serial_number, serial_number.c_str(),
-                    (std::min)(sizeof(this->serial_number) - 1, serial_number.size() + 1));
+                    std::min(sizeof(this->serial_number) - 1, serial_number.size() + 1));
 
         std::memcpy(this->product_name, product_name.c_str(),
-                    (std::min)(sizeof(this->product_name) - 1, product_name.size() + 1));
+                    std::min(sizeof(this->product_name) - 1, product_name.size() + 1));
 
         std::memcpy(this->product_options, product_options.c_str(),
-                    (std::min)(sizeof(this->product_options) - 1, product_options.size() + 1));
+                    std::min(sizeof(this->product_options) - 1, product_options.size() + 1));
 
         for (size_t i = 0; i < channel.size() && i < ADQ_MAX_NOF_CHANNELS; ++i)
             this->channel[i] = channel[i];

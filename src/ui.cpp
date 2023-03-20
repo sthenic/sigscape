@@ -1617,16 +1617,16 @@ void Ui::GetClosestSampleIndex(double x, double y, const BaseRecord *record, con
     if (span_low < low_limit)
         span_low = low_limit;
     else if (span_low > (high_limit - span))
-        span_low = (std::max)(high_limit - span, low_limit);
+        span_low = std::max(high_limit - span, low_limit);
 
     if (span_high < (low_limit + span))
-        span_high = (std::min)(low_limit + span, high_limit);
+        span_high = std::min(low_limit + span, high_limit);
     else if (span_high > high_limit)
         span_high = high_limit;
 
     const size_t low = static_cast<size_t>(span_low);
     const size_t high = static_cast<size_t>(span_high);
-    double distance_min = (std::numeric_limits<double>::max)();
+    double distance_min = std::numeric_limits<double>::max();
 
     for (size_t i = low; i <= high; ++i)
     {

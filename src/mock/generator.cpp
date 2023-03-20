@@ -102,8 +102,8 @@ void Generator::NoisySine(ADQGen4Record &record, size_t count, bool &overrange)
             overrange = true;
 
         if (y > 0)
-            data[i] = static_cast<int16_t>((std::min)(32768.0 * y, 32767.0));
+            data[i] = static_cast<int16_t>(std::min(32768.0 * y, 32767.0));
         else
-            data[i] = static_cast<int16_t>((std::max)(32768.0 * y, -32768.0));
+            data[i] = static_cast<int16_t>(std::max(32768.0 * y, -32768.0));
     }
 }

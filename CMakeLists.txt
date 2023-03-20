@@ -183,6 +183,7 @@ elseif(WIN32)
     # TODO: Maybe this should be behind elsif(MSCV) instead?
     target_compile_definitions(${PROJECT_NAME} PRIVATE
         _USE_MATH_DEFINES
+        NOMINMAX
         IMGUI_USER_CONFIG="imgui_config.h")
     target_compile_options(${PROJECT_NAME} PRIVATE
         /W4) # FIXME: Once we had /WX too

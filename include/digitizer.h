@@ -335,7 +335,8 @@ private:
     void ProcessMessages();
     void ProcessWatcherMessages();
     void ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watcher,
-                                std::shared_ptr<std::string> &str, DigitizerMessageId dirty_id);
+                                std::shared_ptr<std::string> &str, DigitizerMessageId dirty_id,
+                                enum ADQParameterId parameter_id);
 
     void InitializeSystemManagerBootStatus();
     void InitializeSystemManagerSensors();

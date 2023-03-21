@@ -162,14 +162,16 @@ void Digitizer::ProcessMessages()
 void Digitizer::ProcessWatcherMessages()
 {
     ProcessWatcherMessages(m_watchers.top, m_parameters.top,
-                           DigitizerMessageId::DIRTY_TOP_PARAMETERS);
+                           DigitizerMessageId::DIRTY_TOP_PARAMETERS, ADQ_PARAMETER_ID_TOP);
     ProcessWatcherMessages(m_watchers.clock_system, m_parameters.clock_system,
-                           DigitizerMessageId::DIRTY_CLOCK_SYSTEM_PARAMETERS);
+                           DigitizerMessageId::DIRTY_CLOCK_SYSTEM_PARAMETERS,
+                           ADQ_PARAMETER_ID_CLOCK_SYSTEM);
 }
 
 void Digitizer::ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watcher,
                                        std::shared_ptr<std::string> &str,
-                                       DigitizerMessageId dirty_id)
+                                       DigitizerMessageId dirty_id,
+                                       enum ADQParameterId parameter_id)
 {
     FileWatcherMessage message;
     while (SCAPE_EOK == watcher->WaitForMessage(message, 0))
@@ -182,8 +184,12 @@ void Digitizer::ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watch
             m_read_queue.Write(dirty_id);
             break;
 
+        case FileWatcherMessageId::FILE_DOES_NOT_EXIST:
+            InitializeParameters(parameter_id, watcher);
+            break;
+
         case FileWatcherMessageId::FILE_DELETED:
-            /* FIXME: What to do here? */
+            /* TODO: What to do here? */
             break;
 
         case FileWatcherMessageId::UPDATE_FILE:
@@ -857,7 +863,7 @@ void Digitizer::InitializeParameters(enum ADQParameterId id, const std::unique_p
     {
         /* The return value includes the null terminator so we have to remove it from the string. */
         parameters->resize(result - 1);
-        watcher->PushMessage({FileWatcherMessageId::UPDATE_FILE, parameters});
+        watcher->EmplaceMessage(FileWatcherMessageId::UPDATE_FILE, parameters);
     }
     else
     {

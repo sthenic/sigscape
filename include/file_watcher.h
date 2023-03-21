@@ -10,11 +10,28 @@ enum class FileWatcherMessageId
     FILE_CREATED,
     FILE_DELETED,
     FILE_UPDATED,
+    FILE_DOES_NOT_EXIST,
     UPDATE_FILE
 };
 
 struct FileWatcherMessage
 {
+    FileWatcherMessage() = default;
+    FileWatcherMessage(FileWatcherMessageId id)
+        : id(id)
+        , contents(NULL)
+    {}
+
+    FileWatcherMessage(FileWatcherMessageId id, std::string &&contents)
+        : id(id)
+        , contents(std::make_shared<std::string>(std::move(contents)))
+    {}
+
+    FileWatcherMessage(FileWatcherMessageId id, std::shared_ptr<std::string> contents)
+        : id(id)
+        , contents(contents)
+    {}
+
     FileWatcherMessageId id;
     std::shared_ptr<std::string> contents;
 };

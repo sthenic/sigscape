@@ -22,6 +22,13 @@ const std::string &FileWatcher::GetPath()
 void FileWatcher::MainLoop()
 {
     m_thread_exit_code = SCAPE_EOK;
+
+    /* Before we enter the main loop, we check if the file exists. If it
+       doesn't, we emit the `FILE_DOES_NOT_EXIST` message. Message should only
+       be emitted once, which is why it sits outside the loop. */
+    if (!std::filesystem::exists(m_path))
+        m_read_queue.EmplaceWrite(FileWatcherMessageId::FILE_DOES_NOT_EXIST);
+
     for (;;)
     {
         if (std::filesystem::exists(m_path))
@@ -34,8 +41,7 @@ void FileWatcher::MainLoop()
                 m_timestamp = timestamp;
                 std::string contents;
                 ReadContents(contents);
-                m_read_queue.Write({FileWatcherMessageId::FILE_CREATED,
-                                    std::make_shared<std::string>(std::move(contents))});
+                m_read_queue.EmplaceWrite(FileWatcherMessageId::FILE_CREATED, std::move(contents));
             }
             else if (timestamp != m_timestamp)
             {
@@ -43,8 +49,7 @@ void FileWatcher::MainLoop()
                 m_timestamp = timestamp;
                 std::string contents;
                 ReadContents(contents);
-                m_read_queue.Write({FileWatcherMessageId::FILE_UPDATED,
-                                    std::make_shared<std::string>(std::move(contents))});
+                m_read_queue.EmplaceWrite(FileWatcherMessageId::FILE_UPDATED, std::move(contents));
             }
         }
         else if (m_is_watching)
@@ -52,8 +57,7 @@ void FileWatcher::MainLoop()
             /* File was erased, emit a message. */
             m_is_watching = false;
             m_timestamp = std::filesystem::file_time_type();
-            m_read_queue.Write({FileWatcherMessageId::FILE_DELETED,
-                                std::make_shared<std::string>("")});
+            m_read_queue.EmplaceWrite(FileWatcherMessageId::FILE_DELETED);
         }
 
         /* Handle any incoming messages. */
@@ -99,6 +103,7 @@ void FileWatcher::HandleMessages()
         case FileWatcherMessageId::FILE_CREATED:
         case FileWatcherMessageId::FILE_DELETED:
         case FileWatcherMessageId::FILE_UPDATED:
+        case FileWatcherMessageId::FILE_DOES_NOT_EXIST:
         default:
             break;
         }

@@ -78,14 +78,15 @@ void Ui::ChannelUiState::SaveToFile(const std::filesystem::path &path)
 
     nlohmann::json json;
     json["label"] = record->label;
-    json["time_domain"]["units"] = {record->time_domain->x_properties.unit,
-                                    record->time_domain->y_properties.unit};
-    json["time_domain"]["x"] = record->time_domain->x;
-    json["time_domain"]["y"] = record->time_domain->y;
-    json["frequency_domain"]["units"] = {record->frequency_domain->x_properties.unit,
-                                         record->frequency_domain->y_properties.unit};
-    json["frequency_domain"]["x"] = record->frequency_domain->x;
-    json["frequency_domain"]["y"] = record->frequency_domain->y;
+    json["time_domain"]["x"]["data"] = record->time_domain->x;
+    json["time_domain"]["x"]["unit"] = record->time_domain->x_properties.unit;
+    json["time_domain"]["y"]["data"] = record->time_domain->y;
+    json["time_domain"]["y"]["unit"] = record->time_domain->y_properties.unit;
+
+    json["frequency_domain"]["x"]["data"] = record->frequency_domain->x;
+    json["frequency_domain"]["x"]["unit"] = record->frequency_domain->x_properties.unit;
+    json["frequency_domain"]["y"]["data"] = record->frequency_domain->y;
+    json["frequency_domain"]["y"]["unit"] = record->frequency_domain->y_properties.unit;
 
     /* TODO: Stringify header? */
 

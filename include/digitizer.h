@@ -56,6 +56,7 @@ enum class DigitizerMessageId
     SET_WINDOW_TYPE,
     SET_CONVERT_HORIZONTAL,
     SET_CONVERT_VERTICAL,
+    SET_IEEE_ENOB,
     SET_CONFIGURATION_DIRECTORY,
     GET_TOP_PARAMETERS_FILENAME,
     GET_CLOCK_SYSTEM_PARAMETERS_FILENAME,
@@ -479,6 +480,9 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
             break;
         case DigitizerMessageId::SET_CONVERT_VERTICAL:
             name = "SET_CONVERT_VERTICAL";
+            break;
+        case DigitizerMessageId::SET_IEEE_ENOB:
+            name = "SET_IEEE_ENOB";
             break;
         case DigitizerMessageId::SET_CONFIGURATION_DIRECTORY:
             name = "SET_CONFIGURATION_DIRECTORY";

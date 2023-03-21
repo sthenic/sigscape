@@ -20,6 +20,7 @@ public:
     void SetWindowType(WindowType type);
     void SetConvertHorizontal(bool convert);
     void SetConvertVertical(bool convert);
+    void SetIeeeEnob(bool enable);
 
     void MainLoop() override;
 
@@ -38,6 +39,7 @@ private:
     WindowType m_window_type;
     bool m_convert_horizontal;
     bool m_convert_vertical;
+    bool m_ieee_enob;
     size_t m_nof_skirt_bins;
     std::deque<std::shared_ptr<FrequencyDomainRecord>> m_waterfall;
     std::deque<std::shared_ptr<TimeDomainRecord>> m_persistence;

@@ -71,6 +71,7 @@ DataProcessing::DataProcessing(void *handle, int index, int channel, const std::
     , m_window_type(WindowType::FLAT_TOP)
     , m_convert_horizontal(true)
     , m_convert_vertical(true)
+    , m_ieee_enob(true)
     , m_nof_skirt_bins(NOF_SKIRT_BINS_DEFAULT)
     , m_waterfall{}
     , m_persistence{}
@@ -101,6 +102,11 @@ void DataProcessing::SetConvertHorizontal(bool convert)
 void DataProcessing::SetConvertVertical(bool convert)
 {
     m_convert_vertical = convert;
+}
+
+void DataProcessing::SetIeeeEnob(bool enable)
+{
+    m_ieee_enob = enable;
 }
 
 void DataProcessing::MainLoop()
@@ -374,9 +380,15 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
 
     frequency_domain->snr.value = 10.0 * std::log10(fundamental.power / noise_power);
     frequency_domain->thd.value = 10.0 * std::log10(fundamental.power / harmonic_distortion_power);
-    frequency_domain->sinad.value = 10.0 * std::log10(fundamental.power /
-                                                      (noise_power + harmonic_distortion_power + interleaving_spur_power));
-    frequency_domain->enob.value = (frequency_domain->sinad.value - 1.76) / 6.02;
+
+    double noise_and_distortion_power = noise_power + harmonic_distortion_power + interleaving_spur_power;
+    frequency_domain->sinad.value = 10.0 * std::log10(fundamental.power / noise_and_distortion_power);
+
+    double sinad_for_enob = frequency_domain->sinad.value;
+    if (m_ieee_enob)
+        sinad_for_enob = 10.0 * std::log10(1.0 / noise_and_distortion_power);
+
+    frequency_domain->enob.value = (sinad_for_enob - 1.76) / 6.02;
     frequency_domain->sfdr_dbfs.value = -y[spur.idx];
     frequency_domain->sfdr_dbc.value = y[fundamental.idx] - y[spur.idx];
     frequency_domain->noise.value = 10.0 * std::log10(noise_power / static_cast<double>(fft.size()));

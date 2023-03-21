@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 project(sigscape
-  VERSION 1.0
+  VERSION 0.1
   HOMEPAGE_URL "https://github.com/sthenic/sigscape"
   DESCRIPTION "GUI for ADQ3 series digitizers"
   LANGUAGES CXX C

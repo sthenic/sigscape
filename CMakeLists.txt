@@ -5,6 +5,7 @@ project(sigscape
   DESCRIPTION "GUI for ADQ3 series digitizers"
   LANGUAGES CXX C
 )
+
 add_executable(${PROJECT_NAME})
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -248,6 +249,15 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     png_static
     ${ADQAPI_LIBRARY}
 )
+
+if (WIN32)
+    # Set the subsystem to Windows GUI application in release configuration (no
+    # console window). The linker option sets the entrypoint to 'main' (not
+    # 'WinMain') which is the default.
+    # The debug configuration keeps the console window for stdout and stderr
+    target_link_options(${PROJECT_NAME} PRIVATE $<$<CONFIG:Release>:/ENTRY:mainCRTStartup>)
+    set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE $<CONFIG:Release>)
+endif()
 
 install(TARGETS ${PROJECT_NAME})
 

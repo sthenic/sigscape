@@ -125,7 +125,7 @@ struct TimeDomainRecord : public BaseRecord
                      convert ? Value::Properties{"s", PRECISION, 1e-3, 1e-12}
                              : Value::Properties{"S", PRECISION_UNCONVERTED, 1.0, 1.0},
                      convert ? Value::Properties{"V", PRECISION, 1e-3, 1e-12}
-                             : Value::Properties{"C", PRECISION_UNCONVERTED, 1.0, 1.0})
+                             : Value::Properties{"", PRECISION_UNCONVERTED, 1.0, 1.0})
         , header(*raw->header)
         , estimated_trigger_frequency(0.0, {"Hz", PRECISION, 1e6})
         , estimated_throughput(0.0, {"B/s", PRECISION, 1e6})

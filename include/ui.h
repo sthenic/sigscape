@@ -30,8 +30,8 @@ public:
 
 private:
     bool (* Screenshot)(const std::string &filename);
-    std::tuple<bool, bool, std::tuple<bool, std::string>> m_screenshot_phases;
-    PersistentDirectories m_persistent_configuration;
+    bool m_should_screenshot;
+    PersistentDirectories m_persistent_directories;
     Identification m_identification;
     void *m_adq_control_unit;
     bool m_show_imgui_demo_window;

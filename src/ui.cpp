@@ -1282,8 +1282,8 @@ void Ui::RenderStaticInformation()
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, WIDTH);
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
 
-            Row("Sigscape version", fmt::format("v{}", SIGSCAPE_VERSION));
-            Row("API revision", fmt::format("0x{:08x}", m_api_revision));
+            Row("sigscape", fmt::format("v{}", SIGSCAPE_VERSION));
+            Row("libadq", fmt::format("0x{:08x}", m_api_revision));
 
             ImGui::EndTable();
         }
@@ -1307,7 +1307,7 @@ void Ui::RenderStaticInformation()
     {
         if (ImGui::BeginTable(fmt::format("Digitizer", ui->identifier).c_str(), 2, flags))
         {
-            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
+            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, WIDTH);
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
 
 
@@ -1325,7 +1325,7 @@ void Ui::RenderStaticInformation()
     {
         if (ImGui::BeginTable("Firmware", 2, flags))
         {
-            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
+            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, WIDTH);
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
 
             auto Stringify = [](enum ADQFirmwareType firmware) -> std::string

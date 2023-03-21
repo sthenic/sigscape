@@ -798,7 +798,7 @@ void Digitizer::ConfigureDefaultAcquisition()
     for (int i = 0; i < constant.nof_channels; ++i)
     {
         acquisition.channel[i].nof_records = ADQ_INFINITE_NOF_RECORDS;
-        acquisition.channel[i].record_length = 64 * 1024;
+        acquisition.channel[i].record_length = 32 * 1024;
         acquisition.channel[i].horizontal_offset = 0;
         acquisition.channel[i].trigger_source = ADQ_EVENT_SOURCE_PERIODIC;
         acquisition.channel[i].trigger_edge = ADQ_EDGE_RISING;
@@ -816,8 +816,8 @@ void Digitizer::ConfigureDefaultAcquisition()
         readout.channel[i].record_buffer_size_max = ADQ_INFINITE_RECORD_LENGTH;
     }
 
-    /* Default trigger frequency of 5 Hz. */
-    periodic.frequency = 5.0;
+    /* Default trigger frequency of 15 Hz. */
+    periodic.frequency = 15.0;
 
     result = ADQ_SetParameters(m_id.handle, m_id.index, &periodic);
     if (result != sizeof(periodic))
@@ -834,6 +834,10 @@ void Digitizer::ConfigureDefaultAcquisition()
     result = ADQ_SetParameters(m_id.handle, m_id.index, &readout);
     if (result != sizeof(readout))
         throw DigitizerException(fmt::format("Failed to set readout parameters, result {}.", result));
+
+    /* Finish up by getting the current parameters to make these settings
+       reflect in the configuration file. */
+    GetParameters(ADQ_PARAMETER_ID_TOP, m_watchers.top);
 #endif
 }
 
@@ -883,7 +887,7 @@ void Digitizer::GetParameters(enum ADQParameterId id, const std::unique_ptr<File
     {
         /* The return value includes the null terminator so we have to remove it from the string. */
         parameters->resize(result - 1);
-        watcher->PushMessage({FileWatcherMessageId::UPDATE_FILE, parameters});
+        watcher->EmplaceMessage(FileWatcherMessageId::UPDATE_FILE, parameters);
     }
     else
     {

@@ -813,7 +813,7 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
     if (ImGui::Button("Validate", COMMAND_PALETTE_BUTTON_SIZE))
         PushMessage(DigitizerMessageId::VALIDATE_PARAMETERS);
 
-    if (ImGui::Button("64k\n5Hz", COMMAND_PALETTE_BUTTON_SIZE))
+    if (ImGui::Button("32k 15Hz", COMMAND_PALETTE_BUTTON_SIZE))
         PushMessage(DigitizerMessageId::DEFAULT_ACQUISITION);
 
     ImGui::SameLine();

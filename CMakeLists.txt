@@ -9,18 +9,11 @@ add_executable(${PROJECT_NAME})
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(MOCK_ADQAPI "With this set to ON, only the simulator mode is available." OFF)
-
-if (UNIX)
-    if (APPLE)
-      target_compile_definitions(${PROJECT_NAME} PRIVATE SIMULATION_ONLY)
-      set(MOCK_ADQAPI ON)
-    else()
-      find_package(PkgConfig REQUIRED)
-      find_package(OpenGL REQUIRED)
-    endif()
-elseif(WIN32)
-    find_package(OpenGL REQUIRED)
+if (APPLE)
+  set(MOCK_ADQAPI ON)
 endif()
+
+find_package(OpenGL REQUIRED)
 
 find_package(Threads REQUIRED)
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
@@ -162,6 +155,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     IMGUI_IMPL_OPENGL_LOADER_GL3W
+    SIGSCAPE_VERSION=\"${CMAKE_PROJECT_VERSION}\"
 )
 
 if(MOCK_ADQAPI)

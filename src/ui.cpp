@@ -1295,8 +1295,8 @@ void Ui::RenderStaticInformation()
     ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
                             ImGuiTableFlags_BordersInnerV;
 
-    /* "Serial number" and "Customization" are the two worst case widths, both 13 characters. */
-    const float WIDTH = ImGui::CalcTextSize("Serial number").x;
+    /* "Sigscape version" is the worst case width */
+    const float WIDTH = ImGui::CalcTextSize("Sigscape version").x;
 
     if (ImGui::CollapsingHeader("Software", ImGuiTreeNodeFlags_DefaultOpen))
     {
@@ -1305,6 +1305,7 @@ void Ui::RenderStaticInformation()
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, WIDTH);
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
 
+            Row("Sigscape version", fmt::format("v{}", SIGSCAPE_VERSION));
             Row("API revision", fmt::format("0x{:08x}", m_api_revision));
 
             ImGui::EndTable();

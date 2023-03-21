@@ -52,8 +52,10 @@ enum class DigitizerMessageId
     INITIALIZE_PARAMETERS,
     INITIALIZE_PARAMETERS_FORCE,
     SET_CLOCK_SYSTEM_PARAMETERS,
+    /* FIXME: Bundle the processing parameters into a single message id. */
     SET_WINDOW_TYPE,
-    SET_CONVERT_DATA,
+    SET_CONVERT_HORIZONTAL,
+    SET_CONVERT_VERTICAL,
     SET_CONFIGURATION_DIRECTORY,
     GET_TOP_PARAMETERS_FILENAME,
     GET_CLOCK_SYSTEM_PARAMETERS_FILENAME,
@@ -472,8 +474,11 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
         case DigitizerMessageId::SET_WINDOW_TYPE:
             name = "SET_WINDOW_TYPE";
             break;
-        case DigitizerMessageId::SET_CONVERT_DATA:
-            name = "SET_CONVERT_DATA";
+        case DigitizerMessageId::SET_CONVERT_HORIZONTAL:
+            name = "SET_CONVERT_HORIZONTAL";
+            break;
+        case DigitizerMessageId::SET_CONVERT_VERTICAL:
+            name = "SET_CONVERT_VERTICAL";
             break;
         case DigitizerMessageId::SET_CONFIGURATION_DIRECTORY:
             name = "SET_CONFIGURATION_DIRECTORY";

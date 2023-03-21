@@ -558,9 +558,14 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
             t->SetWindowType(message.window_type);
         break;
 
-    case DigitizerMessageId::SET_CONVERT_DATA:
+    case DigitizerMessageId::SET_CONVERT_HORIZONTAL:
         for (const auto &t : m_processing_threads)
-            t->SetConvertData(message.bvalue);
+            t->SetConvertHorizontal(message.bvalue);
+        break;
+
+    case DigitizerMessageId::SET_CONVERT_VERTICAL:
+        for (const auto &t : m_processing_threads)
+            t->SetConvertVertical(message.bvalue);
         break;
 
     case DigitizerMessageId::SET_CONFIGURATION_DIRECTORY:
@@ -656,9 +661,14 @@ void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &messag
             t->SetWindowType(message.window_type);
         break;
 
-    case DigitizerMessageId::SET_CONVERT_DATA:
+    case DigitizerMessageId::SET_CONVERT_HORIZONTAL:
         for (const auto &t : m_processing_threads)
-            t->SetConvertData(message.bvalue);
+            t->SetConvertHorizontal(message.bvalue);
+        break;
+
+    case DigitizerMessageId::SET_CONVERT_VERTICAL:
+        for (const auto &t : m_processing_threads)
+            t->SetConvertVertical(message.bvalue);
         break;
 
     case DigitizerMessageId::GET_TOP_PARAMETERS_FILENAME:

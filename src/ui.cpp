@@ -1512,9 +1512,22 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
         window_idx_prev = window_idx;
     }
 
-    static bool convert_data = true;
-    if (ImGui::Checkbox("Convert data", &convert_data))
-        PushMessage({DigitizerMessageId::SET_CONVERT_DATA, convert_data}, false);
+    /* TODO: Right now, any visible time domain markers end up in incorrect
+             positions when the x/y conversion is toggled. Just clear them for
+             now. */
+    static bool convert_horizontal = true;
+    if (ImGui::Checkbox("Convert samples to time", &convert_horizontal))
+    {
+        PushMessage({DigitizerMessageId::SET_CONVERT_HORIZONTAL, convert_horizontal}, false);
+        m_time_domain_markers.clear();
+    }
+
+    static bool convert_vertical = true;
+    if (ImGui::Checkbox("Convert codes to volts", &convert_vertical))
+    {
+        PushMessage({DigitizerMessageId::SET_CONVERT_VERTICAL, convert_vertical}, false);
+        m_time_domain_markers.clear();
+    }
 
     ImGui::End();
 }

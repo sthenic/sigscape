@@ -69,7 +69,8 @@ DataProcessing::DataProcessing(void *handle, int index, int channel, const std::
     , m_constant{constant}
     , m_window_cache()
     , m_window_type(WindowType::FLAT_TOP)
-    , m_convert_data(true)
+    , m_convert_horizontal(true)
+    , m_convert_vertical(true)
     , m_nof_skirt_bins(NOF_SKIRT_BINS_DEFAULT)
     , m_waterfall{}
     , m_persistence{}
@@ -92,9 +93,14 @@ void DataProcessing::SetWindowType(WindowType type)
     m_window_type = type;
 }
 
-void DataProcessing::SetConvertData(bool convert)
+void DataProcessing::SetConvertHorizontal(bool convert)
 {
-    m_convert_data = convert;
+    m_convert_horizontal = convert;
+}
+
+void DataProcessing::SetConvertVertical(bool convert)
+{
+    m_convert_vertical = convert;
 }
 
 void DataProcessing::MainLoop()
@@ -158,9 +164,9 @@ void DataProcessing::MainLoop()
 
             /* FIXME: Windowing in the time domain struct?  */
             /* FIXME: This can throw if data format is unsupported. */
-            processed_record->time_domain = std::make_shared<TimeDomainRecord>(time_domain, m_afe,
-                                                                               code_normalization,
-                                                                               m_convert_data);
+            processed_record->time_domain = std::make_shared<TimeDomainRecord>(
+                time_domain, m_afe, code_normalization, m_convert_horizontal, m_convert_vertical
+            );
             processed_record->time_domain->estimated_trigger_frequency.value = estimated_trigger_frequency;
             processed_record->time_domain->estimated_throughput.value = estimated_throughput;
 

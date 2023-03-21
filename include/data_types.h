@@ -120,12 +120,13 @@ struct TimeDomainRecord : public BaseRecord
 
     TimeDomainRecord(const struct ADQGen4Record *raw,
                      const struct ADQAnalogFrontendParametersChannel &afe,
-                     double code_normalization, bool convert = true)
+                     double code_normalization,
+                     bool convert_horizontal = true, bool convert_vertical = true)
         : BaseRecord(raw->header->record_length,
-                     convert ? Value::Properties{"s", PRECISION, 1e-3, 1e-12}
-                             : Value::Properties{"S", PRECISION_UNCONVERTED, 1.0, 1.0},
-                     convert ? Value::Properties{"V", PRECISION, 1e-3, 1e-12}
-                             : Value::Properties{"", PRECISION_UNCONVERTED, 1.0, 1.0})
+                     convert_horizontal ? Value::Properties{"s", PRECISION, 1e-3, 1e-12}
+                                        : Value::Properties{"S", PRECISION_UNCONVERTED, 1.0, 1.0},
+                     convert_vertical ? Value::Properties{"V", PRECISION, 1e-3, 1e-12}
+                                      : Value::Properties{"", PRECISION_UNCONVERTED, 1.0, 1.0})
         , header(*raw->header)
         , estimated_trigger_frequency(0.0, {"Hz", PRECISION, 1e6})
         , estimated_throughput(0.0, {"B/s", PRECISION, 1e6})
@@ -148,18 +149,28 @@ struct TimeDomainRecord : public BaseRecord
         sampling_frequency.value = std::round(1.0 / sampling_period.value);
 
         double record_start;
-        if (convert)
+        if (convert_horizontal)
         {
             step = sampling_period.value;
             record_start = static_cast<double>(raw->header->record_start) * time_unit;
+        }
+        else
+        {
+            /* We intentionally always start with the first sample at zero to
+               keep the horizontal grid in sync w/ the sampling grid. */
+            /* TODO: At some point we could add visualization of the trigger point. */
+            step = 1.0;
+            record_start = 0.0; /* T: Always start at 0? */
+        }
+
+        if (convert_vertical)
+        {
             range_max.value = (afe.input_range / 2 - afe.dc_offset) / 1e3;
             range_min.value = (-afe.input_range / 2 - afe.dc_offset) / 1e3;
             range_mid.value = (range_max.value + range_min.value) / 2;
         }
         else
         {
-            step = 1.0;
-            record_start = 0.0; /* FIXME: Always start at 0? */
             range_max.value = code_normalization / 2 - 1;
             range_min.value = -(code_normalization / 2);
             range_mid.value = 0.0;
@@ -169,12 +180,12 @@ struct TimeDomainRecord : public BaseRecord
         {
         case ADQ_DATA_FORMAT_INT16:
             Transform(static_cast<const int16_t *>(raw->data), record_start, step,
-                      code_normalization, afe.input_range, afe.dc_offset, x, y, convert);
+                      code_normalization, afe.input_range, afe.dc_offset, x, y, convert_vertical);
             break;
 
         case ADQ_DATA_FORMAT_INT32:
             Transform(static_cast<const int32_t *>(raw->data), record_start, step,
-                      code_normalization, afe.input_range, afe.dc_offset, x, y, convert);
+                      code_normalization, afe.input_range, afe.dc_offset, x, y, convert_vertical);
             break;
 
         default:
@@ -188,13 +199,13 @@ struct TimeDomainRecord : public BaseRecord
     template <typename T>
     static void Transform(const T *data, double record_start, double sampling_period,
                           double code_normalization, double input_range, double dc_offset,
-                          std::vector<double> &x, std::vector<double> &y, bool convert)
+                          std::vector<double> &x, std::vector<double> &y, bool convert_vertial)
     {
         for (size_t i = 0; i < x.size(); ++i)
         {
             x[i] = record_start + static_cast<double>(i) * sampling_period;
 
-            if (convert)
+            if (convert_vertial)
             {
                 y[i] = static_cast<double>(data[i]) / code_normalization * input_range - dc_offset;
                 y[i] /= 1e3; /* The value is in millivolts before we scale it. */

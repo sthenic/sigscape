@@ -1,12 +1,17 @@
 #include "file_watcher.h"
 
 #include <fstream>
+#include <algorithm>
 
 FileWatcher::FileWatcher(const std::string &path)
     : m_path(path)
     , m_timestamp()
     , m_is_watching(false)
 {
+#if defined(_WIN32)
+    /* Normalize the path to feature the Windows-preferred path separator. */
+    std::replace(m_path.begin(), m_path.end(), '/', '\\');
+#endif
 }
 
 const std::string &FileWatcher::GetPath()

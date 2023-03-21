@@ -3,6 +3,7 @@
 
 #include <cstdlib>
 #include <filesystem>
+#include <algorithm>
 
 static std::string GetEnvOrDefault(const std::string &key, const std::string &default_value = "")
 {
@@ -40,10 +41,13 @@ PersistentDirectories::PersistentDirectories()
     /* FIXME: Linux rules apply? */
     #error "NOT IMPLEMENTED"
 #elif defined(_WIN32)
+    /* Make sure to normalize the path to use the path separator preferred by Windows. */
     m_configuration_directory = GetEnvOrDefault("APPDATA") + SUFFIX + "/config";
+    std::replace(m_configuration_directory.begin(), m_configuration_directory.end(), '/', '\\');
     ValidateDirectoryCreateIfNeeded(m_configuration_directory);
 
     m_data_directory = GetEnvOrDefault("APPDATA") + SUFFIX + "/share";
+    std::replace(m_data_directory.begin(), m_data_directory.end(), '/', '\\');
     ValidateDirectoryCreateIfNeeded(m_data_directory);
 #else
     /* If XDG_CONFIG_HOME is set, we use that, otherwise we default to

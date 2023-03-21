@@ -1305,6 +1305,7 @@ void Ui::RenderStaticInformation()
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, WIDTH);
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
 
+            Row("Sigscape version", fmt::format("v%s", SIGSCAPE_VERSION));
             Row("API revision", fmt::format("0x{:08x}", m_api_revision));
 
             ImGui::EndTable();

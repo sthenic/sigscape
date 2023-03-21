@@ -1,4 +1,4 @@
-#include "persistent_configuration.h"
+#include "persistent_directories.h"
 #include "fmt/format.h"
 
 #include <cstdlib>
@@ -32,40 +32,40 @@ static bool ValidateDirectoryCreateIfNeeded(const std::string &path)
     return true;
 }
 
-PersistentConfiguration::PersistentConfiguration()
-    : m_directory()
+PersistentDirectories::PersistentDirectories()
+    : m_configuration_directory()
     , m_imgui_configuration_file("imgui.ini")
 {
 #if defined(__APPLE__)
     /* FIXME: Linux rules apply? */
     #error "NOT IMPLEMENTED"
 #elif defined(_WIN32)
-    m_directory = GetEnvOrDefault("APPDATA") + SUFFIX;
-    ValidateDirectoryCreateIfNeeded(m_directory);
+    m_configuration_directory = GetEnvOrDefault("APPDATA") + SUFFIX;
+    ValidateDirectoryCreateIfNeeded(m_configuration_directory);
 #else
     /* If XDG_CONFIG_HOME is set, we use that, otherwise we default to
        $HOME/.config/sigscape. If we fail to validate the directory, this _has_
        to be because of XDG_CONFIG_HOME not pointing to a writable location.
        Again, we fall back to HOME/.config. */
     const auto default_prefix = GetEnvOrDefault("HOME") + "/.config";
-    m_directory = GetEnvOrDefault("XDG_CONFIG_HOME", default_prefix) + SUFFIX;
+    m_configuration_directory = GetEnvOrDefault("XDG_CONFIG_HOME", default_prefix) + SUFFIX;
 
-    if (!ValidateDirectoryCreateIfNeeded(m_directory))
+    if (!ValidateDirectoryCreateIfNeeded(m_configuration_directory))
     {
-        m_directory = default_prefix + SUFFIX;
-        ValidateDirectoryCreateIfNeeded(m_directory);
+        m_configuration_directory = default_prefix + SUFFIX;
+        ValidateDirectoryCreateIfNeeded(m_configuration_directory);
     }
 #endif
-    printf("Using persistent configuration directory '%s'.\n", m_directory.c_str());
-    m_imgui_configuration_file = m_directory + "/imgui.ini";
+    printf("Using persistent configuration directory '%s'.\n", m_configuration_directory.c_str());
+    m_imgui_configuration_file = m_configuration_directory + "/imgui.ini";
 }
 
-const std::string &PersistentConfiguration::GetDirectory()
+const std::string &PersistentDirectories::GetConfigurationDirectory()
 {
-    return m_directory;
+    return m_configuration_directory;
 }
 
-const char *PersistentConfiguration::GetImGuiInitializationFile()
+const char *PersistentDirectories::GetImGuiInitializationFile()
 {
     return m_imgui_configuration_file.c_str();
 }

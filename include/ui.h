@@ -8,7 +8,7 @@
 #include "GL/gl3w.h"
 #include <GLFW/glfw3.h>
 
-#include "persistent_configuration.h"
+#include "persistent_directories.h"
 #include "digitizer.h"
 #include "identification.h"
 #include "marker.h"
@@ -31,7 +31,7 @@ public:
 private:
     bool (* Screenshot)(const std::string &filename);
     std::tuple<bool, bool, std::tuple<bool, std::string>> m_screenshot_phases;
-    PersistentConfiguration m_persistent_configuration;
+    PersistentDirectories m_persistent_configuration;
     Identification m_identification;
     void *m_adq_control_unit;
     bool m_show_imgui_demo_window;

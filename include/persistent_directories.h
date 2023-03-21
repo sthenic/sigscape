@@ -4,20 +4,20 @@
 
 #include <string>
 
-class PersistentConfiguration
+class PersistentDirectories
 {
 public:
-    PersistentConfiguration();
-    ~PersistentConfiguration() = default;
+    PersistentDirectories();
+    ~PersistentDirectories() = default;
 
     /* Get the directory used to store persistent configuration files. */
-    const std::string &GetDirectory();
+    const std::string &GetConfigurationDirectory();
 
     /* Get the ImGui initialization file. */
     const char *GetImGuiInitializationFile();
 
 private:
-    std::string m_directory;
+    std::string m_configuration_directory;
 
     /* Static storage for the ImGui configuration file to be able to have 'const char *'
        as the return type of GetImGuiInitializationFile(). */

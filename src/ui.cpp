@@ -351,7 +351,7 @@ void Ui::HandleMessage(const IdentificationMessage &message)
     {
         d.interface->Start();
         d.interface->EmplaceMessage(DigitizerMessageId::SET_CONFIGURATION_DIRECTORY,
-                                    m_persistent_configuration.GetDirectory());
+                                    m_persistent_configuration.GetConfigurationDirectory());
     }
 
     /* FIXME: Remove since debug convenience? */

@@ -384,12 +384,12 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
     case DigitizerMessageId::STATE:
         switch (message.state)
         {
-        case DigitizerState::NOT_ENUMERATED:
-            digitizer.ui.state = "NOT ENUMERATED";
+        case DigitizerState::NOT_INITIALIZED:
+            digitizer.ui.state = "NOT INITIALIZED";
             digitizer.ui.state_color = COLOR_RED;
             break;
-        case DigitizerState::ENUMERATION:
-            digitizer.ui.state = "ENUMERATION";
+        case DigitizerState::INITIALIZATION:
+            digitizer.ui.state = "INITIALIZATION";
             digitizer.ui.state_color = COLOR_PURPLE;
             digitizer.ui.identifier = "Unknown";
             break;

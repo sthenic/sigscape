@@ -29,7 +29,7 @@ public:
 };
 
 Digitizer::Digitizer(void *handle, int index)
-    : m_state(DigitizerState::NOT_ENUMERATED)
+    : m_state(DigitizerState::NOT_INITIALIZED)
     , m_id{handle, index}
     , m_configuration_directory(".")
     , m_watchers{}
@@ -69,8 +69,8 @@ void Digitizer::MainLoop()
 {
     /* When the main loop is started, we assume ownership of the digitizer with
        the identifier we were given when this object was constructed. We begin
-       by enumerating the digitizer, completing its initial setup procedure. */
-    SetState(DigitizerState::ENUMERATION);
+       by initializing the digitizer, completing its initial setup procedure. */
+    SetState(DigitizerState::INITIALIZATION);
 
     /* Performing this operation in a thread safe manner requires that
        ADQControlUnit_OpenDeviceInterface() has been called (and returned
@@ -79,7 +79,7 @@ void Digitizer::MainLoop()
     if (result != 1)
     {
         m_thread_exit_code = SCAPE_EINTERNAL;
-        SetState(DigitizerState::NOT_ENUMERATED);
+        SetState(DigitizerState::NOT_INITIALIZED);
         return;
     }
 
@@ -88,7 +88,7 @@ void Digitizer::MainLoop()
     if (result != sizeof(m_constant))
     {
         m_thread_exit_code = SCAPE_EINTERNAL;
-        SetState(DigitizerState::NOT_ENUMERATED);
+        SetState(DigitizerState::NOT_INITIALIZED);
         return;
     }
 
@@ -481,13 +481,13 @@ void Digitizer::SetState(DigitizerState state)
     m_read_queue.EmplaceWrite(DigitizerMessageId::STATE, state);
 }
 
-void Digitizer::HandleMessageInNotEnumerated(const struct DigitizerMessage &message)
+void Digitizer::HandleMessageInNotInitialized(const struct DigitizerMessage &message)
 {
     /* TODO: Nothing to do? */
     (void)message;
 }
 
-void Digitizer::HandleMessageInEnumeration(const struct DigitizerMessage &message)
+void Digitizer::HandleMessageInInitialization(const struct DigitizerMessage &message)
 {
     /* TODO: Nothing to do? */
     (void)message;
@@ -680,12 +680,12 @@ void Digitizer::HandleMessageInState(const struct DigitizerMessage &message)
 {
     switch (m_state)
     {
-    case DigitizerState::NOT_ENUMERATED:
-        HandleMessageInNotEnumerated(message);
+    case DigitizerState::NOT_INITIALIZED:
+        HandleMessageInNotInitialized(message);
         break;
 
-    case DigitizerState::ENUMERATION:
-        HandleMessageInEnumeration(message);
+    case DigitizerState::INITIALIZATION:
+        HandleMessageInInitialization(message);
         break;
 
     case DigitizerState::IDLE:

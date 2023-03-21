@@ -27,7 +27,7 @@ TEST(Digitizer, Initialize)
     struct DigitizerMessage msg;
     LONGS_EQUAL(SCAPE_EOK, digitizer->WaitForMessage(msg, 100));
     LONGS_EQUAL(DigitizerMessageId::NEW_STATE, msg.id);
-    LONGS_EQUAL(DigitizerState::NOT_ENUMERATED, msg.state);
+    LONGS_EQUAL(DigitizerState::NOT_INITIALIZED, msg.state);
 
     LONGS_EQUAL(SCAPE_EOK, digitizer->WaitForMessage(msg, 100));
     LONGS_EQUAL(DigitizerMessageId::ENUMERATING, msg.id);

@@ -61,8 +61,8 @@ enum class DigitizerMessageId
 
 enum class DigitizerState
 {
-    NOT_ENUMERATED,
-    ENUMERATION,
+    NOT_INITIALIZED,
+    INITIALIZATION,
     IDLE,
     ACQUISITION
 };
@@ -350,8 +350,8 @@ private:
 
     void SetState(DigitizerState state);
 
-    void HandleMessageInNotEnumerated(const struct DigitizerMessage &message);
-    void HandleMessageInEnumeration(const struct DigitizerMessage &message);
+    void HandleMessageInNotInitialized(const struct DigitizerMessage &message);
+    void HandleMessageInInitialization(const struct DigitizerMessage &message);
     void HandleMessageInIdle(const struct DigitizerMessage &message);
     void HandleMessageInConfiguration(const struct DigitizerMessage &message);
     void HandleMessageInAcquisition(const struct DigitizerMessage &message);

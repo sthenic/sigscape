@@ -1,7 +1,7 @@
 # sigscape
 
-This application is a GUI for ADQ3 series digitizers from [Teledyne SP
-Devices](https://spdevices.com).
+This application is a minimal but feature rich GUI for ADQ3 series digitizers
+from [Teledyne SP Devices](https://spdevices.com).
 
 **This project is not affiliated with Teledyne SP Devices.** It's a passion
 project I've developed to demonstrate the flexibility afforded to a user

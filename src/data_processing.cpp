@@ -194,7 +194,7 @@ void DataProcessing::MainLoop()
                will have been scaled to Volts with the input range and DC offset
                taken into account. */
 
-            auto window = m_window_cache.GetWindow(m_window_type, FFT_LENGTH);
+            const auto window = m_window_cache.GetWindow(m_window_type, FFT_LENGTH);
             auto y = std::vector<double>(FFT_LENGTH);
             switch (time_domain->header->data_format)
             {
@@ -309,7 +309,8 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
     Tone spur{};
     Tone dc{};
     double total_power = 0.0;
-    ProcessAndIdentify(fft, record, dc, fundamental, spur, total_power);
+    const auto window = m_window_cache.GetWindow(m_window_type, fft.size());
+    ProcessAndIdentify(fft, window->amplitude_factor, record, dc, fundamental, spur, total_power);
 
     std::vector<Tone> harmonics{};
     PlaceHarmonics(fundamental, record, harmonics);
@@ -407,8 +408,8 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
 }
 
 void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> &fft,
-                                        ProcessedRecord *record, Tone &dc, Tone &fundamental,
-                                        Tone &spur, double &power)
+                                        double scale_factor, ProcessedRecord *record, Tone &dc,
+                                        Tone &fundamental, Tone &spur, double &power)
 {
     /* The loop upper bound is expected to be N/2 + 1 where N is the length of
        the transform, i.e. fft.size(). During our pass through the spectrum, our
@@ -440,7 +441,7 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
     for (size_t i = 0; i < record->frequency_domain->x.size(); ++i)
     {
         x[i] = static_cast<double>(i) * bin_range;
-        y[i] = std::pow(2.0 * std::abs(fft[i]) / static_cast<double>(fft.size()), 2.0);
+        y[i] = std::pow(2.0 * std::abs(fft[i] * scale_factor) / static_cast<double>(fft.size()), 2.0);
 
         if (i <= m_nof_skirt_bins)
         {

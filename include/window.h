@@ -16,11 +16,14 @@ enum class WindowType
 struct Window
 {
     Window() = delete;
-    Window(WindowType type, size_t length);
+    Window(size_t length);
 
     WindowType type;
     std::vector<double> data;
     size_t length;
+    double amplitude_factor;
+    double energy_factor;
+    double amplitude_to_energy;
 };
 
 class WindowCache

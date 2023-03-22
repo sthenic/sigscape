@@ -3,12 +3,12 @@
 
 #include <cmath>
 
-Window::Window(WindowType type, size_t length)
-    : type(type)
+Window::Window(size_t length)
+    : data(length)
     , length(length)
-{
-    data = std::vector<double>(length);
-}
+    , amplitude_factor(1.0)
+    , energy_factor(1.0)
+{}
 
 WindowCache::WindowCache()
     : hamming_windows{}
@@ -47,22 +47,36 @@ std::shared_ptr<Window> WindowCache::GetWindow(std::map<size_t, std::shared_ptr<
                                                size_t length,
                                                std::function<double(size_t, size_t)> f)
 {
+    /* First we try to find a window of matching length in the cache. This will
+       almost always return a hit (which is obviously the point of the cache). */
     auto search = windows.find(length);
     if (search != windows.end())
         return search->second;
 
-    double mean = 0.0;
-    auto window = std::make_shared<Window>(WindowType::HAMMING, length);
+    /* Create a new window with the target length. */
+    auto window = std::make_shared<Window>(length);
+    /* Calculated as the mean. */
+    window->amplitude_factor = 0.0;
+    /* Calculated as the RMS. */
+    window->energy_factor = 0.0;
+
     for (size_t i = 0; i < length; ++i)
     {
         double value = f(i, length);
         window->data[i] = value;
-        mean += value;
+        window->amplitude_factor += value;
+        window->energy_factor += value * value;
     }
-    mean /= static_cast<double>(length);
 
-    for (size_t i = 0; i < length; ++i)
-        window->data[i] /= mean;
+    /* Calculate the factor intended for scaling by multiplication. */
+    window->amplitude_factor = static_cast<double>(length) / window->amplitude_factor;
+    window->energy_factor = std::sqrt(static_cast<double>(length) / window->energy_factor);
+
+    /* This conversion factor exists to handle conversion from an
+       amplitude-accurate windowed FFT to an energy-accurate windowed FFT. Since
+       the scaling is carried out by multiplying by the amplitude factor above,
+       this operation that out and instead scales by the energy factor. */
+    window->amplitude_to_energy = window->energy_factor / window->amplitude_factor;
 
     windows.insert({length, window});
     return window;

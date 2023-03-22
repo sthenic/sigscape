@@ -84,8 +84,9 @@ private:
 
     /* Identify the fundamental tone and the worst spur. The spectrum is
        converted into decibels (in place). */
-    void ProcessAndIdentify(const std::vector<std::complex<double>> &fft, ProcessedRecord *record,
-                            Tone &dc, Tone &fundamental, Tone &spur, double &power);
+    void ProcessAndIdentify(const std::vector<std::complex<double>> &fft, double scale_factor,
+                            ProcessedRecord *record, Tone &dc, Tone &fundamental, Tone &spur,
+                            double &power);
 
     /* Given a fundamental tone, place the harmonic overtones into the spectrum. */
     void PlaceHarmonics(const Tone &fundamental, const ProcessedRecord *record,

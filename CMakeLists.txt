@@ -174,7 +174,7 @@ if (UNIX)
         LINUX)
     target_compile_options(${PROJECT_NAME} PRIVATE
         -Wall -Wextra -Wswitch -Werror=overflow)
-elseif(WIN32)
+elseif (WIN32)
     # TODO: Maybe this should be behind elsif(MSCV) instead?
     target_compile_definitions(${PROJECT_NAME} PRIVATE
         _USE_MATH_DEFINES
@@ -183,62 +183,40 @@ elseif(WIN32)
         IMGUI_USER_CONFIG="imgui_config.h")
     target_compile_options(${PROJECT_NAME} PRIVATE
         /W4) # FIXME: Once we had /WX too
-endif()
 
-# ADQAPI localization
-# FIXME: Add option to build the API as a first-hand choice.
-if (NOT MOCK_ADQAPI)
-    if (UNIX)
-        find_library(ADQAPI_LIBRARY
-            NAMES libadq libadq.so
-            HINTS
-            "${CMAKE_SOURCE_DIR}/../../../source/.libs/"
-            "${CMAKE_SOURCE_DIR}/../../../build/"
-        )
-    else()
-        set (ADQAPI_LOCAL_PATH "") # FIXME:
-        set (ADQAPI_INSTALL_PATH "$ENV{PROGRAMFILES}/SP Devices/ADQAPI_x64/")
-
-        find_library(ADQAPI_LIBRARY
-            NAMES ADQAPI.lib
-            HINTS
-            ${ADQAPI_LOCAL_PATH}/x64/Debug/
-            ${ADQAPI_INSTALL_PATH}
-        )
-
-        find_file(ADQAPI_DLL
-            NAMES ADQAPI.dll
-            HINTS
-            ${ADQAPI_LOCAL_PATH}/x64/Debug/
-            ${ADQAPI_INSTALL_PATH}
-        )
-
-        if(NOT ADQAPI_DLL)
-            message(FATAL_ERROR "ADQAPI.dll not found")
+    if (NOT TARGET adq)
+        if("${CMAKE_SIZEOF_VOID_P}" STREQUAL "8")
+            set(ADQAPI_INSTALL_PATH "$ENV{PROGRAMFILES}/SP Devices/ADQAPI_x64")
+        else()
+            set(ADQAPI_INSTALL_PATH "$ENV{PROGRAMFILES}/SP Devices/ADQAPI")
         endif()
 
-        # FIXME: Copy the DLL somewhere?
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            ${ADQAPI_DLL}
-            $<TARGET_FILE_DIR:${PROJECT_NAME}>)
+        add_library(adq SHARED IMPORTED)
+        set_target_properties(adq PROPERTIES
+            IMPORTED_LOCATION ${ADQAPI_INSTALL_PATH}
+            INTERFACE_INCLUDE_DIRECTORIES ${ADQAPI_INSTALL_PATH}
+            IMPORTED_IMPLIB ${ADQAPI_INSTALL_PATH}/ADQAPI.lib)
+
+        set(ADQAPI_DLL_PATH ${ADQAPI_INSTALL_PATH}/ADQAPI.dll)
+
+        message(STATUS "Using ADQAPI from ${ADQAPI_INSTALL_PATH}")
+    else()
+        set(ADQAPI_DLL_PATH $<TARGET_FILE:adq>)
     endif()
 
-    find_path(ADQAPI_INCLUDE
-        NAMES ADQAPI.h
-        HINTS
-        ${ADQAPI_LOCAL_PATH}/Release
-        "${CMAKE_SOURCE_DIR}/../../../Release/"
-        "${CMAKE_SOURCE_DIR}/../../../build/"
-        ${ADQAPI_INSTALL_PATH}
-    )
-    target_include_directories(${PROJECT_NAME} PRIVATE ${ADQAPI_INCLUDE})
+    # Copy ADQAPI.dll to the target (.exe) diretory
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${ADQAPI_DLL_PATH}
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>)
 
-    message(STATUS "Using libadq/ADQAPI.lib: ${ADQAPI_LIBRARY}")
-    message(STATUS "Using ADQAPI.h from ${ADQAPI_INCLUDE}/ADQAPI.h")
-    if (ADQAPI_DLL)
-        message(STATUS "Using ADQAPI.dll: ${ADQAPI_DLL}")
-    endif()
+
+    # Set the subsystem to Windows GUI application in release configuration (no
+    # console window). The linker option sets the entrypoint to 'main' (not
+    # 'WinMain') which is the default.
+    # The debug configuration keeps the console window for stdout and stderr
+    target_link_options(${PROJECT_NAME} PRIVATE $<$<CONFIG:Release>:/ENTRY:mainCRTStartup>)
+    set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE $<CONFIG:Release>)
 endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -247,17 +225,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     glfw
     fmt
     png_static
-    ${ADQAPI_LIBRARY}
+    adq
 )
-
-if (WIN32)
-    # Set the subsystem to Windows GUI application in release configuration (no
-    # console window). The linker option sets the entrypoint to 'main' (not
-    # 'WinMain') which is the default.
-    # The debug configuration keeps the console window for stdout and stderr
-    target_link_options(${PROJECT_NAME} PRIVATE $<$<CONFIG:Release>:/ENTRY:mainCRTStartup>)
-    set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE $<CONFIG:Release>)
-endif()
 
 install(TARGETS ${PROJECT_NAME})
 

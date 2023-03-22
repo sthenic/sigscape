@@ -382,7 +382,8 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
     frequency_domain->snr.value = 10.0 * std::log10(fundamental.power / noise_power);
     frequency_domain->thd.value = 10.0 * std::log10(fundamental.power / harmonic_distortion_power);
 
-    double noise_and_distortion_power = noise_power + harmonic_distortion_power + interleaving_spur_power;
+    const double noise_and_distortion_power = noise_power + harmonic_distortion_power +
+                                              interleaving_spur_power;
     frequency_domain->sinad.value = 10.0 * std::log10(fundamental.power / noise_and_distortion_power);
 
     double sinad_for_enob = frequency_domain->sinad.value;
@@ -392,12 +393,13 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
     frequency_domain->enob.value = (sinad_for_enob - 1.76) / 6.02;
     frequency_domain->sfdr_dbfs.value = -y[spur.idx];
     frequency_domain->sfdr_dbc.value = y[fundamental.idx] - y[spur.idx];
-    frequency_domain->noise.value = 10.0 * std::log10(noise_power / static_cast<double>(fft.size()));
+    const double noise_average = 10.0 * std::log10(noise_power / static_cast<double>(fft.size()));
+    frequency_domain->npsd.value = noise_average - 10.0 * std::log10(frequency_domain->step);
     frequency_domain->noise_moving_average.value = 0;
 
     if (m_noise_moving_average.size() >= NOISE_MOVING_AVERAGE_SIZE)
         m_noise_moving_average.pop_back();
-    m_noise_moving_average.push_front(frequency_domain->noise.value);
+    m_noise_moving_average.push_front(noise_average);
 
     const double normalization = static_cast<double>(m_noise_moving_average.size());
     for (const auto &noise : m_noise_moving_average)

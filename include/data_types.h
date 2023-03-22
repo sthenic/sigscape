@@ -258,7 +258,7 @@ struct FrequencyDomainRecord : public BaseRecord
         , sfdr_dbc(0.0, {"dBc", PRECISION, 1.0})
         , sfdr_dbfs(0.0, {"dBFS", PRECISION, 1.0})
         , thd(0.0, {"dB", PRECISION, 1.0})
-        , noise(0.0, {"dBFS", PRECISION, 1.0})
+        , npsd(0.0, {"dBFS/Hz", PRECISION, 1.0})
         , noise_moving_average(0.0, {"dBFS", PRECISION, 1.0})
         , size(0.0, {"pts", "7.0", 1.0})
         , bin(0.0, {"Hz", PRECISION, 1e6})
@@ -280,7 +280,7 @@ struct FrequencyDomainRecord : public BaseRecord
     Value sfdr_dbc;
     Value sfdr_dbfs;
     Value thd;
-    Value noise;
+    Value npsd;
     Value noise_moving_average;
     Value size;
     Value bin;

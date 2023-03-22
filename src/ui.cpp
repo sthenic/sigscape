@@ -2445,8 +2445,8 @@ std::vector<std::vector<std::string>> Ui::FormatFrequencyDomainMetrics(
             std::get<1>(record->harmonics.at(2)).Format(),
         },
         {
-            "Noise",
-            record->noise.Format(),
+            "NPSD",
+            record->npsd.Format(),
             "HD5",
             std::get<0>(record->harmonics.at(3)).Format(),
             std::get<1>(record->harmonics.at(3)).Format(),
@@ -2478,7 +2478,7 @@ void Ui::CopyFreqencyDomainMetricsToClipboard(const ProcessedRecord *processed_r
     ImGui::LogText("ENOB,%s\n", record->enob.FormatCsv().c_str());
     ImGui::LogText("THD,%s\n", record->thd.FormatCsv().c_str());
     ImGui::LogText("SFDR,%s\n", record->sfdr_dbfs.FormatCsv().c_str());
-    ImGui::LogText("Noise,%s\n", record->noise.FormatCsv().c_str());
+    ImGui::LogText("NPSD,%s\n", record->npsd.FormatCsv().c_str());
     ImGui::LogText("Fund.,%s,%s\n", std::get<0>(record->fundamental).FormatCsv().c_str(),
                                     std::get<1>(record->fundamental).FormatCsv().c_str());
     ImGui::LogText("HD2,%s,%s\n", std::get<0>(record->harmonics.at(0)).FormatCsv().c_str(),

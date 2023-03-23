@@ -568,9 +568,9 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
             t->SetConvertVertical(message.bvalue);
         break;
 
-    case DigitizerMessageId::SET_IEEE_ENOB:
+    case DigitizerMessageId::SET_FULLSCALE_ENOB:
         for (const auto &t : m_processing_threads)
-            t->SetIeeeEnob(message.bvalue);
+            t->SetFullscaleEnob(message.bvalue);
         break;
 
     case DigitizerMessageId::SET_FREQUENCY_DOMAIN_SCALING:
@@ -681,9 +681,9 @@ void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &messag
             t->SetConvertVertical(message.bvalue);
         break;
 
-    case DigitizerMessageId::SET_IEEE_ENOB:
+    case DigitizerMessageId::SET_FULLSCALE_ENOB:
         for (const auto &t : m_processing_threads)
-            t->SetIeeeEnob(message.bvalue);
+            t->SetFullscaleEnob(message.bvalue);
         break;
 
     case DigitizerMessageId::SET_FREQUENCY_DOMAIN_SCALING:

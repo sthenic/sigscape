@@ -1552,9 +1552,9 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
         m_time_domain_markers.clear();
     }
 
-    static bool ieee_enob = true;
-    if (ImGui::Checkbox("IEEE ENOB", &ieee_enob))
-        PushMessage({DigitizerMessageId::SET_IEEE_ENOB, ieee_enob}, false);
+    static bool fullscale_enob = true;
+    if (ImGui::Checkbox("Full-scale ENOB", &fullscale_enob))
+        PushMessage({DigitizerMessageId::SET_FULLSCALE_ENOB, fullscale_enob}, false);
 
     ImGui::End();
 }

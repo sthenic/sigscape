@@ -73,7 +73,7 @@ DataProcessing::DataProcessing(void *handle, int index, int channel, const std::
     , m_scaling(FrequencyDomainScaling::AMPLITUDE)
     , m_convert_horizontal(true)
     , m_convert_vertical(true)
-    , m_ieee_enob(true)
+    , m_fullscale_enob(true)
     , m_nof_skirt_bins(NOF_SKIRT_BINS_DEFAULT)
     , m_waterfall{}
     , m_persistence{}
@@ -106,9 +106,9 @@ void DataProcessing::SetConvertVertical(bool convert)
     m_convert_vertical = convert;
 }
 
-void DataProcessing::SetIeeeEnob(bool enable)
+void DataProcessing::SetFullscaleEnob(bool enable)
 {
-    m_ieee_enob = enable;
+    m_fullscale_enob = enable;
 }
 
 void DataProcessing::SetFrequencyDomainScaling(FrequencyDomainScaling scaling)
@@ -214,10 +214,6 @@ void DataProcessing::MainLoop()
             case FrequencyDomainScaling::ENERGY:
                 scale_factor = (window != NULL) ? window->energy_factor : 1.0;
                 break;
-            default:
-                printf("Unknown frequency domain scaling '%d'.\n", m_scaling);
-                m_thread_exit_code = SCAPE_EINTERNAL;
-                return;
             }
 
             auto y = std::vector<double>(FFT_LENGTH);
@@ -398,7 +394,7 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
     frequency_domain->sinad.value = 10.0 * std::log10(fundamental.power / noise_and_distortion_power);
 
     double sinad_for_enob = frequency_domain->sinad.value;
-    if (m_ieee_enob)
+    if (m_fullscale_enob)
         sinad_for_enob = 10.0 * std::log10(1.0 / noise_and_distortion_power);
 
     frequency_domain->enob.value = (sinad_for_enob - 1.76) / 6.02;

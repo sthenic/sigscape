@@ -27,7 +27,7 @@ public:
     void SetWindowType(WindowType type);
     void SetConvertHorizontal(bool convert);
     void SetConvertVertical(bool convert);
-    void SetIeeeEnob(bool enable);
+    void SetFullscaleEnob(bool enable);
     void SetFrequencyDomainScaling(FrequencyDomainScaling scaling);
 
     void MainLoop() override;
@@ -48,7 +48,7 @@ private:
     FrequencyDomainScaling m_scaling;
     bool m_convert_horizontal;
     bool m_convert_vertical;
-    bool m_ieee_enob;
+    bool m_fullscale_enob;
     size_t m_nof_skirt_bins;
     std::deque<std::shared_ptr<FrequencyDomainRecord>> m_waterfall;
     std::deque<std::shared_ptr<TimeDomainRecord>> m_persistence;

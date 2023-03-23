@@ -404,11 +404,17 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
 
     const double noise_average = 10.0 * std::log10(noise_power / static_cast<double>(fft.size()));
     frequency_domain->npsd.value = noise_average - 10.0 * std::log10(frequency_domain->step);
-    frequency_domain->noise_moving_average.value = 0;
 
+    /* To compute the moving average, we want to use a value scaled as the plot
+       will be presented. This will be used as a lower bound when plotting. */
+    const double noise_average_scaled = noise_average +
+                                        10.0 * std::log10(frequency_domain->scale_factor /
+                                                          frequency_domain->energy_factor);
+
+    frequency_domain->noise_moving_average.value = 0;
     if (m_noise_moving_average.size() >= NOISE_MOVING_AVERAGE_SIZE)
         m_noise_moving_average.pop_back();
-    m_noise_moving_average.push_front(noise_average);
+    m_noise_moving_average.push_front(noise_average_scaled);
 
     const double normalization = static_cast<double>(m_noise_moving_average.size());
     for (const auto &noise : m_noise_moving_average)

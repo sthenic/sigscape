@@ -10,6 +10,11 @@ add_executable(${PROJECT_NAME})
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(MOCK_ADQAPI "With this set to ON, only the simulator mode is available." OFF)
+
+# Optional path to libadq. Set with -DLIBADQ_PATH=<path-to-libadq/ADQAPI>
+# TODO: Allow setting the path to libadq and ADQAPI.h separately?
+set(LIBADQ_PATH "" CACHE PATH "Optional path to libadq.so/ADQAPI.dll.")
+
 if (APPLE)
   set(MOCK_ADQAPI ON)
 endif()
@@ -131,7 +136,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     SIGSCAPE_VERSION=\"${CMAKE_PROJECT_VERSION}\"
 )
 
-if(MOCK_ADQAPI)
+if (MOCK_ADQAPI)
     message(STATUS "Using MOCK_ADQAPI (no ADQAPI dependency).")
     target_compile_definitions(${PROJECT_NAME} PRIVATE MOCK_ADQAPI)
     target_sources(${PROJECT_NAME} PRIVATE
@@ -155,33 +160,44 @@ elseif (WIN32)
         IMGUI_USER_CONFIG="imgui_config.h")
     target_compile_options(${PROJECT_NAME} PRIVATE
         /W4) # FIXME: Once we had /WX too
+endif()
 
-    if (NOT TARGET adq)
+# TODO: Split into FindAdq.cmake to use with find_package?
+if (NOT MOCK_ADQAPI AND NOT TARGET adq)
+    # Create imported library it the adq target doesn't exist (i.e. included from other sources)
+    add_library(adq SHARED IMPORTED)
+
+    if (WIN32)
         if("${CMAKE_SIZEOF_VOID_P}" STREQUAL "8")
-            set(ADQAPI_INSTALL_PATH "$ENV{PROGRAMFILES}/SP Devices/ADQAPI_x64")
+            list(APPEND LIBADQ_PATH "$ENV{PROGRAMFILES}/SP Devices/ADQAPI_x64")
         else()
-            set(ADQAPI_INSTALL_PATH "$ENV{PROGRAMFILES}/SP Devices/ADQAPI")
+            list(APPEND LIBADQ_PATH "$ENV{PROGRAMFILES}/SP Devices/ADQAPI")
         endif()
 
-        add_library(adq SHARED IMPORTED)
+        find_library(ADQ_LIBRARIES NAMES ADQAPI HINTS ${LIBADQ_PATH} REQUIRED)
+        find_path(ADQ_INCLUDE_PATH NAMES ADQAPI.h HINTS ${LIBADQ_PATH} REQUIRED)
+        find_file(ADQ_DLL NAMES ADQAPI.dll HINTS ${LIBADQ_PATH} REQUIRED)
+
         set_target_properties(adq PROPERTIES
-            IMPORTED_LOCATION ${ADQAPI_INSTALL_PATH}
-            INTERFACE_INCLUDE_DIRECTORIES ${ADQAPI_INSTALL_PATH}
-            IMPORTED_IMPLIB ${ADQAPI_INSTALL_PATH}/ADQAPI.lib)
-
-        set(ADQAPI_DLL_PATH ${ADQAPI_INSTALL_PATH}/ADQAPI.dll)
-
-        message(STATUS "Using ADQAPI from ${ADQAPI_INSTALL_PATH}")
+            IMPORTED_LOCATION ${ADQ_DLL}
+            INTERFACE_INCLUDE_DIRECTORIES ${ADQ_INCLUDE_PATH}
+            IMPORTED_IMPLIB ${ADQ_LIBRARIES})
     else()
-        set(ADQAPI_DLL_PATH $<TARGET_FILE:adq>)
+        find_library(ADQ_LIBRARIES NAMES adq HINTS ${LIBADQ_PATH} REQUIRED)
+        find_path(ADQ_INCLUDE_PATH NAMES ADQAPI.h HINTS ${LIBADQ_PATH} REQUIRED)
+        set_target_properties(adq PROPERTIES
+            IMPORTED_LOCATION ${ADQ_LIBRARIES}
+            INTERFACE_INCLUDE_DIRECTORIES ${ADQ_INCLUDE_PATH}
+        )
     endif()
+endif()
 
-    # Copy ADQAPI.dll to the target (.exe) diretory
+if (WIN32)
+    # Copy ADQAPI.dll to the target (.exe) directory
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${ADQAPI_DLL_PATH}
+        $<TARGET_FILE:adq>
         $<TARGET_FILE_DIR:${PROJECT_NAME}>)
-
 
     # Set the subsystem to Windows GUI application in release configuration (no
     # console window). The linker option sets the entrypoint to 'main' (not
@@ -190,6 +206,7 @@ elseif (WIN32)
     target_link_options(${PROJECT_NAME} PRIVATE $<$<CONFIG:Release>:/ENTRY:mainCRTStartup>)
     set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE $<CONFIG:Release>)
 endif()
+
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     OpenGL::GL
@@ -213,14 +230,14 @@ install(FILES README.md DESTINATION ${CMAKE_INSTALL_DOCDIR})
 set(CPACK_RESOURCE_FILE_LICENSE ${CMAKE_CURRENT_SOURCE_DIR}/LICENSE)
 set(CPACK_RESOURCE_FILE_README ${CMAKE_CURRENT_SOURCE_DIR}/README.md)
 
-# Set the install diretory to "sigscape". The default is "sigscape 1.0"
+# Set the install directory to "sigscape". The default is "sigscape <VERSION>"
 set(CPACK_PACKAGE_INSTALL_DIRECTORY ${PROJECT_NAME})
 
 set(CPACK_PACKAGE_CONTACT "Marcus Eriksson")
 
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS YES)
 
-# Require for NSIS start menu shortcut
+# Required for NSIS start menu shortcut
 set(CPACK_PACKAGE_EXECUTABLES "${PROJECT_NAME};${PROJECT_NAME}")
 
 # The branding text at the bottom of the installer. Default is "Nullsoft Install System vX.YY")

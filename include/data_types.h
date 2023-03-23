@@ -261,7 +261,7 @@ struct FrequencyDomainRecord : public BaseRecord
         , npsd(0.0, {"dBFS/Hz", PRECISION, 1.0})
         , noise_moving_average(0.0, {"dBFS", PRECISION, 1.0})
         , size(0.0, {"pts", "7.0", 1.0})
-        , bin(0.0, {"Hz", PRECISION, 1e6})
+        , rbw(0.0, {"Hz", PRECISION, 1e6})
         , scale_factor(1.0)
         , energy_factor(1.0)
     {}
@@ -285,7 +285,7 @@ struct FrequencyDomainRecord : public BaseRecord
     Value npsd;
     Value noise_moving_average;
     Value size;
-    Value bin;
+    Value rbw;
     bool overlap;
     double scale_factor;
     double energy_factor;

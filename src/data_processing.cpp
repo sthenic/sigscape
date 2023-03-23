@@ -193,7 +193,7 @@ void DataProcessing::MainLoop()
                 std::make_shared<FrequencyDomainRecord>(FFT_LENGTH / 2 + 1);
             processed_record->frequency_domain->step =
                 processed_record->time_domain->sampling_frequency.value / static_cast<double>(FFT_LENGTH);
-            processed_record->frequency_domain->bin.value = processed_record->frequency_domain->step;
+            processed_record->frequency_domain->rbw.value = processed_record->frequency_domain->step;
             processed_record->frequency_domain->size.value = static_cast<double>(FFT_LENGTH);
 
             /* Windowing and scaling to [-1, 1] for the correct FFT values. We

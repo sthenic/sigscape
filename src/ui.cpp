@@ -2482,8 +2482,8 @@ std::vector<std::vector<std::string>> Ui::FormatFrequencyDomainMetrics(
             std::get<1>(record->gain_phase_spur).Format(),
         },
         {
-            "Bin",
-            record->bin.Format(),
+            "RBW",
+            record->rbw.Format(),
             "TIo",
             std::get<0>(record->offset_spur).Format(),
             std::get<1>(record->offset_spur).Format(),

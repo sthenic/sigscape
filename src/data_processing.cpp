@@ -33,6 +33,8 @@ DataProcessing::Tone::Tone(const ProcessedRecord *record, double f, size_t nof_s
     {
         const auto &y = record->frequency_domain->y;
         const auto &bin_range = record->frequency_domain->step;
+        const auto &scale_factor = record->frequency_domain->scale_factor;
+        const auto &energy_factor = record->frequency_domain->energy_factor;
         const int lidx = static_cast<int>(f / bin_range + 0.5); /* FIXME: std::round? */
 
         idx_low = static_cast<size_t>(std::max(lidx - static_cast<int>(nof_skirt_bins), 0));
@@ -42,7 +44,7 @@ DataProcessing::Tone::Tone(const ProcessedRecord *record, double f, size_t nof_s
         double denominator = 0.0;
         for (size_t i = idx_low; i <= idx_high; ++i)
         {
-            const double bin_power = std::pow(10, y[i] / 10);
+            const double bin_power = std::pow(10, y[i] / 10) / scale_factor * energy_factor;
             numerator += static_cast<double>(i - idx_low) * bin_power;
             denominator += bin_power;
             values.push_back(bin_power);
@@ -195,6 +197,11 @@ void DataProcessing::MainLoop()
                taken into account. */
 
             const auto window = m_window_cache.GetWindow(m_window_type, FFT_LENGTH);
+            processed_record->frequency_domain->scale_factor =
+                (window != NULL) ? window->amplitude_factor : 1.0;
+            processed_record->frequency_domain->energy_factor =
+                (window != NULL) ? window->energy_factor : 1.0;
+
             auto y = std::vector<double>(FFT_LENGTH);
             switch (time_domain->header->data_format)
             {
@@ -310,7 +317,7 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
     Tone dc{};
     double total_power = 0.0;
     const auto window = m_window_cache.GetWindow(m_window_type, fft.size());
-    ProcessAndIdentify(fft, window->amplitude_factor, record, dc, fundamental, spur, total_power);
+    ProcessAndIdentify(fft, record, dc, fundamental, spur, total_power);
 
     std::vector<Tone> harmonics{};
     PlaceHarmonics(fundamental, record, harmonics);
@@ -321,8 +328,6 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
 
     /* Reevaluate the power now that overlaps have been resolved. */
     double harmonic_distortion_power = 0.0;
-    const auto &y = frequency_domain->y;
-
     for (auto &harmonic : harmonics)
     {
         harmonic.power = 0.0;
@@ -332,7 +337,7 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
 
         frequency_domain->harmonics.emplace_back(
             frequency_domain->ValueX(harmonic.frequency),
-            frequency_domain->ValueY(y[harmonic.idx])
+            frequency_domain->ValueY(10.0 * std::log10(harmonic.power))
         );
     }
 
@@ -355,12 +360,12 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
 
     frequency_domain->gain_phase_spur = {
         frequency_domain->ValueX(gain_phase_spur.frequency),
-        frequency_domain->ValueY(y[gain_phase_spur.idx]),
+        frequency_domain->ValueY(10.0 * std::log10(gain_phase_spur.power)),
     };
 
     frequency_domain->offset_spur = {
         frequency_domain->ValueX(offset_spur.frequency),
-        frequency_domain->ValueY(y[offset_spur.idx]),
+        frequency_domain->ValueY(10.0 * std::log10(offset_spur.power)),
     };
 
     /* Remove the power of the fundamental tone and other spectral components
@@ -371,12 +376,12 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
     /* FIXME: Linear interpolation? */
     frequency_domain->fundamental = {
         frequency_domain->ValueX(fundamental.frequency),
-        frequency_domain->ValueY(y[fundamental.idx]),
+        frequency_domain->ValueY(10.0 * std::log10(fundamental.power)),
     };
 
     frequency_domain->spur = {
         frequency_domain->ValueX(spur.frequency),
-        frequency_domain->ValueY(y[spur.idx]),
+        frequency_domain->ValueY(10.0 * std::log10(spur.power)),
     };
 
     frequency_domain->snr.value = 10.0 * std::log10(fundamental.power / noise_power);
@@ -391,8 +396,8 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
         sinad_for_enob = 10.0 * std::log10(1.0 / noise_and_distortion_power);
 
     frequency_domain->enob.value = (sinad_for_enob - 1.76) / 6.02;
-    frequency_domain->sfdr_dbfs.value = -y[spur.idx];
-    frequency_domain->sfdr_dbc.value = y[fundamental.idx] - y[spur.idx];
+    frequency_domain->sfdr_dbfs.value = -10.0 * std::log10(spur.power);
+    frequency_domain->sfdr_dbc.value = 10.0 * std::log10(fundamental.power) - 10.0 * std::log10(spur.power);
     const double noise_average = 10.0 * std::log10(noise_power / static_cast<double>(fft.size()));
     frequency_domain->npsd.value = noise_average - 10.0 * std::log10(frequency_domain->step);
     frequency_domain->noise_moving_average.value = 0;
@@ -410,8 +415,8 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
 }
 
 void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> &fft,
-                                        double scale_factor, ProcessedRecord *record, Tone &dc,
-                                        Tone &fundamental, Tone &spur, double &power)
+                                        ProcessedRecord *record, Tone &dc, Tone &fundamental,
+                                        Tone &spur, double &power)
 {
     /* The loop upper bound is expected to be N/2 + 1 where N is the length of
        the transform, i.e. fft.size(). During our pass through the spectrum, our
@@ -432,6 +437,8 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
     auto &x = record->frequency_domain->x;
     auto &y = record->frequency_domain->y;
     const auto &bin_range = record->frequency_domain->step;
+    const auto &scale_factor = record->frequency_domain->scale_factor;
+    const auto &energy_factor = record->frequency_domain->energy_factor;
     std::deque<double> cursor;
 
     dc = {};
@@ -443,21 +450,33 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
     for (size_t i = 0; i < record->frequency_domain->x.size(); ++i)
     {
         x[i] = static_cast<double>(i) * bin_range;
-        y[i] = std::pow(2.0 * std::abs(fft[i] * scale_factor) / static_cast<double>(fft.size()), 2.0);
 
+        /* Calculate the unscaled value. */
+        y[i] = std::pow(2.0 * std::abs(fft[i]) / static_cast<double>(fft.size()), 2.0);
+
+        /* We will always need the energy-accurate bin value for the calculations below. */
+        double y_power = y[i] * energy_factor;
+
+        /* Scale the value stored for plotting with the `scale_factor`, which
+           can result in either an amplitude-accurate spectrum or an
+           energy-accurate spectrum. Convert to decibels.*/
+        y[i] = 10.0 * std::log10(y[i] * scale_factor);
+
+        /* Add the bin's contribution to the total power. */
+        power += y_power;
+
+        /* DC tone analysis. */
         if (i <= m_nof_skirt_bins)
         {
-            dc.power += y[i];
+            dc.power += y_power;
             dc.idx_high = i;
-            dc.values.push_back(y[i]);
-            power += y[i];
-            y[i] = 10 * std::log10(y[i]);
+            dc.values.push_back(y_power);
             continue;
         }
 
         if (cursor.size() >= (2 * m_nof_skirt_bins + 1))
             cursor.pop_front();
-        cursor.push_back(y[i]);
+        cursor.push_back(y_power);
 
         double numerator = 0.0;
         double denominator = 0.0;
@@ -501,12 +520,6 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
             for (const auto &c : cursor)
                 spur.values.push_back(c);
         }
-
-        /* Convert to decibels. But not before adding to bin value as a
-           contribution to the total noise power. We'll adjust this value later
-           on. */
-        power += y[i];
-        y[i] = 10.0 * std::log10(y[i]);
     }
 }
 

@@ -68,9 +68,9 @@ std::shared_ptr<Window> WindowCache::GetWindow(std::map<size_t, std::shared_ptr<
         window->energy_factor += value * value;
     }
 
-    /* Calculate the factor intended for scaling by multiplication. */
-    window->amplitude_factor = static_cast<double>(length) / window->amplitude_factor;
-    window->energy_factor = std::sqrt(static_cast<double>(length) / window->energy_factor);
+    /* Calculate the factor intended for scaling by multiplication by this value squared. */
+    window->amplitude_factor = std::pow(static_cast<double>(length) / window->amplitude_factor, 2.0);
+    window->energy_factor = static_cast<double>(length) / window->energy_factor;
 
     /* This conversion factor exists to handle conversion from an
        amplitude-accurate windowed FFT to an energy-accurate windowed FFT. Since

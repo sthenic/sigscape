@@ -262,6 +262,8 @@ struct FrequencyDomainRecord : public BaseRecord
         , noise_moving_average(0.0, {"dBFS", PRECISION, 1.0})
         , size(0.0, {"pts", "7.0", 1.0})
         , bin(0.0, {"Hz", PRECISION, 1e6})
+        , scale_factor(1.0)
+        , energy_factor(1.0)
     {}
 
     /* Delete copy constructors until we need them. */
@@ -285,6 +287,8 @@ struct FrequencyDomainRecord : public BaseRecord
     Value size;
     Value bin;
     bool overlap;
+    double scale_factor;
+    double energy_factor;
 };
 
 struct Waterfall

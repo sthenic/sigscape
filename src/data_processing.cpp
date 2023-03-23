@@ -9,7 +9,6 @@
 #include "ADQAPI.h"
 #endif
 
-#include <cmath>
 #include <cinttypes>
 #include <set>
 
@@ -316,7 +315,6 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
     Tone spur{};
     Tone dc{};
     double total_power = 0.0;
-    const auto window = m_window_cache.GetWindow(m_window_type, fft.size());
     ProcessAndIdentify(fft, record, dc, fundamental, spur, total_power);
 
     std::vector<Tone> harmonics{};
@@ -330,42 +328,31 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
     double harmonic_distortion_power = 0.0;
     for (auto &harmonic : harmonics)
     {
-        harmonic.power = 0.0;
-        for (const auto &v : harmonic.values)
-            harmonic.power += v;
-        harmonic_distortion_power += harmonic.power;
-
+        harmonic_distortion_power += harmonic.UpdatePower();
         frequency_domain->harmonics.emplace_back(
             frequency_domain->ValueX(harmonic.frequency),
-            frequency_domain->ValueY(10.0 * std::log10(harmonic.power))
+            frequency_domain->ValueY(harmonic.PowerInDecibels())
         );
     }
 
     /* FIXME: Manual opt-out from interleaving analysis? */
-    double interleaving_spur_power = 0.0;
     Tone gain_phase_spur{};
     Tone offset_spur{};
     PlaceInterleavingSpurs(fundamental, record, gain_phase_spur, offset_spur);
     ResolveInterleavingSpurOverlaps(dc, fundamental, harmonics, gain_phase_spur, offset_spur,
                                     frequency_domain->overlap);
-    gain_phase_spur.power = 0.0;
-    for (const auto &v : gain_phase_spur.values)
-        gain_phase_spur.power += v;
-    interleaving_spur_power += gain_phase_spur.power;
 
-    offset_spur.power = 0.0;
-    for (const auto &v : offset_spur.values)
-        offset_spur.power += v;
-    interleaving_spur_power += offset_spur.power;
+    const double interleaving_spur_power = gain_phase_spur.UpdatePower() +
+                                           offset_spur.UpdatePower();
 
     frequency_domain->gain_phase_spur = {
         frequency_domain->ValueX(gain_phase_spur.frequency),
-        frequency_domain->ValueY(10.0 * std::log10(gain_phase_spur.power)),
+        frequency_domain->ValueY(gain_phase_spur.PowerInDecibels()),
     };
 
     frequency_domain->offset_spur = {
         frequency_domain->ValueX(offset_spur.frequency),
-        frequency_domain->ValueY(10.0 * std::log10(offset_spur.power)),
+        frequency_domain->ValueY(offset_spur.PowerInDecibels()),
     };
 
     /* Remove the power of the fundamental tone and other spectral components
@@ -376,12 +363,12 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
     /* FIXME: Linear interpolation? */
     frequency_domain->fundamental = {
         frequency_domain->ValueX(fundamental.frequency),
-        frequency_domain->ValueY(10.0 * std::log10(fundamental.power)),
+        frequency_domain->ValueY(fundamental.PowerInDecibels()),
     };
 
     frequency_domain->spur = {
         frequency_domain->ValueX(spur.frequency),
-        frequency_domain->ValueY(10.0 * std::log10(spur.power)),
+        frequency_domain->ValueY(spur.PowerInDecibels()),
     };
 
     frequency_domain->snr.value = 10.0 * std::log10(fundamental.power / noise_power);
@@ -396,8 +383,10 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
         sinad_for_enob = 10.0 * std::log10(1.0 / noise_and_distortion_power);
 
     frequency_domain->enob.value = (sinad_for_enob - 1.76) / 6.02;
-    frequency_domain->sfdr_dbfs.value = -10.0 * std::log10(spur.power);
-    frequency_domain->sfdr_dbc.value = 10.0 * std::log10(fundamental.power) - 10.0 * std::log10(spur.power);
+
+    frequency_domain->sfdr_dbfs.value = -spur.PowerInDecibels();
+    frequency_domain->sfdr_dbc.value = fundamental.PowerInDecibels() - spur.PowerInDecibels();
+
     const double noise_average = 10.0 * std::log10(noise_power / static_cast<double>(fft.size()));
     frequency_domain->npsd.value = noise_average - 10.0 * std::log10(frequency_domain->step);
     frequency_domain->noise_moving_average.value = 0;

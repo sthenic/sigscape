@@ -6,6 +6,7 @@
 #include "error.h"
 
 #include <deque>
+#include <cmath>
 
 class DataProcessing : public SmartBufferThread<DataProcessing, ProcessedRecord, 100, true>
 {
@@ -59,6 +60,16 @@ private:
     {
         Tone() = default;
         Tone(const ProcessedRecord *record, double frequency, size_t nof_skirt_bins);
+
+        /* Get the power in decibels. */
+        double PowerInDecibels() { return 10.0 * std::log10(power); };
+        double UpdatePower()
+        {
+            power = 0.0;
+            for (const auto &v : values)
+                power += v;
+            return power;
+        }
 
         double power;
         double frequency;

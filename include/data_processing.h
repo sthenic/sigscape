@@ -8,6 +8,12 @@
 #include <deque>
 #include <cmath>
 
+enum class FrequencyDomainScaling
+{
+    AMPLITUDE,
+    ENERGY
+};
+
 class DataProcessing : public SmartBufferThread<DataProcessing, ProcessedRecord, 100, true>
 {
 public:
@@ -22,6 +28,7 @@ public:
     void SetConvertHorizontal(bool convert);
     void SetConvertVertical(bool convert);
     void SetIeeeEnob(bool enable);
+    void SetFrequencyDomainScaling(FrequencyDomainScaling scaling);
 
     void MainLoop() override;
 
@@ -38,6 +45,7 @@ private:
     struct ADQConstantParameters m_constant;
     WindowCache m_window_cache;
     WindowType m_window_type;
+    FrequencyDomainScaling m_scaling;
     bool m_convert_horizontal;
     bool m_convert_vertical;
     bool m_ieee_enob;

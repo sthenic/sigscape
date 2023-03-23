@@ -573,6 +573,11 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
             t->SetIeeeEnob(message.bvalue);
         break;
 
+    case DigitizerMessageId::SET_FREQUENCY_DOMAIN_SCALING:
+        for (const auto &t : m_processing_threads)
+            t->SetFrequencyDomainScaling(message.frequency_domain_scaling);
+        break;
+
     case DigitizerMessageId::SET_CONFIGURATION_DIRECTORY:
         m_configuration_directory = message.str;
         InitializeFileWatchers();
@@ -679,6 +684,11 @@ void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &messag
     case DigitizerMessageId::SET_IEEE_ENOB:
         for (const auto &t : m_processing_threads)
             t->SetIeeeEnob(message.bvalue);
+        break;
+
+    case DigitizerMessageId::SET_FREQUENCY_DOMAIN_SCALING:
+        for (const auto &t : m_processing_threads)
+            t->SetFrequencyDomainScaling(message.frequency_domain_scaling);
         break;
 
     case DigitizerMessageId::GET_TOP_PARAMETERS_FILENAME:

@@ -1482,7 +1482,7 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
     static int window_idx = 2;
     static int window_idx_prev = 2;
     const char *window_labels[] = {"No window", "Blackman-Harris", "Flat top", "Hamming", "Hanning"};
-    ImGui::Combo("Window##window", &window_idx, window_labels, IM_ARRAYSIZE(window_labels));
+    ImGui::Combo("Window", &window_idx, window_labels, IM_ARRAYSIZE(window_labels));
 
     if (window_idx != window_idx_prev)
     {
@@ -1510,6 +1510,29 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
         }
 
         window_idx_prev = window_idx;
+    }
+
+    static int scaling_idx = 0;
+    static int scaling_idx_prev = 0;
+    const char *scaling_labels[] = {"Amplitude", "Energy"};
+    ImGui::Combo("Scaling", &scaling_idx, scaling_labels, IM_ARRAYSIZE(scaling_labels));
+
+    if (scaling_idx != scaling_idx_prev)
+    {
+        switch (scaling_idx)
+        {
+        case 0:
+            PushMessage({DigitizerMessageId::SET_FREQUENCY_DOMAIN_SCALING,
+                         FrequencyDomainScaling::AMPLITUDE}, false);
+            break;
+
+        case 1:
+            PushMessage({DigitizerMessageId::SET_FREQUENCY_DOMAIN_SCALING,
+                         FrequencyDomainScaling::ENERGY}, false);
+            break;
+        }
+
+        scaling_idx_prev = scaling_idx;
     }
 
     /* TODO: Right now, any visible time domain markers end up in incorrect

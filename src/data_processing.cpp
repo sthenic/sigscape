@@ -70,6 +70,7 @@ DataProcessing::DataProcessing(void *handle, int index, int channel, const std::
     , m_constant{constant}
     , m_window_cache()
     , m_window_type(WindowType::FLAT_TOP)
+    , m_scaling(FrequencyDomainScaling::AMPLITUDE)
     , m_convert_horizontal(true)
     , m_convert_vertical(true)
     , m_ieee_enob(true)
@@ -108,6 +109,11 @@ void DataProcessing::SetConvertVertical(bool convert)
 void DataProcessing::SetIeeeEnob(bool enable)
 {
     m_ieee_enob = enable;
+}
+
+void DataProcessing::SetFrequencyDomainScaling(FrequencyDomainScaling scaling)
+{
+    m_scaling = scaling;
 }
 
 void DataProcessing::MainLoop()
@@ -195,11 +201,24 @@ void DataProcessing::MainLoop()
                will have been scaled to Volts with the input range and DC offset
                taken into account. */
 
+            /* TODO: Make 'no window' into a proper uniform window? */
             const auto window = m_window_cache.GetWindow(m_window_type, FFT_LENGTH);
-            processed_record->frequency_domain->scale_factor =
-                (window != NULL) ? window->amplitude_factor : 1.0;
-            processed_record->frequency_domain->energy_factor =
-                (window != NULL) ? window->energy_factor : 1.0;
+            auto &scale_factor = processed_record->frequency_domain->scale_factor;
+            auto &energy_factor = processed_record->frequency_domain->energy_factor;
+            energy_factor = (window != NULL) ? window->energy_factor : 1.0;
+            switch (m_scaling)
+            {
+            case FrequencyDomainScaling::AMPLITUDE:
+                scale_factor = (window != NULL) ? window->amplitude_factor : 1.0;
+                break;
+            case FrequencyDomainScaling::ENERGY:
+                scale_factor = (window != NULL) ? window->energy_factor : 1.0;
+                break;
+            default:
+                printf("Unknown frequency domain scaling '%d'.\n", m_scaling);
+                m_thread_exit_code = SCAPE_EINTERNAL;
+                return;
+            }
 
             auto y = std::vector<double>(FFT_LENGTH);
             switch (time_domain->header->data_format)

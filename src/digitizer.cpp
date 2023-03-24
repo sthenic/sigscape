@@ -443,8 +443,17 @@ void Digitizer::StartDataAcquisition()
         if (result != sizeof(afe))
             throw DigitizerException(fmt::format("ADQ_GetParameters failed, result {}.", result));
 
+        /* TODO: Temporary workaround until the `time_unit` precision is fixed. */
+        struct ADQClockSystemParameters clock_system;
+        result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CLOCK_SYSTEM, &clock_system);
+        if (result != sizeof(clock_system))
+            throw DigitizerException(fmt::format("ADQ_GetParameters failed, result {}.", result));
+
         for (size_t i = 0; i < m_processing_threads.size(); ++i)
+        {
             m_processing_threads[i]->SetAnalogFrontendParameters(afe.channel[i]);
+            m_processing_threads[i]->SetClockSystemParameters(clock_system);
+        }
 
         for (const auto &t : m_processing_threads)
         {

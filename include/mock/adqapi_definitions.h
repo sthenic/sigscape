@@ -130,6 +130,40 @@ enum ADQParameterId
     ADQ_PARAMETER_ID_MAX_VAL = INT32_MAX
 };
 
+enum ADQReferenceClockSource
+{
+    ADQ_REFERENCE_CLOCK_SOURCE_INVALID = 0,
+    ADQ_REFERENCE_CLOCK_SOURCE_INTERNAL = 1,
+    ADQ_REFERENCE_CLOCK_SOURCE_PORT_CLK = 2,
+    ADQ_REFERENCE_CLOCK_SOURCE_PXIE_10M = 3,
+    ADQ_REFERENCE_CLOCK_SOURCE_MTCA_TCLKA = 4,
+    ADQ_REFERENCE_CLOCK_SOURCE_MTCA_TCLKB = 5,
+    ADQ_REFERENCE_CLOCK_SOURCE_PXIE_100M = 6,
+    ADQ_REFERENCE_CLOCK_SOURCE_MAX_VAL = INT32_MAX
+};
+
+enum ADQClockGenerator
+{
+    ADQ_CLOCK_GENERATOR_INVALID = 0,
+    ADQ_CLOCK_GENERATOR_INTERNAL_PLL = 1,
+    ADQ_CLOCK_GENERATOR_EXTERNAL_CLOCK = 2,
+    ADQ_CLOCK_GENERATOR_MAX_VAL = INT32_MAX
+};
+
+struct ADQClockSystemParameters
+{
+    enum ADQParameterId id;
+    int32_t reserved;
+    enum ADQClockGenerator clock_generator;
+    enum ADQReferenceClockSource reference_source;
+    double sampling_frequency;
+    double reference_frequency;
+    double delay_adjustment;
+    int32_t low_jitter_mode_enabled;
+    int32_t delay_adjustment_enabled;
+    uint64_t magic;
+};
+
 struct ADQConstantParametersChannel
 {
     /* Convenience constructor for simulated digitizers. */
@@ -237,6 +271,7 @@ struct ADQConstantParameters
         , firmware(firmware)
         , communication_interface(interface)
         , channel{}
+        , clock_system{}
         , dram_size(8ull * 1024 * 1024 * 1024)
         , magic(ADQ_PARAMETERS_MAGIC)
     {
@@ -261,6 +296,7 @@ struct ADQConstantParameters
     struct ADQConstantParametersFirmware firmware;
     struct ADQConstantParametersCommunicationInterface communication_interface;
     struct ADQConstantParametersChannel channel[ADQ_MAX_NOF_CHANNELS];
+    struct ADQClockSystemParameters clock_system;
     uint64_t dram_size;
     uint64_t magic;
 };

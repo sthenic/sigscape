@@ -120,6 +120,7 @@ struct TimeDomainRecord : public BaseRecord
 
     TimeDomainRecord(const struct ADQGen4Record *raw,
                      const struct ADQAnalogFrontendParametersChannel &afe,
+                     const struct ADQClockSystemParameters &clock_system,
                      double code_normalization,
                      bool convert_horizontal = true, bool convert_vertical = true)
         : BaseRecord(raw->header->record_length,
@@ -140,6 +141,7 @@ struct TimeDomainRecord : public BaseRecord
         , mean(ValueY(0.0))
         , rms(ValueY(0.0))
     {
+#ifdef USE_TIME_UNIT_FROM_HEADER
         /* The time unit is specified in picoseconds at most. Given that we're
            using a 32-bit float, we truncate any information beyond that point. */
         int time_unit_ps = static_cast<int>(raw->header->time_unit * 1e12);
@@ -147,6 +149,13 @@ struct TimeDomainRecord : public BaseRecord
 
         sampling_period.value = static_cast<double>(raw->header->sampling_period) * time_unit;
         sampling_frequency.value = std::round(1.0 / sampling_period.value);
+#else
+        /* TODO: Temporary workaround until the `time_unit` precision is fixed. */
+        sampling_period.value = 1.0 / clock_system.sampling_frequency;
+        sampling_frequency.value = clock_system.sampling_frequency;
+
+        double time_unit = sampling_period.value / static_cast<double>(raw->header->sampling_period);
+#endif
 
         double record_start;
         if (convert_horizontal)

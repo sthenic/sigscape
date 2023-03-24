@@ -68,6 +68,7 @@ DataProcessing::DataProcessing(void *handle, int index, int channel, const std::
     , m_label(label)
     , m_afe{1000.0, 0.0}
     , m_constant{constant}
+    , m_clock_system{constant.clock_system}
     , m_window_cache()
     , m_window_type(WindowType::FLAT_TOP)
     , m_scaling(FrequencyDomainScaling::AMPLITUDE)
@@ -89,6 +90,11 @@ DataProcessing::~DataProcessing()
 void DataProcessing::SetAnalogFrontendParameters(const struct ADQAnalogFrontendParametersChannel &afe)
 {
     m_afe = afe;
+}
+
+void DataProcessing::SetClockSystemParameters(const struct ADQClockSystemParameters &clock_system)
+{
+    m_clock_system = clock_system;
 }
 
 void DataProcessing::SetWindowType(WindowType type)
@@ -178,8 +184,7 @@ void DataProcessing::MainLoop()
             /* FIXME: Windowing in the time domain struct?  */
             /* FIXME: This can throw if data format is unsupported. */
             processed_record->time_domain = std::make_shared<TimeDomainRecord>(
-                time_domain, m_afe, code_normalization, m_convert_horizontal, m_convert_vertical
-            );
+                time_domain, m_afe, m_clock_system, code_normalization, m_convert_horizontal, m_convert_vertical);
             processed_record->time_domain->estimated_trigger_frequency.value = estimated_trigger_frequency;
             processed_record->time_domain->estimated_throughput.value = estimated_throughput;
 

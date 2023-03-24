@@ -24,6 +24,7 @@ public:
     DataProcessing &operator=(const DataProcessing &other) = delete;
 
     void SetAnalogFrontendParameters(const struct ADQAnalogFrontendParametersChannel &afe);
+    void SetClockSystemParameters(const struct ADQClockSystemParameters &clock_system);
     void SetWindowType(WindowType type);
     void SetConvertHorizontal(bool convert);
     void SetConvertVertical(bool convert);
@@ -43,6 +44,7 @@ private:
     std::string m_label;
     struct ADQAnalogFrontendParametersChannel m_afe;
     struct ADQConstantParameters m_constant;
+    struct ADQClockSystemParameters m_clock_system;
     WindowCache m_window_cache;
     WindowType m_window_type;
     FrequencyDomainScaling m_scaling;

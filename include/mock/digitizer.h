@@ -34,6 +34,7 @@ public:
 private:
     struct ADQConstantParameters m_constant;
     struct ADQAnalogFrontendParameters m_afe;
+    struct ADQClockSystemParameters m_clock_system;
     struct ADQDramStatus m_dram_status;
     struct ADQOverflowStatus m_overflow_status;
     std::vector<std::unique_ptr<Generator>> m_generators;

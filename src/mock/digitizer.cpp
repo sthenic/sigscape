@@ -31,6 +31,7 @@ sampling frequency:
 MockDigitizer::MockDigitizer(const struct ADQConstantParameters &constant)
     : m_constant(constant)
     , m_afe{}
+    , m_clock_system{}
     , m_dram_status{}
     , m_overflow_status{}
     , m_generators{}
@@ -40,6 +41,14 @@ MockDigitizer::MockDigitizer(const struct ADQConstantParameters &constant)
 {
     m_afe.id = ADQ_PARAMETER_ID_ANALOG_FRONTEND;
     m_afe.magic = ADQ_PARAMETERS_MAGIC;
+
+    /* Pretend we're able to run whatever frequency using the internal reference. */
+    m_clock_system.id = ADQ_PARAMETER_ID_CLOCK_SYSTEM;
+    m_clock_system.clock_generator = ADQ_CLOCK_GENERATOR_INTERNAL_PLL;
+    m_clock_system.reference_source = ADQ_REFERENCE_CLOCK_SOURCE_INTERNAL;
+    m_clock_system.sampling_frequency = 500e6;
+    m_clock_system.reference_frequency = 10e6;
+    m_clock_system.magic = ADQ_PARAMETERS_MAGIC;
 
     for (int ch = 0; ch < constant.nof_channels; ++ch)
     {
@@ -132,6 +141,11 @@ int MockDigitizer::GetParameters(enum ADQParameterId id, void *const parameters)
     {
         std::memcpy(parameters, &m_afe, sizeof(m_afe));
         return sizeof(m_afe);
+    }
+    else if (id == ADQ_PARAMETER_ID_CLOCK_SYSTEM)
+    {
+        std::memcpy(parameters, &m_clock_system, sizeof(m_clock_system));
+        return sizeof(m_clock_system);
     }
     else
     {
@@ -259,6 +273,7 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
     }
     else if (parameters_str.rfind("CLOCK SYSTEM", 0) == 0)
     {
+        /* FIXME: Realistic to run both the channels at the sampling frequency. */
         std::vector<double> sampling_frequency;
         if (SCAPE_EOK != ParseLine(2, parameters_str, sampling_frequency))
             return SCAPE_EINVAL;
@@ -268,6 +283,9 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
 
         /* Keep track of the string to be able to respond to get requests. */
         m_clock_system_parameters = string;
+
+        /* Update the clock system parameters. */
+        m_clock_system.sampling_frequency = sampling_frequency[0];
 
         /* Emulate reconfiguration time. */
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));

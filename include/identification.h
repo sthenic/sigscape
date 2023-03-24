@@ -14,5 +14,10 @@ class Identification : public MessageThread<Identification, IdentificationMessag
 {
 public:
     Identification() = default;
+
+    void SetLogDirectory(const std::string &log_directory);
     void MainLoop() override;
+
+private:
+    std::string m_log_directory;
 };

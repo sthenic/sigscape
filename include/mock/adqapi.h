@@ -20,6 +20,7 @@ public:
     int SetupDevice(int index);
     int ListDevices(struct ADQInfoListEntry **list, unsigned int *nof_devices);
     int OpenDeviceInterface(int index);
+    int EnableErrorTrace(unsigned int level, const char *directory);
 
     int StartDataAcquisition(int adq_num);
     int StopDataAcquisition(int adq_num);
@@ -56,6 +57,7 @@ uint32_t ADQAPI_GetRevision();
 int ADQControlUnit_SetupDevice(void *adq_cu, int adq_num);
 int ADQControlUnit_ListDevices(void *adq_cu, struct ADQInfoListEntry **list, unsigned int *nof_devices);
 int ADQControlUnit_OpenDeviceInterface(void *adq_cu, int index);
+int ADQControlUnit_EnableErrorTrace(void *adq_cu, unsigned int level, const char *directory);
 
 /* The ADQ_* functions we're mocking. */
 int ADQ_StartDataAcquisition(void *adq_cu, int adq_num);

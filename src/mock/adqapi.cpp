@@ -45,6 +45,14 @@ int MockAdqApi::OpenDeviceInterface(int index)
     return 1;
 }
 
+int MockAdqApi::EnableErrorTrace(unsigned int level, const char *directory)
+{
+    /* Don't do anything for now. */
+    (void)level;
+    (void)directory;
+    return 1;
+}
+
 int MockAdqApi::StartDataAcquisition(int adq_num)
 {
     /* -1 to follow the convention of the ADQAPI. */
@@ -228,6 +236,13 @@ int ADQControlUnit_OpenDeviceInterface(void *adq_cu, int index)
     if (adq_cu == NULL)
         return ADQ_EINVAL;
     return static_cast<MockAdqApi *>(adq_cu)->OpenDeviceInterface(index);
+}
+
+int ADQControlUnit_EnableErrorTrace(void *adq_cu, unsigned int level, const char *directory)
+{
+    if (adq_cu == NULL)
+        return ADQ_EINVAL;
+    return static_cast<MockAdqApi *>(adq_cu)->EnableErrorTrace(level, directory);
 }
 
 /* ADQ_ interface */

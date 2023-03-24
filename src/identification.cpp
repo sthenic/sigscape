@@ -1,5 +1,10 @@
 #include "identification.h"
 
+void Identification::SetLogDirectory(const std::string &log_directory)
+{
+    m_log_directory = log_directory;
+}
+
 void Identification::MainLoop()
 {
     /* FIXME: Compatibility verification */
@@ -11,6 +16,13 @@ void Identification::MainLoop()
         printf("Failed to create an ADQControlUnit.\n");
         m_thread_exit_code = SCAPE_EINTERNAL;
         return;
+    }
+
+    /* Enable the trace logs. */
+    if (!m_log_directory.empty()
+        && !ADQControlUnit_EnableErrorTrace(handle, 0x00010000, m_log_directory.c_str()))
+    {
+        printf("Failed to redirect trace logging to '%s'.\n", m_log_directory.c_str());
     }
 
     /* Filter out the Gen4 digitizers and construct a digitizer object for each one. */

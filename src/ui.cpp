@@ -278,6 +278,7 @@ void Ui::IdentifyDigitizers()
     m_adq_control_unit = NULL;
 
     /* (Re)start device identification thread. */
+    m_identification.SetLogDirectory(m_persistent_directories.GetLogDirectory());
     m_identification.Start();
 }
 

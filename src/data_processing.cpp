@@ -402,7 +402,7 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
     frequency_domain->sfdr_dbfs.value = -spur.PowerInDecibels();
     frequency_domain->sfdr_dbc.value = fundamental.PowerInDecibels() - spur.PowerInDecibels();
 
-    const double noise_average = 10.0 * std::log10(noise_power / static_cast<double>(fft.size()));
+    const double noise_average = 10.0 * std::log10(noise_power / static_cast<double>(frequency_domain->x.size()));
     frequency_domain->npsd.value = noise_average - 10.0 * std::log10(frequency_domain->step);
 
     /* To compute the moving average, we want to use a value scaled as the plot

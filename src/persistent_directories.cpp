@@ -35,6 +35,9 @@ static bool ValidateDirectoryCreateIfNeeded(const std::string &path)
 
 PersistentDirectories::PersistentDirectories()
     : m_configuration_directory()
+    , m_data_directory()
+    , m_screenshot_directory()
+    , m_log_directory()
     , m_imgui_configuration_file("imgui.ini")
 {
 #if defined(__APPLE__)
@@ -49,6 +52,14 @@ PersistentDirectories::PersistentDirectories()
     m_data_directory = GetEnvOrDefault("APPDATA") + SUFFIX + "/share";
     std::replace(m_data_directory.begin(), m_data_directory.end(), '/', '\\');
     ValidateDirectoryCreateIfNeeded(m_data_directory);
+
+    m_screenshot_directory = m_data_directory + "/screenshots";
+    std::replace(m_screenshot_directory.begin(), m_screenshot_directory.end(), '/', '\\');
+    ValidateDirectoryCreateIfNeeded(m_screenshot_directory);
+
+    m_log_directory = m_data_directory + "/logs";
+    std::replace(m_log_directory.begin(), m_log_directory.end(), '/', '\\');
+    ValidateDirectoryCreateIfNeeded(m_log_directory);
 #else
     /* If XDG_CONFIG_HOME is set, we use that, otherwise we default to
        $HOME/.config/sigscape. If we fail to validate the directory, this _has_
@@ -75,9 +86,17 @@ PersistentDirectories::PersistentDirectories()
       m_data_directory = default_data_prefix + SUFFIX;
       ValidateDirectoryCreateIfNeeded(m_data_directory);
     }
+
+    m_screenshot_directory = m_data_directory + "/screenshots";
+    ValidateDirectoryCreateIfNeeded(m_screenshot_directory);
+
+    m_log_directory = m_data_directory + "/logs";
+    ValidateDirectoryCreateIfNeeded(m_log_directory);
 #endif
     printf("Using persistent configuration directory '%s'.\n", m_configuration_directory.c_str());
     printf("Using persistent data directory '%s'.\n", m_data_directory.c_str());
+    printf("Using persistent screenshot directory '%s'.\n", m_screenshot_directory.c_str());
+    printf("Using persistent log directory '%s'.\n", m_log_directory.c_str());
     m_imgui_configuration_file = m_configuration_directory + "/imgui.ini";
 }
 
@@ -89,6 +108,16 @@ const std::string &PersistentDirectories::GetConfigurationDirectory()
 const std::string &PersistentDirectories::GetDataDirectory()
 {
     return m_data_directory;
+}
+
+const std::string &PersistentDirectories::GetScreenshotDirectory()
+{
+    return m_screenshot_directory;
+}
+
+const std::string &PersistentDirectories::GetLogDirectory()
+{
+    return m_log_directory;
 }
 
 const char *PersistentDirectories::GetImGuiInitializationFile()

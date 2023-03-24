@@ -16,12 +16,20 @@ public:
     /* Get the directory used to store persistent data files. */
     const std::string &GetDataDirectory();
 
+    /* Get the directory used to store screenshots (subdirectory to the persistent data). */
+    const std::string &GetScreenshotDirectory();
+
+    /* Get the directory used to store log files (subdirectory to the persistent data). */
+    const std::string &GetLogDirectory();
+
     /* Get the ImGui initialization file. */
     const char *GetImGuiInitializationFile();
 
 private:
     std::string m_configuration_directory;
     std::string m_data_directory;
+    std::string m_screenshot_directory;
+    std::string m_log_directory;
 
     /* Static storage for the ImGui configuration file to be able to have 'const char *'
        as the return type of GetImGuiInitializationFile(). */

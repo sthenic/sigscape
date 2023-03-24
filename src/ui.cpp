@@ -236,7 +236,7 @@ void Ui::Render(float width, float height)
     if (m_should_screenshot && Screenshot)
     {
         const auto filename = fmt::format("{}/sigscape_{}.png",
-                                          m_persistent_directories.GetDataDirectory(),
+                                          m_persistent_directories.GetScreenshotDirectory(),
                                           NowAsIso8601());
 
         if (!Screenshot(filename))

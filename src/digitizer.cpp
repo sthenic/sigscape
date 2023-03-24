@@ -186,6 +186,7 @@ void Digitizer::ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watch
 
         case FileWatcherMessageId::FILE_DOES_NOT_EXIST:
             InitializeParameters(parameter_id, watcher);
+            ConfigureDefaultAcquisition();
             break;
 
         case FileWatcherMessageId::FILE_DELETED:

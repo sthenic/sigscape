@@ -144,6 +144,7 @@ struct TimeDomainRecord : public BaseRecord
 #ifdef USE_TIME_UNIT_FROM_HEADER
         /* The time unit is specified in picoseconds at most. Given that we're
            using a 32-bit float, we truncate any information beyond that point. */
+        (void)clock_system;
         int time_unit_ps = static_cast<int>(raw->header->time_unit * 1e12);
         double time_unit = static_cast<double>(time_unit_ps) * 1e-12;
 

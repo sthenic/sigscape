@@ -25,7 +25,7 @@ noise standard deviation:
 const std::string MockDigitizer::DEFAULT_CLOCK_SYSTEM_PARAMETERS =
 R"""(CLOCK SYSTEM
 sampling frequency:
-    500e6, 500e6
+    500e6
 )""";
 
 MockDigitizer::MockDigitizer(const struct ADQConstantParameters &constant)
@@ -273,22 +273,24 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
     }
     else if (parameters_str.rfind("CLOCK SYSTEM", 0) == 0)
     {
-        /* FIXME: Realistic to run both the channels at the sampling frequency. */
         std::vector<double> sampling_frequency;
         if (SCAPE_EOK != ParseLine(2, parameters_str, sampling_frequency))
             return SCAPE_EINVAL;
 
-        for (size_t i = 0; (i < sampling_frequency.size()) && (i < m_generators.size()); ++i)
-            m_generators[i]->SetSamplingFrequency(sampling_frequency[i]);
+        if (sampling_frequency.size() > 0)
+        {
+            for (auto &generator : m_generators)
+                generator->SetSamplingFrequency(sampling_frequency[0]);
 
-        /* Keep track of the string to be able to respond to get requests. */
-        m_clock_system_parameters = string;
+            /* Keep track of the string to be able to respond to get requests. */
+            m_clock_system_parameters = string;
 
-        /* Update the clock system parameters. */
-        m_clock_system.sampling_frequency = sampling_frequency[0];
+            /* Update the clock system parameters. */
+            m_clock_system.sampling_frequency = sampling_frequency[0];
 
-        /* Emulate reconfiguration time. */
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            /* Emulate reconfiguration time. */
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        }
     }
     else
     {

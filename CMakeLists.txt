@@ -37,23 +37,6 @@ set(GLFW_INSTALL OFF CACHE INTERNAL "Generate installation target")
 FetchContent_MakeAvailable(glfw)
 
 FetchContent_Declare(
-  gl3w
-  GIT_REPOSITORY https://github.com/skaslev/gl3w
-  GIT_TAG 5f8d7fd191ba22ff2b60c1106d7135bb9a335533 # Some commit
-)
-
-# The gl3w library has install targets that we don't want. There's no option to
-# disable it so the library is added manually with EXCLUDE_FROM_ALL
-#
-# The following lines correspond to FetchContent_MakeAvailable with the
-# extra EXCLUDE_FROM_ALL
-FetchContent_GetProperties(gl3w)
-if (NOT gl3w)
-  FetchContent_Populate(gl3w)
-  add_subdirectory(${gl3w_SOURCE_DIR} ${gl3w_BINARY_DIR} EXCLUDE_FROM_ALL)
-endif()
-
-FetchContent_Declare(
     implot
     GIT_REPOSITORY https://github.com/epezent/implot
     GIT_TAG v0.14
@@ -106,20 +89,9 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(json)
 
-# It doesn't work to link directly to gl3w for some reason.
-# Maybe something to do with https://github.com/skaslev/gl3w/issues/66
-# However adding the generation target as a dependency and then
-# including and building the generated sources works
-# gl3w.c must be set as GENERATED to prevent cmake from complaining that
-# the filed doesn't exist during generation
-add_dependencies(${PROJECT_NAME} gl3w_gen)
-set_property(SOURCE ${gl3w_BINARY_DIR}/src/gl3w.c PROPERTY GENERATED 1)
-
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 target_sources(${PROJECT_NAME} PRIVATE
-    # BINARY_DIR is required here since we want to use the generated code
-    # from gl3w
-    ${gl3w_BINARY_DIR}/src/gl3w.c
+    src/gl3w/gl3w.c
     ${implot_SOURCE_DIR}/implot.cpp
     ${implot_SOURCE_DIR}/implot_items.cpp
     ${implot_SOURCE_DIR}/implot_demo.cpp
@@ -150,7 +122,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${fmt_SOURCE_DIR}/include
     ${json_SOURCE_DIR}/include
     simple_fft
-    ${gl3w_BINARY_DIR}/include
+    include/gl3w
     include
 )
 

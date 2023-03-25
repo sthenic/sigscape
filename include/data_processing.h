@@ -30,6 +30,7 @@ public:
 
         WindowType window_type;
         FrequencyDomainScaling fft_scaling;
+        int nof_skirt_bins;
         bool convert_horizontal;
         bool convert_vertical;
         bool fullscale_enob;
@@ -55,7 +56,6 @@ private:
     struct ADQClockSystemParameters m_clock_system;
     WindowCache m_window_cache;
     Parameters m_parameters;
-    size_t m_nof_skirt_bins; /* FIXME: Make configurable */
     std::deque<std::shared_ptr<FrequencyDomainRecord>> m_waterfall;
     std::deque<std::shared_ptr<TimeDomainRecord>> m_persistence;
     std::deque<double> m_noise_moving_average;

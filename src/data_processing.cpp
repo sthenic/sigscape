@@ -15,6 +15,7 @@
 DataProcessing::Parameters::Parameters()
     : window_type(WindowType::FLAT_TOP)
     , fft_scaling(FrequencyDomainScaling::AMPLITUDE)
+    , nof_skirt_bins(NOF_SKIRT_BINS_DEFAULT)
     , convert_horizontal(true)
     , convert_vertical(true)
     , fullscale_enob(true)
@@ -79,7 +80,6 @@ DataProcessing::DataProcessing(void *handle, int index, int channel, const std::
     , m_clock_system{constant.clock_system}
     , m_window_cache()
     , m_parameters{}
-    , m_nof_skirt_bins(NOF_SKIRT_BINS_DEFAULT)
     , m_waterfall{}
     , m_persistence{}
     , m_noise_moving_average{}
@@ -440,6 +440,7 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
     const auto &bin_range = record->frequency_domain->step;
     const auto &scale_factor = record->frequency_domain->scale_factor;
     const auto &energy_factor = record->frequency_domain->energy_factor;
+    const size_t nof_skirt_bins = static_cast<size_t>(m_parameters.nof_skirt_bins);
     std::deque<double> cursor;
 
     dc = {};
@@ -467,7 +468,7 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
         power += y_power;
 
         /* DC tone analysis. */
-        if (i <= m_nof_skirt_bins)
+        if (i <= nof_skirt_bins)
         {
             dc.power += y_power;
             dc.idx_high = i;
@@ -475,7 +476,7 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
             continue;
         }
 
-        if (cursor.size() >= (2 * m_nof_skirt_bins + 1))
+        if (cursor.size() >= (2 * nof_skirt_bins + 1))
             cursor.pop_front();
         cursor.push_back(y_power);
 
@@ -495,7 +496,7 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
 
         if (denominator > fundamental.power)
         {
-            if ((center_idx - fundamental.idx) > (2 * m_nof_skirt_bins))
+            if ((center_idx - fundamental.idx) > (2 * nof_skirt_bins))
                 spur = fundamental;
 
             fundamental.power = denominator;
@@ -509,7 +510,7 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
                 fundamental.values.push_back(c);
         }
 
-        if (denominator > spur.power && (center_idx - fundamental.idx) > (2 * m_nof_skirt_bins))
+        if (denominator > spur.power && (center_idx - fundamental.idx) > (2 * nof_skirt_bins))
         {
             spur.power = denominator;
             spur.frequency = center_frequency;
@@ -532,7 +533,7 @@ void DataProcessing::PlaceHarmonics(const Tone &fundamental, const ProcessedReco
     {
         const double f = FoldFrequency(fundamental.frequency * hd,
                                        record->time_domain->sampling_frequency.value);
-        harmonics.emplace_back(record, f, m_nof_skirt_bins);
+        harmonics.emplace_back(record, f, m_parameters.nof_skirt_bins);
     }
 }
 
@@ -544,11 +545,11 @@ void DataProcessing::PlaceInterleavingSpurs(const Tone &fundamental, const Proce
         fundamental.frequency + record->time_domain->sampling_frequency.value / 2,
         record->time_domain->sampling_frequency.value
     );
-    gain = std::move(Tone(record, f_gain, m_nof_skirt_bins));
+    gain = std::move(Tone(record, f_gain, m_parameters.nof_skirt_bins));
 
     /* Estimate the interleaving offset spur. */
     offset = std::move(
-        Tone(record, record->time_domain->sampling_frequency.value / 2, m_nof_skirt_bins));
+        Tone(record, record->time_domain->sampling_frequency.value / 2, m_parameters.nof_skirt_bins));
 }
 
 void DataProcessing::ResolveHarmonicOverlaps(const Tone &dc, const Tone &fundamental,

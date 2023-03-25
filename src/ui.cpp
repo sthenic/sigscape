@@ -1587,6 +1587,16 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
         push_parameters = true;
     }
 
+    static const ImS32 LIMIT_LOW = 0;
+    static const ImS32 LIMIT_HIGH = 16;
+    static ImS32 nof_skirt_bins = m_processing_parameters.nof_skirt_bins;
+    if (ImGui::SliderScalar("Skirt bins", ImGuiDataType_S8, &nof_skirt_bins, &LIMIT_LOW,
+                            &LIMIT_HIGH, NULL, ImGuiSliderFlags_NoInput))
+    {
+        m_processing_parameters.nof_skirt_bins = static_cast<int>(nof_skirt_bins);
+        push_parameters = true;
+    }
+
     /* TODO: Right now, any visible time domain markers end up in incorrect
              positions when the x/y conversion is toggled. Just clear them for
              now. */

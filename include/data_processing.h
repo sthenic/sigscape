@@ -14,8 +14,53 @@ enum class FrequencyDomainScaling
     ENERGY
 };
 
+enum class DataProcessingMessageId
+{
+    SET_AFE_PARAMETERS,
+    SET_CLOCK_SYSTEM_PARAMETERS,
+    SET_PROCESSING_PARAMETERS
+};
+
+
+struct DataProcessingParameters
+{
+    DataProcessingParameters();
+
+    WindowType window_type;
+    FrequencyDomainScaling fft_scaling;
+    int nof_skirt_bins;
+    double fundamental_frequency;
+    bool convert_horizontal;
+    bool convert_vertical;
+    bool fullscale_enob;
+};
+
 struct DataProcessingMessage
-{};
+{
+    DataProcessingMessage() = default;
+
+    DataProcessingMessage(DataProcessingMessageId id,
+                          struct ADQAnalogFrontendParametersChannel &afe)
+        : id(id)
+        , afe(afe)
+    {}
+
+    DataProcessingMessage(DataProcessingMessageId id,
+                          struct ADQClockSystemParameters &clock_system)
+        : id(id)
+        , clock_system(clock_system)
+    {}
+
+    DataProcessingMessage(DataProcessingMessageId id, const DataProcessingParameters &processing)
+        : id(id)
+        , processing(processing)
+    {}
+
+    DataProcessingMessageId id;
+    struct ADQAnalogFrontendParametersChannel afe;
+    struct ADQClockSystemParameters clock_system;
+    DataProcessingParameters processing;
+};
 
 class DataProcessing
     : public SmartBufferThread<DataProcessing, ProcessedRecord, DataProcessingMessage, 100, true>
@@ -27,28 +72,10 @@ public:
     DataProcessing(const DataProcessing &other) = delete;
     DataProcessing &operator=(const DataProcessing &other) = delete;
 
-    struct Parameters
-    {
-        Parameters();
-
-        WindowType window_type;
-        FrequencyDomainScaling fft_scaling;
-        int nof_skirt_bins;
-        double fundamental_frequency;
-        bool convert_horizontal;
-        bool convert_vertical;
-        bool fullscale_enob;
-    };
-
-    void SetAnalogFrontendParameters(const struct ADQAnalogFrontendParametersChannel &afe);
-    void SetClockSystemParameters(const struct ADQClockSystemParameters &clock_system);
-    void SetParameters(const Parameters &parameters);
-
     void MainLoop() override;
 
 private:
     static const size_t WATERFALL_SIZE = 20;
-    static const size_t NOF_SKIRT_BINS_DEFAULT = 5;
     static const size_t PERSISTENCE_SIZE = 30;
     static const size_t NOISE_MOVING_AVERAGE_SIZE = 50;
     void *m_handle;
@@ -59,7 +86,7 @@ private:
     struct ADQConstantParameters m_constant;
     struct ADQClockSystemParameters m_clock_system;
     WindowCache m_window_cache;
-    Parameters m_parameters;
+    DataProcessingParameters m_parameters;
     std::deque<std::shared_ptr<FrequencyDomainRecord>> m_waterfall;
     std::deque<std::shared_ptr<TimeDomainRecord>> m_persistence;
     std::deque<double> m_noise_moving_average;
@@ -139,4 +166,7 @@ private:
 
     /* Analyze the time domain data. */
     void AnalyzeTimeDomain(ProcessedRecord *record);
+
+    /* Process messages posted to the thread. */
+    void ProcessMessages();
 };

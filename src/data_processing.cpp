@@ -12,10 +12,10 @@
 #include <cinttypes>
 #include <set>
 
-DataProcessing::Parameters::Parameters()
+DataProcessingParameters::DataProcessingParameters()
     : window_type(WindowType::FLAT_TOP)
     , fft_scaling(FrequencyDomainScaling::AMPLITUDE)
-    , nof_skirt_bins(NOF_SKIRT_BINS_DEFAULT)
+    , nof_skirt_bins(5)
     , fundamental_frequency(-1.0)
     , convert_horizontal(true)
     , convert_vertical(true)
@@ -92,22 +92,6 @@ DataProcessing::~DataProcessing()
     Stop();
 }
 
-void DataProcessing::SetAnalogFrontendParameters(const struct ADQAnalogFrontendParametersChannel &afe)
-{
-    m_afe = afe;
-}
-
-void DataProcessing::SetClockSystemParameters(const struct ADQClockSystemParameters &clock_system)
-{
-    m_clock_system = clock_system;
-}
-
-void DataProcessing::SetParameters(const Parameters &parameters)
-{
-    /* FIXME: Make this thread safe */
-    m_parameters = parameters;
-}
-
 void DataProcessing::MainLoop()
 {
     m_thread_exit_code = SCAPE_EOK;
@@ -118,6 +102,9 @@ void DataProcessing::MainLoop()
         /* Check if the stop event has been set. */
         if (m_should_stop.wait_for(std::chrono::microseconds(0)) == std::future_status::ready)
             break;
+
+        /* Process any messages posted to the thread. */
+        ProcessMessages();
 
         struct ADQGen4Record *time_domain = NULL;
         int channel = m_channel;
@@ -658,4 +645,29 @@ void DataProcessing::AnalyzeTimeDomain(ProcessedRecord *record)
     time_domain->mean.value /= static_cast<double>(time_domain->y.size());
     time_domain->rms.value /= static_cast<double>(time_domain->y.size());
     time_domain->rms.value = std::sqrt(time_domain->rms.value);
+}
+
+void DataProcessing::ProcessMessages()
+{
+    DataProcessingMessage message;
+    while (SCAPE_EOK == m_write_message_queue.Read(message, 0))
+    {
+        switch (message.id)
+        {
+        case DataProcessingMessageId::SET_AFE_PARAMETERS:
+            m_afe = message.afe;
+            break;
+
+        case DataProcessingMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
+            m_clock_system = message.clock_system;
+            break;
+
+        case DataProcessingMessageId::SET_PROCESSING_PARAMETERS:
+            m_parameters = message.processing;
+            break;
+
+        default:
+            break;
+        }
+    }
 }

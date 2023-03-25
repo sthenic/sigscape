@@ -36,7 +36,7 @@ private:
     void *m_adq_control_unit;
     bool m_show_imgui_demo_window;
     bool m_show_implot_demo_window;
-    DataProcessing::Parameters m_processing_parameters;
+    DataProcessingParameters m_processing_parameters;
     struct
     {
         bool time_domain;

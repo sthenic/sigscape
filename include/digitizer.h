@@ -145,7 +145,7 @@ struct DigitizerMessage
     {}
 
     /* Create a message holding data processing parameters. */
-    DigitizerMessage(DigitizerMessageId id, const DataProcessing::Parameters &parameters)
+    DigitizerMessage(DigitizerMessageId id, const DataProcessingParameters &parameters)
         : id(id)
         , processing_parameters(parameters)
     {}
@@ -176,7 +176,7 @@ struct DigitizerMessage
     std::string str;
     int ivalue;
     double dvalue;
-    DataProcessing::Parameters processing_parameters;
+    DataProcessingParameters processing_parameters;
     SensorTree sensor_tree;
     std::vector<BootEntry> boot_entries;
     struct ADQConstantParameters constant_parameters;

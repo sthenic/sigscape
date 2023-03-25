@@ -451,8 +451,10 @@ void Digitizer::StartDataAcquisition()
 
         for (size_t i = 0; i < m_processing_threads.size(); ++i)
         {
-            m_processing_threads[i]->SetAnalogFrontendParameters(afe.channel[i]);
-            m_processing_threads[i]->SetClockSystemParameters(clock_system);
+            m_processing_threads[i]->EmplaceMessage(
+                DataProcessingMessageId::SET_AFE_PARAMETERS, afe.channel[i]);
+            m_processing_threads[i]->EmplaceMessage(
+                DataProcessingMessageId::SET_CLOCK_SYSTEM_PARAMETERS, clock_system);
         }
 
         for (const auto &t : m_processing_threads)
@@ -565,7 +567,10 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
 
     case DigitizerMessageId::SET_PROCESSING_PARAMETERS:
         for (const auto &t : m_processing_threads)
-            t->SetParameters(message.processing_parameters);
+        {
+            t->EmplaceMessage(DataProcessingMessageId::SET_PROCESSING_PARAMETERS,
+                              std::move(message.processing_parameters));
+        }
         break;
 
     case DigitizerMessageId::SET_CONFIGURATION_DIRECTORY:
@@ -658,7 +663,10 @@ void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &messag
 
     case DigitizerMessageId::SET_PROCESSING_PARAMETERS:
         for (const auto &t : m_processing_threads)
-            t->SetParameters(message.processing_parameters);
+        {
+            t->EmplaceMessage(DataProcessingMessageId::SET_PROCESSING_PARAMETERS,
+                              std::move(message.processing_parameters));
+        }
         break;
 
     case DigitizerMessageId::GET_TOP_PARAMETERS_FILENAME:

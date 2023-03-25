@@ -7,8 +7,15 @@ void Identification::SetLogDirectory(const std::string &log_directory)
 
 void Identification::MainLoop()
 {
-    /* FIXME: Compatibility verification */
     uint32_t revision = ADQAPI_GetRevision();
+
+    /* We only abort if the API is incompatible. */
+    if (ADQAPI_ValidateVersion(ADQAPI_VERSION_MAJOR, ADQAPI_VERSION_MINOR) == -1)
+    {
+        m_read_queue.Write({NULL, revision, false, {}});
+        m_thread_exit_code = SCAPE_EINTERNAL;
+        return;
+    }
 
     void *handle = CreateADQControlUnit();
     if (handle == NULL)
@@ -58,6 +65,6 @@ void Identification::MainLoop()
 
     /* Forward the control unit handle along with digitizer objects. */
     /* FIXME: Propagate errors? */
-    m_read_queue.Write({handle, revision, digitizers});
+    m_read_queue.Write({handle, revision, true, digitizers});
     m_thread_exit_code = SCAPE_EOK;
 }

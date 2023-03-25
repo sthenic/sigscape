@@ -168,6 +168,7 @@ Ui::Ui()
     , m_should_auto_fit_time_domain(true)
     , m_should_auto_fit_frequency_domain(true)
     , m_should_auto_fit_waterfall(true)
+    , m_popup_compatibility_error(false)
     , m_api_revision(0)
     , m_file_browser(ImGuiFileBrowserFlags_EnterNewFilename | ImGuiFileBrowserFlags_CreateNewDir |
                      ImGuiFileBrowserFlags_CloseOnEsc)
@@ -324,6 +325,19 @@ void Ui::UpdateSensors()
 
 void Ui::HandleMessage(const IdentificationMessage &message)
 {
+    /* Stop the identification thread. */
+    m_identification.Stop();
+    m_api_revision = message.revision;
+    m_adq_control_unit = message.handle;
+
+    /* If the API is incompatible, we can't proceed beyond this point. We toggle
+       the popup message and return. */
+    if (!message.compatible)
+    {
+        m_popup_compatibility_error = true;
+        return;
+    }
+
     /* If we get a message, the identification went well. Prepare to
        reinitialize the entire user interface.*/
     for (const auto &d : m_digitizers)
@@ -337,12 +351,6 @@ void Ui::HandleMessage(const IdentificationMessage &message)
     for (auto interface : message.digitizers)
         m_digitizers.emplace_back(interface);
 
-    m_adq_control_unit = message.handle;
-    m_api_revision = message.revision;
-
-    /* Stop the identification thread and start the digitizer threads. */
-    m_identification.Stop();
-
     for (const auto &d : m_digitizers)
     {
         d.interface->Start();
@@ -350,7 +358,6 @@ void Ui::HandleMessage(const IdentificationMessage &message)
                                     m_persistent_directories.GetConfigurationDirectory());
     }
 
-    /* FIXME: Remove since debug convenience? */
     if (m_digitizers.size() > 0)
         m_digitizers.front().ui.is_selected = true;
 }
@@ -637,6 +644,9 @@ void Ui::RenderLeft(float width, float height)
 
 void Ui::RenderPopups()
 {
+    if (m_popup_compatibility_error)
+        RenderPopupCompatibilityError();
+
     for (size_t i = 0; i < m_digitizers.size(); ++i)
     {
         if (m_digitizers[i].ui.popup_initialize_would_overwrite)
@@ -658,10 +668,30 @@ void Ui::RenderPopups()
     }
 }
 
+void Ui::RenderPopupCompatibilityError()
+{
+    ImGui::OpenPopup("Incompatible libadq");
+    if (ImGui::BeginPopupModal("Incompatible libadq", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::Text("The loaded libadq version (0x%08x) is not \n"
+                    "compatible with this version of sigscape.",
+                    m_api_revision);
+
+        ImGui::Separator();
+        if (ImGui::Button("Ok"))
+        {
+            m_popup_compatibility_error = false;
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+}
+
 void Ui::RenderPopupInitializeWouldOverwrite(size_t idx)
 {
-    ImGui::OpenPopup("##initializewouldoverwrite");
-    if (ImGui::BeginPopupModal("##initializewouldoverwrite", NULL,
+    ImGui::OpenPopup("Overwrite warning");
+    if (ImGui::BeginPopupModal("Overwrite warning", NULL,
                                ImGuiWindowFlags_AlwaysAutoResize))
     {
         ImGui::Text("Initializing parameters for %s would\n"

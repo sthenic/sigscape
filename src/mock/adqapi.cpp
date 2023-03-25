@@ -210,10 +210,17 @@ void DeleteADQControlUnit(void *adq_cu)
     return;
 }
 
-/*  */
+/* ADQAPI_ interface */
 uint32_t ADQAPI_GetRevision()
 {
     return 0xdeadbeefu;
+}
+
+int ADQAPI_ValidateVersion(int major, int minor)
+{
+    (void)major;
+    (void)minor;
+    return 0;
 }
 
 /* ADQControlUnit_ interface */

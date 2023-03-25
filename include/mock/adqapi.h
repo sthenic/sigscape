@@ -52,6 +52,7 @@ void DeleteADQControlUnit(void *adq_cu);
 
 /* The ADQAPI_* functions we're mocking. */
 uint32_t ADQAPI_GetRevision();
+int ADQAPI_ValidateVersion(int major, int minor);
 
 /* The ADQControlUnit_* functions we're mocking. */
 int ADQControlUnit_SetupDevice(void *adq_cu, int adq_num);

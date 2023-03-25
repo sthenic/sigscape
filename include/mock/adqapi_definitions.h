@@ -8,6 +8,9 @@
 #include <vector>
 #include <algorithm>
 
+#define ADQAPI_VERSION_MAJOR 1
+#define ADQAPI_VERSION_MINOR 0
+
 #define ADQ_MAX_NOF_CHANNELS 8
 #define ADQ_MAX_NOF_INPUT_RANGES 8
 

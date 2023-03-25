@@ -163,6 +163,7 @@ private:
     bool m_should_auto_fit_frequency_domain;
     bool m_should_auto_fit_waterfall;
 
+    bool m_popup_compatibility_error;
     uint32_t m_api_revision;
     ImGui::FileBrowser m_file_browser;
 
@@ -184,6 +185,7 @@ private:
     void RenderLeft(float width, float height);
     void RenderPopups();
 
+    void RenderPopupCompatibilityError();
     void RenderPopupInitializeWouldOverwrite(size_t idx);
     void RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size);
     void RenderCommandPalette(const ImVec2 &position, const ImVec2 &size);

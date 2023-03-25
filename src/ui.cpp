@@ -158,6 +158,10 @@ Ui::Ui()
     , m_show_implot_demo_window(false)
     , m_is_time_domain_collapsed(false)
     , m_is_frequency_domain_collapsed(false)
+    , m_is_time_domain_metrics_collapsed(false)
+    , m_is_frequency_domain_metrics_collapsed(false)
+    , m_is_processing_options_collapsed(false)
+    , m_is_application_metrics_collapsed(true)
     , m_nof_channels_total(0)
     , m_digitizers()
     , m_time_domain_markers("Time Domain", "T")
@@ -524,19 +528,35 @@ void Ui::RenderRight(float width, float height)
 {
     const float FRAME_HEIGHT = ImGui::GetFrameHeight();
     const float PLOT_WINDOW_HEIGHT = (height - 1 * FRAME_HEIGHT) / 2;
-    const ImVec2 POSITION_UPPER(
-        width * (FIRST_COLUMN_RELATIVE_WIDTH + SECOND_COLUMN_RELATIVE_WIDTH),
-        FRAME_HEIGHT
-    );
-    const ImVec2 POSITION_LOWER(
-        width * (FIRST_COLUMN_RELATIVE_WIDTH + SECOND_COLUMN_RELATIVE_WIDTH),
-        FRAME_HEIGHT + PLOT_WINDOW_HEIGHT
-    );
-    const ImVec2 SIZE(width * SECOND_COLUMN_RELATIVE_WIDTH, PLOT_WINDOW_HEIGHT);
+    const float POSITION_X = width * (FIRST_COLUMN_RELATIVE_WIDTH + SECOND_COLUMN_RELATIVE_WIDTH);
+    const float SIZE_X = width * SECOND_COLUMN_RELATIVE_WIDTH;
 
-    /* In the right column, we show various metrics. */
-    RenderTimeDomainMetrics(POSITION_UPPER, SIZE);
-    RenderFrequencyDomainMetrics(POSITION_LOWER, SIZE);
+    ImVec2 TIME_DOMAIN_POSITION{POSITION_X, FRAME_HEIGHT};
+    ImVec2 TIME_DOMAIN_SIZE{SIZE_X, PLOT_WINDOW_HEIGHT};
+
+    ImVec2 FREQUENCY_DOMAIN_POSITION{POSITION_X, FRAME_HEIGHT + PLOT_WINDOW_HEIGHT};
+    ImVec2 FREQUENCY_DOMAIN_SIZE{SIZE_X, PLOT_WINDOW_HEIGHT};
+
+    if (m_is_time_domain_metrics_collapsed)
+    {
+        TIME_DOMAIN_SIZE = ImVec2{SIZE_X, FRAME_HEIGHT};
+        FREQUENCY_DOMAIN_POSITION = ImVec2{POSITION_X, 2 * FRAME_HEIGHT};
+        FREQUENCY_DOMAIN_SIZE = ImVec2{SIZE_X, height - 2 * FRAME_HEIGHT};
+    }
+
+    if (m_is_frequency_domain_metrics_collapsed)
+    {
+        TIME_DOMAIN_SIZE = ImVec2{POSITION_X, height - 2 * FRAME_HEIGHT};
+        FREQUENCY_DOMAIN_POSITION = ImVec2{POSITION_X, height - FRAME_HEIGHT};
+        FREQUENCY_DOMAIN_SIZE = ImVec2{SIZE_X, FRAME_HEIGHT};
+    }
+
+    if (m_is_time_domain_metrics_collapsed && m_is_frequency_domain_metrics_collapsed)
+        FREQUENCY_DOMAIN_POSITION = ImVec2{POSITION_X, 2 * FRAME_HEIGHT};
+
+    /* In the right column we show various metrics. */
+    RenderTimeDomainMetrics(TIME_DOMAIN_POSITION, TIME_DOMAIN_SIZE);
+    RenderFrequencyDomainMetrics(FREQUENCY_DOMAIN_POSITION, FREQUENCY_DOMAIN_SIZE);
 }
 
 void Ui::RenderCenter(float width, float height)
@@ -544,23 +564,30 @@ void Ui::RenderCenter(float width, float height)
     /* We show two plots in the center, taking up equal vertical space. */
     const float FRAME_HEIGHT = ImGui::GetFrameHeight();
     const float PLOT_WINDOW_HEIGHT = (height - 1 * FRAME_HEIGHT) / 2;
+    const float POSITION_X = width * FIRST_COLUMN_RELATIVE_WIDTH;
+    const float SIZE_X = width * SECOND_COLUMN_RELATIVE_WIDTH;
 
-    ImVec2 TIME_DOMAIN_POSITION{width * FIRST_COLUMN_RELATIVE_WIDTH, FRAME_HEIGHT};
-    ImVec2 TIME_DOMAIN_SIZE{width * SECOND_COLUMN_RELATIVE_WIDTH, PLOT_WINDOW_HEIGHT};
-    ImVec2 FREQUENCY_DOMAIN_POSITION{width * FIRST_COLUMN_RELATIVE_WIDTH, FRAME_HEIGHT + PLOT_WINDOW_HEIGHT};
-    ImVec2 FREQUENCY_DOMAIN_SIZE{width * SECOND_COLUMN_RELATIVE_WIDTH, PLOT_WINDOW_HEIGHT};
+    ImVec2 TIME_DOMAIN_POSITION{POSITION_X, FRAME_HEIGHT};
+    ImVec2 TIME_DOMAIN_SIZE{SIZE_X, PLOT_WINDOW_HEIGHT};
+    ImVec2 FREQUENCY_DOMAIN_POSITION{POSITION_X, FRAME_HEIGHT + PLOT_WINDOW_HEIGHT};
+    ImVec2 FREQUENCY_DOMAIN_SIZE{SIZE_X, PLOT_WINDOW_HEIGHT};
 
     if (m_is_time_domain_collapsed)
     {
-        FREQUENCY_DOMAIN_POSITION = ImVec2{width * FIRST_COLUMN_RELATIVE_WIDTH, 2 * FRAME_HEIGHT};
-        FREQUENCY_DOMAIN_SIZE = ImVec2{width * SECOND_COLUMN_RELATIVE_WIDTH, height - 2 * FRAME_HEIGHT};
+        TIME_DOMAIN_SIZE = ImVec2{SIZE_X, FRAME_HEIGHT};
+        FREQUENCY_DOMAIN_POSITION = ImVec2{POSITION_X, 2 * FRAME_HEIGHT};
+        FREQUENCY_DOMAIN_SIZE = ImVec2{SIZE_X, height - 2 * FRAME_HEIGHT};
     }
 
     if (m_is_frequency_domain_collapsed)
-        TIME_DOMAIN_SIZE = ImVec2{width * SECOND_COLUMN_RELATIVE_WIDTH, height - 2 * FRAME_HEIGHT};
+    {
+        TIME_DOMAIN_SIZE = ImVec2{SIZE_X, height - 2 * FRAME_HEIGHT};
+        FREQUENCY_DOMAIN_POSITION = ImVec2{POSITION_X, height - FRAME_HEIGHT};
+        FREQUENCY_DOMAIN_SIZE = ImVec2{SIZE_X, FRAME_HEIGHT};
+    }
 
-    if (m_is_frequency_domain_collapsed && !m_is_time_domain_collapsed)
-        FREQUENCY_DOMAIN_POSITION = ImVec2{width * FIRST_COLUMN_RELATIVE_WIDTH, height - FRAME_HEIGHT};
+    if (m_is_time_domain_collapsed && m_is_frequency_domain_collapsed)
+        FREQUENCY_DOMAIN_POSITION = ImVec2{POSITION_X, 2 * FRAME_HEIGHT};
 
     /* The lower plot window, showing time domain data. */
     RenderTimeDomain(TIME_DOMAIN_POSITION, TIME_DOMAIN_SIZE);
@@ -581,21 +608,35 @@ void Ui::RenderLeft(float width, float height)
     RenderCommandPalette(COMMAND_PALETTE_POS, COMMAND_PALETTE_SIZE);
 
     /* Measured from the bottom */
-    const ImVec2 METRICS_POS(0.0f, height - 3 * FRAME_HEIGHT);
-    const ImVec2 METRICS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 3 * FRAME_HEIGHT);
+    ImVec2 METRICS_POS(0.0f, height - 3 * FRAME_HEIGHT);
+    ImVec2 METRICS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 3 * FRAME_HEIGHT);
+
+    if (m_is_application_metrics_collapsed)
+    {
+        METRICS_POS = ImVec2{0.0f, height - FRAME_HEIGHT};
+        METRICS_SIZE = ImVec2{width * FIRST_COLUMN_RELATIVE_WIDTH, FRAME_HEIGHT};
+    }
+
     RenderApplicationMetrics(METRICS_POS, METRICS_SIZE);
 
-    const ImVec2 PROCESSING_OPTIONS_POS(0.0f, METRICS_POS.y - 200.0f);
-    const ImVec2 PROCESSING_OPTIONS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 200.0f);
+    ImVec2 PROCESSING_OPTIONS_POS(0.0f, METRICS_POS.y - 200.0f);
+    ImVec2 PROCESSING_OPTIONS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 200.0f);
+
+    if (m_is_processing_options_collapsed)
+    {
+        PROCESSING_OPTIONS_POS = ImVec2{0.0f, METRICS_POS.y - FRAME_HEIGHT};
+        PROCESSING_OPTIONS_SIZE = ImVec2{width * FIRST_COLUMN_RELATIVE_WIDTH, FRAME_HEIGHT};
+    }
+
     RenderProcessingOptions(PROCESSING_OPTIONS_POS, PROCESSING_OPTIONS_SIZE);
 
-    /* The marker window is the one we allow to stretch stretchable. */
-    const ImVec2 MARKERS_POS(0.0f, COMMAND_PALETTE_POS.y + COMMAND_PALETTE_SIZE.y);
-    const ImVec2 MARKERS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH,
-                              height - (FRAME_HEIGHT + DIGITIZER_SELECTION_SIZE.y +
-                                        COMMAND_PALETTE_SIZE.y + PROCESSING_OPTIONS_SIZE.y +
-                                        METRICS_SIZE.y));
-    RenderTools(MARKERS_POS, MARKERS_SIZE);
+    /* The tools window is the one we allow to stretch to the available space. */
+    const ImVec2 TOOLS_POS(0.0f, COMMAND_PALETTE_POS.y + COMMAND_PALETTE_SIZE.y);
+    const ImVec2 TOOLS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH,
+                            height - (FRAME_HEIGHT + DIGITIZER_SELECTION_SIZE.y +
+                                      COMMAND_PALETTE_SIZE.y + PROCESSING_OPTIONS_SIZE.y +
+                                      METRICS_SIZE.y));
+    RenderTools(TOOLS_POS, TOOLS_SIZE);
 }
 
 void Ui::RenderPopups()
@@ -757,30 +798,24 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
     ImGui::Begin("Command Palette", NULL,
                  ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 
-    /* FIXME: Maybe this is overkill. */
-    std::stringstream ss;
-    bool any_selected = false;
-    for (const auto &digitizer : m_digitizers)
-    {
-        if (digitizer.ui.is_selected)
-        {
-            if (!any_selected)
-                ss << "Commands will be applied to ";
-            else
-                ss << ", ";
+    int nof_selected = 0;
+    std::for_each(m_digitizers.begin(), m_digitizers.end(), [&](const Ui::DigitizerUi &d) {
+        if (d.ui.is_selected)
+            nof_selected++;
+    });
 
-            ss << digitizer.ui.identifier;
-            any_selected = true;
-        }
+    if (nof_selected > 0)
+    {
+        ImGui::Text(fmt::format("Commands apply to {} digitizer{}.", nof_selected,
+                                nof_selected > 1 ? "s" : ""));
+    }
+    else
+    {
+        ImGui::Text("No digitizer selected.");
     }
 
-    if (!any_selected)
-        ss << "No digitizer selected.";
-
-    ImGui::Text(ss.str());
-
     const ImVec2 COMMAND_PALETTE_BUTTON_SIZE{85, 50};
-    if (!any_selected)
+    if (nof_selected == 0)
         ImGui::BeginDisabled();
 
     /* First row */
@@ -839,7 +874,7 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
     if (ImGui::Button("Copy Clock\nSystem\nFilename", COMMAND_PALETTE_BUTTON_SIZE))
         PushMessage(DigitizerMessageId::GET_CLOCK_SYSTEM_PARAMETERS_FILENAME);
 
-    if (!any_selected)
+    if (nof_selected == 0)
         ImGui::EndDisabled();
 
     ImGui::End();
@@ -980,14 +1015,28 @@ void Ui::MarkerTree(Markers &markers)
                                 marker.y.Format()));
 
         const auto &ui = m_digitizers[marker.digitizer].ui.channels[marker.channel];
-        ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 30.0f -
-                        ImGui::CalcTextSize(ui.record->label.c_str()).x);
-        ImGui::Text(ui.record->label);
+
+        const float LABEL_START_NO_TEXT = ImGui::GetWindowContentRegionMax().x - 30.0f;
+        const float LABEL_START = LABEL_START_NO_TEXT - ImGui::CalcTextSize(ui.record->label.c_str()).x;
+
+        /* We need an empty SameLine() here for GetCursorPosX() to yield the correct value. */
         ImGui::SameLine();
+        const bool label_collision = LABEL_START - ImGui::GetCursorPosX() < 0;
+
+        ImGui::SameLine(label_collision ? LABEL_START_NO_TEXT : LABEL_START);
+        if (!label_collision)
+        {
+            ImGui::Text(ui.record->label);
+            ImGui::SameLine();
+        }
+
         ImGui::ColorEdit4(fmt::format("##channel{}{}", markers.label, id).c_str(),
                           (float *)&ui.color,
                           ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel |
                               ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoPicker);
+
+        if (label_collision && ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s", ui.record->label.c_str());
 
         if (node_open)
         {
@@ -1172,7 +1221,7 @@ void Ui::RenderSensors()
         return;
     }
 
-    ImGui::Text("Sensor information for %s", ui->identifier.c_str());
+    ImGui::Text(ui->identifier);
     ImGui::SameLine(ImGui::GetWindowContentRegionMax().x -
                     2 * ImGui::GetStyle().ItemInnerSpacing.x -
                     ImGui::CalcTextSize("Unplot").x);
@@ -1214,7 +1263,7 @@ void Ui::RenderBootStatus()
         return;
     }
 
-    ImGui::Text("Boot information for %s", ui->identifier.c_str());
+    ImGui::Text(ui->identifier);
     ImGui::Separator();
     ImGui::Text(fmt::format("In state '{}' ({})", ui->boot_status.state_description,
                             ui->boot_status.state));
@@ -1477,8 +1526,8 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
 {
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
-    ImGui::Begin("Processing Options", NULL,
-                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+    ImGui::Begin("Processing Options", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+    m_is_processing_options_collapsed = ImGui::IsWindowCollapsed();
 
     static int window_idx = 2;
     static int window_idx_prev = 2;
@@ -2525,8 +2574,8 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
     /* FIXME: Move into functions? */
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
-    ImGui::Begin("Time Domain Metrics", NULL,
-                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+    ImGui::Begin("Time Domain Metrics", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+    m_is_time_domain_metrics_collapsed = ImGui::IsWindowCollapsed();
 
     bool has_contents = false;
     for (auto &digitizer : m_digitizers)
@@ -2645,8 +2694,8 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
     ImGui::Begin("Frequency Domain Metrics", NULL,
-                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoNavFocus |
-                     ImGuiWindowFlags_NoCollapse);
+                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoNavFocus);
+    m_is_frequency_domain_metrics_collapsed = ImGui::IsWindowCollapsed();
 
     bool has_contents = false;
     for (auto &digitizer : m_digitizers)
@@ -2772,8 +2821,8 @@ void Ui::RenderApplicationMetrics(const ImVec2 &position, const ImVec2 &size)
 {
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
-    ImGui::Begin("Application Metrics", NULL,
-                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+    ImGui::Begin("Application Metrics", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+    m_is_application_metrics_collapsed = ImGui::IsWindowCollapsed();
     const ImGuiIO &io = ImGui::GetIO();
     ImGui::Text("Average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
     ImGui::End();

@@ -38,6 +38,10 @@ private:
     bool m_show_implot_demo_window;
     bool m_is_time_domain_collapsed;
     bool m_is_frequency_domain_collapsed;
+    bool m_is_time_domain_metrics_collapsed;
+    bool m_is_frequency_domain_metrics_collapsed;
+    bool m_is_processing_options_collapsed;
+    bool m_is_application_metrics_collapsed;
     int m_nof_channels_total;
 
     /* Representation of a digitizer channel's state in the UI. */
@@ -244,8 +248,8 @@ private:
     static std::string NowAsIso8601();
 
     static constexpr float FIRST_COLUMN_RELATIVE_WIDTH = 0.2f;
-    static constexpr float SECOND_COLUMN_RELATIVE_WIDTH = 0.6f;
-    static constexpr float THIRD_COLUMN_RELATIVE_WIDTH = 0.2f;
+    static constexpr float SECOND_COLUMN_RELATIVE_WIDTH = 0.58f;
+    static constexpr float THIRD_COLUMN_RELATIVE_WIDTH = 0.22f;
 
     static const ImVec4 COLOR_GREEN;
     static const ImVec4 COLOR_RED;

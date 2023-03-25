@@ -156,6 +156,7 @@ Ui::Ui()
     , m_adq_control_unit()
     , m_show_imgui_demo_window(false)
     , m_show_implot_demo_window(false)
+    , m_processing_parameters{}
     , m_is_time_domain_collapsed(false)
     , m_is_frequency_domain_collapsed(false)
     , m_is_time_domain_metrics_collapsed(false)
@@ -1528,6 +1529,7 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
     ImGui::SetNextWindowSize(size);
     ImGui::Begin("Processing Options", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
     m_is_processing_options_collapsed = ImGui::IsWindowCollapsed();
+    bool push_parameters = false;
 
     static int window_idx = 2;
     static int window_idx_prev = 2;
@@ -1539,27 +1541,28 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
         switch (window_idx)
         {
         case 0:
-            PushMessage({DigitizerMessageId::SET_WINDOW_TYPE, WindowType::NONE}, false);
+            m_processing_parameters.window_type = WindowType::NONE;
             break;
 
         case 1:
-            PushMessage({DigitizerMessageId::SET_WINDOW_TYPE, WindowType::BLACKMAN_HARRIS}, false);
+            m_processing_parameters.window_type = WindowType::BLACKMAN_HARRIS;
             break;
 
         case 2:
-            PushMessage({DigitizerMessageId::SET_WINDOW_TYPE, WindowType::FLAT_TOP}, false);
+            m_processing_parameters.window_type = WindowType::FLAT_TOP;
             break;
 
         case 3:
-            PushMessage({DigitizerMessageId::SET_WINDOW_TYPE, WindowType::HAMMING}, false);
+            m_processing_parameters.window_type = WindowType::HAMMING;
             break;
 
         case 4:
-            PushMessage({DigitizerMessageId::SET_WINDOW_TYPE, WindowType::HANNING}, false);
+            m_processing_parameters.window_type = WindowType::HANNING;
             break;
         }
 
         window_idx_prev = window_idx;
+        push_parameters = true;
     }
 
     static int scaling_idx = 0;
@@ -1572,39 +1575,38 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
         switch (scaling_idx)
         {
         case 0:
-            PushMessage({DigitizerMessageId::SET_FREQUENCY_DOMAIN_SCALING,
-                         FrequencyDomainScaling::AMPLITUDE}, false);
+            m_processing_parameters.fft_scaling = FrequencyDomainScaling::AMPLITUDE;
             break;
 
         case 1:
-            PushMessage({DigitizerMessageId::SET_FREQUENCY_DOMAIN_SCALING,
-                         FrequencyDomainScaling::ENERGY}, false);
+            m_processing_parameters.fft_scaling = FrequencyDomainScaling::ENERGY;
             break;
         }
 
         scaling_idx_prev = scaling_idx;
+        push_parameters = true;
     }
 
     /* TODO: Right now, any visible time domain markers end up in incorrect
              positions when the x/y conversion is toggled. Just clear them for
              now. */
-    static bool convert_horizontal = true;
-    if (ImGui::Checkbox("Convert samples to time", &convert_horizontal))
+    if (ImGui::Checkbox("Convert samples to time", &m_processing_parameters.convert_horizontal))
     {
-        PushMessage({DigitizerMessageId::SET_CONVERT_HORIZONTAL, convert_horizontal}, false);
         m_time_domain_markers.clear();
+        push_parameters = true;
     }
 
-    static bool convert_vertical = true;
-    if (ImGui::Checkbox("Convert codes to volts", &convert_vertical))
+    if (ImGui::Checkbox("Convert codes to volts", &m_processing_parameters.convert_vertical))
     {
-        PushMessage({DigitizerMessageId::SET_CONVERT_VERTICAL, convert_vertical}, false);
         m_time_domain_markers.clear();
+        push_parameters = true;
     }
 
-    static bool fullscale_enob = true;
-    if (ImGui::Checkbox("Full-scale ENOB", &fullscale_enob))
-        PushMessage({DigitizerMessageId::SET_FULLSCALE_ENOB, fullscale_enob}, false);
+    if (ImGui::Checkbox("Full-scale ENOB", &m_processing_parameters.fullscale_enob))
+        push_parameters = true;
+
+    if (push_parameters)
+        PushMessage({DigitizerMessageId::SET_PROCESSING_PARAMETERS, m_processing_parameters}, false);
 
     ImGui::End();
 }

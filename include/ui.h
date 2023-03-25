@@ -36,6 +36,8 @@ private:
     void *m_adq_control_unit;
     bool m_show_imgui_demo_window;
     bool m_show_implot_demo_window;
+    DataProcessingParameters m_processing_parameters;
+    /* FIXME: Group into struct */
     bool m_is_time_domain_collapsed;
     bool m_is_frequency_domain_collapsed;
     bool m_is_time_domain_metrics_collapsed;

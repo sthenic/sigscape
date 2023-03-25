@@ -14,6 +14,17 @@ enum class FrequencyDomainScaling
     ENERGY
 };
 
+struct DataProcessingParameters
+{
+    DataProcessingParameters();
+
+    WindowType window_type;
+    FrequencyDomainScaling fft_scaling;
+    bool convert_horizontal;
+    bool convert_vertical;
+    bool fullscale_enob;
+};
+
 class DataProcessing : public SmartBufferThread<DataProcessing, ProcessedRecord, 100, true>
 {
 public:
@@ -25,11 +36,7 @@ public:
 
     void SetAnalogFrontendParameters(const struct ADQAnalogFrontendParametersChannel &afe);
     void SetClockSystemParameters(const struct ADQClockSystemParameters &clock_system);
-    void SetWindowType(WindowType type);
-    void SetConvertHorizontal(bool convert);
-    void SetConvertVertical(bool convert);
-    void SetFullscaleEnob(bool enable);
-    void SetFrequencyDomainScaling(FrequencyDomainScaling scaling);
+    void SetParameters(const DataProcessingParameters &parameters);
 
     void MainLoop() override;
 
@@ -46,12 +53,8 @@ private:
     struct ADQConstantParameters m_constant;
     struct ADQClockSystemParameters m_clock_system;
     WindowCache m_window_cache;
-    WindowType m_window_type;
-    FrequencyDomainScaling m_scaling;
-    bool m_convert_horizontal;
-    bool m_convert_vertical;
-    bool m_fullscale_enob;
-    size_t m_nof_skirt_bins;
+    DataProcessingParameters m_parameters;
+    size_t m_nof_skirt_bins; /* FIXME: Make configurable */
     std::deque<std::shared_ptr<FrequencyDomainRecord>> m_waterfall;
     std::deque<std::shared_ptr<TimeDomainRecord>> m_persistence;
     std::deque<double> m_noise_moving_average;

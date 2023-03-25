@@ -12,6 +12,14 @@
 #include <cinttypes>
 #include <set>
 
+DataProcessingParameters::DataProcessingParameters()
+    : window_type(WindowType::FLAT_TOP)
+    , fft_scaling(FrequencyDomainScaling::AMPLITUDE)
+    , convert_horizontal(true)
+    , convert_vertical(true)
+    , fullscale_enob(true)
+{}
+
 DataProcessing::Tone::Tone(const ProcessedRecord *record, double f, size_t nof_skirt_bins)
     : power{}
     , frequency{}
@@ -70,11 +78,12 @@ DataProcessing::DataProcessing(void *handle, int index, int channel, const std::
     , m_constant{constant}
     , m_clock_system{constant.clock_system}
     , m_window_cache()
-    , m_window_type(WindowType::FLAT_TOP)
-    , m_scaling(FrequencyDomainScaling::AMPLITUDE)
-    , m_convert_horizontal(true)
-    , m_convert_vertical(true)
-    , m_fullscale_enob(true)
+    // , m_window_type(WindowType::FLAT_TOP)
+    // , m_scaling(FrequencyDomainScaling::AMPLITUDE)
+    // , m_convert_horizontal(true)
+    // , m_convert_vertical(true)
+    // , m_fullscale_enob(true)
+    , m_parameters{}
     , m_nof_skirt_bins(NOF_SKIRT_BINS_DEFAULT)
     , m_waterfall{}
     , m_persistence{}
@@ -97,29 +106,9 @@ void DataProcessing::SetClockSystemParameters(const struct ADQClockSystemParamet
     m_clock_system = clock_system;
 }
 
-void DataProcessing::SetWindowType(WindowType type)
+void DataProcessing::SetParameters(const DataProcessingParameters &parameters)
 {
-    m_window_type = type;
-}
-
-void DataProcessing::SetConvertHorizontal(bool convert)
-{
-    m_convert_horizontal = convert;
-}
-
-void DataProcessing::SetConvertVertical(bool convert)
-{
-    m_convert_vertical = convert;
-}
-
-void DataProcessing::SetFullscaleEnob(bool enable)
-{
-    m_fullscale_enob = enable;
-}
-
-void DataProcessing::SetFrequencyDomainScaling(FrequencyDomainScaling scaling)
-{
-    m_scaling = scaling;
+    m_parameters = parameters;
 }
 
 void DataProcessing::MainLoop()
@@ -184,7 +173,9 @@ void DataProcessing::MainLoop()
             /* FIXME: Windowing in the time domain struct?  */
             /* FIXME: This can throw if data format is unsupported. */
             processed_record->time_domain = std::make_shared<TimeDomainRecord>(
-                time_domain, m_afe, m_clock_system, code_normalization, m_convert_horizontal, m_convert_vertical);
+                time_domain, m_afe, m_clock_system, code_normalization,
+                m_parameters.convert_horizontal, m_parameters.convert_vertical
+            );
             processed_record->time_domain->estimated_trigger_frequency.value = estimated_trigger_frequency;
             processed_record->time_domain->estimated_throughput.value = estimated_throughput;
 
@@ -207,11 +198,11 @@ void DataProcessing::MainLoop()
                taken into account. */
 
             /* TODO: Make 'no window' into a proper uniform window? */
-            const auto window = m_window_cache.GetWindow(m_window_type, FFT_LENGTH);
+            const auto window = m_window_cache.GetWindow(m_parameters.window_type, FFT_LENGTH);
             auto &scale_factor = processed_record->frequency_domain->scale_factor;
             auto &energy_factor = processed_record->frequency_domain->energy_factor;
             energy_factor = (window != NULL) ? window->energy_factor : 1.0;
-            switch (m_scaling)
+            switch (m_parameters.fft_scaling)
             {
             case FrequencyDomainScaling::AMPLITUDE:
                 scale_factor = (window != NULL) ? window->amplitude_factor : 1.0;
@@ -399,7 +390,7 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
     frequency_domain->sinad.value = 10.0 * std::log10(fundamental.power / noise_and_distortion_power);
 
     double sinad_for_enob = frequency_domain->sinad.value;
-    if (m_fullscale_enob)
+    if (m_parameters.fullscale_enob)
         sinad_for_enob = 10.0 * std::log10(1.0 / noise_and_distortion_power);
 
     frequency_domain->enob.value = (sinad_for_enob - 1.76) / 6.02;

@@ -52,12 +52,7 @@ enum class DigitizerMessageId
     INITIALIZE_PARAMETERS,
     INITIALIZE_PARAMETERS_FORCE,
     SET_CLOCK_SYSTEM_PARAMETERS,
-    /* FIXME: Bundle the processing parameters into a single message id. */
-    SET_WINDOW_TYPE,
-    SET_CONVERT_HORIZONTAL,
-    SET_CONVERT_VERTICAL,
-    SET_FULLSCALE_ENOB,
-    SET_FREQUENCY_DOMAIN_SCALING,
+    SET_PROCESSING_PARAMETERS,
     SET_CONFIGURATION_DIRECTORY,
     GET_TOP_PARAMETERS_FILENAME,
     GET_CLOCK_SYSTEM_PARAMETERS_FILENAME,
@@ -127,9 +122,6 @@ struct DigitizerMessage
         , str()
         , ivalue()
         , dvalue()
-        , bvalue()
-        , window_type()
-        , frequency_domain_scaling()
         , sensor_tree()
         , boot_entries{}
         , constant_parameters()
@@ -142,9 +134,6 @@ struct DigitizerMessage
         , str()
         , ivalue()
         , dvalue()
-        , bvalue()
-        , window_type()
-        , frequency_domain_scaling()
         , sensor_tree()
         , boot_entries{}
         , constant_parameters()
@@ -157,9 +146,6 @@ struct DigitizerMessage
         , str(str)
         , ivalue()
         , dvalue()
-        , bvalue()
-        , window_type()
-        , frequency_domain_scaling()
         , sensor_tree()
         , boot_entries{}
         , constant_parameters()
@@ -172,9 +158,6 @@ struct DigitizerMessage
         , str()
         , ivalue(ivalue)
         , dvalue()
-        , bvalue()
-        , window_type()
-        , frequency_domain_scaling()
         , sensor_tree()
         , boot_entries{}
         , constant_parameters()
@@ -187,54 +170,19 @@ struct DigitizerMessage
         , str()
         , ivalue()
         , dvalue(dvalue)
-        , bvalue()
-        , window_type()
-        , frequency_domain_scaling()
         , sensor_tree()
         , boot_entries{}
         , constant_parameters()
     {}
 
-    /* Create a boolean message. */
-    DigitizerMessage(DigitizerMessageId id, bool bvalue)
+    /* Create a message holding data processing parameters. */
+    DigitizerMessage(DigitizerMessageId id, const DataProcessingParameters &parameters)
         : id(id)
         , state()
         , str()
         , ivalue()
         , dvalue()
-        , bvalue(bvalue)
-        , window_type()
-        , frequency_domain_scaling()
-        , sensor_tree()
-        , boot_entries{}
-        , constant_parameters()
-    {}
-
-    /* Create a window message. */
-    DigitizerMessage(DigitizerMessageId id, WindowType window_type)
-        : id(id)
-        , state()
-        , str()
-        , ivalue()
-        , dvalue()
-        , bvalue()
-        , window_type(window_type)
-        , frequency_domain_scaling()
-        , sensor_tree()
-        , boot_entries{}
-        , constant_parameters()
-    {}
-
-    /* Create a frequency domain scaling message. */
-    DigitizerMessage(DigitizerMessageId id, FrequencyDomainScaling scaling)
-        : id(id)
-        , state()
-        , str()
-        , ivalue()
-        , dvalue()
-        , bvalue()
-        , window_type()
-        , frequency_domain_scaling(scaling)
+        , processing_parameters(parameters)
         , sensor_tree()
         , boot_entries{}
         , constant_parameters()
@@ -247,9 +195,6 @@ struct DigitizerMessage
         , str()
         , ivalue()
         , dvalue()
-        , bvalue()
-        , window_type()
-        , frequency_domain_scaling()
         , sensor_tree(std::move(sensor_tree))
         , boot_entries{}
         , constant_parameters()
@@ -263,9 +208,6 @@ struct DigitizerMessage
         , str(state_description, 0, sizeof(state_description))
         , ivalue(state)
         , dvalue()
-        , bvalue()
-        , window_type()
-        , frequency_domain_scaling()
         , sensor_tree()
         , boot_entries(std::move(boot_entries))
         , constant_parameters()
@@ -278,9 +220,6 @@ struct DigitizerMessage
         , str()
         , ivalue()
         , dvalue()
-        , bvalue()
-        , window_type()
-        , frequency_domain_scaling()
         , sensor_tree()
         , boot_entries{}
         , constant_parameters(constant_parameters)
@@ -291,9 +230,7 @@ struct DigitizerMessage
     std::string str;
     int ivalue;
     double dvalue;
-    bool bvalue;
-    WindowType window_type;
-    FrequencyDomainScaling frequency_domain_scaling;
+    DataProcessingParameters processing_parameters;
     SensorTree sensor_tree;
     std::vector<BootEntry> boot_entries;
     struct ADQConstantParameters constant_parameters;
@@ -499,20 +436,8 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
         case DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
             name = "SET_CLOCK_SYSTEM_PARAMETERS";
             break;
-        case DigitizerMessageId::SET_WINDOW_TYPE:
-            name = "SET_WINDOW_TYPE";
-            break;
-        case DigitizerMessageId::SET_CONVERT_HORIZONTAL:
-            name = "SET_CONVERT_HORIZONTAL";
-            break;
-        case DigitizerMessageId::SET_CONVERT_VERTICAL:
-            name = "SET_CONVERT_VERTICAL";
-            break;
-        case DigitizerMessageId::SET_FULLSCALE_ENOB:
-            name = "SET_FULLSCALE_ENOB";
-            break;
-        case DigitizerMessageId::SET_FREQUENCY_DOMAIN_SCALING:
-            name = "SET_FREQUENCY_DOMAIN_SCALING";
+        case DigitizerMessageId::SET_PROCESSING_PARAMETERS:
+            name = "SET_PROCESSING_PARAMETERS";
             break;
         case DigitizerMessageId::SET_CONFIGURATION_DIRECTORY:
             name = "SET_CONFIGURATION_DIRECTORY";

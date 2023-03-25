@@ -563,29 +563,9 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
         InitializeParameters(ADQ_PARAMETER_ID_CLOCK_SYSTEM, m_watchers.clock_system);
         break;
 
-    case DigitizerMessageId::SET_WINDOW_TYPE:
+    case DigitizerMessageId::SET_PROCESSING_PARAMETERS:
         for (const auto &t : m_processing_threads)
-            t->SetWindowType(message.window_type);
-        break;
-
-    case DigitizerMessageId::SET_CONVERT_HORIZONTAL:
-        for (const auto &t : m_processing_threads)
-            t->SetConvertHorizontal(message.bvalue);
-        break;
-
-    case DigitizerMessageId::SET_CONVERT_VERTICAL:
-        for (const auto &t : m_processing_threads)
-            t->SetConvertVertical(message.bvalue);
-        break;
-
-    case DigitizerMessageId::SET_FULLSCALE_ENOB:
-        for (const auto &t : m_processing_threads)
-            t->SetFullscaleEnob(message.bvalue);
-        break;
-
-    case DigitizerMessageId::SET_FREQUENCY_DOMAIN_SCALING:
-        for (const auto &t : m_processing_threads)
-            t->SetFrequencyDomainScaling(message.frequency_domain_scaling);
+            t->SetParameters(message.processing_parameters);
         break;
 
     case DigitizerMessageId::SET_CONFIGURATION_DIRECTORY:
@@ -676,29 +656,9 @@ void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &messag
         }
         break;
 
-    case DigitizerMessageId::SET_WINDOW_TYPE:
+    case DigitizerMessageId::SET_PROCESSING_PARAMETERS:
         for (const auto &t : m_processing_threads)
-            t->SetWindowType(message.window_type);
-        break;
-
-    case DigitizerMessageId::SET_CONVERT_HORIZONTAL:
-        for (const auto &t : m_processing_threads)
-            t->SetConvertHorizontal(message.bvalue);
-        break;
-
-    case DigitizerMessageId::SET_CONVERT_VERTICAL:
-        for (const auto &t : m_processing_threads)
-            t->SetConvertVertical(message.bvalue);
-        break;
-
-    case DigitizerMessageId::SET_FULLSCALE_ENOB:
-        for (const auto &t : m_processing_threads)
-            t->SetFullscaleEnob(message.bvalue);
-        break;
-
-    case DigitizerMessageId::SET_FREQUENCY_DOMAIN_SCALING:
-        for (const auto &t : m_processing_threads)
-            t->SetFrequencyDomainScaling(message.frequency_domain_scaling);
+            t->SetParameters(message.processing_parameters);
         break;
 
     case DigitizerMessageId::GET_TOP_PARAMETERS_FILENAME:

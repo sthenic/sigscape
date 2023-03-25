@@ -37,13 +37,15 @@ private:
     bool m_show_imgui_demo_window;
     bool m_show_implot_demo_window;
     DataProcessing::Parameters m_processing_parameters;
-    /* FIXME: Group into struct */
-    bool m_is_time_domain_collapsed;
-    bool m_is_frequency_domain_collapsed;
-    bool m_is_time_domain_metrics_collapsed;
-    bool m_is_frequency_domain_metrics_collapsed;
-    bool m_is_processing_options_collapsed;
-    bool m_is_application_metrics_collapsed;
+    struct
+    {
+        bool time_domain;
+        bool frequency_domain;
+        bool time_domain_metrics;
+        bool frequency_domain_metrics;
+        bool processing_options;
+        bool application_metrics;
+    } m_collapsed;
     int m_nof_channels_total;
 
     /* Representation of a digitizer channel's state in the UI. */

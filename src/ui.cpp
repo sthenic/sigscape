@@ -157,12 +157,7 @@ Ui::Ui()
     , m_show_imgui_demo_window(false)
     , m_show_implot_demo_window(false)
     , m_processing_parameters{}
-    , m_is_time_domain_collapsed(false)
-    , m_is_frequency_domain_collapsed(false)
-    , m_is_time_domain_metrics_collapsed(false)
-    , m_is_frequency_domain_metrics_collapsed(false)
-    , m_is_processing_options_collapsed(false)
-    , m_is_application_metrics_collapsed(true)
+    , m_collapsed{}
     , m_nof_channels_total(0)
     , m_digitizers()
     , m_time_domain_markers("Time Domain", "T")
@@ -538,21 +533,21 @@ void Ui::RenderRight(float width, float height)
     ImVec2 FREQUENCY_DOMAIN_POSITION{POSITION_X, FRAME_HEIGHT + PLOT_WINDOW_HEIGHT};
     ImVec2 FREQUENCY_DOMAIN_SIZE{SIZE_X, PLOT_WINDOW_HEIGHT};
 
-    if (m_is_time_domain_metrics_collapsed)
+    if (m_collapsed.time_domain_metrics)
     {
         TIME_DOMAIN_SIZE = ImVec2{SIZE_X, FRAME_HEIGHT};
         FREQUENCY_DOMAIN_POSITION = ImVec2{POSITION_X, 2 * FRAME_HEIGHT};
         FREQUENCY_DOMAIN_SIZE = ImVec2{SIZE_X, height - 2 * FRAME_HEIGHT};
     }
 
-    if (m_is_frequency_domain_metrics_collapsed)
+    if (m_collapsed.frequency_domain_metrics)
     {
         TIME_DOMAIN_SIZE = ImVec2{POSITION_X, height - 2 * FRAME_HEIGHT};
         FREQUENCY_DOMAIN_POSITION = ImVec2{POSITION_X, height - FRAME_HEIGHT};
         FREQUENCY_DOMAIN_SIZE = ImVec2{SIZE_X, FRAME_HEIGHT};
     }
 
-    if (m_is_time_domain_metrics_collapsed && m_is_frequency_domain_metrics_collapsed)
+    if (m_collapsed.time_domain_metrics && m_collapsed.frequency_domain_metrics)
         FREQUENCY_DOMAIN_POSITION = ImVec2{POSITION_X, 2 * FRAME_HEIGHT};
 
     /* In the right column we show various metrics. */
@@ -573,21 +568,21 @@ void Ui::RenderCenter(float width, float height)
     ImVec2 FREQUENCY_DOMAIN_POSITION{POSITION_X, FRAME_HEIGHT + PLOT_WINDOW_HEIGHT};
     ImVec2 FREQUENCY_DOMAIN_SIZE{SIZE_X, PLOT_WINDOW_HEIGHT};
 
-    if (m_is_time_domain_collapsed)
+    if (m_collapsed.time_domain)
     {
         TIME_DOMAIN_SIZE = ImVec2{SIZE_X, FRAME_HEIGHT};
         FREQUENCY_DOMAIN_POSITION = ImVec2{POSITION_X, 2 * FRAME_HEIGHT};
         FREQUENCY_DOMAIN_SIZE = ImVec2{SIZE_X, height - 2 * FRAME_HEIGHT};
     }
 
-    if (m_is_frequency_domain_collapsed)
+    if (m_collapsed.frequency_domain)
     {
         TIME_DOMAIN_SIZE = ImVec2{SIZE_X, height - 2 * FRAME_HEIGHT};
         FREQUENCY_DOMAIN_POSITION = ImVec2{POSITION_X, height - FRAME_HEIGHT};
         FREQUENCY_DOMAIN_SIZE = ImVec2{SIZE_X, FRAME_HEIGHT};
     }
 
-    if (m_is_time_domain_collapsed && m_is_frequency_domain_collapsed)
+    if (m_collapsed.time_domain && m_collapsed.frequency_domain)
         FREQUENCY_DOMAIN_POSITION = ImVec2{POSITION_X, 2 * FRAME_HEIGHT};
 
     /* The lower plot window, showing time domain data. */
@@ -612,7 +607,7 @@ void Ui::RenderLeft(float width, float height)
     ImVec2 METRICS_POS(0.0f, height - 3 * FRAME_HEIGHT);
     ImVec2 METRICS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 3 * FRAME_HEIGHT);
 
-    if (m_is_application_metrics_collapsed)
+    if (m_collapsed.application_metrics)
     {
         METRICS_POS = ImVec2{0.0f, height - FRAME_HEIGHT};
         METRICS_SIZE = ImVec2{width * FIRST_COLUMN_RELATIVE_WIDTH, FRAME_HEIGHT};
@@ -623,7 +618,7 @@ void Ui::RenderLeft(float width, float height)
     ImVec2 PROCESSING_OPTIONS_POS(0.0f, METRICS_POS.y - 200.0f);
     ImVec2 PROCESSING_OPTIONS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 200.0f);
 
-    if (m_is_processing_options_collapsed)
+    if (m_collapsed.processing_options)
     {
         PROCESSING_OPTIONS_POS = ImVec2{0.0f, METRICS_POS.y - FRAME_HEIGHT};
         PROCESSING_OPTIONS_SIZE = ImVec2{width * FIRST_COLUMN_RELATIVE_WIDTH, FRAME_HEIGHT};
@@ -1528,7 +1523,7 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
     ImGui::Begin("Processing Options", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-    m_is_processing_options_collapsed = ImGui::IsWindowCollapsed();
+    m_collapsed.processing_options = ImGui::IsWindowCollapsed();
     bool push_parameters = false;
 
     static int window_idx = 2;
@@ -2134,7 +2129,7 @@ void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
     ImGui::Begin("Time Domain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-    m_is_time_domain_collapsed = ImGui::IsWindowCollapsed();
+    m_collapsed.time_domain = ImGui::IsWindowCollapsed();
     if (ImGui::BeginTabBar("Time Domain##TabBar"))
     {
         if (ImGui::BeginTabItem("Channels"))
@@ -2159,7 +2154,7 @@ void Ui::RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size)
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
     ImGui::Begin("Frequency Domain", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-    m_is_frequency_domain_collapsed = ImGui::IsWindowCollapsed();
+    m_collapsed.frequency_domain = ImGui::IsWindowCollapsed();
     if (ImGui::BeginTabBar("Frequency Domain##TabBar"))
     {
         if (ImGui::BeginTabItem("FFT"))
@@ -2587,7 +2582,7 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
     ImGui::Begin("Time Domain Metrics", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-    m_is_time_domain_metrics_collapsed = ImGui::IsWindowCollapsed();
+    m_collapsed.time_domain_metrics = ImGui::IsWindowCollapsed();
 
     bool has_contents = false;
     for (auto &digitizer : m_digitizers)
@@ -2707,7 +2702,7 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
     ImGui::SetNextWindowSize(size);
     ImGui::Begin("Frequency Domain Metrics", NULL,
                  ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoNavFocus);
-    m_is_frequency_domain_metrics_collapsed = ImGui::IsWindowCollapsed();
+    m_collapsed.frequency_domain_metrics = ImGui::IsWindowCollapsed();
 
     bool has_contents = false;
     for (auto &digitizer : m_digitizers)
@@ -2834,7 +2829,7 @@ void Ui::RenderApplicationMetrics(const ImVec2 &position, const ImVec2 &size)
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
     ImGui::Begin("Application Metrics", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-    m_is_application_metrics_collapsed = ImGui::IsWindowCollapsed();
+    m_collapsed.application_metrics = ImGui::IsWindowCollapsed();
     const ImGuiIO &io = ImGui::GetIO();
     ImGui::Text("Average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
     ImGui::End();

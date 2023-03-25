@@ -2827,9 +2827,10 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
             {
                 if (ui.record->frequency_domain->overlap)
                 {
-                    ImGui::PushStyleColor(ImGuiCol_Text, COLOR_ORANGE);
                     ImGui::SameLine();
-                    ImGui::Text("OVERLAP");
+                    ImGui::PushStyleColor(ImGuiCol_Button, COLOR_RED);
+                    ImGui::SmallButton("OVERLAP");
+                    ImGui::PopStyleColor();
                 }
 
                 if ((ui.is_muted || IsAnySolo()) && !ui.is_solo)
@@ -2870,8 +2871,6 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
                 ImGui::PopStyleVar();
 
                 if ((ui.is_muted || IsAnySolo()) && !ui.is_solo)
-                    ImGui::PopStyleColor();
-                if (ui.record->frequency_domain->overlap)
                     ImGui::PopStyleColor();
 
                 ImGui::TreePop();

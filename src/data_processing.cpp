@@ -104,6 +104,7 @@ void DataProcessing::SetClockSystemParameters(const struct ADQClockSystemParamet
 
 void DataProcessing::SetParameters(const Parameters &parameters)
 {
+    /* FIXME: Make this thread safe */
     m_parameters = parameters;
 }
 

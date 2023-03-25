@@ -118,110 +118,56 @@ struct DigitizerMessage
     /* Create an empty message. */
     DigitizerMessage(DigitizerMessageId id)
         : id(id)
-        , state()
-        , str()
-        , ivalue()
-        , dvalue()
-        , sensor_tree()
-        , boot_entries{}
-        , constant_parameters()
     {}
 
     /* Create a state message. */
     DigitizerMessage(DigitizerMessageId id, DigitizerState state)
         : id(id)
         , state(state)
-        , str()
-        , ivalue()
-        , dvalue()
-        , sensor_tree()
-        , boot_entries{}
-        , constant_parameters()
     {}
 
     /* Create a string message. */
     DigitizerMessage(DigitizerMessageId id, const std::string &str)
         : id(id)
-        , state()
         , str(str)
-        , ivalue()
-        , dvalue()
-        , sensor_tree()
-        , boot_entries{}
-        , constant_parameters()
     {}
 
     /* Create an integer message. */
     DigitizerMessage(DigitizerMessageId id, int ivalue)
         : id(id)
-        , state()
-        , str()
         , ivalue(ivalue)
-        , dvalue()
-        , sensor_tree()
-        , boot_entries{}
-        , constant_parameters()
     {}
 
     /* Create a double message. */
     DigitizerMessage(DigitizerMessageId id, double dvalue)
         : id(id)
-        , state()
-        , str()
-        , ivalue()
         , dvalue(dvalue)
-        , sensor_tree()
-        , boot_entries{}
-        , constant_parameters()
     {}
 
     /* Create a message holding data processing parameters. */
     DigitizerMessage(DigitizerMessageId id, const DataProcessingParameters &parameters)
         : id(id)
-        , state()
-        , str()
-        , ivalue()
-        , dvalue()
         , processing_parameters(parameters)
-        , sensor_tree()
-        , boot_entries{}
-        , constant_parameters()
     {}
 
     /* Create a sensor identification message, taking ownership of the sensor information. */
     DigitizerMessage(DigitizerMessageId id, SensorTree &&sensor_tree)
         : id(id)
-        , state()
-        , str()
-        , ivalue()
-        , dvalue()
         , sensor_tree(std::move(sensor_tree))
-        , boot_entries{}
-        , constant_parameters()
     {}
 
     /* Create a message holding all the boot statuses. */
     DigitizerMessage(DigitizerMessageId id, int state, const char (&state_description)[32],
                      std::vector<BootEntry> &&boot_entries)
         : id(id)
-        , state()
         , str(state_description, 0, sizeof(state_description))
         , ivalue(state)
-        , dvalue()
-        , sensor_tree()
         , boot_entries(std::move(boot_entries))
-        , constant_parameters()
     {}
 
     /* Create a message holding the digitizer's constant parameters. */
     DigitizerMessage(DigitizerMessageId id, const struct ADQConstantParameters &constant_parameters)
         : id(id)
-        , state()
-        , str()
-        , ivalue()
-        , dvalue()
-        , sensor_tree()
-        , boot_entries{}
         , constant_parameters(constant_parameters)
     {}
 

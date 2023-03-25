@@ -12,7 +12,7 @@
 #include <cinttypes>
 #include <set>
 
-DataProcessingParameters::DataProcessingParameters()
+DataProcessing::Parameters::Parameters()
     : window_type(WindowType::FLAT_TOP)
     , fft_scaling(FrequencyDomainScaling::AMPLITUDE)
     , convert_horizontal(true)
@@ -78,11 +78,6 @@ DataProcessing::DataProcessing(void *handle, int index, int channel, const std::
     , m_constant{constant}
     , m_clock_system{constant.clock_system}
     , m_window_cache()
-    // , m_window_type(WindowType::FLAT_TOP)
-    // , m_scaling(FrequencyDomainScaling::AMPLITUDE)
-    // , m_convert_horizontal(true)
-    // , m_convert_vertical(true)
-    // , m_fullscale_enob(true)
     , m_parameters{}
     , m_nof_skirt_bins(NOF_SKIRT_BINS_DEFAULT)
     , m_waterfall{}
@@ -106,7 +101,7 @@ void DataProcessing::SetClockSystemParameters(const struct ADQClockSystemParamet
     m_clock_system = clock_system;
 }
 
-void DataProcessing::SetParameters(const DataProcessingParameters &parameters)
+void DataProcessing::SetParameters(const Parameters &parameters)
 {
     m_parameters = parameters;
 }

@@ -16,6 +16,7 @@ DataProcessing::Parameters::Parameters()
     : window_type(WindowType::FLAT_TOP)
     , fft_scaling(FrequencyDomainScaling::AMPLITUDE)
     , nof_skirt_bins(NOF_SKIRT_BINS_DEFAULT)
+    , fundamental_frequency(-1.0)
     , convert_horizontal(true)
     , convert_vertical(true)
     , fullscale_enob(true)
@@ -441,6 +442,9 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
     const auto &scale_factor = record->frequency_domain->scale_factor;
     const auto &energy_factor = record->frequency_domain->energy_factor;
     const size_t nof_skirt_bins = static_cast<size_t>(m_parameters.nof_skirt_bins);
+    const double nyquist_frequency = static_cast<double>(x.size() - 1) * bin_range;
+    const bool fixed_fundamental = m_parameters.fundamental_frequency > 0 &&
+                                   m_parameters.fundamental_frequency <= nyquist_frequency;
     std::deque<double> cursor;
 
     dc = {};
@@ -448,13 +452,36 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
     spur = {};
     power = 0.0;
 
-    /* FIXME: Make the fundamental frequency configurable (default to dynamic). */
-    for (size_t i = 0; i < record->frequency_domain->x.size(); ++i)
+    auto FromComplex = [&](std::complex<double> value) -> double {
+        return std::pow(2.0 * std::abs(value) / static_cast<double>(fft.size()), 2.0);
+    };
+
+    /* If we're performing the analysis with a fixed fundamental frequency, we
+       start off by constructing that `Tone` object. */
+    if (fixed_fundamental)
+    {
+        const double idx = m_parameters.fundamental_frequency / bin_range;
+        const size_t idx_center = static_cast<size_t>(m_parameters.fundamental_frequency / bin_range + 0.5);
+        const size_t idx_low = idx_center < nof_skirt_bins ? 0 : idx_center - nof_skirt_bins;
+        const size_t idx_high = std::min(idx_center + nof_skirt_bins, x.size() - 1);
+
+        for (size_t i = idx_low; i <= idx_high; ++i)
+            fundamental.values.push_back(FromComplex(fft[i]) * energy_factor);
+
+        fundamental.UpdatePower();
+        fundamental.frequency = m_parameters.fundamental_frequency;
+        fundamental.idx = idx_center;
+        fundamental.idx_fraction = idx - static_cast<double>(idx_center);
+        fundamental.idx_low = idx_low;
+        fundamental.idx_high = idx_high;
+    }
+
+    for (size_t i = 0; i < x.size(); ++i)
     {
         x[i] = static_cast<double>(i) * bin_range;
 
         /* Calculate the unscaled value. */
-        y[i] = std::pow(2.0 * std::abs(fft[i]) / static_cast<double>(fft.size()), 2.0);
+        y[i] = FromComplex(fft[i]);
 
         /* We will always need the energy-accurate bin value for the calculations below. */
         double y_power = y[i] * energy_factor;
@@ -494,7 +521,7 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
         const double center_fraction = center_of_mass - static_cast<double>(center_idx);
         const double center_frequency = bin_range * center_of_mass;
 
-        if (denominator > fundamental.power)
+        if (!fixed_fundamental && denominator > fundamental.power)
         {
             if ((center_idx - fundamental.idx) > (2 * nof_skirt_bins))
                 spur = fundamental;

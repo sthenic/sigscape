@@ -1,5 +1,6 @@
 #include "ui.h"
 #include "implot_internal.h" /* To be able to get item visibility state. */
+#include "imgui_extensions.h"
 
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
@@ -27,15 +28,6 @@ const ImVec4 Ui::COLOR_WOW_YELLOW = {1.00f, 0.96f, 0.41f, 0.8f};
 const ImVec4 Ui::COLOR_WOW_BLUE = {0.00f, 0.44f, 0.87f, 0.8f};
 const ImVec4 Ui::COLOR_WOW_PURPLE = {0.53f, 0.53f, 0.93f, 0.8f};
 const ImVec4 Ui::COLOR_WOW_TAN  = {0.78f, 0.61f, 0.43f, 0.8f};
-
-/* ImGui extensions to remove conversion clutter when calling certain functions. */
-namespace ImGui
-{
-static inline void Text(const std::string &str)
-{
-    ImGui::Text("%s", str.c_str());
-}
-}
 
 static void WIP()
 {
@@ -1556,9 +1548,13 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
     m_collapsed.processing_options = ImGui::IsWindowCollapsed();
     bool push_parameters = false;
 
+    const float WIDGET_WIDTH = 0.6 * size.x;
+
+    /* FIXME: Use Begin/EndCombo() */
     static int window_idx = 2;
     static int window_idx_prev = 2;
     const char *window_labels[] = {"No window", "Blackman-Harris", "Flat top", "Hamming", "Hanning"};
+    ImGui::SetNextItemWidth(WIDGET_WIDTH);
     ImGui::Combo("Window", &window_idx, window_labels, IM_ARRAYSIZE(window_labels));
 
     if (window_idx != window_idx_prev)
@@ -1590,9 +1586,11 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
         push_parameters = true;
     }
 
+    /* FIXME: Use Begin/EndCombo() */
     static int scaling_idx = 0;
     static int scaling_idx_prev = 0;
     const char *scaling_labels[] = {"Amplitude", "Energy"};
+    ImGui::SetNextItemWidth(WIDGET_WIDTH);
     ImGui::Combo("Scaling", &scaling_idx, scaling_labels, IM_ARRAYSIZE(scaling_labels));
 
     if (scaling_idx != scaling_idx_prev)
@@ -1612,9 +1610,39 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
         push_parameters = true;
     }
 
+    static ImGui::InputDoubleMetric fundamental_frequency(
+        "Fixed fundamental", m_processing_parameters.fundamental_frequency, "{:.3f} {}Hz", 1e6);
+    static bool fundamental_frequency_enable = false;
+
+    if (ImGui::Checkbox("##fundamentalenable", &fundamental_frequency_enable))
+    {
+        if (fundamental_frequency_enable)
+            m_processing_parameters.fundamental_frequency = fundamental_frequency.value;
+        else
+            m_processing_parameters.fundamental_frequency = -1.0;
+
+        push_parameters = true;
+    }
+
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(WIDGET_WIDTH - 27.0f);
+
+    if (!fundamental_frequency_enable)
+        ImGui::BeginDisabled();
+
+    if (fundamental_frequency.Changed())
+    {
+        m_processing_parameters.fundamental_frequency = fundamental_frequency.value;
+        push_parameters = true;
+    }
+
+    if (!fundamental_frequency_enable)
+        ImGui::EndDisabled();
+
     static const ImS32 LIMIT_LOW = 0;
     static const ImS32 LIMIT_HIGH = 16;
     static ImS32 nof_skirt_bins = m_processing_parameters.nof_skirt_bins;
+    ImGui::SetNextItemWidth(WIDGET_WIDTH);
     if (ImGui::SliderScalar("Skirt bins", ImGuiDataType_S8, &nof_skirt_bins, &LIMIT_LOW,
                             &LIMIT_HIGH, NULL, ImGuiSliderFlags_NoInput))
     {

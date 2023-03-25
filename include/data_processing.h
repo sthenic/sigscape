@@ -31,6 +31,7 @@ public:
         WindowType window_type;
         FrequencyDomainScaling fft_scaling;
         int nof_skirt_bins;
+        double fundamental_frequency;
         bool convert_horizontal;
         bool convert_vertical;
         bool fullscale_enob;

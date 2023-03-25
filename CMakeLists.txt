@@ -117,6 +117,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     src/format.cpp
     src/data_types.cpp
     src/window.cpp
+    src/imgui_extensions.cpp
     src/main.cpp
 )
 

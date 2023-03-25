@@ -14,8 +14,11 @@ enum class FrequencyDomainScaling
     ENERGY
 };
 
+struct DataProcessingMessage
+{};
 
-class DataProcessing : public SmartBufferThread<DataProcessing, ProcessedRecord, 100, true>
+class DataProcessing
+    : public SmartBufferThread<DataProcessing, ProcessedRecord, DataProcessingMessage, 100, true>
 {
 public:
     DataProcessing(void *handle, int index, int channel, const std::string &label,

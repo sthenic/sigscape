@@ -8,7 +8,7 @@
 #include <thread>
 #include <future>
 
-template <class C, typename T, size_t CAPACITY = 0, bool PERSISTENT = false>
+template <class C, typename T, typename M, size_t CAPACITY = 0, bool PERSISTENT = false>
 class SmartBufferThread
 {
 public:
@@ -22,10 +22,17 @@ public:
         , m_nof_buffers(0)
         , m_read_queue(CAPACITY, PERSISTENT)
         , m_write_queue()
-    {};
+        , m_read_message_queue()
+        , m_write_message_queue()
+    {
+        m_read_message_queue.Start();
+        m_write_message_queue.Start();
+    };
 
     virtual ~SmartBufferThread()
     {
+        m_read_message_queue.Stop();
+        m_write_message_queue.Stop();
         Stop();
     }
 
@@ -76,6 +83,24 @@ public:
         return m_read_queue.GetTimeSinceLastActivity(milliseconds);
     }
 
+    /* Wait for a message from the thread. */
+    int WaitForMessage(M &message, int timeout)
+    {
+        return m_read_message_queue.Read(message, timeout);
+    }
+
+    /* Push a message to the thread. */
+    int PushMessage(const M &message)
+    {
+        return m_write_message_queue.Write(message);
+    }
+
+    template<class... Args>
+    int EmplaceMessage(Args &&... args)
+    {
+        return PushMessage(M(std::forward<Args>(args)...));
+    }
+
 protected:
     std::thread m_thread;
     std::promise<void> m_signal_stop;
@@ -87,6 +112,9 @@ protected:
 
     ThreadSafeQueue<std::shared_ptr<T>> m_read_queue;
     ThreadSafeQueue<std::shared_ptr<T>> m_write_queue;
+
+    ThreadSafeQueue<M> m_read_message_queue;
+    ThreadSafeQueue<M> m_write_message_queue;
 
     int AllocateBuffer(std::shared_ptr<T> &buffer, size_t count)
     {

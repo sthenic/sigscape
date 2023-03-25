@@ -11,9 +11,12 @@
 
 #include <random>
 
+struct GeneratorMessage
+{};
+
 /* We don't use the SmartBufferThread here since we'll end up using this to
    emulate data emitted through void pointers by the ADQAPI. */
-class Generator : public BufferThread<Generator, ADQGen4Record>
+class Generator : public BufferThread<Generator, ADQGen4Record, GeneratorMessage>
 {
 public:
     Generator();

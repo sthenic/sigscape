@@ -2233,11 +2233,12 @@ void Ui::RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size)
 
 void Ui::Annotate(const std::tuple<Value, Value> &point, const std::string &label)
 {
-    /* TODO: We need some form of low-pass filter for the y-coordinates. For
-             high update rates (~60 Hz) the annotations jitter quite a lot. Just
-             naively rounding them to the nearest integer remove some of the
-             jitter but can introduce even larger jumps for noisy data. */
     const auto &[x, y] = point;
+
+    /* Don't render annotations with unreasonable y-coordinates. */
+    if (std::isinf(y.value) || std::isnan(y.value))
+        return;
+
     ImPlot::Annotation(x.value, y.value, ImVec4(0, 0, 0, 0), ImVec2(0, -5), false, "%s",
                        y.Format(".2").c_str());
     ImPlot::Annotation(x.value, y.value, ImVec4(0, 0, 0, 0),

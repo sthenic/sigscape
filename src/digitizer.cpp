@@ -775,12 +775,6 @@ void Digitizer::ConfigureDefaultAcquisition()
 #ifdef MOCK_ADQAPI
     throw DigitizerException("ConfigureDefaultAcquisition() not implemented.");
 #else
-    /* FIXME: Not needed */
-    struct ADQConstantParameters constant;
-    int result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CONSTANT, &constant);
-    if (result != sizeof(constant))
-        throw DigitizerException(fmt::format("Failed to get constant parameters, result {}.", result));
-
     struct ADQEventSourcePeriodicParameters periodic;
     result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_EVENT_SOURCE_PERIODIC, &periodic);
     if (result != sizeof(periodic))
@@ -803,7 +797,7 @@ void Digitizer::ConfigureDefaultAcquisition()
 
     /* The default acquisition parameters is an infinite stream of records from
        each available channel triggered by the periodic event generator. */
-    for (int i = 0; i < constant.nof_channels; ++i)
+    for (int i = 0; i < m_constant.nof_channels; ++i)
     {
         acquisition.channel[i].nof_records = ADQ_INFINITE_NOF_RECORDS;
         acquisition.channel[i].record_length = 32 * 1024;

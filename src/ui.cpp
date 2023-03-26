@@ -2359,7 +2359,30 @@ void Ui::PlotFourierTransformSelected()
 void Ui::RenderFourierTransformPlot()
 {
     if (m_should_auto_fit_frequency_domain)
-        ImPlot::SetNextAxesToFit();
+    {
+        /* This custom fitting is needed because the reasonable lower bound is
+           the FFT's noise floor. However, ImPlot will just pick the lowest
+           point (as it should) if we trigger an auto-fit for the y-axis, and
+           that wastes a lot of space. */
+        double ymin = 0.0;
+        double ymax = 0.0;
+        for (const auto &[i, ch, ui] : FilterUiStates())
+        {
+            ymin = std::min(ymin, ui->record->frequency_domain->noise_moving_average.value);
+            ymax = std::max(ymax, std::get<1>(ui->record->frequency_domain->fundamental).value);
+        }
+
+        /* If we're stuck with 0 as the minimum, that's because none of the
+           channels have valid data. Set the limit to -100 dBFS.  */
+        if (ymin == 0.0)
+            ymin = -100;
+
+        /* Increase the upper limit by 10%. */
+        ymax += (ymax - ymin) * 0.1;
+
+        ImPlot::SetNextAxisToFit(ImAxis_X1);
+        ImPlot::SetNextAxisLimits(ImAxis_Y1, ymin, ymax, ImPlotCond_Always);
+    }
 
     ImPlot::PushStyleVar(ImPlotStyleVar_FitPadding, ImVec2(0.0f, 0.2f));
     if (ImPlot::BeginPlot("FFT##plot", ImVec2(-1, -1), ImPlotFlags_NoTitle))
@@ -2372,6 +2395,10 @@ void Ui::RenderFourierTransformPlot()
         RenderUnitsPerDivision(m_frequency_domain_units_per_division.Format());
 
         ImPlot::EndPlot();
+
+        /* Trigger our own auto fit when the plot is double-clicked. */
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0))
+            m_should_auto_fit_frequency_domain = true;
 
         /* Update the units per division. It's imperative that this is carried
            out after ImPlot::EndPlot() has been called. */

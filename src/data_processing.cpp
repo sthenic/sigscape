@@ -655,15 +655,15 @@ void DataProcessing::ProcessMessages()
         switch (message.id)
         {
         case DataProcessingMessageId::SET_AFE_PARAMETERS:
-            m_afe = message.afe;
+            m_afe = std::move(message.afe);
             break;
 
         case DataProcessingMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
-            m_clock_system = message.clock_system;
+            m_clock_system = std::move(message.clock_system);
             break;
 
         case DataProcessingMessageId::SET_PROCESSING_PARAMETERS:
-            m_parameters = message.processing;
+            m_parameters = std::move(message.processing);
             break;
 
         default:

@@ -7,6 +7,8 @@ from [Teledyne SP Devices](https://spdevices.com).
 project I've developed to demonstrate the flexibility afforded to a user
 application by the digitizer's API.
 
+![ui](data/ui.png)
+
 ## Index
 
 - [Core concepts](#core-concepts)

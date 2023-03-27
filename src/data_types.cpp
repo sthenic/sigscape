@@ -44,3 +44,53 @@ std::string Value::FormatDelta(double other, const std::string &precision, bool 
 
 BaseRecord::~BaseRecord()
 {}
+
+FftMovingAverage::FftMovingAverage()
+    : m_log{}
+    , m_nof_averages(1)
+{}
+
+void FftMovingAverage::SetNumberOfAverages(size_t nof_averages)
+{
+    if (nof_averages != m_nof_averages)
+    {
+        m_nof_averages = nof_averages;
+        m_log.clear();
+    }
+}
+
+void FftMovingAverage::PrepareNewEntry(size_t size)
+{
+    if (m_log.size() >= m_nof_averages)
+        m_log.pop_back();
+    m_log.emplace_front(size);
+}
+
+double FftMovingAverage::InsertAndAverage(size_t i, double y)
+{
+    /* Assign y[i] to the foremost log entry. */
+    m_log.at(0).at(i) = y;
+
+    /* Calculate the average at position i over all the entries in the log. We
+       let the first entry define the expected size and as soon as we see an
+       entry with a different size, we stop. We need this cutoff because the log
+       can consist of entries with varying sizes if the user has changed the
+       record length in the middle of an ongoing acquisition. */
+    double result = y;
+    size_t j = 1;
+    size_t size = m_log.at(0).size();
+    for (; j < m_log.size(); ++j)
+    {
+        if (m_log[j].size() != size)
+            break;
+        result += m_log.at(j).at(i);
+    }
+    result /= static_cast<double>(j);
+
+    return result;
+}
+
+void FftMovingAverage::Clear()
+{
+    m_log.clear();
+}

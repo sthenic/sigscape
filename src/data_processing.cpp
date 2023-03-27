@@ -16,6 +16,7 @@ DataProcessingParameters::DataProcessingParameters()
     : window_type(WindowType::FLAT_TOP)
     , fft_scaling(FrequencyDomainScaling::AMPLITUDE)
     , nof_skirt_bins(5)
+    , nof_fft_averages(1)
     , fundamental_frequency(-1.0)
     , convert_horizontal(true)
     , convert_vertical(true)
@@ -84,6 +85,7 @@ DataProcessing::DataProcessing(void *handle, int index, int channel, const std::
     , m_waterfall{}
     , m_persistence{}
     , m_noise_moving_average{}
+    , m_fft_moving_average()
 {
 }
 
@@ -444,6 +446,9 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
         return std::pow(2.0 * std::abs(value) / static_cast<double>(fft.size()), 2.0);
     };
 
+    /* Prepare the FFT moving average object to receive a new entry. */
+    m_fft_moving_average.PrepareNewEntry(fft.size());
+
     /* If we're performing the analysis with a fixed fundamental frequency, we
        start off by constructing that `Tone` object. */
     if (fixed_fundamental)
@@ -454,7 +459,14 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
         const size_t idx_high = std::min(idx_center + nof_skirt_bins, x.size() - 1);
 
         for (size_t i = idx_low; i <= idx_high; ++i)
-            fundamental.values.push_back(FromComplex(fft[i]) * energy_factor);
+        {
+            /* We need to base this analysis on potentially averaged data. We'll
+               revisit these bins in the loop below and thus recalculate these
+               values. This obviously slightly suboptimal, but I think the code
+               is clearer and the drawbacks are not that significant. */
+            double value = m_fft_moving_average.InsertAndAverage(i, FromComplex(fft[i]));
+            fundamental.values.push_back(value * energy_factor);
+        }
 
         fundamental.UpdatePower();
         fundamental.frequency = m_parameters.fundamental_frequency;
@@ -469,7 +481,7 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
         x[i] = static_cast<double>(i) * bin_range;
 
         /* Calculate the unscaled value. */
-        y[i] = FromComplex(fft[i]);
+        y[i] = m_fft_moving_average.InsertAndAverage(i, FromComplex(fft[i]));
 
         /* We will always need the energy-accurate bin value for the calculations below. */
         double y_power = y[i] * energy_factor;
@@ -670,6 +682,13 @@ void DataProcessing::ProcessMessages()
 
         case DataProcessingMessageId::SET_PROCESSING_PARAMETERS:
             m_parameters = std::move(message.processing);
+            m_fft_moving_average.SetNumberOfAverages(m_parameters.nof_fft_averages);
+            m_noise_moving_average.clear();
+            break;
+
+        case DataProcessingMessageId::CLEAR_PROCESSING_MEMORY:
+            m_fft_moving_average.Clear();
+            m_noise_moving_average.clear();
             break;
 
         default:

@@ -411,3 +411,45 @@ struct SensorRecord : public BaseRecord
     uint32_t group_id; /* FIXME: Prob not needed */
     std::string note;
 };
+
+class FftMovingAverage
+{
+public:
+    FftMovingAverage();
+
+    /* Delete copy constructors until we need them. */
+    FftMovingAverage(const FftMovingAverage &other) = delete;
+    FftMovingAverage &operator=(const FftMovingAverage &other) = delete;
+
+    /* Set the number of averages. This operation clears the rolling log if the
+       number of averages differs from the current value. */
+    void SetNumberOfAverages(size_t nof_averages);
+
+    /* Prepare a new log entry of the target `size`. This function must be
+       called before `InsertAndAverage()`, whose purpose is to fill the entry
+       set up by this operation. */
+    void PrepareNewEntry(size_t size);
+
+    /* Insert y[i] into the latest entry in the rolling log of FFTs and return
+       the averaged result, i.e.
+
+         (y[i] + y[n-1][i] + ... + y[N-1][i]) / N
+
+       The input value y[i] is expected to be the _energy_ in bin `i` or a
+       similar quantity for which the averaging operation above is valid.
+
+       `PrepareNewEntry()` _must_ have been called prior to this and `i` cannot
+       exceed the size given in that call. */
+    double InsertAndAverage(size_t i, double y);
+
+    /* Clear the rolling log. */
+    void Clear();
+
+private:
+    /* The rolling log of FFTs as a double-ended queue to be able to manipulate
+       both ends to insert new entries and evict old ones. */
+    std::deque<std::vector<double>> m_log;
+
+    /* The number of averages (maximum size of the log). */
+    size_t m_nof_averages;
+};

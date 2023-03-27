@@ -18,9 +18,9 @@ enum class DataProcessingMessageId
 {
     SET_AFE_PARAMETERS,
     SET_CLOCK_SYSTEM_PARAMETERS,
-    SET_PROCESSING_PARAMETERS
+    SET_PROCESSING_PARAMETERS,
+    CLEAR_PROCESSING_MEMORY,
 };
-
 
 struct DataProcessingParameters
 {
@@ -29,6 +29,7 @@ struct DataProcessingParameters
     WindowType window_type;
     FrequencyDomainScaling fft_scaling;
     int nof_skirt_bins;
+    int nof_fft_averages;
     double fundamental_frequency;
     bool convert_horizontal;
     bool convert_vertical;
@@ -38,6 +39,10 @@ struct DataProcessingParameters
 struct DataProcessingMessage
 {
     DataProcessingMessage() = default;
+
+    DataProcessingMessage(DataProcessingMessageId id)
+        : id(id)
+    {}
 
     DataProcessingMessage(DataProcessingMessageId id,
                           struct ADQAnalogFrontendParametersChannel &afe)
@@ -90,6 +95,7 @@ private:
     std::deque<std::shared_ptr<FrequencyDomainRecord>> m_waterfall;
     std::deque<std::shared_ptr<TimeDomainRecord>> m_persistence;
     std::deque<double> m_noise_moving_average;
+    FftMovingAverage m_fft_moving_average;
 
     template <typename T>
     static size_t NextPowerOfTwo(T i);

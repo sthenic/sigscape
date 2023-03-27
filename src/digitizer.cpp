@@ -573,6 +573,11 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
         }
         break;
 
+    case DigitizerMessageId::CLEAR_PROCESSING_MEMORY:
+        for (const auto &t : m_processing_threads)
+            t->EmplaceMessage(DataProcessingMessageId::CLEAR_PROCESSING_MEMORY);
+        break;
+
     case DigitizerMessageId::SET_CONFIGURATION_DIRECTORY:
         m_configuration_directory = message.str;
         InitializeFileWatchers();
@@ -667,6 +672,11 @@ void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &messag
             t->EmplaceMessage(DataProcessingMessageId::SET_PROCESSING_PARAMETERS,
                               std::move(message.processing_parameters));
         }
+        break;
+
+    case DigitizerMessageId::CLEAR_PROCESSING_MEMORY:
+        for (const auto &t : m_processing_threads)
+            t->EmplaceMessage(DataProcessingMessageId::CLEAR_PROCESSING_MEMORY);
         break;
 
     case DigitizerMessageId::GET_TOP_PARAMETERS_FILENAME:

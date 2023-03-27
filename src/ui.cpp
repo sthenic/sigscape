@@ -614,8 +614,8 @@ void Ui::RenderLeft(float width, float height)
 
     RenderApplicationMetrics(METRICS_POS, METRICS_SIZE);
 
-    ImVec2 PROCESSING_OPTIONS_POS(0.0f, METRICS_POS.y - 200.0f);
-    ImVec2 PROCESSING_OPTIONS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 200.0f);
+    ImVec2 PROCESSING_OPTIONS_POS(0.0f, METRICS_POS.y - 220.0f);
+    ImVec2 PROCESSING_OPTIONS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 220.0f);
 
     if (m_collapsed.processing_options)
     {
@@ -1639,14 +1639,32 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
     if (!fundamental_frequency_enable)
         ImGui::EndDisabled();
 
-    static const ImS32 LIMIT_LOW = 0;
-    static const ImS32 LIMIT_HIGH = 16;
+    static const ImS32 NOF_SKIRT_BINS_LIMIT_LOW = 0;
+    static const ImS32 NOF_SKIRT_BINS_LIMIT_HIGH = 16;
     static ImS32 nof_skirt_bins = m_processing_parameters.nof_skirt_bins;
     ImGui::SetNextItemWidth(WIDGET_WIDTH);
-    if (ImGui::SliderScalar("Skirt bins", ImGuiDataType_S8, &nof_skirt_bins, &LIMIT_LOW,
-                            &LIMIT_HIGH, NULL, ImGuiSliderFlags_NoInput))
+    if (ImGui::SliderScalar("Skirt bins", ImGuiDataType_S32, &nof_skirt_bins,
+                            &NOF_SKIRT_BINS_LIMIT_LOW, &NOF_SKIRT_BINS_LIMIT_HIGH, NULL,
+                            ImGuiSliderFlags_AlwaysClamp))
     {
         m_processing_parameters.nof_skirt_bins = static_cast<int>(nof_skirt_bins);
+        push_parameters = true;
+    }
+
+    static const ImS32 NOF_FFT_AVERAGES_LIMIT_LOW = 0;
+    static const ImS32 NOF_FFT_AVERAGES_LIMIT_HIGH = 10;
+    static ImS32 nof_fft_averages = 0;
+    if (ImGui::Button("Clear"))
+        PushMessage({DigitizerMessageId::CLEAR_PROCESSING_MEMORY}, true);
+
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(WIDGET_WIDTH - 51.0f);
+    if (ImGui::SliderScalar("FFT averages", ImGuiDataType_S32, &nof_fft_averages,
+                            &NOF_FFT_AVERAGES_LIMIT_LOW, &NOF_FFT_AVERAGES_LIMIT_HIGH,
+                            fmt::format("{}", 1 << nof_fft_averages).c_str(),
+                            ImGuiSliderFlags_NoInput))
+    {
+        m_processing_parameters.nof_fft_averages = static_cast<int>(1u << nof_fft_averages);
         push_parameters = true;
     }
 

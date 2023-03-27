@@ -776,7 +776,7 @@ void Digitizer::ConfigureDefaultAcquisition()
     throw DigitizerException("ConfigureDefaultAcquisition() not implemented.");
 #else
     struct ADQEventSourcePeriodicParameters periodic;
-    result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_EVENT_SOURCE_PERIODIC, &periodic);
+    int result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_EVENT_SOURCE_PERIODIC, &periodic);
     if (result != sizeof(periodic))
         throw DigitizerException(fmt::format("Failed to get periodic parameters, result {}.", result));
 

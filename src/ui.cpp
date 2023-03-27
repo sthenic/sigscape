@@ -1548,7 +1548,7 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
     m_collapsed.processing_options = ImGui::IsWindowCollapsed();
     bool push_parameters = false;
 
-    const float WIDGET_WIDTH = 0.6 * size.x;
+    const float WIDGET_WIDTH = 0.6f * size.x;
 
     /* FIXME: Use Begin/EndCombo() */
     static int window_idx = 2;

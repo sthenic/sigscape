@@ -639,12 +639,18 @@ void DataProcessing::AnalyzeTimeDomain(ProcessedRecord *record)
             time_domain->min.value = y;
 
         time_domain->mean.value += y;
-        time_domain->rms.value += y * y;
     }
 
     time_domain->mean.value /= static_cast<double>(time_domain->y.size());
-    time_domain->rms.value /= static_cast<double>(time_domain->y.size());
-    time_domain->rms.value = std::sqrt(time_domain->rms.value);
+
+    for (const auto &y : time_domain->y)
+    {
+        const double diff = (y - time_domain->mean.value);
+        time_domain->sdev.value += diff * diff;
+    }
+
+    time_domain->sdev.value /= static_cast<double>(time_domain->y.size());
+    time_domain->sdev.value = std::sqrt(time_domain->sdev.value);
 }
 
 void DataProcessing::ProcessMessages()

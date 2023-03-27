@@ -2547,8 +2547,8 @@ std::vector<std::vector<std::string>> Ui::FormatTimeDomainMetrics(
             record->range_mid.Format(),
         },
         {
-            "RMS",
-            record->rms.Format(),
+            "Standard deviation",
+            record->sdev.Format(),
         },
         /* TODO: Hide these behind some 'show extra' toggle? */
         {

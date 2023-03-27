@@ -139,7 +139,7 @@ struct TimeDomainRecord : public BaseRecord
         , max(ValueY(std::numeric_limits<double>::lowest()))
         , min(ValueY(std::numeric_limits<double>::max()))
         , mean(ValueY(0.0))
-        , rms(ValueY(0.0))
+        , sdev(ValueY(0.0))
     {
 #ifdef USE_TIME_UNIT_FROM_HEADER
         /* The time unit is specified in picoseconds at most. Given that we're
@@ -245,7 +245,7 @@ struct TimeDomainRecord : public BaseRecord
     Value max;
     Value min;
     Value mean;
-    Value rms;
+    Value sdev;
 };
 
 

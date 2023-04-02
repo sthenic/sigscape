@@ -145,6 +145,7 @@ Ui::Ui()
     , m_should_screenshot(false)
     , m_persistent_directories()
     , m_identification()
+    , m_hotplug()
     , m_adq_control_unit()
     , m_show_imgui_demo_window(false)
     , m_show_implot_demo_window(false)
@@ -181,8 +182,19 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version,
     /* Set up the ImGui configuration file. */
     ImGui::GetIO().IniFilename = m_persistent_directories.GetImGuiInitializationFile();
 
-    /* Proceed with identifying the digitizers connected to the system. */
+#ifdef MOCK_ADQAPI
     IdentifyDigitizers();
+#else
+    /* Initialize hotplug notification. The initial device identification is
+       triggered by the hotplug monitor detecting a nonzero number of digitizers
+       connected to the system. We fall back to a single-shot manual
+       identification on detecting an error. */
+    if (SCAPE_EOK != m_hotplug.Start())
+    {
+        printf("Failed to initialize hotplug notification.\n");
+        IdentifyDigitizers();
+    }
+#endif
 }
 
 void Ui::Terminate()
@@ -206,6 +218,7 @@ void Ui::Render(float width, float height)
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
+    HandleHotplugEvents();
     HandleMessages();
     UpdateRecords();
     UpdateSensors();
@@ -481,6 +494,14 @@ void Ui::HandleMessages()
         if (SCAPE_EOK == digitizer.interface->WaitForMessage(digitizer_message, 0))
             HandleMessage(digitizer, digitizer_message);
     }
+}
+
+void Ui::HandleHotplugEvents()
+{
+    /* Regardless of the event type, we trigger a new system-wide identification. */
+    HotplugEvent event;
+    if (SCAPE_EOK == m_hotplug.WaitForMessage(event, 0))
+        IdentifyDigitizers();
 }
 
 void Ui::RenderMenuBar()

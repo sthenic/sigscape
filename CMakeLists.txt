@@ -121,6 +121,16 @@ target_sources(${PROJECT_NAME} PRIVATE
     src/main.cpp
 )
 
+if (UNIX)
+    target_sources(${PROJECT_NAME} PRIVATE
+        src/hotplug_linux.cpp
+    )
+elseif (WIN32)
+    target_sources(${PROJECT_NAME} PRIVATE
+        src/hotplug_windows.cpp
+    )
+endif()
+
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${implot_SOURCE_DIR}
     ${imgui_SOURCE_DIR}
@@ -200,6 +210,10 @@ if (WIN32)
         $<TARGET_FILE:adq>
         $<TARGET_FILE_DIR:${PROJECT_NAME}>)
 
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        cfgmgr32
+    )
+
     # Set the subsystem to Windows GUI application in release configuration (no
     # console window). The linker option sets the entrypoint to 'main' (not
     # 'WinMain') which is the default.
@@ -217,6 +231,12 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     png_static
     adq
 )
+
+if (UNIX)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        udev
+    )
+endif()
 
 install(TARGETS ${PROJECT_NAME})
 

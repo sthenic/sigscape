@@ -13,6 +13,11 @@
 #include "identification.h"
 #include "marker.h"
 #include "format.h"
+#if defined(_WIN32)
+#include "hotplug_windows.h"
+#else
+#include "hotplug_linux.h"
+#endif
 
 #include <vector>
 #include <filesystem>
@@ -33,6 +38,11 @@ private:
     bool m_should_screenshot;
     PersistentDirectories m_persistent_directories;
     Identification m_identification;
+#if defined(_WIN32)
+    HotplugWindows m_hotplug;
+#else
+    HotplugLinux m_hotplug;
+#endif
     void *m_adq_control_unit;
     bool m_show_imgui_demo_window;
     bool m_show_implot_demo_window;
@@ -178,6 +188,7 @@ private:
     void HandleMessage(const IdentificationMessage &message);
     void HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message);
     void HandleMessages();
+    void HandleHotplugEvents();
 
     void RenderMenuBar();
     void RenderRight(float width, float height);

@@ -348,6 +348,8 @@ void Ui::HandleMessage(const IdentificationMessage &message)
         d.interface->Start();
         d.interface->EmplaceMessage(DigitizerMessageId::SET_CONFIGURATION_DIRECTORY,
                                     m_persistent_directories.GetConfigurationDirectory());
+        d.interface->EmplaceMessage(DigitizerMessageId::SET_PROCESSING_PARAMETERS,
+                                    m_processing_parameters);
     }
 
     if (m_digitizers.size() > 0)

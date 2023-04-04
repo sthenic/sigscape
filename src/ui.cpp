@@ -8,6 +8,7 @@
 #include <cmath>
 #include <ctime>
 #include <fstream>
+#include <functional>
 
 const ImVec4 Ui::COLOR_GREEN = {0.0f, 1.0f, 0.5f, 0.6f};
 const ImVec4 Ui::COLOR_RED = {1.0f, 0.0f, 0.2f, 0.6f};
@@ -265,8 +266,54 @@ bool Ui::IsAnySolo() const
     bool result = false;
     for (const auto &digitizer : m_digitizers)
     {
+        if (!digitizer.ui.is_selected)
+            continue;
+
         for (const auto &chui : digitizer.ui.channels)
             result |= chui.is_solo;
+    }
+    return result;
+}
+
+bool Ui::IsAnySensorError() const
+{
+    bool result = false;
+    for (const auto &digitizer : m_digitizers)
+    {
+        if (!digitizer.ui.is_selected)
+            continue;
+
+        for (const auto &[group_id, group] : digitizer.ui.sensor_groups)
+        {
+            for (const auto &[sensor_id, sensor] : group.sensors)
+            {
+                if (sensor.record.status != 0)
+                {
+                    result = true;
+                    break;
+                }
+            }
+        }
+    }
+    return result;
+}
+
+bool Ui::IsAnyBootError() const
+{
+    bool result = false;
+    for (const auto &digitizer : m_digitizers)
+    {
+        if (!digitizer.ui.is_selected)
+            continue;
+
+        for (const auto &boot_entry : digitizer.ui.boot_status.boot_entries)
+        {
+            if (boot_entry.status != 0)
+            {
+                result = true;
+                break;
+            }
+        }
     }
     return result;
 }
@@ -1525,37 +1572,33 @@ void Ui::RenderTools(const ImVec2 &position, const ImVec2 &size)
     ImGui::Begin("Tools", NULL,
                  ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 
+    const auto TabItem = [](const std::string &label, const std::function<void()> &RenderContents,
+                            bool callout = false)
+    {
+        if (callout)
+            ImGui::PushStyleColor(ImGuiCol_Tab, COLOR_RED);
+
+        if (ImGui::BeginTabItem(label.c_str()))
+        {
+            RenderContents();
+            ImGui::EndTabItem();
+        }
+
+        if (callout)
+            ImGui::PopStyleColor();
+    };
+
     if (ImGui::BeginTabBar("Tools##TabBar", ImGuiTabBarFlags_None))
     {
-        if (ImGui::BeginTabItem("Markers"))
-        {
-            RenderMarkers();
-            ImGui::EndTabItem();
-        }
-
-        if (ImGui::BeginTabItem("Memory"))
-        {
-            RenderMemory();
-            ImGui::EndTabItem();
-        }
-
-        if (ImGui::BeginTabItem("Sensors"))
-        {
-            RenderSensors();
-            ImGui::EndTabItem();
-        }
-
-        if (ImGui::BeginTabItem("Boot"))
-        {
-            RenderBootStatus();
-            ImGui::EndTabItem();
-        }
-
-        if (ImGui::BeginTabItem("Static"))
-        {
-            RenderStaticInformation();
-            ImGui::EndTabItem();
-        }
+        /* We use a local lambda to avoid making this part noisy due to the
+           color manipulation. However, that also means that we need to bind
+           `this` to the function pointer we pass to render the tab's contents.
+           We could also have used a macro. */
+        TabItem("Markers", std::bind(&Ui::RenderMarkers, this));
+        TabItem("Memory", std::bind(&Ui::RenderMemory, this));
+        TabItem("Sensors", std::bind(&Ui::RenderSensors, this), IsAnySensorError());
+        TabItem("Boot", std::bind(&Ui::RenderBootStatus, this), IsAnyBootError());
+        TabItem("Static", std::bind(&Ui::RenderStaticInformation, this));
 
         ImGui::EndTabBar();
     }

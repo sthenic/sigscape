@@ -179,6 +179,8 @@ private:
 
     void ClearChannelSelection();
     bool IsAnySolo() const;
+    bool IsAnySensorError() const;
+    bool IsAnyBootError() const;
 
     void IdentifyDigitizers();
     void PushMessage(const DigitizerMessage &message, bool only_selected = true);

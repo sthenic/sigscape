@@ -1418,7 +1418,7 @@ void Ui::RenderStaticInformation()
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, WIDTH);
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
 
-            Row("sigscape", fmt::format("v{}", SIGSCAPE_VERSION));
+            Row("sigscape", SIGSCAPE_REVISION);
             Row("libadq", fmt::format("0x{:08x}", m_api_revision));
 
             ImGui::EndTable();

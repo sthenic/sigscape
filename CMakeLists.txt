@@ -19,6 +19,12 @@ if (APPLE)
   set(MOCK_ADQAPI ON)
 endif()
 
+# Get version control information from `git describe`
+execute_process(COMMAND git describe --dirty
+                OUTPUT_VARIABLE SIGSCAPE_REVISION
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+message("Revision is ${SIGSCAPE_REVISION}")
+
 find_package(OpenGL REQUIRED)
 
 find_package(Threads REQUIRED)
@@ -144,7 +150,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     IMGUI_IMPL_OPENGL_LOADER_GL3W
-    SIGSCAPE_VERSION=\"${CMAKE_PROJECT_VERSION}\"
+    SIGSCAPE_REVISION=\"${SIGSCAPE_REVISION}\"
 )
 
 if (MOCK_ADQAPI)
@@ -256,6 +262,8 @@ set(CPACK_RESOURCE_FILE_README ${CMAKE_CURRENT_SOURCE_DIR}/README.md)
 
 # Set the install directory to "sigscape". The default is "sigscape <VERSION>"
 set(CPACK_PACKAGE_INSTALL_DIRECTORY ${PROJECT_NAME})
+
+set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-${SIGSCAPE_REVISION}-${CMAKE_SYSTEM_NAME}")
 
 set(CPACK_PACKAGE_CONTACT "Marcus Eriksson")
 

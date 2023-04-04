@@ -204,15 +204,13 @@ if (NOT MOCK_ADQAPI AND NOT TARGET adq)
 endif()
 
 if (WIN32)
-    # Copy ADQAPI.dll to the target (.exe) directory
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_FILE:adq>
-        $<TARGET_FILE_DIR:${PROJECT_NAME}>)
-
-    target_link_libraries(${PROJECT_NAME} PRIVATE
-        cfgmgr32
-    )
+    # Copy ADQAPI.dll to the target (.exe) directory.
+    if (NOT MOCK_ADQAPI)
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_FILE:adq>
+            $<TARGET_FILE_DIR:${PROJECT_NAME}>)
+    endif()
 
     # Set the subsystem to Windows GUI application in release configuration (no
     # console window). The linker option sets the entrypoint to 'main' (not
@@ -229,13 +227,18 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     glfw
     fmt
     png_static
-    adq
 )
 
-if (UNIX)
-    target_link_libraries(${PROJECT_NAME} PRIVATE
-        udev
-    )
+# Link against libadq unless MOCK_ADQAPI is set.
+if (NOT MOCK_ADQAPI)
+    target_link_libraries(${PROJECT_NAME} PRIVATE adq)
+endif()
+
+# Platform-specific libraries (for hotplug detection).
+if (WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE cfgmgr32)
+else()
+    target_link_libraries(${PROJECT_NAME} PRIVATE udev)
 endif()
 
 install(TARGETS ${PROJECT_NAME})

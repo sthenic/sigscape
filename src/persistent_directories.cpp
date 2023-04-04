@@ -93,10 +93,6 @@ PersistentDirectories::PersistentDirectories()
     m_log_directory = m_data_directory + "/logs";
     ValidateDirectoryCreateIfNeeded(m_log_directory);
 #endif
-    printf("Using persistent configuration directory '%s'.\n", m_configuration_directory.c_str());
-    printf("Using persistent data directory '%s'.\n", m_data_directory.c_str());
-    printf("Using persistent screenshot directory '%s'.\n", m_screenshot_directory.c_str());
-    printf("Using persistent log directory '%s'.\n", m_log_directory.c_str());
     m_imgui_configuration_file = m_configuration_directory + "/imgui.ini";
 }
 

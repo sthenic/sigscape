@@ -166,7 +166,7 @@ int MockSystemManager::HandleMessage()
     {
         if (message.data.size() != sizeof(ArgSensorGetValue))
         {
-            printf("Invalid arugment length for SENSOR_GET_VALUE: %zu != %zu.\n",
+            fprintf(stderr, "Invalid argument length for SENSOR_GET_VALUE: %zu != %zu.\n",
                     message.data.size(), sizeof(ArgSensorGetValue));
             m_read_queue.EmplaceWrite(-1);
         }
@@ -188,13 +188,13 @@ int MockSystemManager::HandleMessage()
             }
             else
             {
-                printf("Unsupported sensor format %" PRIu32 ".\n", arg->format);
+                fprintf(stderr, "Unsupported sensor format %" PRIu32 ".\n", arg->format);
                 m_read_queue.EmplaceWrite(-1);
             }
         }
         else
         {
-            printf("Unknown sensor id %" PRIu32 ".\n", arg->id);
+            fprintf(stderr, "Unknown sensor id %" PRIu32 ".\n", arg->id);
             m_read_queue.EmplaceWrite(-1);
         }
         break;
@@ -204,7 +204,7 @@ int MockSystemManager::HandleMessage()
     {
         if (message.data.size() != sizeof(uint32_t))
         {
-            printf("Invalid arugment length for SENSOR_GET_INFO: %zu != %zu.\n",
+            fprintf(stderr, "Invalid argument length for SENSOR_GET_INFO: %zu != %zu.\n",
                     message.data.size(), sizeof(uint32_t));
             m_read_queue.EmplaceWrite(-1);
         }
@@ -217,7 +217,7 @@ int MockSystemManager::HandleMessage()
         }
         else
         {
-            printf("Unknown sensor id %" PRIu32 ".\n", *id);
+            fprintf(stderr, "Unknown sensor id %" PRIu32 ".\n", *id);
             m_read_queue.EmplaceWrite(-1);
         }
         break;
@@ -227,7 +227,7 @@ int MockSystemManager::HandleMessage()
     {
         if (message.data.size() != sizeof(uint32_t))
         {
-            printf("Invalid arugment length for SENSOR_GET_GROUP_INFO: %zu != %zu.\n",
+            fprintf(stderr, "Invalid argument length for SENSOR_GET_GROUP_INFO: %zu != %zu.\n",
                     message.data.size(), sizeof(uint32_t));
             m_read_queue.EmplaceWrite(-1);
         }
@@ -240,7 +240,7 @@ int MockSystemManager::HandleMessage()
         }
         else
         {
-            printf("Unknown sensor id %" PRIu32 ".\n", id);
+            fprintf(stderr, "Unknown sensor id %" PRIu32 ".\n", id);
             m_read_queue.EmplaceWrite(-1);
         }
         break;
@@ -264,7 +264,7 @@ int MockSystemManager::HandleMessage()
     {
         if (message.data.size() != sizeof(uint32_t))
         {
-            printf("Invalid arugment length for BOOT_GET_INFO: %zu != %zu.\n",
+            fprintf(stderr, "Invalid argument length for BOOT_GET_INFO: %zu != %zu.\n",
                     message.data.size(), sizeof(uint32_t));
             m_read_queue.EmplaceWrite(-1);
         }
@@ -277,7 +277,7 @@ int MockSystemManager::HandleMessage()
         }
         else
         {
-            printf("Unknown boot id %" PRIu32 ".\n", id);
+            fprintf(stderr, "Unknown boot id %" PRIu32 ".\n", id);
             m_read_queue.EmplaceWrite(-1);
         }
         break;
@@ -299,7 +299,7 @@ int MockSystemManager::HandleMessage()
 
     default:
     {
-        printf("Unsupported system manager command 0x%04X.\n", static_cast<int>(message.cmd));
+        fprintf(stderr, "Unsupported system manager command 0x%04X.\n", static_cast<int>(message.cmd));
         m_read_queue.EmplaceWrite(-1);
         break;
     }

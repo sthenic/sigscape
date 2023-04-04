@@ -86,15 +86,14 @@ void Ui::ChannelUiState::SaveToFile(const std::filesystem::path &path)
     std::ofstream ofs(lpath, std::ios::trunc);
     if (ofs.fail())
     {
-        printf("Failed to open file '%s'.\n", lpath.string().c_str());
+        fprintf(stderr, "Failed to open file '%s'.\n", lpath.string().c_str());
         return;
     }
 
     ofs << json.dump(4).c_str() << "\n";
     ofs.close();
 
-    printf("%s\n",
-           fmt::format("Saved {} record data in '{}'.", record->label, lpath.string()).c_str());
+    /* TODO: Notify save complete? */
 }
 
 std::string Ui::ChannelUiState::GetDefaultFilename()
@@ -192,7 +191,7 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version,
        identification on detecting an error. */
     if (SCAPE_EOK != m_hotplug.Start())
     {
-        printf("Failed to initialize hotplug notification.\n");
+        fprintf(stderr, "Failed to initialize hotplug notification.\n");
         IdentifyDigitizers();
     }
 #endif
@@ -247,7 +246,7 @@ void Ui::Render(float width, float height)
                                           NowAsIso8601());
 
         if (!Screenshot(filename))
-            printf("%s\n", fmt::format("Failed to save PNG image '{}'.", filename).c_str());
+            fprintf(stderr, "%s\n", fmt::format("Failed to save PNG image '{}'.", filename).c_str());
         m_should_screenshot = false;
     }
 }
@@ -524,7 +523,7 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
 
     default:
         /* These are not expected as a message from a digitizer thread. */
-        printf("%s\n", fmt::format("Unsupported message id '{}'.", message.id).c_str());
+        fprintf(stderr, "%s\n", fmt::format("Unsupported message id '{}'.", message.id).c_str());
         break;
     }
 }
@@ -1243,11 +1242,9 @@ void Ui::RenderSensorGroup(SensorGroupUiState &group, bool is_first)
         {
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
-            if (ImGui::Selectable(sensor.label.c_str(), sensor.is_plotted,
-                                  ImGuiSelectableFlags_SpanAllColumns))
-            {
-                printf("Sensor %d selected\n", sensor_id);
-            }
+
+            ImGui::Selectable(sensor.label.c_str(), sensor.is_plotted,
+                              ImGuiSelectableFlags_SpanAllColumns);
 
             if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
             {
@@ -1263,8 +1260,8 @@ void Ui::RenderSensorGroup(SensorGroupUiState &group, bool is_first)
             if (sensor.record.status == 0 && ImGui::BeginPopupContextItem())
             {
                 ImGui::MenuItem("Plot", "", &sensor.is_plotted);
-                if (ImGui::MenuItem("Capture"))
-                    printf("Capture sensor %d\n", sensor_id);
+                /* FIXME: Implement capture */
+                // ImGui::MenuItem("Capture")
                 ImGui::EndPopup();
             }
 
@@ -3020,7 +3017,7 @@ std::string Ui::NowAsIso8601()
     else
     {
         /* FIXME: Communicate in some other way? */
-        printf("Failed to generate an ISO8601 filename.\n");
+        fprintf(stderr, "Failed to generate an ISO8601 filename.\n");
         return "";
     }
 }

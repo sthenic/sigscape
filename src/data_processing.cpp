@@ -120,7 +120,7 @@ void DataProcessing::MainLoop()
         }
         else if (bytes_received < 0)
         {
-            printf("Failed to get a time domain buffer %" PRId64 ".\n", bytes_received);
+            fprintf(stderr, "Failed to get a time domain buffer %" PRId64 ".\n", bytes_received);
             m_thread_exit_code = SCAPE_EINTERNAL;
             return;
         }
@@ -153,7 +153,7 @@ void DataProcessing::MainLoop()
                 if (time_domain->header->firmware_specific > 0)
                     code_normalization *= time_domain->header->firmware_specific;
                 else
-                    printf("Expected a nonzero number of accumulations, skipping normalization.\n");
+                    fprintf(stderr, "Expected a nonzero number of accumulations, skipping normalization.\n");
             }
 
             /* FIXME: Windowing in the time domain struct?  */
@@ -212,8 +212,8 @@ void DataProcessing::MainLoop()
                 break;
 
             default:
-                printf("Unknown data format '%" PRIu8 "', aborting.\n",
-                       time_domain->header->data_format);
+                fprintf(stderr, "Unknown data format '%" PRIu8 "', aborting.\n",
+                        time_domain->header->data_format);
                 m_thread_exit_code = SCAPE_EINTERNAL;
                 return;
             }
@@ -223,7 +223,7 @@ void DataProcessing::MainLoop()
             auto yc = std::vector<std::complex<double>>(FFT_LENGTH);
             if (!simple_fft::FFT(y, yc, FFT_LENGTH, error))
             {
-                printf("Failed to compute FFT: %s.\n", error);
+                fprintf(stderr, "Failed to compute FFT: %s.\n", error);
                 ADQ_ReturnRecordBuffer(m_handle, m_index, channel, time_domain);
                 continue;
             }
@@ -247,7 +247,7 @@ void DataProcessing::MainLoop()
         else
         {
             static int nof_discarded = 0;
-            printf("Skipping (no FFT or allocation) since queue is full (%d).\n", nof_discarded++);
+            fprintf(stderr, "Skipping (no FFT or allocation) since queue is full (%d).\n", nof_discarded++);
         }
 
         ADQ_ReturnRecordBuffer(m_handle, m_index, channel, time_domain);

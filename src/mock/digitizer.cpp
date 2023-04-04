@@ -96,10 +96,7 @@ int64_t MockDigitizer::WaitForRecordBuffer(int *channel, void **buffer, int time
     if (*channel == -1)
         return ADQ_EUNSUPPORTED;
     if ((*channel < 0) || (static_cast<size_t>(*channel) >= m_generators.size()))
-    {
-        printf("Channel is %d.\n", *channel);
         return ADQ_EINVAL;
-    }
 
     ADQGen4Record *lbuffer = NULL;
     int result = m_generators[*channel]->WaitForBuffer(lbuffer, timeout);
@@ -294,7 +291,7 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
     }
     else
     {
-        printf("Unrecognized parameter set.\n");
+        fprintf(stderr, "Unrecognized parameter set.\n");
         return ADQ_EINVAL;
     }
 
@@ -357,8 +354,8 @@ int MockDigitizer::SmTransaction(uint16_t cmd, void *wr_buf, size_t wr_buf_len, 
     {
         if (reply.data.size() != rd_buf_len)
         {
-            printf("System manager read length mismatch, got %zu, expected %zu.\n", reply.data.size(),
-                rd_buf_len);
+            fprintf(stderr, "System manager read length mismatch, got %zu, expected %zu.\n",
+                    reply.data.size(), rd_buf_len);
             return ADQ_EINTERNAL;
         }
 

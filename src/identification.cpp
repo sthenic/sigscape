@@ -20,7 +20,7 @@ void Identification::MainLoop()
     void *handle = CreateADQControlUnit();
     if (handle == NULL)
     {
-        printf("Failed to create an ADQControlUnit.\n");
+        fprintf(stderr, "Failed to create an ADQControlUnit.\n");
         m_thread_exit_code = SCAPE_EINTERNAL;
         return;
     }
@@ -29,7 +29,7 @@ void Identification::MainLoop()
     if (!m_log_directory.empty()
         && !ADQControlUnit_EnableErrorTrace(handle, 0x00010000, m_log_directory.c_str()))
     {
-        printf("Failed to redirect trace logging to '%s'.\n", m_log_directory.c_str());
+        fprintf(stderr, "Failed to redirect trace logging to '%s'.\n", m_log_directory.c_str());
     }
 
     /* Filter out the Gen4 digitizers and construct a digitizer object for each one. */
@@ -37,7 +37,7 @@ void Identification::MainLoop()
     int nof_devices = 0;
     if (!ADQControlUnit_ListDevices(handle, &adq_list, (unsigned int *)&nof_devices))
     {
-        printf("Failed to list devices.\n");
+        fprintf(stderr, "Failed to list devices.\n");
         DeleteADQControlUnit(handle);
         m_thread_exit_code = SCAPE_EINTERNAL;
         return;

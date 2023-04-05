@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 project(sigscape
-  VERSION 0.1
+  VERSION 0.1.0
   HOMEPAGE_URL "https://github.com/sthenic/sigscape"
   DESCRIPTION "GUI for ADQ3 series digitizers"
   LANGUAGES CXX C
@@ -263,7 +263,7 @@ set(CPACK_RESOURCE_FILE_README ${CMAKE_CURRENT_SOURCE_DIR}/README.md)
 # Set the install directory to "sigscape". The default is "sigscape <VERSION>"
 set(CPACK_PACKAGE_INSTALL_DIRECTORY ${PROJECT_NAME})
 
-set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-${SIGSCAPE_REVISION}-${CMAKE_SYSTEM_NAME}")
+set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-${SIGSCAPE_REVISION}")
 
 set(CPACK_PACKAGE_CONTACT "Marcus Eriksson")
 

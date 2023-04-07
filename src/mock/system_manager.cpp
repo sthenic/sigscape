@@ -39,7 +39,8 @@
 #define BOOT_ID_ERROR (5u)
 
 MockSystemManager::MockSystemManager() :
-    m_random_generator(std::chrono::steady_clock::now().time_since_epoch().count()),
+    m_random_generator(
+        static_cast<uint32_t>(std::chrono::steady_clock::now().time_since_epoch().count())),
     m_sensor_map{
         SENSOR_ID_0V95,
         SENSOR_ID_3V3,

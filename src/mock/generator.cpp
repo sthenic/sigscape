@@ -5,7 +5,8 @@
 #include <chrono>
 
 Generator::Generator()
-    : m_random_generator(std::chrono::steady_clock::now().time_since_epoch().count())
+    : m_random_generator(
+          static_cast<uint32_t>(std::chrono::steady_clock::now().time_since_epoch().count()))
     , m_distribution(0, 0.1)
     , m_parameters()
     , m_sampling_frequency(500e6)

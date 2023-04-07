@@ -61,7 +61,7 @@ public:
         {
             /* Continue on 'ok' and 'timeout'. */
             struct Message read_msg;
-            int result = m_write_queue.Read(read_msg, 10);
+            result = m_write_queue.Read(read_msg, 10);
             if ((result != SCAPE_EOK) && (result != SCAPE_EAGAIN))
             {
                 m_thread_exit_code = result;

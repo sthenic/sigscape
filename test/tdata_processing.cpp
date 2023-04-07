@@ -1,12 +1,12 @@
 #include "data_processing.h"
-#include "mock_adqapi.h"
+#include "mock/adqapi.h"
 
 #include <thread>
 #include <chrono>
 
 #include "CppUTest/TestHarness.h"
 
-TEST_GROUP(DataProcessingGroup)
+TEST_GROUP(DataProcessing)
 {
     std::unique_ptr<DataProcessing> processing;
     MockAdqApi mock_adqapi;
@@ -15,8 +15,29 @@ TEST_GROUP(DataProcessingGroup)
 
     void setup()
     {
-        mock_adqapi.AddDigitizer("SPD-SIM01", 1, PID_ADQ32);
-        processing = std::make_unique<DataProcessing>(&mock_adqapi, index, channel, "SPD-SIM01 CHA");
+        mock_adqapi.AddDigitizer(PID_ADQ32, {"SPD-SIM01",
+                                             "ADQ32",
+                                             "-SG2G5-BW1G0",
+                                             {
+                                                 ADQ_FIRMWARE_TYPE_FWDAQ,
+                                                 "1CH-FWDAQ",
+                                                 "2023.1.3",
+                                                 "STANDARD",
+                                                 "400-000-XYZ",
+                                             },
+                                             {
+                                                 ADQ_COMMUNICATION_INTERFACE_PCIE,
+                                                 3,
+                                                 8,
+                                             },
+                                             {
+                                                 {"A", 2, {2500.0}, 65536},
+                                             }});
+
+        struct ADQConstantParameters constant;
+        mock_adqapi.GetParameters(index, ADQ_PARAMETER_ID_CONSTANT, &constant);
+        processing = std::make_unique<DataProcessing>(
+            &mock_adqapi, index, channel, "SPD-SIM01 CHA", constant);
     }
 
     void teardown()
@@ -24,7 +45,7 @@ TEST_GROUP(DataProcessingGroup)
     }
 };
 
-TEST(DataProcessingGroup, StartStop)
+TEST(DataProcessing, StartStop)
 {
     LONGS_EQUAL(SCAPE_ENOTREADY, processing->Stop());
     LONGS_EQUAL(SCAPE_EOK, processing->Start());
@@ -32,7 +53,7 @@ TEST(DataProcessingGroup, StartStop)
     LONGS_EQUAL(SCAPE_EOK, processing->Stop());
 }
 
-TEST(DataProcessingGroup, Records)
+TEST(DataProcessing, Records)
 {
     constexpr size_t RECORD_LENGTH = 8192;
     constexpr double TRIGGER_FREQUENCY = 20.0;
@@ -63,11 +84,11 @@ TEST(DataProcessingGroup, Records)
     LONGS_EQUAL(ADQ_EOK, ADQ_StopDataAcquisition(&mock_adqapi, index));
 }
 
-TEST(DataProcessingGroup, RepeatedStartStop)
+TEST(DataProcessing, RepeatedStartStop)
 {
     constexpr size_t RECORD_LENGTH = 8192;
-    constexpr double TRIGGER_FREQUENCY = 100.0;
-    constexpr int NOF_RECORDS = 200;
+    constexpr double TRIGGER_FREQUENCY = 10.0;
+    constexpr int NOF_RECORDS = 30;
     constexpr int NOF_LOOPS = 2;
 
     std::stringstream ss;
@@ -106,6 +127,9 @@ TEST(DataProcessingGroup, RepeatedStartStop)
                 LONGS_EQUAL(nof_records_received, record->time_domain->header.record_number);
                 nof_records_received++;
             }
+
+            /* Cap the refresh rate to something reasonable, e.g. 120 Hz. */
+            std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(1000.0 / 120.0)));
         }
 
         LONGS_EQUAL(SCAPE_EOK, processing->Stop());

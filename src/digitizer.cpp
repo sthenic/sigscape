@@ -781,9 +781,7 @@ void Digitizer::ConfigureExternalClock()
 
 void Digitizer::ConfigureDefaultAcquisition()
 {
-#ifdef MOCK_ADQAPI
-    throw DigitizerException("ConfigureDefaultAcquisition() not implemented.");
-#else
+#ifndef MOCK_ADQAPI
     struct ADQEventSourcePeriodicParameters periodic;
     int result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_EVENT_SOURCE_PERIODIC, &periodic);
     if (result != sizeof(periodic))

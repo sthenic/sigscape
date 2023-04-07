@@ -187,7 +187,7 @@ TEST(MessageThread, FailedStart)
     thread.Initialize(CODE, 10);
     LONGS_EQUAL(SCAPE_EOK, thread.Start());
 
-    struct Message msg;
+    struct Message msg{};
     LONGS_EQUAL(SCAPE_EOK, thread.WaitForMessage(msg, 1000));
     LONGS_EQUAL(MESSAGE_ID_FAILED_TO_START, msg.id);
     LONGS_EQUAL(CODE, msg.code);

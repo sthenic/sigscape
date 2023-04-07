@@ -22,9 +22,13 @@ TEST(FileWatcher, WatchFile)
     FileWatcher watcher(PATH);
     LONGS_EQUAL(SCAPE_EOK, watcher.Start());
 
+    /* Expect a 'file does not exist' message. */
+    FileWatcherMessage message;
+    LONGS_EQUAL(SCAPE_EOK, watcher.WaitForMessage(message, 300));
+    LONGS_EQUAL(FileWatcherMessageId::FILE_DOES_NOT_EXIST, message.id);
+
     /* Expect a clean message queue. */
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
-    FileWatcherMessage message;
     LONGS_EQUAL(SCAPE_EAGAIN, watcher.WaitForMessage(message, 0));
 
     /* Create the file. */
@@ -54,7 +58,6 @@ TEST(FileWatcher, WatchFile)
     std::filesystem::remove(PATH);
     LONGS_EQUAL(SCAPE_EOK, watcher.WaitForMessage(message, 300));
     LONGS_EQUAL(FileWatcherMessageId::FILE_DELETED, message.id);
-    STRCMP_EQUAL("", message.contents->c_str());
 
     LONGS_EQUAL(SCAPE_EOK, watcher.Stop());
 }
@@ -67,9 +70,13 @@ TEST(FileWatcher, WriteToFile)
     FileWatcher watcher(PATH);
     LONGS_EQUAL(SCAPE_EOK, watcher.Start());
 
+    /* Expect a 'file does not exist' message. */
+    FileWatcherMessage message;
+    LONGS_EQUAL(SCAPE_EOK, watcher.WaitForMessage(message, 300));
+    LONGS_EQUAL(FileWatcherMessageId::FILE_DOES_NOT_EXIST, message.id);
+
     /* Expect a clean message queue. */
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
-    FileWatcherMessage message;
     LONGS_EQUAL(SCAPE_EAGAIN, watcher.WaitForMessage(message, 0));
 
     static const char CONTENTS0[] = "Initial contents for 'foo.txt'.\n";

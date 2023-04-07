@@ -247,6 +247,9 @@ else()
     target_link_libraries(${PROJECT_NAME} PRIVATE udev)
 endif()
 
+# Add the test suite as subdirectory (excluded by default).
+add_subdirectory(test EXCLUDE_FROM_ALL)
+
 install(TARGETS ${PROJECT_NAME})
 
 # Include GNUInstallDirs to get CMAKE_INSTALL_DOCDIR

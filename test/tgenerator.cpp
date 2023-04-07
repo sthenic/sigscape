@@ -1,8 +1,8 @@
+#include "CppUTest/TestHarness.h"
+#include "mock/generator.h"
+
 #include <thread>
 #include <chrono>
-#include "generator.h"
-
-#include "CppUTest/TestHarness.h"
 
 TEST_GROUP(Generator)
 {

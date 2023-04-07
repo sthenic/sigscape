@@ -28,10 +28,11 @@ public:
     DigitizerException(const std::string &str) : std::runtime_error(str) {};
 };
 
-Digitizer::Digitizer(void *handle, int index)
+Digitizer::Digitizer(void *handle, int index, const std::string &configuration_directory)
     : m_state(DigitizerState::NOT_INITIALIZED)
     , m_id{handle, index}
-    , m_configuration_directory(".")
+    , m_configuration_directory(configuration_directory)
+    , m_constant{}
     , m_watchers{}
     , m_parameters{}
     , m_processing_threads{}
@@ -101,6 +102,9 @@ void Digitizer::MainLoop()
             std::make_unique<DataProcessing>(m_id.handle, m_id.index, ch, label, m_constant)
         );
     }
+
+    /* Initialize the file watchers now that we know the identifying properties of the digitizer. */
+    InitializeFileWatchers();
 
     /* Signal that the digitizer was set up correctly, that we're entering the
        IDLE state and enter the main loop. */
@@ -410,7 +414,7 @@ void Digitizer::CheckStatus()
        GetStatus(). We emit a relevant message if we find an unexpected status
        value, e.g. overflow. */
     const auto now = std::chrono::high_resolution_clock::now();
-    if ( (now - m_last_status_timestamp).count() / 1e6 >= STATUS_SAMPLING_PERIOD_MS)
+    if ((now - m_last_status_timestamp).count() / 1e6 >= STATUS_SAMPLING_PERIOD_MS)
     {
         /* Update the timestamp. */
         m_last_status_timestamp = now;
@@ -576,11 +580,6 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
     case DigitizerMessageId::CLEAR_PROCESSING_MEMORY:
         for (const auto &t : m_processing_threads)
             t->EmplaceMessage(DataProcessingMessageId::CLEAR_PROCESSING_MEMORY);
-        break;
-
-    case DigitizerMessageId::SET_CONFIGURATION_DIRECTORY:
-        m_configuration_directory = message.str;
-        InitializeFileWatchers();
         break;
 
     case DigitizerMessageId::GET_TOP_PARAMETERS_FILENAME:

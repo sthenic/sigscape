@@ -1,6 +1,7 @@
 #pragma once
 
 #include "message_thread.h"
+#include "persistent_directories.h"
 #include "digitizer.h"
 
 struct IdentificationMessage
@@ -14,11 +15,12 @@ struct IdentificationMessage
 class Identification : public MessageThread<Identification, IdentificationMessage>
 {
 public:
-    Identification() = default;
+    Identification(const PersistentDirectories &persistent_directories);
 
     void SetLogDirectory(const std::string &log_directory);
     void MainLoop() override;
 
 private:
-    std::string m_log_directory;
+    /* A reference to the object we query for persistent directories. */
+    const PersistentDirectories &m_persistent_directories;
 };

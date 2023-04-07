@@ -11,19 +11,19 @@ public:
     ~PersistentDirectories() = default;
 
     /* Get the directory used to store persistent configuration files. */
-    const std::string &GetConfigurationDirectory();
+    const std::string &GetConfigurationDirectory() const;
 
     /* Get the directory used to store persistent data files. */
-    const std::string &GetDataDirectory();
+    const std::string &GetDataDirectory() const;
 
     /* Get the directory used to store screenshots (subdirectory to the persistent data). */
-    const std::string &GetScreenshotDirectory();
+    const std::string &GetScreenshotDirectory() const;
 
     /* Get the directory used to store log files (subdirectory to the persistent data). */
-    const std::string &GetLogDirectory();
+    const std::string &GetLogDirectory() const;
 
     /* Get the ImGui initialization file. */
-    const char *GetImGuiInitializationFile();
+    const char *GetImGuiInitializationFile() const;
 
 private:
     std::string m_configuration_directory;

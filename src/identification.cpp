@@ -1,9 +1,8 @@
 #include "identification.h"
 
-void Identification::SetLogDirectory(const std::string &log_directory)
-{
-    m_log_directory = log_directory;
-}
+Identification::Identification(const PersistentDirectories &persistent_directories)
+    : m_persistent_directories(persistent_directories)
+{}
 
 void Identification::MainLoop()
 {
@@ -26,10 +25,11 @@ void Identification::MainLoop()
     }
 
     /* Enable the trace logs. */
-    if (!m_log_directory.empty()
-        && !ADQControlUnit_EnableErrorTrace(handle, 0x00010000, m_log_directory.c_str()))
+    const auto &log_directory = m_persistent_directories.GetLogDirectory();
+    if (!log_directory.empty()
+        && !ADQControlUnit_EnableErrorTrace(handle, 0x00010000, log_directory.c_str()))
     {
-        fprintf(stderr, "Failed to redirect trace logging to '%s'.\n", m_log_directory.c_str());
+        fprintf(stderr, "Failed to redirect trace logging to '%s'.\n", log_directory.c_str());
     }
 
     /* Filter out the Gen4 digitizers and construct a digitizer object for each one. */
@@ -58,10 +58,13 @@ void Identification::MainLoop()
         }
     }
 
+    /* Get the persistent directory used to store the digitizer's configuration files. */
+    const auto &configuration_directory = m_persistent_directories.GetConfigurationDirectory();
+
     /* Create a digitizer object for each entry. */
     auto digitizers = std::vector<std::shared_ptr<Digitizer>>();
     for (int i = 0; i < nof_gen4_digitizers; ++i)
-        digitizers.push_back(std::make_shared<Digitizer>(handle, i + 1));
+        digitizers.push_back(std::make_shared<Digitizer>(handle, i + 1, configuration_directory));
 
     /* Forward the control unit handle along with digitizer objects. */
     /* FIXME: Propagate errors? */

@@ -144,7 +144,7 @@ Ui::Ui()
     : Screenshot(NULL)
     , m_should_screenshot(false)
     , m_persistent_directories()
-    , m_identification()
+    , m_identification(m_persistent_directories)
     , m_hotplug()
     , m_adq_control_unit()
     , m_show_imgui_demo_window(false)
@@ -330,7 +330,6 @@ void Ui::IdentifyDigitizers()
     m_adq_control_unit = NULL;
 
     /* (Re)start device identification thread. */
-    m_identification.SetLogDirectory(m_persistent_directories.GetLogDirectory());
     m_identification.Start();
 }
 
@@ -405,8 +404,6 @@ void Ui::HandleMessage(const IdentificationMessage &message)
     for (const auto &d : m_digitizers)
     {
         d.interface->Start();
-        d.interface->EmplaceMessage(DigitizerMessageId::SET_CONFIGURATION_DIRECTORY,
-                                    m_persistent_directories.GetConfigurationDirectory());
         d.interface->EmplaceMessage(DigitizerMessageId::SET_PROCESSING_PARAMETERS,
                                     m_processing_parameters);
     }

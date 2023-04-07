@@ -96,27 +96,27 @@ PersistentDirectories::PersistentDirectories()
     m_imgui_configuration_file = m_configuration_directory + "/imgui.ini";
 }
 
-const std::string &PersistentDirectories::GetConfigurationDirectory()
+const std::string &PersistentDirectories::GetConfigurationDirectory() const
 {
     return m_configuration_directory;
 }
 
-const std::string &PersistentDirectories::GetDataDirectory()
+const std::string &PersistentDirectories::GetDataDirectory() const
 {
     return m_data_directory;
 }
 
-const std::string &PersistentDirectories::GetScreenshotDirectory()
+const std::string &PersistentDirectories::GetScreenshotDirectory() const
 {
     return m_screenshot_directory;
 }
 
-const std::string &PersistentDirectories::GetLogDirectory()
+const std::string &PersistentDirectories::GetLogDirectory() const
 {
     return m_log_directory;
 }
 
-const char *PersistentDirectories::GetImGuiInitializationFile()
+const char *PersistentDirectories::GetImGuiInitializationFile() const
 {
     return m_imgui_configuration_file.c_str();
 }

@@ -53,7 +53,6 @@ enum class DigitizerMessageId
     INITIALIZE_PARAMETERS_FORCE,
     SET_CLOCK_SYSTEM_PARAMETERS,
     SET_PROCESSING_PARAMETERS,
-    SET_CONFIGURATION_DIRECTORY,
     GET_TOP_PARAMETERS_FILENAME,
     GET_CLOCK_SYSTEM_PARAMETERS_FILENAME,
     CLEAR_PROCESSING_MEMORY,
@@ -186,7 +185,7 @@ struct DigitizerMessage
 class Digitizer : public MessageThread<Digitizer, DigitizerMessage>
 {
 public:
-    Digitizer(void *handle, int index);
+    Digitizer(void *handle, int index, const std::string &configuration_directory);
     ~Digitizer();
 
     /* Making copies of an object of this type is not allowed. */
@@ -385,9 +384,6 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
             break;
         case DigitizerMessageId::SET_PROCESSING_PARAMETERS:
             name = "SET_PROCESSING_PARAMETERS";
-            break;
-        case DigitizerMessageId::SET_CONFIGURATION_DIRECTORY:
-            name = "SET_CONFIGURATION_DIRECTORY";
             break;
         case DigitizerMessageId::GET_TOP_PARAMETERS_FILENAME:
             name = "GET_TOP_PARAMETERS_FILENAME";

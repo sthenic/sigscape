@@ -21,6 +21,14 @@ const std::string &FileWatcher::GetPath()
 
 void FileWatcher::MainLoop()
 {
+    /* Avoid watching an empty path. */
+    if (m_path.empty())
+    {
+        fprintf(stderr, "The file watcher cannot watch an empty path.\n");
+        m_thread_exit_code = SCAPE_EINTERNAL;
+        return;
+    }
+
     m_thread_exit_code = SCAPE_EOK;
 
     /* Before we enter the main loop, we check if the file exists. If it

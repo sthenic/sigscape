@@ -1,3 +1,6 @@
+[![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+![build](https://github.com/sthenic/sigscape/workflows/build/badge.svg)
+
 # sigscape
 
 This application is a minimal but feature rich GUI for ADQ3 series digitizers

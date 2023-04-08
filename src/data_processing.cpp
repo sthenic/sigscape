@@ -125,7 +125,7 @@ void DataProcessing::MainLoop()
             return;
         }
 
-        /* FIXME: Low-pass filter these values. Average over the last N record should do. */
+        /* TODO: Low-pass filter these values. Average over the last N record should do. */
         auto time_point_this_record = std::chrono::high_resolution_clock::now();
         auto period = time_point_this_record - time_point_last_record;
         const double estimated_trigger_frequency = 1e9 / period.count();
@@ -156,8 +156,7 @@ void DataProcessing::MainLoop()
                     fprintf(stderr, "Expected a nonzero number of accumulations, skipping normalization.\n");
             }
 
-            /* FIXME: Windowing in the time domain struct?  */
-            /* FIXME: This can throw if data format is unsupported. */
+            /* TODO: This can throw if data format is unsupported. */
             processed_record->time_domain = std::make_shared<TimeDomainRecord>(
                 time_domain, m_afe, m_clock_system, code_normalization,
                 m_parameters.convert_horizontal, m_parameters.convert_vertical
@@ -332,7 +331,7 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
         );
     }
 
-    /* FIXME: Manual opt-out from interleaving analysis? */
+    /* TODO: Manual opt-out from interleaving analysis? */
     Tone gain_phase_spur{};
     Tone offset_spur{};
     PlaceInterleavingSpurs(fundamental, record, gain_phase_spur, offset_spur);
@@ -357,7 +356,7 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
     const double noise_power = total_power - fundamental.power - dc.power -
                                harmonic_distortion_power - interleaving_spur_power;
 
-    /* FIXME: Linear interpolation? */
+    /* TODO: Linear interpolation? */
     frequency_domain->fundamental = {
         frequency_domain->ValueX(fundamental.frequency),
         frequency_domain->ValueY(fundamental.PowerInDecibels()),
@@ -402,8 +401,8 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
     for (const auto &noise : m_noise_moving_average)
         frequency_domain->noise_moving_average.value += noise / normalization;
 
-    /* FIXME: Adjust worst spur if it turns out that it's one of the harmonics
-              that ended up within the blind spot? */
+    /* TODO: Adjust worst spur if it turns out that it's one of the harmonics
+             that ended up within the blind spot? */
 }
 
 void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> &fft,

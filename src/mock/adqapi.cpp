@@ -205,7 +205,6 @@ void *CreateADQControlUnit()
 
 void DeleteADQControlUnit(void *adq_cu)
 {
-    /* FIXME: any cleanup? */
     (void)adq_cu;
     return;
 }

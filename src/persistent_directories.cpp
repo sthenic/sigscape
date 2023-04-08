@@ -41,7 +41,7 @@ PersistentDirectories::PersistentDirectories()
     , m_imgui_configuration_file("imgui.ini")
 {
 #if defined(__APPLE__)
-    /* FIXME: Linux rules apply? */
+    /* TODO: Linux rules apply? */
     #error "NOT IMPLEMENTED"
 #elif defined(_WIN32)
     /* Make sure to normalize the path to use the path separator preferred by Windows. */

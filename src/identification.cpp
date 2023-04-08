@@ -67,7 +67,7 @@ void Identification::MainLoop()
         digitizers.push_back(std::make_shared<Digitizer>(handle, i + 1, configuration_directory));
 
     /* Forward the control unit handle along with digitizer objects. */
-    /* FIXME: Propagate errors? */
+    /* TODO: Propagate errors? */
     m_read_queue.Write({handle, revision, true, digitizers});
     m_thread_exit_code = SCAPE_EOK;
 }

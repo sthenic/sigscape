@@ -102,7 +102,7 @@ int64_t MockDigitizer::WaitForRecordBuffer(int *channel, void **buffer, int time
     int result = m_generators[*channel]->WaitForBuffer(lbuffer, timeout);
     *buffer = lbuffer;
 
-    /* FIXME: Error code space etc.*/
+    /* FIXME: Error code space etc. */
     /* FIXME: Would be better if the generator return length. */
     if (result < 0)
         return result;

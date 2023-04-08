@@ -46,12 +46,6 @@ Digitizer::Digitizer(void *handle, int index, const std::string &configuration_d
     m_sensor_record_queue.Start();
 }
 
-Digitizer::~Digitizer()
-{
-    /* FIXME: Really needed? */
-    Stop();
-}
-
 /* Interface to the digitizer's data processing threads, one per channel. */
 int Digitizer::WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedRecord> &record)
 {
@@ -236,7 +230,7 @@ void Digitizer::InitializeSystemManagerBootStatus()
 
         boot_entries.emplace_back(boot_id, boot_information.label, boot_information.status);
 
-        /* FIXME: Error code to text description? */
+        /* TODO: Error code to text description? */
         if (boot_information.status != 0)
             boot_entries.back().note = "I'm a descriptive error message!";
     }
@@ -852,7 +846,7 @@ void Digitizer::ConfigureDefaultAcquisition()
 
 void Digitizer::ForceAcquisition()
 {
-    /* FIXME: Implement */
+    /* TODO: Implement */
     throw DigitizerException("ForceAcquisition() not implemented.");
 }
 

@@ -55,7 +55,7 @@ cmake --build build
 
 On Ubuntu 22.04 the following libraries are needed:
 ```
-apt install libgl-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
+apt install libgl1-mesa-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libudev-dev
 ```
 
 ### Windows

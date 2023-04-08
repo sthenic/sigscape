@@ -1,5 +1,7 @@
-# This file is intended to be included as a target by  top-level CMakeLists and
-# does not work on its own.  Build with: `cmake --build -t test`
+# This file is intended to be included as a target by the top-level CMakeLists
+# and thus does not work on its own.
+# Build with: `cmake --build --target test`
+# Run with: `cmake --build --target run_tests`
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 cmake_minimum_required(VERSION 3.15)

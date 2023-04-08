@@ -10,8 +10,6 @@ class MockDigitizer
 public:
     MockDigitizer(const struct ADQConstantParameters &constant);
 
-    /* FIXME: Mockup control functions. */
-
     /* Mocked functions. */
     int SetupDevice();
 

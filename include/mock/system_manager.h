@@ -11,23 +11,10 @@ struct SystemManagerMessage
 {
     SystemManagerMessage() = default;
 
-    SystemManagerMessage(SystemManagerCommand cmd)
-        : cmd(cmd)
-        , data{}
-        , result(0)
-    {}
-
     SystemManagerMessage(int result)
         : cmd()
         , data{}
         , result(result)
-    {}
-
-    /* FIXME: Maybe remove? */
-    SystemManagerMessage(SystemManagerCommand cmd, std::vector<uint8_t> &data)
-        : cmd(cmd)
-        , data(data)
-        , result(0)
     {}
 
     SystemManagerMessage(SystemManagerCommand cmd, const void *buffer, size_t len)
@@ -41,13 +28,6 @@ struct SystemManagerMessage
             data.insert(data.end(), ldata, ldata + len);
         }
     }
-
-    /* FIXME: Maybe remove? */
-    SystemManagerMessage(std::vector<uint8_t> &data, int result = 0)
-        : cmd()
-        , data(data)
-        , result(result)
-    {}
 
     SystemManagerMessage(const void *buffer, size_t len, int result = 0)
         : cmd()

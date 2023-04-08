@@ -408,7 +408,7 @@ struct SensorRecord : public BaseRecord
 
     int status;
     uint32_t id;
-    uint32_t group_id; /* FIXME: Prob not needed */
+    uint32_t group_id;
     std::string note;
 };
 

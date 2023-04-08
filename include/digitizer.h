@@ -46,8 +46,8 @@ enum class DigitizerMessageId
     FORCE_ACQUISITION,
     START_ACQUISITION,
     STOP_ACQUISITION,
-    SET_PARAMETERS, /* FIXME: Probably rename this SET_TOP_PARAMETERS */
-    GET_PARAMETERS,
+    SET_TOP_PARAMETERS,
+    GET_TOP_PARAMETERS,
     VALIDATE_PARAMETERS,
     INITIALIZE_PARAMETERS,
     INITIALIZE_PARAMETERS_FORCE,
@@ -364,11 +364,11 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
         case DigitizerMessageId::STOP_ACQUISITION:
             name = "STOP_ACQUISITION";
             break;
-        case DigitizerMessageId::SET_PARAMETERS:
-            name = "SET_PARAMETERS";
+        case DigitizerMessageId::SET_TOP_PARAMETERS:
+            name = "SET_TOP_PARAMETERS";
             break;
-        case DigitizerMessageId::GET_PARAMETERS:
-            name = "GET_PARAMETERS";
+        case DigitizerMessageId::GET_TOP_PARAMETERS:
+            name = "GET_TOP_PARAMETERS";
             break;
         case DigitizerMessageId::VALIDATE_PARAMETERS:
             name = "VALIDATE_PARAMETERS";

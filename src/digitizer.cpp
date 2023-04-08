@@ -520,7 +520,7 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
         SetState(DigitizerState::ACQUISITION);
         break;
 
-    case DigitizerMessageId::SET_PARAMETERS:
+    case DigitizerMessageId::SET_TOP_PARAMETERS:
         SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
         break;
 
@@ -552,7 +552,7 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
         SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
         break;
 
-    case DigitizerMessageId::GET_PARAMETERS:
+    case DigitizerMessageId::GET_TOP_PARAMETERS:
         GetParameters(ADQ_PARAMETER_ID_TOP, m_watchers.top);
         GetParameters(ADQ_PARAMETER_ID_CLOCK_SYSTEM, m_watchers.clock_system);
         break;
@@ -636,7 +636,7 @@ void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &messag
         }
         break;
 
-    case DigitizerMessageId::SET_PARAMETERS:
+    case DigitizerMessageId::SET_TOP_PARAMETERS:
         try
         {
             StopDataAcquisition();

@@ -466,7 +466,7 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
     case DigitizerMessageId::DIRTY_TOP_PARAMETERS:
         digitizer.ui.set_top_color = COLOR_ORANGE;
         /* FIXME: Remove since debug convenience */
-        digitizer.interface->PushMessage(DigitizerMessageId::SET_PARAMETERS);
+        digitizer.interface->PushMessage(DigitizerMessageId::SET_TOP_PARAMETERS);
         break;
 
     case DigitizerMessageId::DIRTY_CLOCK_SYSTEM_PARAMETERS:
@@ -915,7 +915,7 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
 
     ImGui::SameLine();
     if (ImGui::Button("Get", COMMAND_PALETTE_BUTTON_SIZE))
-        PushMessage(DigitizerMessageId::GET_PARAMETERS);
+        PushMessage(DigitizerMessageId::GET_TOP_PARAMETERS);
 
     /* Second row */
     ImGui::BeginDisabled();
@@ -981,7 +981,7 @@ void Ui::RenderSetTopParametersButton(const ImVec2 &size)
     ImGui::PushStyleColor(ImGuiCol_Button, color);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, color);
     if (ImGui::Button("Set", size))
-        PushMessage(DigitizerMessageId::SET_PARAMETERS);
+        PushMessage(DigitizerMessageId::SET_TOP_PARAMETERS);
     ImGui::PopStyleColor(2);
 }
 

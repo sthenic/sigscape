@@ -2638,12 +2638,12 @@ std::vector<std::vector<std::string>> Ui::FormatTimeDomainMetrics(
             record->sampling_period.Format(),
         },
         {
-            "Trigger rate",
-            record->estimated_trigger_frequency.Format(),
+            "Trigger frequency",
+            processed_record->trigger_frequency.Format(),
         },
         {
             "Throughput",
-            record->estimated_throughput.Format(),
+            processed_record->throughput.Format(),
         },
     };
 }

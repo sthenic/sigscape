@@ -138,8 +138,8 @@ void DataProcessing::MainLoop()
         {
             /* We copy the time domain data in order to return the buffer to the
                acquisition interface ASAP. */
-            auto processed_record = std::make_shared<ProcessedRecord>();
-            processed_record->label = m_label;
+            auto processed_record = std::make_shared<ProcessedRecord>(
+                m_label, estimated_trigger_frequency, estimated_throughput);
 
             /* Determine the code normalization value to use to convert the data
                from ADC codes to Volts. Multiply by the number of accumulations
@@ -161,8 +161,6 @@ void DataProcessing::MainLoop()
                 time_domain, m_afe, m_clock_system, code_normalization,
                 m_parameters.convert_horizontal, m_parameters.convert_vertical
             );
-            processed_record->time_domain->estimated_trigger_frequency.value = estimated_trigger_frequency;
-            processed_record->time_domain->estimated_throughput.value = estimated_throughput;
 
             if (m_persistence.size() >= PERSISTENCE_SIZE)
                 m_persistence.pop_back();

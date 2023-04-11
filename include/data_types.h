@@ -129,8 +129,6 @@ struct TimeDomainRecord : public BaseRecord
                      convert_vertical ? Value::Properties{"V", PRECISION, 1e-3, 1e-12}
                                       : Value::Properties{"", PRECISION_UNCONVERTED, 1.0, 1.0})
         , header(*raw->header)
-        , estimated_trigger_frequency(0.0, {"Hz", PRECISION, 1e6})
-        , estimated_throughput(0.0, {"B/s", PRECISION, 1e6})
         , sampling_frequency(0.0, {"Hz", PRECISION, 1e6})
         , sampling_period(0.0, {"s", PRECISION, 1e-3})
         , range_max(ValueY(0.0))
@@ -235,8 +233,6 @@ struct TimeDomainRecord : public BaseRecord
     struct ADQGen4RecordHeader header;
 
     /* Values that can be readily displayed in the UI. */
-    Value estimated_trigger_frequency;
-    Value estimated_throughput;
     Value sampling_frequency;
     Value sampling_period;
     Value range_max;
@@ -369,12 +365,16 @@ struct Persistence
 
 struct ProcessedRecord
 {
-    ProcessedRecord()
+    inline static const std::string PRECISION = "8.2";
+
+    ProcessedRecord(const std::string &label, double trigger_frequency, double throughput)
         : time_domain(NULL)
         , frequency_domain(NULL)
         , waterfall(NULL)
         , persistence(NULL)
-        , label("")
+        , label(label)
+        , trigger_frequency(trigger_frequency, {"Hz", PRECISION, 1e6})
+        , throughput(throughput, {"B/s", PRECISION, 1e6})
     {}
 
     /* Delete copy constructors until we need them. */
@@ -385,7 +385,10 @@ struct ProcessedRecord
     std::shared_ptr<FrequencyDomainRecord> frequency_domain;
     std::shared_ptr<Waterfall> waterfall;
     std::shared_ptr<Persistence> persistence;
+
     std::string label;
+    Value trigger_frequency;
+    Value throughput;
 };
 
 struct SensorRecord : public BaseRecord

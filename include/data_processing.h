@@ -110,7 +110,7 @@ private:
     struct Tone
     {
         Tone() = default;
-        Tone(const ProcessedRecord *record, double frequency, size_t nof_skirt_bins);
+        Tone(const FrequencyDomainRecord &record, double frequency, size_t nof_skirt_bins);
 
         /* Get the power in decibels. */
         double PowerInDecibels() { return 10.0 * std::log10(power); };
@@ -147,19 +147,19 @@ private:
     /* Analyze the fourier transform contained in `fft` of and store the results
        in the processed `record`. */
     void AnalyzeFourierTransform(const std::vector<std::complex<double>> &fft,
-                                 ProcessedRecord *record);
+                                 ProcessedRecord &record);
 
     /* Identify the fundamental tone and the worst spur. The spectrum is
        converted into decibels (in place). */
-    void ProcessAndIdentify(const std::vector<std::complex<double>> &fft, ProcessedRecord *record,
+    void ProcessAndIdentify(const std::vector<std::complex<double>> &fft, ProcessedRecord &record,
                             Tone &dc, Tone &fundamental, Tone &spur, double &power);
 
     /* Given a fundamental tone, place the harmonic overtones into the spectrum. */
-    void PlaceHarmonics(const Tone &fundamental, const ProcessedRecord *record,
+    void PlaceHarmonics(const Tone &fundamental, const ProcessedRecord &record,
                         std::vector<Tone> &harmonics);
 
     /* Given a fundamental tone, place the interleaving  */
-    void PlaceInterleavingSpurs(const Tone &fundamental, const ProcessedRecord *record, Tone &gain,
+    void PlaceInterleavingSpurs(const Tone &fundamental, const ProcessedRecord &record, Tone &gain,
                                 Tone &offset);
 
     /* Resolve overlaps between the harmonics and the other spectral components. */
@@ -176,7 +176,7 @@ private:
     void ResolveOverlap(Tone &tone, const Tone &other, bool &overlap);
 
     /* Analyze the time domain data. */
-    void AnalyzeTimeDomain(ProcessedRecord *record);
+    void AnalyzeTimeDomain(TimeDomainRecord &record);
 
     /* Process messages posted to the thread. */
     void ProcessMessages();

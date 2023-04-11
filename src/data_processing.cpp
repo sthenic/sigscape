@@ -23,7 +23,7 @@ DataProcessingParameters::DataProcessingParameters()
     , fullscale_enob(true)
 {}
 
-DataProcessing::Tone::Tone(const ProcessedRecord *record, double f, size_t nof_skirt_bins)
+DataProcessing::Tone::Tone(const FrequencyDomainRecord &record, double f, size_t nof_skirt_bins)
     : power{}
     , frequency{}
     , idx{}
@@ -39,36 +39,33 @@ DataProcessing::Tone::Tone(const ProcessedRecord *record, double f, size_t nof_s
        it's more efficient to do it this way than to loop over the entire
        spectrum again just to convert to decibels. */
 
-    if (record != NULL)
+    const auto &y = record.y;
+    const auto &bin_range = record.step;
+    const auto &scale_factor = record.scale_factor;
+    const auto &energy_factor = record.energy_factor;
+    const int lidx = static_cast<int>(f / bin_range + 0.5); /* FIXME: std::round? */
+
+    idx_low = static_cast<size_t>(std::max(lidx - static_cast<int>(nof_skirt_bins), 0));
+    idx_high = std::min(lidx + nof_skirt_bins, record.x.size() - 1);
+
+    double numerator = 0.0;
+    double denominator = 0.0;
+    for (size_t i = idx_low; i <= idx_high; ++i)
     {
-        const auto &y = record->frequency_domain->y;
-        const auto &bin_range = record->frequency_domain->step;
-        const auto &scale_factor = record->frequency_domain->scale_factor;
-        const auto &energy_factor = record->frequency_domain->energy_factor;
-        const int lidx = static_cast<int>(f / bin_range + 0.5); /* FIXME: std::round? */
-
-        idx_low = static_cast<size_t>(std::max(lidx - static_cast<int>(nof_skirt_bins), 0));
-        idx_high = std::min(lidx + nof_skirt_bins, record->frequency_domain->x.size() - 1);
-
-        double numerator = 0.0;
-        double denominator = 0.0;
-        for (size_t i = idx_low; i <= idx_high; ++i)
-        {
-            const double bin_power = std::pow(10, y[i] / 10) / scale_factor * energy_factor;
-            numerator += static_cast<double>(i - idx_low) * bin_power;
-            denominator += bin_power;
-            values.push_back(bin_power);
-        }
-
-        const double center_of_mass = static_cast<double>(idx_low) + (numerator / denominator);
-        idx = static_cast<size_t>(center_of_mass + 0.5);
-        idx_fraction = center_of_mass - static_cast<double>(idx);
-        frequency = bin_range * center_of_mass;
-
-        /* This power estimation does not take overlaps into account. This must
-           be handled separately. */
-        power = denominator;
+        const double bin_power = std::pow(10, y[i] / 10) / scale_factor * energy_factor;
+        numerator += static_cast<double>(i - idx_low) * bin_power;
+        denominator += bin_power;
+        values.push_back(bin_power);
     }
+
+    const double center_of_mass = static_cast<double>(idx_low) + (numerator / denominator);
+    idx = static_cast<size_t>(center_of_mass + 0.5);
+    idx_fraction = center_of_mass - static_cast<double>(idx);
+    frequency = bin_range * center_of_mass;
+
+    /* This power estimation does not take overlaps into account. This must
+       be handled separately. */
+    power = denominator;
 }
 
 DataProcessing::DataProcessing(void *handle, int index, int channel, const std::string &label,
@@ -203,7 +200,8 @@ size_t DataProcessing::FoldIndex(size_t f, size_t fs)
     return result;
 }
 
-int DataProcessing::ProcessRecord(const ADQGen4Record *raw_time_domain, ProcessedRecord &processed_record)
+int DataProcessing::ProcessRecord(const ADQGen4Record *raw_time_domain,
+                                  ProcessedRecord &processed_record)
 {
     /* TODO: Split this function into time domain/frequency domain? */
 
@@ -300,10 +298,10 @@ int DataProcessing::ProcessRecord(const ADQGen4Record *raw_time_domain, Processe
     }
 
     /* Analyze the fourier transform data, scaling the data and extracting key metrics. */
-    AnalyzeFourierTransform(yc, &processed_record); /* FIXME: Reference */
+    AnalyzeFourierTransform(yc, processed_record);
 
     /* Analyze the time domain data. */
-    AnalyzeTimeDomain(&processed_record); /* FIXME: Reference */
+    AnalyzeTimeDomain(*processed_record.time_domain);
 
     /* Push the new FFT at the top of the waterfall and construct a row-major
        array for the plotting. We unfortunately cannot the requirement of this
@@ -317,7 +315,7 @@ int DataProcessing::ProcessRecord(const ADQGen4Record *raw_time_domain, Processe
 }
 
 void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<double>> &fft,
-                                             ProcessedRecord *record)
+                                             ProcessedRecord &record)
 {
     Tone fundamental{};
     Tone spur{};
@@ -328,7 +326,7 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
     std::vector<Tone> harmonics{};
     PlaceHarmonics(fundamental, record, harmonics);
 
-    auto &frequency_domain = record->frequency_domain;
+    auto &frequency_domain = record.frequency_domain;
     frequency_domain->overlap = false;
     ResolveHarmonicOverlaps(dc, fundamental, harmonics, frequency_domain->overlap);
 
@@ -418,7 +416,7 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
 }
 
 void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> &fft,
-                                        ProcessedRecord *record, Tone &dc, Tone &fundamental,
+                                        ProcessedRecord &record, Tone &dc, Tone &fundamental,
                                         Tone &spur, double &power)
 {
     /* The loop upper bound is expected to be N/2 + 1 where N is the length of
@@ -437,11 +435,11 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
        analysis process. We do this to manage the complexity to stay performant
        for long FFTs. */
 
-    auto &x = record->frequency_domain->x;
-    auto &y = record->frequency_domain->y;
-    const auto &bin_range = record->frequency_domain->step;
-    const auto &scale_factor = record->frequency_domain->scale_factor;
-    const auto &energy_factor = record->frequency_domain->energy_factor;
+    auto &x = record.frequency_domain->x;
+    auto &y = record.frequency_domain->y;
+    const auto &bin_range = record.frequency_domain->step;
+    const auto &scale_factor = record.frequency_domain->scale_factor;
+    const auto &energy_factor = record.frequency_domain->energy_factor;
     const size_t nof_skirt_bins = static_cast<size_t>(m_parameters.nof_skirt_bins);
     const double nyquist_frequency = static_cast<double>(x.size() - 1) * bin_range;
     const bool fixed_fundamental = m_parameters.fundamental_frequency > 0 &&
@@ -563,31 +561,33 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
     }
 }
 
-void DataProcessing::PlaceHarmonics(const Tone &fundamental, const ProcessedRecord *record,
+void DataProcessing::PlaceHarmonics(const Tone &fundamental, const ProcessedRecord &record,
                                     std::vector<Tone> &harmonics)
 {
     /* Analyze the harmonics. We only look at HD2 to HD5. */
     for (int hd = 2; hd <= 5; ++hd)
     {
         const double f = FoldFrequency(fundamental.frequency * hd,
-                                       record->time_domain->sampling_frequency.value);
-        harmonics.emplace_back(record, f, m_parameters.nof_skirt_bins);
+                                       record.time_domain->sampling_frequency.value);
+        harmonics.emplace_back(*record.frequency_domain, f, m_parameters.nof_skirt_bins);
     }
 }
 
-void DataProcessing::PlaceInterleavingSpurs(const Tone &fundamental, const ProcessedRecord *record,
+void DataProcessing::PlaceInterleavingSpurs(const Tone &fundamental, const ProcessedRecord &record,
                                             Tone &gain, Tone &offset)
 {
-    /* Estimate the interleaving gain spur. */
     const double f_gain = FoldFrequency(
-        fundamental.frequency + record->time_domain->sampling_frequency.value / 2,
-        record->time_domain->sampling_frequency.value
+        fundamental.frequency + record.time_domain->sampling_frequency.value / 2,
+        record.time_domain->sampling_frequency.value
     );
-    gain = std::move(Tone(record, f_gain, m_parameters.nof_skirt_bins));
+
+    /* Estimate the interleaving gain spur. */
+    gain = std::move(Tone(*record.frequency_domain, f_gain, m_parameters.nof_skirt_bins));
 
     /* Estimate the interleaving offset spur. */
-    offset = std::move(
-        Tone(record, record->time_domain->sampling_frequency.value / 2, m_parameters.nof_skirt_bins));
+    offset = std::move(Tone(*record.frequency_domain,
+                            record.time_domain->sampling_frequency.value / 2,
+                            m_parameters.nof_skirt_bins));
 }
 
 void DataProcessing::ResolveHarmonicOverlaps(const Tone &dc, const Tone &fundamental,
@@ -650,30 +650,29 @@ void DataProcessing::ResolveOverlap(Tone &tone, const Tone &other, bool &overlap
     }
 }
 
-void DataProcessing::AnalyzeTimeDomain(ProcessedRecord *record)
+void DataProcessing::AnalyzeTimeDomain(TimeDomainRecord &record)
 {
-    auto &time_domain = record->time_domain;
-    for (const auto &y : time_domain->y)
+    for (const auto &y : record.y)
     {
-        if (y > time_domain->max.value)
-            time_domain->max.value = y;
+        if (y > record.max.value)
+            record.max.value = y;
 
-        if (y < time_domain->min.value)
-            time_domain->min.value = y;
+        if (y < record.min.value)
+            record.min.value = y;
 
-        time_domain->mean.value += y;
+        record.mean.value += y;
     }
 
-    time_domain->mean.value /= static_cast<double>(time_domain->y.size());
+    record.mean.value /= static_cast<double>(record.y.size());
 
-    for (const auto &y : time_domain->y)
+    for (const auto &y : record.y)
     {
-        const double diff = (y - time_domain->mean.value);
-        time_domain->sdev.value += diff * diff;
+        const double diff = (y - record.mean.value);
+        record.sdev.value += diff * diff;
     }
 
-    time_domain->sdev.value /= static_cast<double>(time_domain->y.size());
-    time_domain->sdev.value = std::sqrt(time_domain->sdev.value);
+    record.sdev.value /= static_cast<double>(record.y.size());
+    record.sdev.value = std::sqrt(record.sdev.value);
 }
 
 void DataProcessing::ProcessMessages()

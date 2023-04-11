@@ -126,120 +126,21 @@ void DataProcessing::MainLoop()
         }
 
         /* TODO: Low-pass filter these values. Average over the last N record should do. */
-        auto time_point_this_record = std::chrono::high_resolution_clock::now();
-        auto period = time_point_this_record - time_point_last_record;
+        const auto time_point_this_record = std::chrono::high_resolution_clock::now();
+        const auto period = time_point_this_record - time_point_last_record;
         const double estimated_trigger_frequency = 1e9 / period.count();
         const double estimated_throughput = bytes_received * estimated_trigger_frequency;
         time_point_last_record = time_point_this_record;
 
-        /* We only allocate memory and calculate the FFT if we know that we're
+        /* We only allocate memory and process the record if we know that we're
            going to show it, i.e. if the outbound queue has space available. */
         if (!m_read_queue.IsFull())
         {
-            /* We copy the time domain data in order to return the buffer to the
-               acquisition interface ASAP. */
             auto processed_record = std::make_shared<ProcessedRecord>(
                 m_label, estimated_trigger_frequency, estimated_throughput);
 
-            /* Determine the code normalization value to use to convert the data
-               from ADC codes to Volts. Multiply by the number of accumulations
-               if we're running FWATD (normalizing with a higher value). */
-
-            double code_normalization =
-                static_cast<double>(m_constant.channel[channel].code_normalization);
-
-            if (m_constant.firmware.type == ADQ_FIRMWARE_TYPE_FWATD)
-            {
-                if (time_domain->header->firmware_specific > 0)
-                    code_normalization *= time_domain->header->firmware_specific;
-                else
-                    fprintf(stderr, "Expected a nonzero number of accumulations, skipping normalization.\n");
-            }
-
-            /* TODO: This can throw if data format is unsupported. */
-            processed_record->time_domain = std::make_shared<TimeDomainRecord>(
-                time_domain, m_afe, m_clock_system, code_normalization,
-                m_parameters.convert_horizontal, m_parameters.convert_vertical
-            );
-
-            if (m_persistence.size() >= PERSISTENCE_SIZE)
-                m_persistence.pop_back();
-            m_persistence.push_front(processed_record->time_domain);
-            processed_record->persistence = std::make_shared<Persistence>(m_persistence);
-
-            const size_t FFT_LENGTH = PreviousPowerOfTwo(time_domain->header->record_length);
-            processed_record->frequency_domain =
-                std::make_shared<FrequencyDomainRecord>(FFT_LENGTH / 2 + 1);
-            processed_record->frequency_domain->step =
-                processed_record->time_domain->sampling_frequency.value / static_cast<double>(FFT_LENGTH);
-            processed_record->frequency_domain->rbw.value = processed_record->frequency_domain->step;
-            processed_record->frequency_domain->size.value = static_cast<double>(FFT_LENGTH);
-
-            /* Windowing and scaling to [-1, 1] for the correct FFT values. We
-               use the raw data again since the processed time domain record
-               will have been scaled to Volts with the input range and DC offset
-               taken into account. */
-
-            /* TODO: Make 'no window' into a proper uniform window? */
-            const auto window = m_window_cache.GetWindow(m_parameters.window_type, FFT_LENGTH);
-            auto &scale_factor = processed_record->frequency_domain->scale_factor;
-            auto &energy_factor = processed_record->frequency_domain->energy_factor;
-            energy_factor = (window != NULL) ? window->energy_factor : 1.0;
-            switch (m_parameters.fft_scaling)
-            {
-            case FrequencyDomainScaling::AMPLITUDE:
-                scale_factor = (window != NULL) ? window->amplitude_factor : 1.0;
-                break;
-            case FrequencyDomainScaling::ENERGY:
-                scale_factor = (window != NULL) ? window->energy_factor : 1.0;
-                break;
-            }
-
-            auto y = std::vector<double>(FFT_LENGTH);
-            switch (time_domain->header->data_format)
-            {
-            case ADQ_DATA_FORMAT_INT16:
-                TransformToUnitRange(static_cast<const int16_t *>(time_domain->data),
-                                     code_normalization, window.get(), y);
-                break;
-
-            case ADQ_DATA_FORMAT_INT32:
-                TransformToUnitRange(static_cast<const int32_t *>(time_domain->data),
-                                     code_normalization, window.get(), y);
-                break;
-
-            default:
-                fprintf(stderr, "Unknown data format '%" PRIu8 "', aborting.\n",
-                        time_domain->header->data_format);
-                m_thread_exit_code = SCAPE_EINTERNAL;
-                return;
-            }
-
-            /* Calculate the FFT */
-            const char *error = NULL;
-            auto yc = std::vector<std::complex<double>>(FFT_LENGTH);
-            if (!simple_fft::FFT(y, yc, FFT_LENGTH, error))
-            {
-                fprintf(stderr, "Failed to compute FFT: %s.\n", error);
-                ADQ_ReturnRecordBuffer(m_handle, m_index, channel, time_domain);
-                continue;
-            }
-
-            /* Analyze the fourier transform data, scaling the data and extracting key metrics. */
-            AnalyzeFourierTransform(yc, processed_record.get());
-
-            /* Analyze the time domain data. */
-            AnalyzeTimeDomain(processed_record.get());
-
-            /* Push the new FFT at the top of the waterfall and construct a
-               row-major array for the plotting. We unfortunately cannot the
-               requirement of this linear layout. */
-            if (m_waterfall.size() >= WATERFALL_SIZE)
-                m_waterfall.pop_back();
-            m_waterfall.push_front(processed_record->frequency_domain);
-            processed_record->waterfall = std::make_shared<Waterfall>(m_waterfall);
-
-            m_read_queue.Write(processed_record);
+            if (SCAPE_EOK == ProcessRecord(time_domain, *processed_record))
+                m_read_queue.Write(processed_record);
         }
         else
         {
@@ -300,6 +201,119 @@ size_t DataProcessing::FoldIndex(size_t f, size_t fs)
             result = fs - result;
     }
     return result;
+}
+
+int DataProcessing::ProcessRecord(const ADQGen4Record *raw_time_domain, ProcessedRecord &processed_record)
+{
+    /* TODO: Split this function into time domain/frequency domain? */
+
+    /* Determine the code normalization value to use to convert the data from
+       ADC codes to Volts. Multiply by the number of accumulations if we're
+       running FWATD (normalizing with a higher value). */
+
+    const auto channel = raw_time_domain->header->channel;
+    auto code_normalization = static_cast<double>(m_constant.channel[channel].code_normalization);
+
+    if (m_constant.firmware.type == ADQ_FIRMWARE_TYPE_FWATD)
+    {
+        if (raw_time_domain->header->firmware_specific > 0)
+            code_normalization *= raw_time_domain->header->firmware_specific;
+        else
+            fprintf(stderr, "Expected a nonzero number of accumulations, skipping normalization.\n");
+    }
+
+    try
+    {
+        /* Processing the raw time domain data can throw if the data format is unsupported. */
+        processed_record.time_domain = std::make_shared<TimeDomainRecord>(
+            raw_time_domain, m_afe, m_clock_system, code_normalization,
+            m_parameters.convert_horizontal, m_parameters.convert_vertical
+        );
+    }
+    catch (const std::invalid_argument &e)
+    {
+        fprintf(stderr, "%s\n", e.what());
+        return SCAPE_EINTERNAL;
+    }
+
+    /* Add to the persistence memory. */
+    if (m_persistence.size() >= PERSISTENCE_SIZE)
+        m_persistence.pop_back();
+    m_persistence.push_front(processed_record.time_domain);
+    processed_record.persistence = std::make_shared<Persistence>(m_persistence);
+
+    /* Calculate the FFT and assign parameters we know at this stage. */
+    const size_t FFT_LENGTH = PreviousPowerOfTwo(raw_time_domain->header->record_length);
+    processed_record.frequency_domain =
+        std::make_shared<FrequencyDomainRecord>(FFT_LENGTH / 2 + 1);
+
+    processed_record.frequency_domain->step =
+        processed_record.time_domain->sampling_frequency.value / static_cast<double>(FFT_LENGTH);
+    processed_record.frequency_domain->rbw.value = processed_record.frequency_domain->step;
+    processed_record.frequency_domain->size.value = static_cast<double>(FFT_LENGTH);
+
+    /* Window the time domain data and scale it to the unit range [-1, 1] for
+       the correct FFT values. We use the 'raw' data again since the processed
+       time domain record will have been scaled to Volts with the input range
+       and DC offset taken into account. */
+
+    /* TODO: Make 'no window' into a proper uniform window? */
+    const auto window = m_window_cache.GetWindow(m_parameters.window_type, FFT_LENGTH);
+    auto &scale_factor = processed_record.frequency_domain->scale_factor;
+    auto &energy_factor = processed_record.frequency_domain->energy_factor;
+    energy_factor = (window != NULL) ? window->energy_factor : 1.0;
+    switch (m_parameters.fft_scaling)
+    {
+    case FrequencyDomainScaling::AMPLITUDE:
+        scale_factor = (window != NULL) ? window->amplitude_factor : 1.0;
+        break;
+    case FrequencyDomainScaling::ENERGY:
+        scale_factor = (window != NULL) ? window->energy_factor : 1.0;
+        break;
+    }
+
+    auto y = std::vector<double>(FFT_LENGTH);
+    switch (raw_time_domain->header->data_format)
+    {
+    case ADQ_DATA_FORMAT_INT16:
+        TransformToUnitRange(static_cast<const int16_t *>(raw_time_domain->data),
+                             code_normalization, window.get(), y);
+        break;
+
+    case ADQ_DATA_FORMAT_INT32:
+        TransformToUnitRange(static_cast<const int32_t *>(raw_time_domain->data),
+                             code_normalization, window.get(), y);
+        break;
+
+    default:
+        fprintf(stderr, "Unknown data format '%" PRIu8 "'.\n", raw_time_domain->header->data_format);
+        return SCAPE_EINTERNAL;
+    }
+
+    /* Calculate the FFT */
+    const char *error = NULL;
+    auto yc = std::vector<std::complex<double>>(FFT_LENGTH);
+    if (!simple_fft::FFT(y, yc, FFT_LENGTH, error))
+    {
+        fprintf(stderr, "Failed to compute FFT: %s.\n", error);
+        return SCAPE_EINTERNAL;
+    }
+
+    /* Analyze the fourier transform data, scaling the data and extracting key metrics. */
+    AnalyzeFourierTransform(yc, &processed_record); /* FIXME: Reference */
+
+    /* Analyze the time domain data. */
+    AnalyzeTimeDomain(&processed_record); /* FIXME: Reference */
+
+    /* Push the new FFT at the top of the waterfall and construct a row-major
+       array for the plotting. We unfortunately cannot the requirement of this
+       linear layout. */
+    if (m_waterfall.size() >= WATERFALL_SIZE)
+        m_waterfall.pop_back();
+    m_waterfall.push_front(processed_record.frequency_domain);
+    processed_record.waterfall = std::make_shared<Waterfall>(m_waterfall);
+
+    return SCAPE_EOK;
 }
 
 void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<double>> &fft,

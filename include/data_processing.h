@@ -139,6 +139,11 @@ private:
        reach the first Nyquist zone. */
     static size_t FoldIndex(size_t f, size_t fs);
 
+    /* Process the raw data from the digitizer, filling the `time_domain` and
+       `frequency_domain` members of the `processed_record`. The parameter
+       `raw_time_domain` _must not_ be NULL. */
+    int ProcessRecord(const ADQGen4Record *raw_time_domain, ProcessedRecord &processed_record);
+
     /* Analyze the fourier transform contained in `fft` of and store the results
        in the processed `record`. */
     void AnalyzeFourierTransform(const std::vector<std::complex<double>> &fft,

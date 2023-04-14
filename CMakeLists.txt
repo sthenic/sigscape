@@ -57,7 +57,7 @@ FetchContent_MakeAvailable(implot)
 FetchContent_Declare(
     imgui
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
-    GIT_TAG v1.89
+    GIT_TAG v1.89.5
 )
 FetchContent_MakeAvailable(imgui)
 
@@ -165,7 +165,7 @@ endif()
 
 if (UNIX)
     target_compile_definitions(${PROJECT_NAME} PUBLIC
-        LINUX)
+        IMGUI_USER_CONFIG="imgui_config.h")
     target_compile_options(${PROJECT_NAME} PRIVATE
         -Wall -Wextra -Wswitch -Werror=overflow)
 elseif (WIN32)

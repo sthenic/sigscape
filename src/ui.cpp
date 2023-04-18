@@ -938,11 +938,11 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
         PushMessage(DigitizerMessageId::DEFAULT_ACQUISITION);
 
     ImGui::SameLine();
-    if (ImGui::Button("Internal\nReference", COMMAND_PALETTE_BUTTON_SIZE))
+    if (ImGui::Button("Internal\nClock Ref.", COMMAND_PALETTE_BUTTON_SIZE))
         PushMessage(DigitizerMessageId::SET_INTERNAL_REFERENCE);
 
     ImGui::SameLine();
-    if (ImGui::Button("External\nReference", COMMAND_PALETTE_BUTTON_SIZE))
+    if (ImGui::Button("External\nClock Ref.", COMMAND_PALETTE_BUTTON_SIZE))
         PushMessage(DigitizerMessageId::SET_EXTERNAL_REFERENCE);
 
     ImGui::SameLine();

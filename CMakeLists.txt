@@ -102,7 +102,7 @@ FetchContent_MakeAvailable(json)
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 target_sources(${PROJECT_NAME} PRIVATE
-    src/gl3w/gl3w.c
+    vendor/gl3w/gl3w.c
     ${implot_SOURCE_DIR}/implot.cpp
     ${implot_SOURCE_DIR}/implot_items.cpp
     ${implot_SOURCE_DIR}/implot_demo.cpp
@@ -143,8 +143,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${png_SOURCE_DIR}
     ${fmt_SOURCE_DIR}/include
     ${json_SOURCE_DIR}/include
-    simple_fft
-    include/gl3w
+    vendor/simple_fft
+    vendor/gl3w
     include
 )
 

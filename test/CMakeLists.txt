@@ -46,7 +46,7 @@ target_sources(${PROJECT_NAME} PRIVATE
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../simple_fft
+    ${CMAKE_CURRENT_SOURCE_DIR}/../vendor/simple_fft
     ${fmt_SOURCE_DIR}/include)
 
 if (UNIX)

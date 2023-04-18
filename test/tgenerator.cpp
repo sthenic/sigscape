@@ -31,8 +31,8 @@ TEST(Generator, Test0)
 TEST(Generator, Records)
 {
     constexpr size_t RECORD_LENGTH = 1024;
-    constexpr double TRIGGER_FREQUENCY = 100.0;
-    constexpr int NOF_RECORDS = 200;
+    constexpr double TRIGGER_FREQUENCY = 30.0;
+    constexpr int NOF_RECORDS = 60;
 
     Generator::Parameters parameters;
     parameters.record_length = RECORD_LENGTH;

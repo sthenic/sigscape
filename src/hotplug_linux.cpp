@@ -49,6 +49,7 @@ void HotplugLinux::CheckForEvents()
             m_read_queue.EmplaceWrite(HotplugEvent::DISCONNECT);
 
         m_nof_devices = nof_devices;
+        udev_enumerate_unref(enumerator);
     }
     catch (const HotplugLinuxException& e)
     {

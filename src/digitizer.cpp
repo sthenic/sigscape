@@ -593,9 +593,9 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
 
 void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &message)
 {
-    /* If we encounter an exception in the ACQUISITION state, have to abort and
-       return to the IDLE state. We pass on the exception to the upper layers to
-       create an error message. */
+    /* If we encounter an exception in the ACQUISITION state, we have to abort
+       and return to the IDLE state. We pass on the exception to the upper
+       layers to create an error message. */
     switch (message.id)
     {
     case DigitizerMessageId::STOP_ACQUISITION:

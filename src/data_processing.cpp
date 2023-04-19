@@ -35,8 +35,8 @@ DataProcessing::Tone::Tone(const FrequencyDomainRecord &record, double f, size_t
     /* We use the same approach as for the tone analysis identifying the
        fundamental tone (with interpolation). We assume that the processed
        record's frequency domain contents has values converted to decibels full
-       scale, so have to reverse that conversion for the surrounding bins. Still
-       it's more efficient to do it this way than to loop over the entire
+       scale, so we have to reverse that conversion for the surrounding bins.
+       Still, it's more efficient to do it this way than to loop over the entire
        spectrum again just to convert to decibels. */
 
     const auto &y = record.y;
@@ -111,7 +111,7 @@ void DataProcessing::MainLoop()
                                                          (void **)&time_domain, 100, NULL);
 
         /* Continue on timeout. */
-        if ((bytes_received == ADQ_EAGAIN) || (bytes_received == ADQ_ENOTREADY) || (bytes_received == SCAPE_EINTERRUPTED))
+        if ((bytes_received == ADQ_EAGAIN) || (bytes_received == ADQ_ENOTREADY) || (bytes_received == ADQ_EINTERRUPTED))
         {
             continue;
         }
@@ -304,8 +304,8 @@ int DataProcessing::ProcessRecord(const ADQGen4Record *raw_time_domain,
     AnalyzeTimeDomain(*processed_record.time_domain);
 
     /* Push the new FFT at the top of the waterfall and construct a row-major
-       array for the plotting. We unfortunately cannot the requirement of this
-       linear layout. */
+       array for the plotting. We unfortunately cannot do anything about the
+       requirement of this linear layout. */
     if (m_waterfall.size() >= WATERFALL_SIZE)
         m_waterfall.pop_back();
     m_waterfall.push_front(processed_record.frequency_domain);
@@ -361,8 +361,8 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
         frequency_domain->ValueY(offset_spur.PowerInDecibels()),
     };
 
-    /* Remove the power of the fundamental tone and other spectral components
-       from the total noise power. */
+    /* Calculate the noise power by removing the power of the fundamental tone
+       and other spectral components from the total power. */
     const double noise_power = total_power - fundamental.power - dc.power -
                                harmonic_distortion_power - interleaving_spur_power;
 
@@ -493,11 +493,11 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
         y[i] = m_fft_moving_average.InsertAndAverage(i, FromComplex(fft[i]));
 
         /* We will always need the energy-accurate bin value for the calculations below. */
-        double y_power = y[i] * energy_factor;
+        const double y_power = y[i] * energy_factor;
 
         /* Scale the value stored for plotting with the `scale_factor`, which
            can result in either an amplitude-accurate spectrum or an
-           energy-accurate spectrum. Convert to decibels.*/
+           energy-accurate spectrum. Convert to decibels. */
         y[i] = 10.0 * std::log10(y[i] * scale_factor);
 
         /* Add the bin's contribution to the total power. */

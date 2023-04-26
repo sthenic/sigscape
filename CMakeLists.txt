@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.18)
 project(sigscape
   VERSION 0.1.0
   HOMEPAGE_URL "https://github.com/sthenic/sigscape"
@@ -100,6 +100,8 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(json)
 
+find_package(Python3 REQUIRED Development.Embed)
+
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 target_sources(${PROJECT_NAME} PRIVATE
     vendor/gl3w/gl3w.c
@@ -145,6 +147,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${json_SOURCE_DIR}/include
     vendor/simple_fft
     vendor/gl3w
+    ${Python3_INCLUDE_DIRS}
     include
 )
 
@@ -233,6 +236,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     glfw
     fmt
     png_static
+    ${Python3_LIBRARIES}
 )
 
 # Link against libadq unless MOCK_ADQAPI is set.

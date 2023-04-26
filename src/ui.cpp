@@ -4,6 +4,7 @@
 
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
+#include "Python.h"
 #include <cinttypes>
 #include <cmath>
 #include <ctime>
@@ -195,6 +196,8 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version,
         IdentifyDigitizers();
     }
 #endif
+
+    Py_Initialize();
 }
 
 void Ui::Terminate()
@@ -210,6 +213,9 @@ void Ui::Terminate()
     ImGui_ImplGlfw_Shutdown();
     ImPlot::DestroyContext();
     ImGui::DestroyContext();
+
+    if (Py_FinalizeEx() != 0)
+        fprintf(stderr, "Failed to destroy the Python3 context.\n");
 }
 
 void Ui::Render(float width, float height)
@@ -957,6 +963,13 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
     ImGui::SameLine();
     if (ImGui::Button("Copy Clock\nSystem\nFilename", COMMAND_PALETTE_BUTTON_SIZE))
         PushMessage(DigitizerMessageId::GET_CLOCK_SYSTEM_PARAMETERS_FILENAME);
+
+    ImGui::SameLine();
+    if (ImGui::Button("Python", COMMAND_PALETTE_BUTTON_SIZE))
+    {
+        PyRun_SimpleString("from datetime import datetime\n"
+                           "print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))\n");
+    }
 
     if (nof_selected == 0)
         ImGui::EndDisabled();

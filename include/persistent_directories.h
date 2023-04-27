@@ -22,6 +22,9 @@ public:
     /* Get the directory used to store log files (subdirectory to the persistent data). */
     const std::string &GetLogDirectory() const;
 
+    /* Get the directory used to store Python scripts (subdirectory to the persistent data). */
+    const std::string &GetPythonDirectory() const;
+
     /* Get the ImGui initialization file. */
     const char *GetImGuiInitializationFile() const;
 
@@ -30,6 +33,7 @@ private:
     std::string m_data_directory;
     std::string m_screenshot_directory;
     std::string m_log_directory;
+    std::string m_python_directory;
 
     /* Static storage for the ImGui configuration file to be able to have 'const char *'
        as the return type of GetImGuiInitializationFile(). */

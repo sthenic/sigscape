@@ -92,6 +92,9 @@ PersistentDirectories::PersistentDirectories()
 
     m_log_directory = m_data_directory + "/logs";
     ValidateDirectoryCreateIfNeeded(m_log_directory);
+
+    m_python_directory = m_data_directory + "/python";
+    ValidateDirectoryCreateIfNeeded(m_python_directory);
 #endif
     m_imgui_configuration_file = m_configuration_directory + "/imgui.ini";
 }
@@ -114,6 +117,11 @@ const std::string &PersistentDirectories::GetScreenshotDirectory() const
 const std::string &PersistentDirectories::GetLogDirectory() const
 {
     return m_log_directory;
+}
+
+const std::string &PersistentDirectories::GetPythonDirectory() const
+{
+    return m_python_directory;
 }
 
 const char *PersistentDirectories::GetImGuiInitializationFile() const

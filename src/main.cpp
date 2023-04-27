@@ -6,10 +6,17 @@
 
 #include <vector>
 #include <string>
+#include <csignal>
 
 /* Global GLFW window to enable callback to save to file. */
 /* TODO: Maybe not the best idea in the world. */
 static GLFWwindow *window = NULL;
+static bool should_exit = false;
+
+static void signal_handler(int)
+{
+    should_exit = true;
+}
 
 static void GlfwErrorCallback(int error, const char *description)
 {
@@ -90,6 +97,8 @@ static bool Screenshot(const std::string &filename)
 
 int main(int, char **)
 {
+    signal(SIGINT, signal_handler);
+
     glfwSetErrorCallback(GlfwErrorCallback);
     if (!glfwInit())
         return -1;
@@ -122,7 +131,7 @@ int main(int, char **)
     Ui ui;
     ui.Initialize(window, glsl_version, Screenshot);
 
-    while (!glfwWindowShouldClose(window))
+    while (!glfwWindowShouldClose(window) && !should_exit)
     {
         int display_width;
         int display_height;

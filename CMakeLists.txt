@@ -147,7 +147,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${json_SOURCE_DIR}/include
     vendor/simple_fft
     vendor/gl3w
-    ${Python3_INCLUDE_DIRS}
     include
 )
 
@@ -236,7 +235,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     glfw
     fmt
     png_static
-    ${Python3_LIBRARIES}
+    Python3::Python
 )
 
 # Link against libadq unless MOCK_ADQAPI is set.

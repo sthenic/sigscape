@@ -1,5 +1,6 @@
 #include "embedded_python.h"
 
+#include "Python.h"
 #include <stdexcept>
 
 /* This is a wrapper around a `PyObject *` that mimics the behavior of a

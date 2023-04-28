@@ -1,8 +1,6 @@
 #pragma once
 
 #include "error.h"
-
-#include "Python.h"
 #include <string>
 
 namespace EmbeddedPython

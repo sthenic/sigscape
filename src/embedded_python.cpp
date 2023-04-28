@@ -46,14 +46,14 @@ public:
         return m_object;
     }
 
-    bool operator==(const UniquePyObject &other) const
+    bool operator==(const PyObject *other) const
     {
-        return m_object == other.m_object;
+        return m_object == other;
     }
 
-    bool operator!=(const UniquePyObject &other) const
+    bool operator!=(const PyObject *other) const
     {
-        return m_object != other.m_object;
+        return m_object != other;
     }
 
 private:
@@ -121,36 +121,58 @@ int EmbeddedPython::AddToPath(const std::string &directory)
     return result;
 }
 
-int EmbeddedPython::CallMain(const std::string &target_module, int i)
+static PyObject *AsCtypesPointer(void *handle)
+{
+    UniquePyObject ctypes{PyImport_ImportModule("ctypes")};
+    if (ctypes == NULL)
+        throw EmbeddedPythonException();
+
+    UniquePyObject constructor{PyObject_GetAttrString(ctypes.get(), "c_void_p")};
+    if (ctypes == NULL)
+        throw EmbeddedPythonException();
+
+    /* Reference to `value` is stolen by `PyTuple_SetItem`. */
+    UniquePyObject args{PyTuple_New(1)};
+    auto value = PyLong_FromSize_t(reinterpret_cast<size_t>(handle));
+    if (value == NULL)
+        throw EmbeddedPythonException();
+    PyTuple_SetItem(args.get(), 0, value);
+
+    auto result = PyObject_CallObject(constructor.get(), args.get());
+    if (result == NULL)
+        throw EmbeddedPythonException();
+
+    return result;
+}
+
+int EmbeddedPython::CallMain(const std::string &module_str, void *handle, int index)
 {
     auto state = PyGILState_Ensure();
     int result = SCAPE_EOK;
     try
     {
-        UniquePyObject name{PyUnicode_DecodeFSDefault(target_module.c_str())};
-        if (name == NULL)
-            throw EmbeddedPythonException();
-
-        UniquePyObject module{PyImport_Import(name.get())};
+        UniquePyObject module{PyImport_ImportModule(module_str.c_str())};
         if (module == NULL)
             throw EmbeddedPythonException();
 
-        /* `PyImport_Import` makes use of any cached version of the module, so
-            we always reload the module because its contents could have changed
-            between calls. */
+        /* `PyImport_ImportModule` makes use of any cached version of the
+            module, so we always reload the module because its contents could
+            have changed between calls. */
         module = UniquePyObject{PyImport_ReloadModule(module.get())};
 
         UniquePyObject function{PyObject_GetAttrString(module.get(), "main")};
         if (function != NULL && PyCallable_Check(function.get()))
         {
-            UniquePyObject args{PyTuple_New(1)};
+            UniquePyObject args{PyTuple_New(2)};
 
-            /* The reference to `value` will be stolen by `PyTuple_SetItem` so
-               we should not track this object as a `UniquePyObject`. */
-            auto value = PyLong_FromLong(i);
-            if (value == NULL)
+            /* The PyObject references will be stolen by `PyTuple_SetItem` so we
+               should not track these objects as a `UniquePyObject`. */
+            PyTuple_SetItem(args.get(), 0, AsCtypesPointer(handle));
+
+            auto py_index = PyLong_FromLong(index);
+            if (py_index == NULL)
                 throw EmbeddedPythonException();
-            PyTuple_SetItem(args.get(), 0, value);
+            PyTuple_SetItem(args.get(), 1, py_index);
 
             UniquePyObject result{PyObject_CallObject(function.get(), args.get())};
             if (result == NULL)
@@ -160,9 +182,6 @@ int EmbeddedPython::CallMain(const std::string &target_module, int i)
         {
             throw EmbeddedPythonException();
         }
-
-        PyRun_SimpleString("from datetime import datetime\n"
-                           "print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))\n");
     }
     catch (const EmbeddedPythonException &)
     {

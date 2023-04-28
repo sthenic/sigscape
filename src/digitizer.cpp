@@ -588,8 +588,7 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
         break;
 
     case DigitizerMessageId::CALL_PYTHON:
-        printf("Calling python!\n");
-        EmbeddedPython::CallMain("tmp", m_id.index);
+        EmbeddedPython::CallMain("digitizer", m_id.handle, m_id.index);
         break;
 
     default:

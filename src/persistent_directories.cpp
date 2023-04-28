@@ -60,6 +60,10 @@ PersistentDirectories::PersistentDirectories()
     m_log_directory = m_data_directory + "/logs";
     std::replace(m_log_directory.begin(), m_log_directory.end(), '/', '\\');
     ValidateDirectoryCreateIfNeeded(m_log_directory);
+
+    m_python_directory = m_data_directory + "/python";
+    std::replace(m_python_directory.begin(), m_python_directory.end(), '/', '\\');
+    ValidateDirectoryCreateIfNeeded(m_python_directory);
 #else
     /* If XDG_CONFIG_HOME is set, we use that, otherwise we default to
        $HOME/.config/sigscape. If we fail to validate the directory, this _has_

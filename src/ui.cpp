@@ -4,7 +4,7 @@
 
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
-#include "Python.h"
+#include "embedded_python.h"
 #include <cinttypes>
 #include <cmath>
 #include <ctime>
@@ -197,7 +197,9 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version,
     }
 #endif
 
-    Py_Initialize();
+    /* Set up the path to the persistent directory we use to store Python
+       scripts. */
+    EmbeddedPython::AddToPath(m_persistent_directories.GetPythonDirectory());
 }
 
 void Ui::Terminate()
@@ -213,9 +215,6 @@ void Ui::Terminate()
     ImGui_ImplGlfw_Shutdown();
     ImPlot::DestroyContext();
     ImGui::DestroyContext();
-
-    if (Py_FinalizeEx() != 0)
-        fprintf(stderr, "Failed to destroy the Python3 context.\n");
 }
 
 void Ui::Render(float width, float height)
@@ -967,8 +966,7 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
     ImGui::SameLine();
     if (ImGui::Button("Python", COMMAND_PALETTE_BUTTON_SIZE))
     {
-        PyRun_SimpleString("from datetime import datetime\n"
-                           "print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))\n");
+        EmbeddedPython::CallMain("tmp");
     }
 
     if (nof_selected == 0)

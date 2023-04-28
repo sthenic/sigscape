@@ -1,7 +1,7 @@
 #include "hotplug_linux.h"
 
 #include <cstdio>
-#include <exception>
+#include <stdexcept>
 
 /* A private exception type that we use for simplified control flow within this class. */
 class HotplugLinuxException : public std::runtime_error

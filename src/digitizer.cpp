@@ -15,6 +15,7 @@
 #include "digitizer.h"
 #include "fmt/core.h"
 #include "fmt/format.h"
+#include "embedded_python.h"
 
 #include <algorithm>
 #include <cctype>
@@ -584,6 +585,11 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
     case DigitizerMessageId::GET_CLOCK_SYSTEM_PARAMETERS_FILENAME:
         m_read_queue.EmplaceWrite(DigitizerMessageId::PARAMETERS_FILENAME,
                                   m_watchers.clock_system->GetPath());
+        break;
+
+    case DigitizerMessageId::CALL_PYTHON:
+        printf("Calling python!\n");
+        EmbeddedPython::CallMain("tmp", m_id.index);
         break;
 
     default:

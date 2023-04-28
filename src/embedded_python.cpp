@@ -65,14 +65,23 @@ static struct PythonSession
 {
     PythonSession()
     {
+        /* Initialize the Python session and release the global interpreter lock
+           (GIL). We need to remember the state until we run the destructor, at
+           which point it's _very_ important that we restore it when acquiring
+           the GIL for the last time. */
         Py_Initialize();
+        m_state = PyEval_SaveThread();
     }
 
     ~PythonSession()
     {
+        PyEval_RestoreThread(m_state);
         if (Py_FinalizeEx() != 0)
             fprintf(stderr, "Failed to destroy the Python session.\n");
     }
+
+private:
+    PyThreadState *m_state;
 } python_session;
 
 /* A private exception type that we use for simplified control flow. */
@@ -84,6 +93,8 @@ public:
 
 int EmbeddedPython::AddToPath(const std::string &directory)
 {
+    auto state = PyGILState_Ensure();
+    int result = SCAPE_EOK;
     try
     {
         UniquePyObject sys{PyImport_ImportModule("sys")};
@@ -99,18 +110,21 @@ int EmbeddedPython::AddToPath(const std::string &directory)
             throw EmbeddedPythonException();
 
         PyList_Append(sys_path.get(), path.get());
-        return SCAPE_EOK;
     }
     catch (const EmbeddedPythonException &)
     {
         PyErr_Print();
-        return SCAPE_EEXTERNAL;
+        result = SCAPE_EEXTERNAL;
     }
+
+    PyGILState_Release(state);
+    return result;
 }
 
-int EmbeddedPython::CallMain(const std::string &target_module)
+int EmbeddedPython::CallMain(const std::string &target_module, int i)
 {
     auto state = PyGILState_Ensure();
+    int result = SCAPE_EOK;
     try
     {
         UniquePyObject name{PyUnicode_DecodeFSDefault(target_module.c_str())};
@@ -129,7 +143,16 @@ int EmbeddedPython::CallMain(const std::string &target_module)
         UniquePyObject function{PyObject_GetAttrString(module.get(), "main")};
         if (function != NULL && PyCallable_Check(function.get()))
         {
-            UniquePyObject result{PyObject_CallObject(function.get(), NULL)};
+            UniquePyObject args{PyTuple_New(1)};
+
+            /* The reference to `value` will be stolen by `PyTuple_SetItem` so
+               we should not track this object as a `UniquePyObject`. */
+            auto value = PyLong_FromLong(i);
+            if (value == NULL)
+                throw EmbeddedPythonException();
+            PyTuple_SetItem(args.get(), 0, value);
+
+            UniquePyObject result{PyObject_CallObject(function.get(), args.get())};
             if (result == NULL)
                 throw EmbeddedPythonException();
         }
@@ -140,14 +163,16 @@ int EmbeddedPython::CallMain(const std::string &target_module)
 
         PyRun_SimpleString("from datetime import datetime\n"
                            "print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))\n");
-
-        PyGILState_Release(state);
-        return SCAPE_EOK;
     }
     catch (const EmbeddedPythonException &)
     {
         PyErr_Print();
-        PyGILState_Release(state);
-        return SCAPE_EEXTERNAL;
+        result = SCAPE_EEXTERNAL;
     }
+
+    /* It's important that the lock is released after we've left the scope of
+       the try block since the `UniquePyObject` destructors will interact w/ the
+       Python session to decrement the reference counts. */
+    PyGILState_Release(state);
+    return result;
 }

@@ -965,9 +965,7 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
 
     ImGui::SameLine();
     if (ImGui::Button("Python", COMMAND_PALETTE_BUTTON_SIZE))
-    {
-        EmbeddedPython::CallMain("tmp");
-    }
+        PushMessage(DigitizerMessageId::CALL_PYTHON);
 
     if (nof_selected == 0)
         ImGui::EndDisabled();

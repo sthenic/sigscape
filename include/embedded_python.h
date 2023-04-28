@@ -6,6 +6,6 @@
 namespace EmbeddedPython
 {
 int AddToPath(const std::string &directory);
-int CallMain(const std::string &module);
+int CallMain(const std::string &module, int i);
 };
 

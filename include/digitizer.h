@@ -56,6 +56,7 @@ enum class DigitizerMessageId
     GET_TOP_PARAMETERS_FILENAME,
     GET_CLOCK_SYSTEM_PARAMETERS_FILENAME,
     CLEAR_PROCESSING_MEMORY,
+    CALL_PYTHON,
 };
 
 enum class DigitizerState
@@ -393,6 +394,9 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
             break;
         case DigitizerMessageId::CLEAR_PROCESSING_MEMORY:
             name = "CLEAR_PROCESSING_MEMORY";
+            break;
+        case DigitizerMessageId::CALL_PYTHON:
+            name = "CALL_PYTHON";
             break;
         }
 

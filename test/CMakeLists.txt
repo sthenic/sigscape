@@ -24,6 +24,8 @@ set(CPPUTEST_MEM_LEAK_DETECTION_DISABLED ON CACHE INTERNAL "")
 
 FetchContent_MakeAvailable(CppUTest)
 
+find_package(Python3 REQUIRED Development)
+
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 target_sources(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/data_processing.cpp
@@ -32,6 +34,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/window.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/format.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/data_types.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/embedded_python.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/mock/generator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/mock/adqapi.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/mock/digitizer.cpp
@@ -66,6 +69,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Threads::Threads
+    Python3::Python
     fmt
     CppUTest)
 

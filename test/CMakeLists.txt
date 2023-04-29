@@ -31,6 +31,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/data_processing.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/digitizer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/file_watcher.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/directory_watcher.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/window.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/format.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/data_types.cpp
@@ -44,6 +45,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     tthread_safe_queue.cpp
     tmessage_thread.cpp
     tfile_watcher.cpp
+    tdirectory_watcher.cpp
     tdigitizer.cpp
     main.cpp)
 

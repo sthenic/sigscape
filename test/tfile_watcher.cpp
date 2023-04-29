@@ -28,8 +28,7 @@ TEST(FileWatcher, WatchFile)
     LONGS_EQUAL(FileWatcherMessageId::FILE_DOES_NOT_EXIST, message.id);
 
     /* Expect a clean message queue. */
-    std::this_thread::sleep_for(std::chrono::milliseconds(300));
-    LONGS_EQUAL(SCAPE_EAGAIN, watcher.WaitForMessage(message, 0));
+    LONGS_EQUAL(SCAPE_EAGAIN, watcher.WaitForMessage(message, 300));
 
     /* Create the file. */
     std::ofstream ofs(PATH, std::ios::out);

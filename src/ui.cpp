@@ -880,31 +880,29 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
     ImGui::End();
 }
 
-void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
+void Ui::RenderPythonCommandPalette(bool enable)
 {
-    ImGui::SetNextWindowPos(position);
-    ImGui::SetNextWindowSize(size);
-    ImGui::Begin("Command Palette", NULL,
-                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+    if (!enable)
+        ImGui::BeginDisabled();
 
-    int nof_selected = 0;
-    std::for_each(m_digitizers.begin(), m_digitizers.end(), [&](const Ui::DigitizerUi &d) {
-        if (d.ui.is_selected)
-            nof_selected++;
-    });
+    if (ImGui::Button("Python", COMMAND_PALETTE_BUTTON_SIZE))
+    {
+        for (auto &digitizer : m_digitizers)
+        {
+            if (!digitizer.ui.is_selected)
+                continue;
 
-    if (nof_selected > 0)
-    {
-        ImGui::Text(fmt::format("Commands apply to {} digitizer{}.", nof_selected,
-                                nof_selected > 1 ? "s" : ""));
-    }
-    else
-    {
-        ImGui::Text("No digitizer selected.");
+            digitizer.interface->EmplaceMessage(DigitizerMessageId::CALL_PYTHON, "digitizer");
+        }
     }
 
-    const ImVec2 COMMAND_PALETTE_BUTTON_SIZE{85, 50};
-    if (nof_selected == 0)
+    if (!enable)
+        ImGui::EndDisabled();
+}
+
+void Ui::RenderDefaultCommandPalette(bool enable)
+{
+    if (!enable)
         ImGui::BeginDisabled();
 
     /* First row */
@@ -963,12 +961,49 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
     if (ImGui::Button("Copy Clock\nSystem\nFilename", COMMAND_PALETTE_BUTTON_SIZE))
         PushMessage(DigitizerMessageId::GET_CLOCK_SYSTEM_PARAMETERS_FILENAME);
 
-    ImGui::SameLine();
-    if (ImGui::Button("Python", COMMAND_PALETTE_BUTTON_SIZE))
-        PushMessage(DigitizerMessageId::CALL_PYTHON);
-
-    if (nof_selected == 0)
+    if (!enable)
         ImGui::EndDisabled();
+}
+
+void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
+{
+    ImGui::SetNextWindowPos(position);
+    ImGui::SetNextWindowSize(size);
+    ImGui::Begin("Command Palette", NULL,
+                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+
+    int nof_selected = 0;
+    std::for_each(m_digitizers.begin(), m_digitizers.end(), [&](const Ui::DigitizerUi &d) {
+        if (d.ui.is_selected)
+            nof_selected++;
+    });
+
+    if (nof_selected > 0)
+    {
+        ImGui::Text(fmt::format("Commands apply to {} digitizer{}.", nof_selected,
+                                nof_selected > 1 ? "s" : ""));
+    }
+    else
+    {
+        ImGui::Text("No digitizer selected.");
+    }
+
+    if (ImGui::BeginTabBar("CommandPalette", ImGuiTabBarFlags_None))
+    {
+        if (ImGui::BeginTabItem("Default"))
+        {
+            RenderDefaultCommandPalette(nof_selected != 0);
+            ImGui::EndTabItem();
+        }
+
+        if (ImGui::BeginTabItem("Python"))
+        {
+            RenderPythonCommandPalette(nof_selected != 0);
+            ImGui::EndTabItem();
+        }
+
+        ImGui::EndTabBar();
+    }
 
     ImGui::End();
 }

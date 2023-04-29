@@ -201,6 +201,8 @@ private:
     void RenderPopupCompatibilityError();
     void RenderPopupInitializeWouldOverwrite(size_t idx);
     void RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size);
+    void RenderPythonCommandPalette(bool enable);
+    void RenderDefaultCommandPalette(bool enable);
     void RenderCommandPalette(const ImVec2 &position, const ImVec2 &size);
     void RenderSetTopParametersButton(const ImVec2 &size);
     void RenderSetClockSystemParametersButton(const ImVec2 &size);
@@ -269,6 +271,8 @@ private:
     static constexpr float FIRST_COLUMN_RELATIVE_WIDTH = 0.2f;
     static constexpr float SECOND_COLUMN_RELATIVE_WIDTH = 0.58f;
     static constexpr float THIRD_COLUMN_RELATIVE_WIDTH = 0.22f;
+
+    static constexpr ImVec2 COMMAND_PALETTE_BUTTON_SIZE = {85, 50};
 
     static const ImVec4 COLOR_GREEN;
     static const ImVec4 COLOR_RED;

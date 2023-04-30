@@ -128,7 +128,7 @@ bool EmbeddedPython::HasMain(const std::filesystem::path &path)
 
     try
     {
-        UniquePyObject module{PyImport_ImportModule(path.stem().c_str())};
+        UniquePyObject module{PyImport_ImportModule(path.stem().string().c_str())};
         if (module == NULL)
             throw EmbeddedPythonException();
         module = UniquePyObject{PyImport_ReloadModule(module.get())};
@@ -199,8 +199,8 @@ int EmbeddedPython::CallMain(const std::string &module_str, void *handle, int in
                 throw EmbeddedPythonException();
             PyTuple_SetItem(args.get(), 1, py_index);
 
-            UniquePyObject result{PyObject_CallObject(function.get(), args.get())};
-            if (result == NULL)
+            UniquePyObject call_result{PyObject_CallObject(function.get(), args.get())};
+            if (call_result == NULL)
                 throw EmbeddedPythonException();
         }
         else

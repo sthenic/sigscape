@@ -539,7 +539,7 @@ void Ui::HandleMessage(const DirectoryWatcherMessage &message)
     {
     case DirectoryWatcherMessageId::FILE_CREATED:
     case DirectoryWatcherMessageId::FILE_UPDATED:
-        printf("File '%s' was added or updated.\n", message.path.c_str());
+        printf("File '%s' was added or updated.\n", message.path.string().c_str());
         printf("Module has callable main: %d\n", EmbeddedPython::HasMain(message.path));
         if (EmbeddedPython::HasMain(message.path))
             m_python_files.insert(message.path);
@@ -547,7 +547,7 @@ void Ui::HandleMessage(const DirectoryWatcherMessage &message)
             m_python_files.erase(message.path);
         break;
     case DirectoryWatcherMessageId::FILE_DELETED:
-        printf("File '%s' was removed.\n", message.path.c_str());
+        printf("File '%s' was removed.\n", message.path.string().c_str());
         m_python_files.erase(message.path);
         break;
     }
@@ -920,13 +920,15 @@ void Ui::RenderPythonCommandPalette(bool enable)
             ImGui::SameLine();
         ++i;
 
-        if (ImGui::Button(path.stem().c_str(), COMMAND_PALETTE_BUTTON_SIZE))
+        if (ImGui::Button(path.stem().string().c_str(), COMMAND_PALETTE_BUTTON_SIZE))
         {
             for (auto &digitizer : m_digitizers)
             {
                 if (!digitizer.ui.is_selected)
                     continue;
-                digitizer.interface->EmplaceMessage(DigitizerMessageId::CALL_PYTHON, path.stem());
+
+                digitizer.interface->EmplaceMessage(DigitizerMessageId::CALL_PYTHON,
+                                                    path.stem().string());
             }
         }
     }

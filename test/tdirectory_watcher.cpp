@@ -96,3 +96,29 @@ TEST(DirectoryWatcher, DontWatchFile)
     LONGS_EQUAL(SCAPE_EAGAIN, watcher.WaitForMessage(message, 1100));
     LONGS_EQUAL(SCAPE_EOK, watcher.Stop());
 }
+
+TEST(DirectoryWatcher, ExtensionFilter)
+{
+    const std::string PATH = "./tmp";
+    const std::string FILE1 = PATH + "/file1.txt";
+    const std::string FILE2 = PATH + "/file2.py";
+    std::filesystem::remove_all(PATH);
+
+    DirectoryWatcher watcher{PATH, ".py"};
+    LONGS_EQUAL(SCAPE_EOK, watcher.Start());
+
+    /* Create the directory and a few files. */
+    std::filesystem::create_directory(PATH);
+    std::ofstream ofs1{FILE1, std::ios::out};
+
+    /* Expect a clean message queue since .txt should be ignored. */
+    DirectoryWatcherMessage message;
+    LONGS_EQUAL(SCAPE_EAGAIN, watcher.WaitForMessage(message, 1100));
+
+    std::ofstream ofs2{FILE2, std::ios::out};
+    LONGS_EQUAL(SCAPE_EOK, watcher.WaitForMessage(message, 1100));
+    LONGS_EQUAL(DirectoryWatcherMessageId::FILE_CREATED, message.id);
+    STRCMP_EQUAL(FILE2.c_str(), message.filename.c_str());
+
+    LONGS_EQUAL(SCAPE_EOK, watcher.Stop());
+}

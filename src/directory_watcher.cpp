@@ -2,8 +2,9 @@
 
 #include <algorithm>
 
-DirectoryWatcher::DirectoryWatcher(const std::string &path)
+DirectoryWatcher::DirectoryWatcher(const std::string &path, const std::string &extension_filter)
     : m_path(path)
+    , m_extension_filter(extension_filter)
     , m_files{}
 {
 #if defined(_WIN32)
@@ -42,6 +43,11 @@ void DirectoryWatcher::MainLoop()
 
                 for (auto const &entry : std::filesystem::directory_iterator{m_path})
                 {
+                    if (!entry.is_regular_file())
+                        continue;
+                    if (!m_extension_filter.empty() && entry.path().extension() != m_extension_filter)
+                        continue;
+
                     auto timestamp = std::filesystem::last_write_time(entry.path());
                     auto match = m_files.find(entry.path().string());
 

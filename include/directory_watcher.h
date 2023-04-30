@@ -34,7 +34,7 @@ struct DirectoryWatcherMessage
 class DirectoryWatcher : public MessageThread<DirectoryWatcher, DirectoryWatcherMessage>
 {
 public:
-    DirectoryWatcher(const std::string &path);
+    DirectoryWatcher(const std::string &path, const std::string &extension_filter = "");
     const std::string &GetPath();
 
     void MainLoop() override;
@@ -48,5 +48,6 @@ private:
     };
 
     std::string m_path;
+    std::string m_extension_filter;
     std::map<std::string, FileState> m_files;
 };

@@ -19,16 +19,16 @@ struct DirectoryWatcherMessage
     DirectoryWatcherMessage() = default;
     DirectoryWatcherMessage(DirectoryWatcherMessageId id)
         : id(id)
-        , filename()
+        , path()
     {}
 
-    DirectoryWatcherMessage(DirectoryWatcherMessageId id, const std::string &filename)
+    DirectoryWatcherMessage(DirectoryWatcherMessageId id, const std::filesystem::path &path)
         : id(id)
-        , filename(filename)
+        , path(path)
     {}
 
     DirectoryWatcherMessageId id;
-    std::string filename;
+    std::filesystem::path path;
 };
 
 class DirectoryWatcher : public MessageThread<DirectoryWatcher, DirectoryWatcherMessage>
@@ -43,11 +43,11 @@ private:
     struct FileState
     {
         bool should_remove;
-        std::string path;
+        std::filesystem::path path;
         std::filesystem::file_time_type timestamp;
     };
 
     std::string m_path;
     std::string m_extension_filter;
-    std::map<std::string, FileState> m_files;
+    std::map<std::filesystem::path, FileState> m_files;
 };

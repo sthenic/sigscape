@@ -49,15 +49,14 @@ void DirectoryWatcher::MainLoop()
                         continue;
 
                     auto timestamp = std::filesystem::last_write_time(entry.path());
-                    auto match = m_files.find(entry.path().string());
+                    auto match = m_files.find(entry.path());
 
                     if (match == m_files.end())
                     {
                         /* This is a new file. */
-                        m_files.emplace(
-                            entry.path().string(), FileState{false, entry.path(), timestamp});
+                        m_files.emplace(entry.path(), FileState{false, entry.path(), timestamp});
                         m_read_queue.EmplaceWrite(
-                            DirectoryWatcherMessageId::FILE_CREATED, entry.path().string());
+                            DirectoryWatcherMessageId::FILE_CREATED, entry.path());
                     }
                     else if (timestamp != match->second.timestamp)
                     {
@@ -65,7 +64,7 @@ void DirectoryWatcher::MainLoop()
                         match->second.timestamp = timestamp;
                         match->second.should_remove = false;
                         m_read_queue.EmplaceWrite(DirectoryWatcherMessageId::FILE_UPDATED,
-                                                  entry.path().string());
+                                                  entry.path());
                     }
                     else
                     {

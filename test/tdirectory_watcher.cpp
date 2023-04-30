@@ -34,25 +34,25 @@ TEST(DirectoryWatcher, WatchDirectory)
 
     LONGS_EQUAL(SCAPE_EOK, watcher.WaitForMessage(message, 1100));
     LONGS_EQUAL(DirectoryWatcherMessageId::FILE_CREATED, message.id);
-    STRCMP_EQUAL(FILE1.c_str(), message.filename.c_str());
+    STRCMP_EQUAL(FILE1.c_str(), message.path.c_str());
 
     std::ofstream ofs2{FILE2, std::ios::out};
     LONGS_EQUAL(SCAPE_EOK, watcher.WaitForMessage(message, 1100));
     LONGS_EQUAL(DirectoryWatcherMessageId::FILE_CREATED, message.id);
-    STRCMP_EQUAL(FILE2.c_str(), message.filename.c_str());
+    STRCMP_EQUAL(FILE2.c_str(), message.path.c_str());
 
     /* Write something to the files (the flush triggers the timestamp change). */
     ofs1 << "Hello World!";
     ofs1.flush();
     LONGS_EQUAL(SCAPE_EOK, watcher.WaitForMessage(message, 1100));
     LONGS_EQUAL(DirectoryWatcherMessageId::FILE_UPDATED, message.id);
-    STRCMP_EQUAL(FILE1.c_str(), message.filename.c_str());
+    STRCMP_EQUAL(FILE1.c_str(), message.path.c_str());
 
     ofs2 << "Amazing file tracking";
     ofs2.flush();
     LONGS_EQUAL(SCAPE_EOK, watcher.WaitForMessage(message, 1100));
     LONGS_EQUAL(DirectoryWatcherMessageId::FILE_UPDATED, message.id);
-    STRCMP_EQUAL(FILE2.c_str(), message.filename.c_str());
+    STRCMP_EQUAL(FILE2.c_str(), message.path.c_str());
 
     /* Close the files, expecting a clean message queue. */
     ofs1.close();
@@ -63,12 +63,12 @@ TEST(DirectoryWatcher, WatchDirectory)
     std::filesystem::remove(FILE1);
     LONGS_EQUAL(SCAPE_EOK, watcher.WaitForMessage(message, 1100));
     LONGS_EQUAL(DirectoryWatcherMessageId::FILE_DELETED, message.id);
-    STRCMP_EQUAL(FILE1.c_str(), message.filename.c_str());
+    STRCMP_EQUAL(FILE1.c_str(), message.path.c_str());
 
     std::filesystem::remove_all(PATH);
     LONGS_EQUAL(SCAPE_EOK, watcher.WaitForMessage(message, 1100));
     LONGS_EQUAL(DirectoryWatcherMessageId::FILE_DELETED, message.id);
-    STRCMP_EQUAL(FILE2.c_str(), message.filename.c_str());
+    STRCMP_EQUAL(FILE2.c_str(), message.path.c_str());
 
     /* Expect a clean message queue, then exit. */
     LONGS_EQUAL(SCAPE_EAGAIN, watcher.WaitForMessage(message, 1100));
@@ -118,7 +118,7 @@ TEST(DirectoryWatcher, ExtensionFilter)
     std::ofstream ofs2{FILE2, std::ios::out};
     LONGS_EQUAL(SCAPE_EOK, watcher.WaitForMessage(message, 1100));
     LONGS_EQUAL(DirectoryWatcherMessageId::FILE_CREATED, message.id);
-    STRCMP_EQUAL(FILE2.c_str(), message.filename.c_str());
+    STRCMP_EQUAL(FILE2.c_str(), message.path.c_str());
 
     LONGS_EQUAL(SCAPE_EOK, watcher.Stop());
 }

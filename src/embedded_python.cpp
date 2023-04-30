@@ -121,6 +121,31 @@ int EmbeddedPython::AddToPath(const std::string &directory)
     return result;
 }
 
+bool EmbeddedPython::HasMain(const std::filesystem::path &path)
+{
+    auto state = PyGILState_Ensure();
+    bool result;
+
+    try
+    {
+        UniquePyObject module{PyImport_ImportModule(path.stem().c_str())};
+        if (module == NULL)
+            throw EmbeddedPythonException();
+        module = UniquePyObject{PyImport_ReloadModule(module.get())};
+
+        UniquePyObject function{PyObject_GetAttrString(module.get(), "main")};
+        result = function != NULL && PyCallable_Check(function.get()) > 0;
+    }
+    catch (const EmbeddedPythonException &)
+    {
+        PyErr_Print();
+        result = false;
+    }
+
+    PyGILState_Release(state);
+    return result;
+}
+
 static PyObject *AsCtypesPointer(void *handle)
 {
     UniquePyObject ctypes{PyImport_ImportModule("ctypes")};

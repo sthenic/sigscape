@@ -9,6 +9,7 @@
 #include <GLFW/glfw3.h>
 
 #include "persistent_directories.h"
+#include "directory_watcher.h"
 #include "digitizer.h"
 #include "identification.h"
 #include "marker.h"
@@ -20,6 +21,7 @@
 #endif
 
 #include <vector>
+#include <set>
 #include <filesystem>
 
 class Ui
@@ -37,6 +39,8 @@ private:
     bool (* Screenshot)(const std::string &filename);
     bool m_should_screenshot;
     PersistentDirectories m_persistent_directories;
+    DirectoryWatcher m_python_directory_watcher;
+    std::set<std::filesystem::path> m_python_files;
     Identification m_identification;
 #if defined(_WIN32)
     HotplugWindows m_hotplug;
@@ -177,6 +181,7 @@ private:
     uint32_t m_api_revision;
     ImGui::FileBrowser m_file_browser;
 
+
     void ClearChannelSelection();
     bool IsAnySolo() const;
     bool IsAnySensorError() const;
@@ -189,6 +194,7 @@ private:
     void UpdateSensors();
     void HandleMessage(const IdentificationMessage &message);
     void HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message);
+    void HandleMessage(const DirectoryWatcherMessage &message);
     void HandleMessages();
     void HandleHotplugEvents();
 

@@ -145,6 +145,8 @@ Ui::Ui()
     : Screenshot(NULL)
     , m_should_screenshot(false)
     , m_persistent_directories()
+    , m_python_directory_watcher(m_persistent_directories.GetPythonDirectory(), ".py")
+    , m_python_files{}
     , m_identification(m_persistent_directories)
     , m_hotplug()
     , m_adq_control_unit()
@@ -198,8 +200,9 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version,
 #endif
 
     /* Set up the path to the persistent directory we use to store Python
-       scripts. */
+       scripts and start the watcher. */
     EmbeddedPython::AddToPath(m_persistent_directories.GetPythonDirectory());
+    m_python_directory_watcher.Start();
 }
 
 void Ui::Terminate()
@@ -530,6 +533,26 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
     }
 }
 
+void Ui::HandleMessage(const DirectoryWatcherMessage &message)
+{
+    switch (message.id)
+    {
+    case DirectoryWatcherMessageId::FILE_CREATED:
+    case DirectoryWatcherMessageId::FILE_UPDATED:
+        printf("File '%s' was added or updated.\n", message.path.c_str());
+        printf("Module has callable main: %d\n", EmbeddedPython::HasMain(message.path));
+        if (EmbeddedPython::HasMain(message.path))
+            m_python_files.insert(message.path);
+        else
+            m_python_files.erase(message.path);
+        break;
+    case DirectoryWatcherMessageId::FILE_DELETED:
+        printf("File '%s' was removed.\n", message.path.c_str());
+        m_python_files.erase(message.path);
+        break;
+    }
+}
+
 void Ui::HandleMessages()
 {
     IdentificationMessage identification_message;
@@ -542,6 +565,10 @@ void Ui::HandleMessages()
         if (SCAPE_EOK == digitizer.interface->WaitForMessage(digitizer_message, 0))
             HandleMessage(digitizer, digitizer_message);
     }
+
+    DirectoryWatcherMessage directory_message;
+    if (SCAPE_EOK == m_python_directory_watcher.WaitForMessage(directory_message, 0))
+        HandleMessage(directory_message);
 }
 
 void Ui::HandleHotplugEvents()
@@ -885,14 +912,22 @@ void Ui::RenderPythonCommandPalette(bool enable)
     if (!enable)
         ImGui::BeginDisabled();
 
-    if (ImGui::Button("Python", COMMAND_PALETTE_BUTTON_SIZE))
+    int i = 0;
+    for (const auto &path : m_python_files)
     {
-        for (auto &digitizer : m_digitizers)
-        {
-            if (!digitizer.ui.is_selected)
-                continue;
+        /* Rows of four buttons. */
+        if (i > 0 && (i % 4) != 0)
+            ImGui::SameLine();
+        ++i;
 
-            digitizer.interface->EmplaceMessage(DigitizerMessageId::CALL_PYTHON, "digitizer");
+        if (ImGui::Button(path.stem().c_str(), COMMAND_PALETTE_BUTTON_SIZE))
+        {
+            for (auto &digitizer : m_digitizers)
+            {
+                if (!digitizer.ui.is_selected)
+                    continue;
+                digitizer.interface->EmplaceMessage(DigitizerMessageId::CALL_PYTHON, path.stem());
+            }
         }
     }
 

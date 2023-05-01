@@ -909,6 +909,8 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
 
 void Ui::RenderPythonCommandPalette(bool enable)
 {
+    ImGui::Text(fmt::format("Scripts in {}", m_persistent_directories.GetPythonDirectory()));
+
     if (!enable)
         ImGui::BeginDisabled();
 

@@ -146,22 +146,33 @@ bool EmbeddedPython::HasMain(const std::filesystem::path &path)
     return result;
 }
 
-static PyObject *AsCtypesPointer(void *handle)
+#ifndef MOCK_ADQAPI
+static PyObject *LibAdqAsCtypesDll()
 {
     UniquePyObject ctypes{PyImport_ImportModule("ctypes")};
     if (ctypes == NULL)
         throw EmbeddedPythonException();
 
-    UniquePyObject constructor{PyObject_GetAttrString(ctypes.get(), "c_void_p")};
-    if (ctypes == NULL)
+    UniquePyObject cdll{PyObject_GetAttrString(ctypes.get(), "cdll")};
+    if (cdll == NULL)
+        throw EmbeddedPythonException();
+
+    UniquePyObject constructor{PyObject_GetAttrString(cdll.get(), "LoadLibrary")};
+    if (constructor == NULL)
         throw EmbeddedPythonException();
 
     /* Reference to `value` is stolen by `PyTuple_SetItem`. */
     UniquePyObject args{PyTuple_New(1)};
-    auto value = PyLong_FromSize_t(reinterpret_cast<size_t>(handle));
-    if (value == NULL)
+    if (args == NULL)
         throw EmbeddedPythonException();
-    PyTuple_SetItem(args.get(), 0, value);
+
+#if defined(_WIN32)
+    auto value = PyUnicode_DecodeFSDefault("ADQAPI.dll");
+#else
+    auto value = PyUnicode_DecodeFSDefault("libadq.so");
+#endif
+    if (PyTuple_SetItem(args.get(), 0, value) != 0)
+        throw EmbeddedPythonException();
 
     auto result = PyObject_CallObject(constructor.get(), args.get());
     if (result == NULL)
@@ -170,8 +181,85 @@ static PyObject *AsCtypesPointer(void *handle)
     return result;
 }
 
+static PyObject *AsCtypesPointer(void *handle)
+{
+    UniquePyObject ctypes{PyImport_ImportModule("ctypes")};
+    if (ctypes == NULL)
+        throw EmbeddedPythonException();
+
+    UniquePyObject constructor{PyObject_GetAttrString(ctypes.get(), "c_void_p")};
+    if (constructor == NULL)
+        throw EmbeddedPythonException();
+
+    /* Reference to `value` is stolen by `PyTuple_SetItem`. */
+    UniquePyObject args{PyTuple_New(1)};
+    if (args == NULL)
+        throw EmbeddedPythonException();
+
+    auto value = PyLong_FromSize_t(reinterpret_cast<size_t>(handle));
+    if (value == NULL)
+        throw EmbeddedPythonException();
+
+    if (PyTuple_SetItem(args.get(), 0, value) != 0)
+        throw EmbeddedPythonException();
+
+    auto result = PyObject_CallObject(constructor.get(), args.get());
+    if (result == NULL)
+        throw EmbeddedPythonException();
+
+    return result;
+}
+
+static PyObject *AsPyLong(int index)
+{
+    auto i = PyLong_FromLong(index);
+    if (i == NULL)
+        throw EmbeddedPythonException();
+    return i;
+}
+
+static PyObject *AsPyAdqDevice(void *handle, int index)
+{
+    UniquePyObject pyadq{PyImport_ImportModule("pyadq")};
+    if (pyadq == NULL)
+        throw EmbeddedPythonException();
+
+    UniquePyObject constructor{PyObject_GetAttrString(pyadq.get(), "ADQ")};
+    if (constructor == NULL)
+        throw EmbeddedPythonException();
+
+    /* References are stolen by `PyTuple_SetItem`. */
+    UniquePyObject args{PyTuple_New(3)};
+    if (args == NULL)
+        throw EmbeddedPythonException();
+
+    if (PyTuple_SetItem(args.get(), 0, LibAdqAsCtypesDll()) != 0)
+        throw EmbeddedPythonException();
+
+    if (PyTuple_SetItem(args.get(), 1, AsCtypesPointer(handle)) != 0)
+        throw EmbeddedPythonException();
+
+    if (PyTuple_SetItem(args.get(), 2, AsPyLong(index)) != 0)
+        throw EmbeddedPythonException();
+
+    auto result = PyObject_CallObject(constructor.get(), args.get());
+    if (result == NULL)
+        throw EmbeddedPythonException();
+
+    return result;
+}
+#endif
+
 int EmbeddedPython::CallMain(const std::string &module_str, void *handle, int index)
 {
+#ifdef MOCK_ADQAPI
+    /* TODO: We can't actually create a pyadq device object unless we make the
+             mocked ADQAPI into a standalone library that pyadq can call. */
+    (void)module_str;
+    (void)handle;
+    (void)index;
+    return SCAPE_EOK;
+#else
     auto state = PyGILState_Ensure();
     int result = SCAPE_EOK;
     try
@@ -188,16 +276,14 @@ int EmbeddedPython::CallMain(const std::string &module_str, void *handle, int in
         UniquePyObject function{PyObject_GetAttrString(module.get(), "main")};
         if (function != NULL && PyCallable_Check(function.get()))
         {
-            UniquePyObject args{PyTuple_New(2)};
-
-            /* The PyObject references will be stolen by `PyTuple_SetItem` so we
+            /* The PyObject reference will be stolen by `PyTuple_SetItem` so we
                should not track these objects as a `UniquePyObject`. */
-            PyTuple_SetItem(args.get(), 0, AsCtypesPointer(handle));
-
-            auto py_index = PyLong_FromLong(index);
-            if (py_index == NULL)
+            UniquePyObject args{PyTuple_New(1)};
+            if (args == NULL)
                 throw EmbeddedPythonException();
-            PyTuple_SetItem(args.get(), 1, py_index);
+
+            if (PyTuple_SetItem(args.get(), 0, AsPyAdqDevice(handle, index)) != 0)
+                throw EmbeddedPythonException();
 
             UniquePyObject call_result{PyObject_CallObject(function.get(), args.get())};
             if (call_result == NULL)
@@ -219,4 +305,5 @@ int EmbeddedPython::CallMain(const std::string &module_str, void *handle, int in
        Python session to decrement the reference counts. */
     PyGILState_Release(state);
     return result;
+#endif
 }

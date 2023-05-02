@@ -539,15 +539,13 @@ void Ui::HandleMessage(const DirectoryWatcherMessage &message)
     {
     case DirectoryWatcherMessageId::FILE_CREATED:
     case DirectoryWatcherMessageId::FILE_UPDATED:
-        printf("File '%s' was added or updated.\n", message.path.string().c_str());
-        printf("Module has callable main: %d\n", EmbeddedPython::HasMain(message.path));
         if (EmbeddedPython::HasMain(message.path))
             m_python_files.insert(message.path);
         else
             m_python_files.erase(message.path);
         break;
+
     case DirectoryWatcherMessageId::FILE_DELETED:
-        printf("File '%s' was removed.\n", message.path.string().c_str());
         m_python_files.erase(message.path);
         break;
     }

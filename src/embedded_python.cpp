@@ -109,7 +109,8 @@ int EmbeddedPython::AddToPath(const std::string &directory)
         if (path == NULL)
             throw EmbeddedPythonException();
 
-        PyList_Append(sys_path.get(), path.get());
+        if (PyList_Append(sys_path.get(), path.get()) != 0)
+            throw EmbeddedPythonException();
     }
     catch (const EmbeddedPythonException &)
     {

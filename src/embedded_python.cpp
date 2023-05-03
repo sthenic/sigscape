@@ -147,7 +147,6 @@ bool EmbeddedPython::HasMain(const std::filesystem::path &path)
     return result;
 }
 
-#ifndef MOCK_ADQAPI
 static PyObject *LibAdqAsCtypesDll()
 {
     UniquePyObject ctypes{PyImport_ImportModule("ctypes")};
@@ -167,11 +166,16 @@ static PyObject *LibAdqAsCtypesDll()
     if (args == NULL)
         throw EmbeddedPythonException();
 
-#if defined(_WIN32)
-    auto value = PyUnicode_DecodeFSDefault("ADQAPI.dll");
+    auto value = PyUnicode_DecodeFSDefault(
+#if defined(MOCK_ADQAPI_PATH)
+        MOCK_ADQAPI_PATH
+#elif defined(_WIN32)
+        "ADQAPI.dll"
 #else
-    auto value = PyUnicode_DecodeFSDefault("libadq.so");
+        "libadq.so"
 #endif
+    );
+
     if (PyTuple_SetItem(args.get(), 0, value) != 0)
         throw EmbeddedPythonException();
 
@@ -249,18 +253,9 @@ static PyObject *AsPyAdqDevice(void *handle, int index)
 
     return result;
 }
-#endif
 
 int EmbeddedPython::CallMain(const std::string &module_str, void *handle, int index)
 {
-#ifdef MOCK_ADQAPI
-    /* TODO: We can't actually create a pyadq device object unless we make the
-             mocked ADQAPI into a standalone library that pyadq can call. */
-    (void)module_str;
-    (void)handle;
-    (void)index;
-    return SCAPE_EOK;
-#else
     auto state = PyGILState_Ensure();
     int result = SCAPE_EOK;
     try
@@ -306,5 +301,4 @@ int EmbeddedPython::CallMain(const std::string &module_str, void *handle, int in
        Python session to decrement the reference counts. */
     PyGILState_Release(state);
     return result;
-#endif
 }

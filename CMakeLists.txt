@@ -162,7 +162,9 @@ if (MOCK_ADQAPI)
     # src/mock.
     message(STATUS "Using MOCK_ADQAPI (no ADQAPI dependency).")
     add_subdirectory(src/mock _adq)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE MOCK_ADQAPI)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+        MOCK_ADQAPI
+        MOCK_ADQAPI_PATH=\"$<TARGET_FILE:adq>\")
 endif()
 
 if (UNIX)

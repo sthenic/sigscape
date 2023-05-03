@@ -14,7 +14,7 @@
 #include <string>
 
 #ifdef MOCK_ADQAPI
-#include "mock/adqapi_definitions.h"
+#include "mock/adqapi.h"
 #else
 #include "ADQAPI.h"
 #endif

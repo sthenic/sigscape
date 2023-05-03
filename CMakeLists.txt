@@ -158,13 +158,11 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 )
 
 if (MOCK_ADQAPI)
+    # Build a mocked shared library, whose CMakeLists.txt is located in
+    # src/mock.
     message(STATUS "Using MOCK_ADQAPI (no ADQAPI dependency).")
+    add_subdirectory(src/mock _adq)
     target_compile_definitions(${PROJECT_NAME} PRIVATE MOCK_ADQAPI)
-    target_sources(${PROJECT_NAME} PRIVATE
-        src/mock/adqapi.cpp
-        src/mock/digitizer.cpp
-        src/mock/system_manager.cpp
-        src/mock/generator.cpp)
 endif()
 
 if (UNIX)
@@ -215,12 +213,10 @@ endif()
 
 if (WIN32)
     # Copy ADQAPI.dll to the target (.exe) directory.
-    if (NOT MOCK_ADQAPI)
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_FILE:adq>
-            $<TARGET_FILE_DIR:${PROJECT_NAME}>)
-    endif()
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:adq>
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>)
 
     # Set the subsystem to Windows GUI application in release configuration (no
     # console window). The linker option sets the entrypoint to 'main' (not
@@ -238,12 +234,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     fmt
     png_static
     Python3::Python
+    adq
 )
-
-# Link against libadq unless MOCK_ADQAPI is set.
-if (NOT MOCK_ADQAPI)
-    target_link_libraries(${PROJECT_NAME} PRIVATE adq)
-endif()
 
 # Platform-specific libraries (for hotplug detection).
 if (WIN32)

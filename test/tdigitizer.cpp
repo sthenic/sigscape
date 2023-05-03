@@ -1,36 +1,38 @@
+#include "digitizer.h"
+#include "mock/control_unit.h"
+
 #include <thread>
 #include <chrono>
-#include "digitizer.h"
 
 #include "CppUTest/TestHarness.h"
 
 TEST_GROUP(Digitizer)
 {
     std::unique_ptr<Digitizer> digitizer;
-    MockAdqApi mock_adqapi;
+    MockControlUnit mock_control_unit;
 
     void setup()
     {
-        mock_adqapi.AddDigitizer(PID_ADQ32, {"SPD-SIM01",
-                                             "ADQ32",
-                                             "-SG2G5-BW1G0",
-                                             {
-                                                 ADQ_FIRMWARE_TYPE_FWDAQ,
-                                                 "1CH-FWDAQ",
-                                                 "2023.1.3",
-                                                 "STANDARD",
-                                                 "400-000-XYZ",
-                                             },
-                                             {
-                                                 ADQ_COMMUNICATION_INTERFACE_PCIE,
-                                                 3,
-                                                 8,
-                                             },
-                                             {
-                                                 {"A", 2, {2500.0}, 65536},
-                                             }});
+        mock_control_unit.AddDigitizer(PID_ADQ32, {"SPD-SIM01",
+                                                   "ADQ32",
+                                                   "-SG2G5-BW1G0",
+                                                   {
+                                                       ADQ_FIRMWARE_TYPE_FWDAQ,
+                                                       "1CH-FWDAQ",
+                                                       "2023.1.3",
+                                                       "STANDARD",
+                                                       "400-000-XYZ",
+                                                   },
+                                                   {
+                                                       ADQ_COMMUNICATION_INTERFACE_PCIE,
+                                                       3,
+                                                       8,
+                                                   },
+                                                   {
+                                                       {"A", 2, {2500.0}, 65536},
+                                                   }});
 
-        digitizer = std::make_unique<Digitizer>(&mock_adqapi, 1, ".");
+        digitizer = std::make_unique<Digitizer>(&mock_control_unit, 1, ".");
     }
 
     void teardown()

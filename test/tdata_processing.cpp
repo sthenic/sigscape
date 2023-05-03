@@ -1,5 +1,5 @@
 #include "data_processing.h"
-#include "mock/adqapi.h"
+#include "mock/control_unit.h"
 
 #include <thread>
 #include <chrono>
@@ -9,35 +9,35 @@
 TEST_GROUP(DataProcessing)
 {
     std::unique_ptr<DataProcessing> processing;
-    MockAdqApi mock_adqapi;
+    MockControlUnit mock_control_unit;
     static constexpr int index = 1;
     static constexpr int channel = 0;
 
     void setup()
     {
-        mock_adqapi.AddDigitizer(PID_ADQ32, {"SPD-SIM01",
-                                             "ADQ32",
-                                             "-SG2G5-BW1G0",
-                                             {
-                                                 ADQ_FIRMWARE_TYPE_FWDAQ,
-                                                 "1CH-FWDAQ",
-                                                 "2023.1.3",
-                                                 "STANDARD",
-                                                 "400-000-XYZ",
-                                             },
-                                             {
-                                                 ADQ_COMMUNICATION_INTERFACE_PCIE,
-                                                 3,
-                                                 8,
-                                             },
-                                             {
-                                                 {"A", 2, {2500.0}, 65536},
-                                             }});
+        mock_control_unit.AddDigitizer(PID_ADQ32, {"SPD-SIM01",
+                                                   "ADQ32",
+                                                   "-SG2G5-BW1G0",
+                                                   {
+                                                       ADQ_FIRMWARE_TYPE_FWDAQ,
+                                                       "1CH-FWDAQ",
+                                                       "2023.1.3",
+                                                       "STANDARD",
+                                                       "400-000-XYZ",
+                                                   },
+                                                   {
+                                                       ADQ_COMMUNICATION_INTERFACE_PCIE,
+                                                       3,
+                                                       8,
+                                                   },
+                                                   {
+                                                       {"A", 2, {2500.0}, 65536},
+                                                   }});
 
         struct ADQConstantParameters constant;
-        mock_adqapi.GetParameters(index, ADQ_PARAMETER_ID_CONSTANT, &constant);
+        mock_control_unit.GetParameters(index, ADQ_PARAMETER_ID_CONSTANT, &constant);
         processing = std::make_unique<DataProcessing>(
-            &mock_adqapi, index, channel, "SPD-SIM01 CHA", constant);
+            &mock_control_unit, index, channel, "SPD-SIM01 CHA", constant);
     }
 
     void teardown()
@@ -74,14 +74,14 @@ TEST(DataProcessing, Records)
         0.1
     )""";
 
-    ADQ_SetParametersString(&mock_adqapi, index, ss.str().c_str(), ss.str().size());
+    ADQ_SetParametersString(&mock_control_unit, index, ss.str().c_str(), ss.str().size());
 
     LONGS_EQUAL(SCAPE_EOK, processing->Start());
-    LONGS_EQUAL(ADQ_EOK, ADQ_StartDataAcquisition(&mock_adqapi, index));
+    LONGS_EQUAL(ADQ_EOK, ADQ_StartDataAcquisition(&mock_control_unit, index));
 
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     LONGS_EQUAL(SCAPE_EOK, processing->Stop());
-    LONGS_EQUAL(ADQ_EOK, ADQ_StopDataAcquisition(&mock_adqapi, index));
+    LONGS_EQUAL(ADQ_EOK, ADQ_StopDataAcquisition(&mock_control_unit, index));
 }
 
 TEST(DataProcessing, RepeatedStartStop)
@@ -107,12 +107,12 @@ TEST(DataProcessing, RepeatedStartStop)
         0.1
     )""";
 
-    ADQ_SetParametersString(&mock_adqapi, index, ss.str().c_str(), ss.str().size());
+    ADQ_SetParametersString(&mock_control_unit, index, ss.str().c_str(), ss.str().size());
 
     for (int i = 0; i < NOF_LOOPS; ++i)
     {
         LONGS_EQUAL(SCAPE_EOK, processing->Start());
-        LONGS_EQUAL(ADQ_EOK, ADQ_StartDataAcquisition(&mock_adqapi, index));
+        LONGS_EQUAL(ADQ_EOK, ADQ_StartDataAcquisition(&mock_control_unit, index));
 
         int nof_records_received = 0;
         while (nof_records_received != NOF_RECORDS)
@@ -133,6 +133,6 @@ TEST(DataProcessing, RepeatedStartStop)
         }
 
         LONGS_EQUAL(SCAPE_EOK, processing->Stop());
-        LONGS_EQUAL(ADQ_EOK, ADQ_StopDataAcquisition(&mock_adqapi, index));
+        LONGS_EQUAL(ADQ_EOK, ADQ_StopDataAcquisition(&mock_control_unit, index));
     }
 }

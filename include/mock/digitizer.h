@@ -2,7 +2,7 @@
 
 #include "mock/generator.h"
 #include "mock/system_manager.h"
-#include "mock/adqapi_definitions.h"
+#include "mock/adqapi.h"
 #include <vector>
 
 class MockDigitizer

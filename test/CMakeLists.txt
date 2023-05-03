@@ -37,7 +37,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/data_types.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/embedded_python.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/mock/generator.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/mock/adqapi.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/mock/control_unit.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/mock/digitizer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/mock/system_manager.cpp
     tgenerator.cpp
@@ -67,7 +67,7 @@ elseif (WIN32)
 endif()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
-    MOCK_ADQAPI)
+    MOCK_ADQAPI ADQAPI_INTERNAL)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Threads::Threads

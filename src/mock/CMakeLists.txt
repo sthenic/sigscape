@@ -6,7 +6,7 @@ project(adq
 
 add_library(${PROJECT_NAME} SHARED)
 
-set_property(TARGET ${PROJECT_NAME} PROPERTY CMAKE_CXX_STANDARD 17)
+set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 
 target_sources(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/control_unit.cpp
@@ -20,3 +20,15 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     ADQAPI_INTERNAL)
+
+if (UNIX)
+    target_compile_options(${PROJECT_NAME} PRIVATE
+        -Wall -Wextra -Wswitch -Werror=overflow)
+elseif (WIN32)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+        _CRT_SECURE_NO_WARNINGS
+        _USE_MATH_DEFINES
+        NOMINMAX)
+    target_compile_options(${PROJECT_NAME} PRIVATE
+        /W4)
+endif()

@@ -325,7 +325,7 @@ extern "C" {
 #endif
 
 #if defined(_WIN32)
-#define ADQAPI_EXPORT __declspec(dllimport)
+#define ADQAPI_EXPORT __declspec(dllexport)
 #else
 #define ADQAPI_EXPORT
 #endif

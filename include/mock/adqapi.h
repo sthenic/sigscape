@@ -81,10 +81,10 @@ struct ADQGen4Record
         std::free(data);
         std::free(header);
     }
-#endif
 
     ADQGen4Record(const ADQGen4Record &other) = delete;
     ADQGen4Record &operator=(const ADQGen4Record &other) = delete;
+#endif
 
     struct ADQGen4RecordHeader *header;
     void *data;

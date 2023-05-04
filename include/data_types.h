@@ -13,11 +13,7 @@
 #include <stdexcept>
 #include <string>
 
-#ifdef MOCK_ADQAPI
-#include "adqapi.h"
-#else
 #include "ADQAPI.h"
-#endif
 
 /* The `Value` type groups together a `double` with a few properties to greatly
    simplify its formatting for UI presentation. This is handled through the

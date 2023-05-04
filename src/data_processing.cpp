@@ -3,11 +3,7 @@
 #include "fft.h"
 #include "fft_settings.h"
 
-#ifdef MOCK_ADQAPI
-#include "adqapi.h"
-#else
 #include "ADQAPI.h"
-#endif
 
 #include <cinttypes>
 #include <set>

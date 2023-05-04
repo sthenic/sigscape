@@ -10,11 +10,7 @@
 #include "file_watcher.h"
 #include "system_manager.h"
 
-#ifdef MOCK_ADQAPI
-#include "adqapi.h"
-#else
 #include "ADQAPI.h"
-#endif
 
 #include <array>
 #include <chrono>

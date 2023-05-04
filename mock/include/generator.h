@@ -2,7 +2,7 @@
 
 #include "buffer_thread.h"
 #include "error.h"
-#include "adqapi.h"
+#include "ADQAPI.h"
 
 #include <random>
 

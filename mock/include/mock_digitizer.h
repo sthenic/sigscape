@@ -1,6 +1,6 @@
 #pragma once
 
-#include "adqapi.h"
+#include "ADQAPI.h"
 #include "generator.h"
 #include "mock_system_manager.h"
 #include <vector>

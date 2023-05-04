@@ -24,9 +24,6 @@ set(CPPUTEST_MEM_LEAK_DETECTION_DISABLED ON CACHE INTERNAL "")
 
 FetchContent_MakeAvailable(CppUTest)
 
-# FIXME: Needed?
-find_package(Python3 REQUIRED Development)
-
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 target_sources(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/data_processing.cpp

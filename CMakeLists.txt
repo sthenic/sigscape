@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.16)
 project(sigscape
   VERSION 0.1.0
   HOMEPAGE_URL "https://github.com/sthenic/sigscape"
@@ -100,6 +100,10 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(json)
 
+# TODO: Ideally we want CMake v3.26 to use Development.SABIModule to target the
+#       stable ABI, specifically on Windows which leads to linking against
+#       python3.dll instead of the version-specific python3xy.dll.
+#       See: https://gitlab.kitware.com/cmake/cmake/-/issues/24141
 find_package(Python3 REQUIRED Development)
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)

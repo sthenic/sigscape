@@ -1,8 +1,8 @@
 #pragma once
 
-#include "mock/generator.h"
-#include "mock/system_manager.h"
-#include "mock/adqapi.h"
+#include "adqapi.h"
+#include "generator.h"
+#include "mock_system_manager.h"
 #include <vector>
 
 class MockDigitizer

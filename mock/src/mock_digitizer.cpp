@@ -1,4 +1,4 @@
-#include "mock/digitizer.h"
+#include "mock_digitizer.h"
 
 #include <cstring>
 #include <sstream>

@@ -24,6 +24,7 @@ set(CPPUTEST_MEM_LEAK_DETECTION_DISABLED ON CACHE INTERNAL "")
 
 FetchContent_MakeAvailable(CppUTest)
 
+# FIXME: Needed?
 find_package(Python3 REQUIRED Development)
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
@@ -36,10 +37,10 @@ target_sources(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/format.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/data_types.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/embedded_python.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/mock/generator.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/mock/control_unit.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/mock/digitizer.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/mock/system_manager.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mock/src/generator.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mock/src/mock_control_unit.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mock/src/mock_digitizer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mock/src/mock_system_manager.cpp
     tgenerator.cpp
     tdata_processing.cpp
     tthread_safe_queue.cpp
@@ -51,6 +52,7 @@ target_sources(${PROJECT_NAME} PRIVATE
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mock/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../vendor/simple_fft
     ${fmt_SOURCE_DIR}/include)
 

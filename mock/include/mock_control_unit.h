@@ -1,6 +1,6 @@
 #pragma once
 
-#include "mock/digitizer.h"
+#include "mock_digitizer.h"
 #include <vector>
 #include <cinttypes>
 

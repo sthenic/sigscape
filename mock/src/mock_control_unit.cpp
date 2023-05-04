@@ -1,5 +1,5 @@
-#include "mock/adqapi.h"
-#include "mock/control_unit.h"
+#include "adqapi.h"
+#include "mock_control_unit.h"
 
 /* A static instance of the mocked ADQAPI. The user can decide whether to
    instantiate the object themselves or to use the CreateADQControlUnit()

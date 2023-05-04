@@ -1,4 +1,4 @@
-#include "mock/system_manager.h"
+#include "mock_system_manager.h"
 #include <cinttypes>
 
 #define SENSOR_ID_EOM (0u)

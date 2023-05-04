@@ -2,7 +2,7 @@
 
 #include "buffer_thread.h"
 #include "error.h"
-#include "mock/adqapi.h"
+#include "adqapi.h"
 
 #include <random>
 

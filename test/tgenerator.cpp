@@ -1,5 +1,5 @@
 #include "CppUTest/TestHarness.h"
-#include "mock/generator.h"
+#include "generator.h"
 
 #include <thread>
 #include <chrono>

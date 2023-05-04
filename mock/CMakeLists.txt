@@ -9,14 +9,16 @@ add_library(${PROJECT_NAME} SHARED)
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 
 target_sources(${PROJECT_NAME} PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/control_unit.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/digitizer.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/generator.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/system_manager.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/generator.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/mock_control_unit.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/mock_digitizer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/mock_system_manager.cpp)
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-    ${PROJECT_BINARY_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+
+target_include_directories(${PROJECT_NAME} PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     ADQAPI_INTERNAL)

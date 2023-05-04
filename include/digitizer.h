@@ -11,7 +11,7 @@
 #include "system_manager.h"
 
 #ifdef MOCK_ADQAPI
-#include "mock/adqapi.h"
+#include "adqapi.h"
 #else
 #include "ADQAPI.h"
 #endif

@@ -1,5 +1,5 @@
 #include "data_processing.h"
-#include "mock/control_unit.h"
+#include "mock_control_unit.h"
 
 #include <thread>
 #include <chrono>

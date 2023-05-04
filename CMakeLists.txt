@@ -162,7 +162,7 @@ if (MOCK_ADQAPI)
     # Build a mocked shared library, whose CMakeLists.txt is located in
     # src/mock.
     message(STATUS "Using MOCK_ADQAPI (no ADQAPI dependency).")
-    add_subdirectory(src/mock _adq)
+    add_subdirectory(mock _adq)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
         MOCK_ADQAPI
         MOCK_ADQAPI_PATH=\"$<TARGET_FILE:adq>\")

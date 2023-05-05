@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.15)
 project(sigscape
   VERSION 0.1.0
   HOMEPAGE_URL "https://github.com/sthenic/sigscape"
@@ -100,11 +100,13 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(json)
 
-# TODO: Ideally we want CMake v3.26 to use Development.SABIModule to target the
-#       stable ABI, specifically on Windows which leads to linking against
-#       python3.dll instead of the version-specific python3xy.dll.
-#       See: https://gitlab.kitware.com/cmake/cmake/-/issues/24141
+# On Windows, we use (or resort) to run-time dynamic linking. Our goal is to
+# integrate with the 'native' Python environment (and not ship our own).
+# However, the crux is that a 'native' Python environment on Windows isn't that
+# well defined.
+if (NOT WIN32)
 find_package(Python3 REQUIRED Development)
+endif()
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 target_sources(${PROJECT_NAME} PRIVATE
@@ -237,15 +239,17 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     glfw
     fmt
     png_static
-    Python3::Python
     adq
 )
 
 # Platform-specific libraries (for hotplug detection).
 if (WIN32)
-    target_link_libraries(${PROJECT_NAME} PRIVATE cfgmgr32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        cfgmgr32)
 else()
-    target_link_libraries(${PROJECT_NAME} PRIVATE udev)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        udev
+        Python3::Python)
 endif()
 
 # Add the test suite as subdirectory (excluded by default).

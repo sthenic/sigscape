@@ -70,9 +70,13 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Threads::Threads
-    Python3::Python
     fmt
     CppUTest)
+
+if (UNIX)
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    Python3::Python)
+endif()
 
 # Add a custom command do run the test suite as a CMake target.
 add_custom_target(run_tests

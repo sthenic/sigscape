@@ -1,7 +1,44 @@
 #include "embedded_python.h"
 
+#if defined(_WIN32)
+#include <windows.h>
+#else
 #include "Python.h"
+/* FIXME: Remove */
+typedef size_t SIZE_T;
+typedef ssize_t SSIZE_T;
+#endif
+
 #include <stdexcept>
+
+
+/* Run-time dynamic linking helpers. */
+#if defined(_WIN32)
+/* FIXME: As void instead of opaque struct definition? */
+struct PyObject;
+struct PyThreadState;
+
+/* Static function pointers. We'll populate these once we load the library. */
+static void (*Py_Initialize)();
+static int (*Py_FinalizeEx)();
+static void (*Py_DecRef)(PyObject *);
+static PyThreadState *(*PyEval_SaveThread)();
+static void (*PyEval_RestoreThread)(PyThreadState *);
+static int (*PyGILState_Ensure)(); /* FIXME: Actually returns enum, problem? */
+static PyObject *(*PyImport_ImportModule)(const char *);
+static PyObject *(*PyObject_GetAttrString)(PyObject *, const char *);
+static PyObject *(*PyUnicode_DecodeFSDefault)(const char *);
+static int (*PyList_Append)(PyObject *, PyObject *);
+static void (*PyErr_Print)();
+static void (*PyGILState_Release)(int); /* FIXME: Actually enum, problem? */
+static PyObject *(*PyImport_ReloadModule)(PyObject *);
+static int (*PyCallable_Check)(PyObject *);
+static PyObject *(*PyTuple_New)(SSIZE_T); /* FIXME: Actually Py_ssize_t */
+static int (*PyTuple_SetItem)(PyObject *, SSIZE_T, PyObject *);
+static PyObject *(*PyObject_CallObject)(PyObject *, PyObject *);
+static PyObject *(*PyLong_FromSize_t)(SIZE_T);
+static PyObject *(*PyLong_FromLong)(long);
+#endif
 
 /* This is a wrapper around a `PyObject *` that mimics the behavior of a
    `std::unique_ptr` with a custom deleter. We'll use this type to simplify the
@@ -16,7 +53,7 @@ public:
     ~UniquePyObject()
     {
         if (m_object != NULL)
-            Py_DECREF(m_object);
+            Py_DecRef(m_object);
     }
 
     /* Disallow copy */
@@ -32,7 +69,7 @@ public:
                 to let go of our current object. Thus, we need to decrement
                 its refcount. */
             if (m_object != other.m_object)
-                Py_DECREF(m_object);
+                Py_DecRef(m_object);
             m_object = other.m_object;
             other.m_object = NULL;
         }
@@ -61,10 +98,17 @@ private:
 };
 
 /* The global Python session object. */
+/* FIXME: Two separate versions of this instead? */
 static struct PythonSession
 {
     PythonSession()
     {
+#if defined(_WIN32)
+        m_is_initialized = RunTimeLoad();
+#else
+        m_is_initialized = true;
+#endif
+
         /* Initialize the Python session and release the global interpreter lock
            (GIL). We need to remember the state until we run the destructor, at
            which point it's _very_ important that we restore it when acquiring
@@ -75,13 +119,122 @@ static struct PythonSession
 
     ~PythonSession()
     {
-        PyEval_RestoreThread(m_state);
-        if (Py_FinalizeEx() != 0)
-            fprintf(stderr, "Failed to destroy the Python session.\n");
+#if defined(_WIN32)
+        if (m_dll != NULL)
+        {
+#endif
+            PyEval_RestoreThread(m_state);
+            if (Py_FinalizeEx() != 0)
+                fprintf(stderr, "Failed to destroy the Python session.\n");
+
+#if defined(_WIN32)
+            if (FreeLibrary(m_dll) == 0)
+                fprintf(stderr, "Failed to free the run-time linked Python library handle.\n");
+        }
+#endif
     }
 
+    bool IsInitialized()
+    {
+        return m_is_initialized;
+    }
+
+
 private:
+    bool m_is_initialized;
     PyThreadState *m_state;
+
+#if defined(_WIN32)
+    HMODULE m_dll;
+
+    bool RunTimeLoad()
+    {
+        /* FIXME: Search for multiple versions. */
+        m_dll = LoadLibraryA("python3.dll");
+        if (m_dll == NULL)
+            return false;
+
+        Py_Initialize = GetProcAddress(m_dll, "Py_Initialize");
+        if (Py_Initialize == NULL)
+            return false;
+
+        Py_FinalizeEx = GetProcAddress(m_dll, "Py_FinalizeEx");
+        if (Py_FinalizeEx == NULL)
+            return false;
+
+        Py_DecRef = GetProcAddress(m_dll, "Py_DecRef");
+        if (Py_DecRef == NULL)
+            return false;
+
+        PyEval_SaveThread = GetProcAddress(m_dll, "PyEval_SaveThread");
+        if (PyEval_SaveThread == NULL)
+            return false;
+
+        PyEval_RestoreThread = GetProcAddress(m_dll, "PyEval_RestoreThread");
+        if (PyEval_RestoreThread == NULL)
+            return false;
+
+        PyGILState_Ensure = GetProcAddress(m_dll, "PyGILState_Ensure");
+        if (PyGILState_Ensure == NULL)
+            return false;
+
+        PyImport_ImportModule = GetProcAddress(m_dll, "PyImport_ImportModule");
+        if (PyImport_ImportModule == NULL)
+            return false;
+
+        PyObject_GetAttrString = GetProcAddress(m_dll, "PyObject_GetAttrString");
+        if (PyObject_GetAttrString == NULL)
+            return false;
+
+        PyUnicode_DecodeFSDefault = GetProcAddress(m_dll, "PyUnicode_DecodeFSDefault");
+        if (PyUnicode_DecodeFSDefault == NULL)
+            return false;
+
+        PyList_Append = GetProcAddress(m_dll, "PyList_Append");
+        if (PyList_Append == NULL)
+            return false;
+
+        PyErr_Print = GetProcAddress(m_dll, "PyErr_Print");
+        if (PyErr_Print == NULL)
+            return false;
+
+        PyGILState_Release = GetProcAddress(m_dll, "PyGILState_Release");
+        if (PyGILState_Release == NULL)
+            return false;
+
+        PyImport_ReloadModule = GetProcAddress(m_dll, "PyImport_ReloadModule");
+        if (PyImport_ReloadModule == NULL)
+            return false;
+
+        PyCallable_Check = GetProcAddress(m_dll, "PyCallable_Check");
+        if (PyCallable_Check == NULL)
+            return false;
+
+        PyTuple_New = GetProcAddress(m_dll, "PyTuple_New");
+        if (PyTuple_New == NULL)
+            return false;
+
+        PyTuple_SetItem = GetProcAddress(m_dll, "PyTuple_SetItem");
+        if (PyTuple_SetItem == NULL)
+            return false;
+
+        PyObject_CallObject = GetProcAddress(m_dll, "PyObject_CallObject");
+        if (PyObject_CallObject == NULL)
+            return false;
+
+        PyLong_FromSize_t = GetProcAddress(m_dll, "PyLong_FromSize_t");
+        if (PyLong_FromSize_t == NULL)
+            return false;
+
+        PyLong_FromLong = GetProcAddress(m_dll, "PyLong_FromLong");
+        if (PyLong_FromLong == NULL)
+            return false;
+
+        /* FIXME: Remove */
+        printf("Successfully completed run-time loading of the Python DLL.\n");
+        return true;
+    }
+#endif
 } python_session;
 
 /* A private exception type that we use for simplified control flow. */
@@ -90,6 +243,11 @@ class EmbeddedPythonException : public std::runtime_error
 public:
     EmbeddedPythonException() : std::runtime_error("") {};
 };
+
+bool EmbeddedPython::IsInitialized()
+{
+    return python_session.IsInitialized();
+}
 
 int EmbeddedPython::AddToPath(const std::string &directory)
 {

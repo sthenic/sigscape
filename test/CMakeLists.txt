@@ -45,6 +45,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     tfile_watcher.cpp
     tdirectory_watcher.cpp
     tdigitizer.cpp
+    tpython.cpp
     main.cpp)
 
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -66,11 +67,14 @@ elseif (WIN32)
 endif()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
-    MOCK_ADQAPI ADQAPI_INTERNAL)
+    MOCK_ADQAPI
+    MOCK_ADQAPI_PATH=\"$<TARGET_FILE:adq>\"
+    ADQAPI_INTERNAL)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Threads::Threads
     fmt
+    adq
     CppUTest)
 
 if (UNIX)

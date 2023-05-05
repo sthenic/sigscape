@@ -1498,6 +1498,7 @@ void Ui::RenderStaticInformation()
 
             Row("sigscape", SIGSCAPE_REVISION);
             Row("libadq", fmt::format("0x{:08x}", m_api_revision));
+            Row("Embedded Python", EmbeddedPython::IsInitialized() ? "Yes" : "No");
 
             ImGui::EndTable();
         }

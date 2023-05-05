@@ -29,6 +29,7 @@ typedef PyObject *(__cdecl *PyImport_ImportModule_t)(const char *);
 typedef PyObject *(__cdecl *PyObject_GetAttrString_t)(PyObject *, const char *);
 typedef PyObject *(__cdecl *PyUnicode_DecodeFSDefault_t)(const char *);
 typedef int (__cdecl *PyList_Append_t)(PyObject *, PyObject *);
+typedef int (__cdecl *PyList_Insert_t)(PyObject *, SSIZE_T, PyObject *);
 typedef void (__cdecl *PyErr_Print_t)();
 typedef void (__cdecl *PyGILState_Release_t)(int); /* FIXME: Actually enum, problem? */
 typedef PyObject *(__cdecl *PyImport_ReloadModule_t)(PyObject *);
@@ -50,6 +51,7 @@ static PyImport_ImportModule_t PyImport_ImportModule;
 static PyObject_GetAttrString_t PyObject_GetAttrString;
 static PyUnicode_DecodeFSDefault_t PyUnicode_DecodeFSDefault;
 static PyList_Append_t PyList_Append;
+static PyList_Insert_t PyList_Insert;
 static PyErr_Print_t PyErr_Print;
 static PyGILState_Release_t PyGILState_Release;
 static PyImport_ReloadModule_t PyImport_ReloadModule;
@@ -97,7 +99,6 @@ public:
 
         return *this;
     }
-
 
     PyObject *get() const
     {
@@ -215,6 +216,10 @@ private:
         if (PyList_Append == NULL)
             return false;
 
+        PyList_Insert = (PyList_Insert_t)GetProcAddress(m_dll, "PyList_Insert");
+        if (PyList_Insert == NULL)
+            return false;
+
         PyErr_Print = (PyErr_Print_t)GetProcAddress(m_dll, "PyErr_Print");
         if (PyErr_Print == NULL)
             return false;
@@ -288,7 +293,11 @@ int EmbeddedPython::AddToPath(const std::string &directory)
         if (path == NULL)
             throw EmbeddedPythonException();
 
-        if (PyList_Append(sys_path.get(), path.get()) != 0)
+        // if (PyList_Append(sys_path.get(), path.get()) != 0)
+        //     throw EmbeddedPythonException();
+
+        /* Prepend to the path.*/
+        if (PyList_Insert(sys_path.get(), 0, path.get()) != 0)
             throw EmbeddedPythonException();
     }
     catch (const EmbeddedPythonException &)

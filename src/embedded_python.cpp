@@ -18,26 +18,47 @@ typedef ssize_t SSIZE_T;
 struct PyObject;
 struct PyThreadState;
 
+/* Typedefs for functions we're going to load from the library. */
+typedef void (__cdecl *Py_Initialize_t)();
+typedef int (__cdecl *Py_FinalizeEx_t)();
+typedef void (__cdecl *Py_DecRef_t)(PyObject *);
+typedef PyThreadState *(__cdecl *PyEval_SaveThread_t)();
+typedef void (__cdecl *PyEval_RestoreThread_t)(PyThreadState *);
+typedef int (__cdecl *PyGILState_Ensure_t)(); /* FIXME: Actually returns enum, problem? */
+typedef PyObject *(__cdecl *PyImport_ImportModule_t)(const char *);
+typedef PyObject *(__cdecl *PyObject_GetAttrString_t)(PyObject *, const char *);
+typedef PyObject *(__cdecl *PyUnicode_DecodeFSDefault_t)(const char *);
+typedef int (__cdecl *PyList_Append_t)(PyObject *, PyObject *);
+typedef void (__cdecl *PyErr_Print_t)();
+typedef void (__cdecl *PyGILState_Release_t)(int); /* FIXME: Actually enum, problem? */
+typedef PyObject *(__cdecl *PyImport_ReloadModule_t)(PyObject *);
+typedef int (__cdecl *PyCallable_Check_t)(PyObject *);
+typedef PyObject *(__cdecl *PyTuple_New_t)(SSIZE_T); /* FIXME: Actually Py_ssize_t */
+typedef int (__cdecl *PyTuple_SetItem_t)(PyObject *, SSIZE_T, PyObject *);
+typedef PyObject *(__cdecl *PyObject_CallObject_t)(PyObject *, PyObject *);
+typedef PyObject *(__cdecl *PyLong_FromSize_t_t)(SIZE_T);
+typedef PyObject *(__cdecl *PyLong_FromLong_t)(long);
+
 /* Static function pointers. We'll populate these once we load the library. */
-static void (*Py_Initialize)();
-static int (*Py_FinalizeEx)();
-static void (*Py_DecRef)(PyObject *);
-static PyThreadState *(*PyEval_SaveThread)();
-static void (*PyEval_RestoreThread)(PyThreadState *);
-static int (*PyGILState_Ensure)(); /* FIXME: Actually returns enum, problem? */
-static PyObject *(*PyImport_ImportModule)(const char *);
-static PyObject *(*PyObject_GetAttrString)(PyObject *, const char *);
-static PyObject *(*PyUnicode_DecodeFSDefault)(const char *);
-static int (*PyList_Append)(PyObject *, PyObject *);
-static void (*PyErr_Print)();
-static void (*PyGILState_Release)(int); /* FIXME: Actually enum, problem? */
-static PyObject *(*PyImport_ReloadModule)(PyObject *);
-static int (*PyCallable_Check)(PyObject *);
-static PyObject *(*PyTuple_New)(SSIZE_T); /* FIXME: Actually Py_ssize_t */
-static int (*PyTuple_SetItem)(PyObject *, SSIZE_T, PyObject *);
-static PyObject *(*PyObject_CallObject)(PyObject *, PyObject *);
-static PyObject *(*PyLong_FromSize_t)(SIZE_T);
-static PyObject *(*PyLong_FromLong)(long);
+static Py_Initialize_t Py_Initialize;
+static Py_FinalizeEx_t Py_FinalizeEx;
+static Py_DecRef_t Py_DecRef;
+static PyEval_SaveThread_t PyEval_SaveThread;
+static PyEval_RestoreThread_t PyEval_RestoreThread;
+static PyGILState_Ensure_t PyGILState_Ensure;
+static PyImport_ImportModule_t PyImport_ImportModule;
+static PyObject_GetAttrString_t PyObject_GetAttrString;
+static PyUnicode_DecodeFSDefault_t PyUnicode_DecodeFSDefault;
+static PyList_Append_t PyList_Append;
+static PyErr_Print_t PyErr_Print;
+static PyGILState_Release_t PyGILState_Release;
+static PyImport_ReloadModule_t PyImport_ReloadModule;
+static PyCallable_Check_t PyCallable_Check;
+static PyTuple_New_t PyTuple_New;
+static PyTuple_SetItem_t PyTuple_SetItem;
+static PyObject_CallObject_t PyObject_CallObject;
+static PyLong_FromSize_t_t PyLong_FromSize_t;
+static PyLong_FromLong_t PyLong_FromLong;
 #endif
 
 /* This is a wrapper around a `PyObject *` that mimics the behavior of a
@@ -154,79 +175,79 @@ private:
         if (m_dll == NULL)
             return false;
 
-        Py_Initialize = GetProcAddress(m_dll, "Py_Initialize");
+        Py_Initialize = (Py_Initialize_t)GetProcAddress(m_dll, "Py_Initialize");
         if (Py_Initialize == NULL)
             return false;
 
-        Py_FinalizeEx = GetProcAddress(m_dll, "Py_FinalizeEx");
+        Py_FinalizeEx = (Py_FinalizeEx_t)GetProcAddress(m_dll, "Py_FinalizeEx");
         if (Py_FinalizeEx == NULL)
             return false;
 
-        Py_DecRef = GetProcAddress(m_dll, "Py_DecRef");
+        Py_DecRef = (Py_DecRef_t)GetProcAddress(m_dll, "Py_DecRef");
         if (Py_DecRef == NULL)
             return false;
 
-        PyEval_SaveThread = GetProcAddress(m_dll, "PyEval_SaveThread");
+        PyEval_SaveThread = (PyEval_SaveThread_t)GetProcAddress(m_dll, "PyEval_SaveThread");
         if (PyEval_SaveThread == NULL)
             return false;
 
-        PyEval_RestoreThread = GetProcAddress(m_dll, "PyEval_RestoreThread");
+        PyEval_RestoreThread = (PyEval_RestoreThread_t)GetProcAddress(m_dll, "PyEval_RestoreThread");
         if (PyEval_RestoreThread == NULL)
             return false;
 
-        PyGILState_Ensure = GetProcAddress(m_dll, "PyGILState_Ensure");
+        PyGILState_Ensure = (PyGILState_Ensure_t)GetProcAddress(m_dll, "PyGILState_Ensure");
         if (PyGILState_Ensure == NULL)
             return false;
 
-        PyImport_ImportModule = GetProcAddress(m_dll, "PyImport_ImportModule");
+        PyImport_ImportModule = (PyImport_ImportModule_t)GetProcAddress(m_dll, "PyImport_ImportModule");
         if (PyImport_ImportModule == NULL)
             return false;
 
-        PyObject_GetAttrString = GetProcAddress(m_dll, "PyObject_GetAttrString");
+        PyObject_GetAttrString = (PyObject_GetAttrString_t)GetProcAddress(m_dll, "PyObject_GetAttrString");
         if (PyObject_GetAttrString == NULL)
             return false;
 
-        PyUnicode_DecodeFSDefault = GetProcAddress(m_dll, "PyUnicode_DecodeFSDefault");
+        PyUnicode_DecodeFSDefault = (PyUnicode_DecodeFSDefault_t)GetProcAddress(m_dll, "PyUnicode_DecodeFSDefault");
         if (PyUnicode_DecodeFSDefault == NULL)
             return false;
 
-        PyList_Append = GetProcAddress(m_dll, "PyList_Append");
+        PyList_Append = (PyList_Append_t)GetProcAddress(m_dll, "PyList_Append");
         if (PyList_Append == NULL)
             return false;
 
-        PyErr_Print = GetProcAddress(m_dll, "PyErr_Print");
+        PyErr_Print = (PyErr_Print_t)GetProcAddress(m_dll, "PyErr_Print");
         if (PyErr_Print == NULL)
             return false;
 
-        PyGILState_Release = GetProcAddress(m_dll, "PyGILState_Release");
+        PyGILState_Release = (PyGILState_Release_t)GetProcAddress(m_dll, "PyGILState_Release");
         if (PyGILState_Release == NULL)
             return false;
 
-        PyImport_ReloadModule = GetProcAddress(m_dll, "PyImport_ReloadModule");
+        PyImport_ReloadModule = (PyImport_ReloadModule_t)GetProcAddress(m_dll, "PyImport_ReloadModule");
         if (PyImport_ReloadModule == NULL)
             return false;
 
-        PyCallable_Check = GetProcAddress(m_dll, "PyCallable_Check");
+        PyCallable_Check = (PyCallable_Check_t)GetProcAddress(m_dll, "PyCallable_Check");
         if (PyCallable_Check == NULL)
             return false;
 
-        PyTuple_New = GetProcAddress(m_dll, "PyTuple_New");
+        PyTuple_New = (PyTuple_New_t)GetProcAddress(m_dll, "PyTuple_New");
         if (PyTuple_New == NULL)
             return false;
 
-        PyTuple_SetItem = GetProcAddress(m_dll, "PyTuple_SetItem");
+        PyTuple_SetItem = (PyTuple_SetItem_t)GetProcAddress(m_dll, "PyTuple_SetItem");
         if (PyTuple_SetItem == NULL)
             return false;
 
-        PyObject_CallObject = GetProcAddress(m_dll, "PyObject_CallObject");
+        PyObject_CallObject = (PyObject_CallObject_t)GetProcAddress(m_dll, "PyObject_CallObject");
         if (PyObject_CallObject == NULL)
             return false;
 
-        PyLong_FromSize_t = GetProcAddress(m_dll, "PyLong_FromSize_t");
+        PyLong_FromSize_t = (PyLong_FromSize_t_t)GetProcAddress(m_dll, "PyLong_FromSize_t");
         if (PyLong_FromSize_t == NULL)
             return false;
 
-        PyLong_FromLong = GetProcAddress(m_dll, "PyLong_FromLong");
+        PyLong_FromLong = (PyLong_FromLong_t)GetProcAddress(m_dll, "PyLong_FromLong");
         if (PyLong_FromLong == NULL)
             return false;
 

@@ -105,7 +105,7 @@ FetchContent_MakeAvailable(json)
 # However, the crux is that a 'native' Python environment on Windows isn't that
 # well defined.
 if (NOT WIN32)
-find_package(Python3 REQUIRED Development)
+    find_package(Python3 REQUIRED Development)
 endif()
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)

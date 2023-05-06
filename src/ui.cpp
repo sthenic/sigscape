@@ -654,37 +654,74 @@ void Ui::RenderCenter(float width, float height)
 {
     /* We show two plots in the center, taking up equal vertical space. */
     const float FRAME_HEIGHT = ImGui::GetFrameHeight();
-    const float PLOT_WINDOW_HEIGHT = (height - 1 * FRAME_HEIGHT) / 2;
+    height -= FRAME_HEIGHT;
+
+    const float LOG_HEIGHT = 200.0f - static_cast<int>(height) % 2;
+    const float PLOT_WINDOW_HEIGHT = (height - LOG_HEIGHT) / 2;
     const float POSITION_X = width * FIRST_COLUMN_RELATIVE_WIDTH;
     const float SIZE_X = width * SECOND_COLUMN_RELATIVE_WIDTH;
 
+    /* Helper function to tabulate a few coordinates/sizes given the collapsed
+       state of one of the plots and the log. */
+    const auto Calculate = [&](bool plot_collapsed, bool log_collapsed) -> float
+    {
+        if (plot_collapsed && log_collapsed)
+            return height - 2 * FRAME_HEIGHT;
+        else if (plot_collapsed)
+            return 2 * PLOT_WINDOW_HEIGHT - FRAME_HEIGHT;
+        else if (log_collapsed)
+            return PLOT_WINDOW_HEIGHT + (LOG_HEIGHT - FRAME_HEIGHT) / 2;
+        else
+            return PLOT_WINDOW_HEIGHT;
+    };
+
     ImVec2 TIME_DOMAIN_POSITION{POSITION_X, FRAME_HEIGHT};
-    ImVec2 TIME_DOMAIN_SIZE{SIZE_X, PLOT_WINDOW_HEIGHT};
-    ImVec2 FREQUENCY_DOMAIN_POSITION{POSITION_X, FRAME_HEIGHT + PLOT_WINDOW_HEIGHT};
-    ImVec2 FREQUENCY_DOMAIN_SIZE{SIZE_X, PLOT_WINDOW_HEIGHT};
+    ImVec2 TIME_DOMAIN_SIZE{SIZE_X, 0};
+    ImVec2 FREQUENCY_DOMAIN_POSITION{POSITION_X, FRAME_HEIGHT};
+    ImVec2 FREQUENCY_DOMAIN_SIZE{SIZE_X, 0};
+    ImVec2 LOG_POSITION{POSITION_X, FRAME_HEIGHT};
+    ImVec2 LOG_SIZE{SIZE_X, 0};
 
     if (m_collapsed.time_domain)
     {
-        TIME_DOMAIN_SIZE = ImVec2{SIZE_X, FRAME_HEIGHT};
-        FREQUENCY_DOMAIN_POSITION = ImVec2{POSITION_X, 2 * FRAME_HEIGHT};
-        FREQUENCY_DOMAIN_SIZE = ImVec2{SIZE_X, height - 2 * FRAME_HEIGHT};
+        TIME_DOMAIN_SIZE.y += FRAME_HEIGHT;
+        FREQUENCY_DOMAIN_POSITION.y += FRAME_HEIGHT;
+    }
+    else
+    {
+        TIME_DOMAIN_SIZE.y += Calculate(m_collapsed.frequency_domain, m_collapsed.log);
+        FREQUENCY_DOMAIN_POSITION.y += Calculate(m_collapsed.frequency_domain, m_collapsed.log);
     }
 
     if (m_collapsed.frequency_domain)
-    {
-        TIME_DOMAIN_SIZE = ImVec2{SIZE_X, height - 2 * FRAME_HEIGHT};
-        FREQUENCY_DOMAIN_POSITION = ImVec2{POSITION_X, height - FRAME_HEIGHT};
-        FREQUENCY_DOMAIN_SIZE = ImVec2{SIZE_X, FRAME_HEIGHT};
-    }
+        FREQUENCY_DOMAIN_SIZE.y += FRAME_HEIGHT;
+    else
+        FREQUENCY_DOMAIN_SIZE.y += Calculate(m_collapsed.time_domain, m_collapsed.log);
 
     if (m_collapsed.time_domain && m_collapsed.frequency_domain)
-        FREQUENCY_DOMAIN_POSITION = ImVec2{POSITION_X, 2 * FRAME_HEIGHT};
+    {
+        LOG_SIZE.y += height - 2 * FRAME_HEIGHT;
+        LOG_POSITION.y += 2 * FRAME_HEIGHT;
+    }
+    else if (m_collapsed.log)
+    {
+        LOG_SIZE.y += FRAME_HEIGHT;
+        LOG_POSITION.y += height - FRAME_HEIGHT;
+    }
+    else
+    {
+        LOG_SIZE.y += LOG_HEIGHT;
+        LOG_POSITION.y += height - LOG_HEIGHT;
+    }
 
     /* The lower plot window, showing time domain data. */
     RenderTimeDomain(TIME_DOMAIN_POSITION, TIME_DOMAIN_SIZE);
 
     /* The lower plot window, showing frequency domain data. */
     RenderFrequencyDomain(FREQUENCY_DOMAIN_POSITION, FREQUENCY_DOMAIN_SIZE);
+
+    /* At the very bottom, we show the event log. */
+    RenderLog(LOG_POSITION, LOG_SIZE);
 }
 
 void Ui::RenderLeft(float width, float height)
@@ -2397,6 +2434,15 @@ void Ui::RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size)
         }
         ImGui::EndTabBar();
     }
+    ImGui::End();
+}
+
+void Ui::RenderLog(const ImVec2 &position, const ImVec2 &size)
+{
+    ImGui::SetNextWindowPos(position);
+    ImGui::SetNextWindowSize(size);
+    ImGui::Begin("Log", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+    m_collapsed.log = ImGui::IsWindowCollapsed();
     ImGui::End();
 }
 

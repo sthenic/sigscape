@@ -100,6 +100,13 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(json)
 
+FetchContent_Declare(
+    spdlog
+    GIT_REPOSITORY https://github.com/gabime/spdlog
+    GIT_TAG v1.11.0
+)
+FetchContent_MakeAvailable(spdlog)
+
 # On Windows, we use (or resort) to run-time dynamic linking. Our goal is to
 # integrate with the 'native' Python environment (and not ship our own).
 # However, the crux is that a 'native' Python environment on Windows isn't that
@@ -153,6 +160,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${png_SOURCE_DIR}
     ${fmt_SOURCE_DIR}/include
     ${json_SOURCE_DIR}/include
+    ${spdlog_SOURCE_DIR}/include
     vendor/simple_fft
     vendor/gl3w
     include

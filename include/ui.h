@@ -55,6 +55,7 @@ private:
     {
         bool time_domain;
         bool frequency_domain;
+        bool log;
         bool time_domain_metrics;
         bool frequency_domain_metrics;
         bool processing_options;
@@ -251,6 +252,7 @@ private:
     void RenderSensorPlot();
     void RenderTimeDomain(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomain(const ImVec2 &position, const ImVec2 &size);
+    void RenderLog(const ImVec2 &position, const ImVec2 &size);
 
     void Annotate(const std::tuple<Value, Value> &point, const std::string &label = "");
     void PlotFourierTransformSelected();

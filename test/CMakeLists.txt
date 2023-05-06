@@ -52,7 +52,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
     ${CMAKE_CURRENT_SOURCE_DIR}/../mock/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../vendor/simple_fft
-    ${fmt_SOURCE_DIR}/include)
+    ${fmt_SOURCE_DIR}/include
+    ${spdlog_SOURCE_DIR}/include)
 
 if (UNIX)
     target_compile_options(${PROJECT_NAME} PRIVATE

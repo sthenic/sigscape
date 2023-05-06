@@ -57,10 +57,6 @@ TEST_GROUP(Python)
     }
 };
 
-TEST(Python, Initialized)
-{
-}
-
 TEST(Python, CheckAndCall)
 {
     LONGS_EQUAL(1, EmbeddedPython::IsInitialized());

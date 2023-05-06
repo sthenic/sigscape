@@ -4,9 +4,6 @@
 #include <windows.h>
 #else
 #include "Python.h"
-/* FIXME: Remove */
-typedef size_t SIZE_T;
-typedef ssize_t SSIZE_T;
 #endif
 
 #include <stdexcept>
@@ -14,7 +11,7 @@ typedef ssize_t SSIZE_T;
 
 /* Run-time dynamic linking helpers. */
 #if defined(_WIN32)
-/* FIXME: As void instead of opaque struct definition? */
+/* Use anonymous structs to emulate the library behavior: only pointer use. */
 struct PyObject;
 struct PyThreadState;
 
@@ -24,17 +21,17 @@ typedef int (__cdecl *Py_FinalizeEx_t)();
 typedef void (__cdecl *Py_DecRef_t)(PyObject *);
 typedef PyThreadState *(__cdecl *PyEval_SaveThread_t)();
 typedef void (__cdecl *PyEval_RestoreThread_t)(PyThreadState *);
-typedef int (__cdecl *PyGILState_Ensure_t)(); /* FIXME: Actually returns enum, problem? */
+typedef int (__cdecl *PyGILState_Ensure_t)();
 typedef PyObject *(__cdecl *PyImport_ImportModule_t)(const char *);
 typedef PyObject *(__cdecl *PyObject_GetAttrString_t)(PyObject *, const char *);
 typedef PyObject *(__cdecl *PyUnicode_DecodeFSDefault_t)(const char *);
 typedef int (__cdecl *PyList_Append_t)(PyObject *, PyObject *);
 typedef int (__cdecl *PyList_Insert_t)(PyObject *, SSIZE_T, PyObject *);
 typedef void (__cdecl *PyErr_Print_t)();
-typedef void (__cdecl *PyGILState_Release_t)(int); /* FIXME: Actually enum, problem? */
+typedef void (__cdecl *PyGILState_Release_t)(int);
 typedef PyObject *(__cdecl *PyImport_ReloadModule_t)(PyObject *);
 typedef int (__cdecl *PyCallable_Check_t)(PyObject *);
-typedef PyObject *(__cdecl *PyTuple_New_t)(SSIZE_T); /* FIXME: Actually Py_ssize_t */
+typedef PyObject *(__cdecl *PyTuple_New_t)(SSIZE_T);
 typedef int (__cdecl *PyTuple_SetItem_t)(PyObject *, SSIZE_T, PyObject *);
 typedef PyObject *(__cdecl *PyObject_CallObject_t)(PyObject *, PyObject *);
 typedef PyObject *(__cdecl *PyLong_FromSize_t_t)(SIZE_T);
@@ -119,57 +116,45 @@ private:
     PyObject *m_object;
 };
 
-/* The global Python session object. */
-/* FIXME: Two separate versions of this instead? */
-static struct PythonSession
+/* A base class to use for the Python session on Windows where we rely on
+   run-time dynamic linking. */
+#if defined(_WIN32)
+class PythonSessionRunTimeLinking
 {
-    PythonSession()
+public:
+    PythonSessionRunTimeLinking()
+        : m_dll(NULL)
     {
-#if defined(_WIN32)
-        m_is_initialized = RunTimeLoad();
-#else
-        m_is_initialized = true;
-#endif
-
-        /* Initialize the Python session and release the global interpreter lock
-           (GIL). We need to remember the state until we run the destructor, at
-           which point it's _very_ important that we restore it when acquiring
-           the GIL for the last time. */
-        Py_Initialize();
-        m_state = PyEval_SaveThread();
-    }
-
-    ~PythonSession()
-    {
-#if defined(_WIN32)
-        if (m_dll != NULL)
+        printf("Constructing PythonSessionRunTimeLinking\n");
+        if (!InitializeRunTimeLinking() && m_dll != NULL)
         {
-#endif
-            PyEval_RestoreThread(m_state);
-            if (Py_FinalizeEx() != 0)
-                fprintf(stderr, "Failed to destroy the Python session.\n");
-
-#if defined(_WIN32)
             if (FreeLibrary(m_dll) == 0)
                 fprintf(stderr, "Failed to free the run-time linked Python library handle.\n");
+            m_dll = NULL;
         }
-#endif
     }
 
+    ~PythonSessionRunTimeLinking()
+    {
+        printf("Destroying PythonSessionRunTimeLinking\n");
+        if (m_dll != NULL)
+        {
+            if (FreeLibrary(m_dll) == 0)
+                fprintf(stderr, "Failed to free the run-time linked Python library handle.\n");
+            m_dll = NULL;
+        }
+    }
+
+protected:
     bool IsInitialized()
     {
-        return m_is_initialized;
+        return m_dll != NULL;
     }
 
-
 private:
-    bool m_is_initialized;
-    PyThreadState *m_state;
-
-#if defined(_WIN32)
     HMODULE m_dll;
 
-    bool RunTimeLoad()
+    bool InitializeRunTimeLinking()
     {
         /* FIXME: Search for multiple versions. */
         m_dll = LoadLibraryA("python3.dll");
@@ -260,8 +245,60 @@ private:
         printf("Successfully completed run-time loading of the Python DLL.\n");
         return true;
     }
+};
 #endif
-} python_session;
+
+/* The Python session object, handling construction and destruction of the
+   Python runtime. If we're compiling for Windows, we inherit from a class that
+   sets up the run-time dynamic linking for us, though we have to take care not
+   to call any undefined function pointers in case the load fails. */
+class PythonSession
+#if defined(_WIN32)
+: public PythonSessionRunTimeLinking
+#endif
+{
+public:
+    PythonSession()
+    {
+        printf("Constructing PythonSession\n");
+        /* Initialize the Python session and release the global interpreter lock
+           (GIL). We need to remember the state until we run the destructor, at
+           which point it's _very_ important that we restore it when acquiring
+           the GIL for the last time. */
+        if (IsInitialized())
+        {
+            Py_Initialize();
+            m_state = PyEval_SaveThread();
+        }
+    }
+
+    ~PythonSession()
+    {
+        printf("Destroying PythonSession\n");
+        if (IsInitialized())
+        {
+            PyEval_RestoreThread(m_state);
+            if (Py_FinalizeEx() != 0)
+                fprintf(stderr, "Failed to destroy the Python session.\n");
+        }
+    }
+
+    inline bool IsInitialized()
+    {
+#if defined(_WIN32)
+        return PythonSessionRunTimeLinking::IsInitialized();
+#else
+        return true;
+#endif
+    }
+
+private:
+    PyThreadState *m_state;
+    bool m_is_initialized;
+};
+
+/* The global Python session object. */
+static PythonSession PYTHON_SESSION;
 
 /* A private exception type that we use for simplified control flow. */
 class EmbeddedPythonException : public std::runtime_error
@@ -272,7 +309,7 @@ public:
 
 bool EmbeddedPython::IsInitialized()
 {
-    return python_session.IsInitialized();
+    return PYTHON_SESSION.IsInitialized();
 }
 
 int EmbeddedPython::AddToPath(const std::string &directory)
@@ -293,10 +330,9 @@ int EmbeddedPython::AddToPath(const std::string &directory)
         if (path == NULL)
             throw EmbeddedPythonException();
 
-        // if (PyList_Append(sys_path.get(), path.get()) != 0)
-        //     throw EmbeddedPythonException();
-
-        /* Prepend to the path.*/
+        /* Prepend to the path so that any local modules get found first. This
+           is required for the test suite (custom `pyadq`), but could be a bad
+           idea in general? */
         if (PyList_Insert(sys_path.get(), 0, path.get()) != 0)
             throw EmbeddedPythonException();
     }

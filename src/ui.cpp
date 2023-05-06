@@ -1033,11 +1033,20 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
             ImGui::EndTabItem();
         }
 
+        /* Disable the Python command palette if the embedded Python session is
+           not initialized. Right now, this can only happen on Windows if we
+           can't find a Python DLL to use for run-time dynamic linking. */
+        if (!EmbeddedPython::IsInitialized())
+            ImGui::BeginDisabled();
+
         if (ImGui::BeginTabItem("Python"))
         {
             RenderPythonCommandPalette(nof_selected != 0);
             ImGui::EndTabItem();
         }
+
+        if (!EmbeddedPython::IsInitialized())
+            ImGui::EndDisabled();
 
         ImGui::EndTabBar();
     }

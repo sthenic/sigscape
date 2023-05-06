@@ -30,9 +30,16 @@ jobs:
         if [ "$RUNNER_OS" == "Linux" ]; then
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DMOCK_ADQAPI=ON -S .
           cmake --build build
-          cmake --build build --target test/run_tests
         else
           cmake -B build -A x64 -DMOCK_ADQAPI=ON -S .
           cmake --build build --config Release
+        fi
+
+    - name: Test
+      shell: bash
+      run: |
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          cmake --build build --target test/run_tests
+        else
           cmake --build build --config Release --target test/run_tests
         fi

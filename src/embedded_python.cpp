@@ -8,7 +8,6 @@
 
 #include <stdexcept>
 
-
 /* Run-time dynamic linking helpers. */
 #if defined(_WIN32)
 /* Use anonymous structs to emulate the library behavior: only pointer use. */
@@ -38,26 +37,26 @@ typedef PyObject *(__cdecl *PyLong_FromSize_t_t)(SIZE_T);
 typedef PyObject *(__cdecl *PyLong_FromLong_t)(long);
 
 /* Static function pointers. We'll populate these once we load the library. */
-static Py_Initialize_t Py_Initialize;
-static Py_FinalizeEx_t Py_FinalizeEx;
-static Py_DecRef_t Py_DecRef;
-static PyEval_SaveThread_t PyEval_SaveThread;
-static PyEval_RestoreThread_t PyEval_RestoreThread;
-static PyGILState_Ensure_t PyGILState_Ensure;
-static PyImport_ImportModule_t PyImport_ImportModule;
-static PyObject_GetAttrString_t PyObject_GetAttrString;
-static PyUnicode_DecodeFSDefault_t PyUnicode_DecodeFSDefault;
-static PyList_Append_t PyList_Append;
-static PyList_Insert_t PyList_Insert;
-static PyErr_Print_t PyErr_Print;
-static PyGILState_Release_t PyGILState_Release;
-static PyImport_ReloadModule_t PyImport_ReloadModule;
-static PyCallable_Check_t PyCallable_Check;
-static PyTuple_New_t PyTuple_New;
-static PyTuple_SetItem_t PyTuple_SetItem;
-static PyObject_CallObject_t PyObject_CallObject;
-static PyLong_FromSize_t_t PyLong_FromSize_t;
-static PyLong_FromLong_t PyLong_FromLong;
+static Py_Initialize_t Py_Initialize = NULL;
+static Py_FinalizeEx_t Py_FinalizeEx = NULL;
+static Py_DecRef_t Py_DecRef = NULL;
+static PyEval_SaveThread_t PyEval_SaveThread = NULL;
+static PyEval_RestoreThread_t PyEval_RestoreThread = NULL;
+static PyGILState_Ensure_t PyGILState_Ensure = NULL;
+static PyImport_ImportModule_t PyImport_ImportModule = NULL;
+static PyObject_GetAttrString_t PyObject_GetAttrString = NULL;
+static PyUnicode_DecodeFSDefault_t PyUnicode_DecodeFSDefault = NULL;
+static PyList_Append_t PyList_Append = NULL;
+static PyList_Insert_t PyList_Insert = NULL;
+static PyErr_Print_t PyErr_Print = NULL;
+static PyGILState_Release_t PyGILState_Release = NULL;
+static PyImport_ReloadModule_t PyImport_ReloadModule = NULL;
+static PyCallable_Check_t PyCallable_Check = NULL;
+static PyTuple_New_t PyTuple_New = NULL;
+static PyTuple_SetItem_t PyTuple_SetItem = NULL;
+static PyObject_CallObject_t PyObject_CallObject = NULL;
+static PyLong_FromSize_t_t PyLong_FromSize_t = NULL;
+static PyLong_FromLong_t PyLong_FromLong = NULL;
 #endif
 
 /* This is a wrapper around a `PyObject *` that mimics the behavior of a
@@ -314,6 +313,9 @@ bool EmbeddedPython::IsInitialized()
 
 int EmbeddedPython::AddToPath(const std::string &directory)
 {
+    if (!IsInitialized())
+        return SCAPE_ENOTREADY;
+
     auto state = PyGILState_Ensure();
     int result = SCAPE_EOK;
     try
@@ -348,6 +350,9 @@ int EmbeddedPython::AddToPath(const std::string &directory)
 
 bool EmbeddedPython::HasMain(const std::filesystem::path &path)
 {
+    if (!IsInitialized())
+        return SCAPE_ENOTREADY;
+
     auto state = PyGILState_Ensure();
     bool result;
 
@@ -480,6 +485,9 @@ static PyObject *AsPyAdqDevice(void *handle, int index)
 
 int EmbeddedPython::CallMain(const std::string &module_str, void *handle, int index)
 {
+    if (!IsInitialized())
+        return SCAPE_ENOTREADY;
+
     auto state = PyGILState_Ensure();
     int result = SCAPE_EOK;
     try

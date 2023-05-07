@@ -452,11 +452,9 @@ void EmbeddedPython::AddToPath(const std::string &directory)
         throw EmbeddedPythonException("Not initialized");
 
     const PyLock lock{};
-    UniquePyObject sys{PyImport_ImportModule("sys")};
-    if (sys == NULL)
-        throw EmbeddedPythonException();
 
-    UniquePyObject sys_path{PyObject_GetAttrString(sys.get(), "path")};
+    /* Borrowed reference from `PySys_GetObject`. */
+    auto sys_path = PySys_GetObject("path");
     if (sys_path == NULL)
         throw EmbeddedPythonException();
 
@@ -467,7 +465,7 @@ void EmbeddedPython::AddToPath(const std::string &directory)
     /* Prepend to the path so that any local modules get found first. */
     /* TODO: This is required for the test suite (custom `pyadq`), but could be
        a bad idea in general? */
-    if (PyList_Insert(sys_path.get(), 0, path.get()) != 0)
+    if (PyList_Insert(sys_path, 0, path.get()) != 0)
         throw EmbeddedPythonException();
 }
 
@@ -485,7 +483,6 @@ bool EmbeddedPython::HasMain(const std::filesystem::path &path)
         module = UniquePyObject{PyImport_ReloadModule(module.get())};
 
         UniquePyObject function{PyObject_GetAttrString(module.get(), "main")};
-
         return function != NULL && PyCallable_Check(function.get()) > 0;
     }
     catch (const EmbeddedPythonException &)

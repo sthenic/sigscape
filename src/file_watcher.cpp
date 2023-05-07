@@ -1,4 +1,5 @@
 #include "file_watcher.h"
+#include "log.h"
 
 #include <fstream>
 #include <algorithm>
@@ -24,11 +25,12 @@ void FileWatcher::MainLoop()
     /* Avoid watching an empty path. */
     if (m_path.empty())
     {
-        fprintf(stderr, "The file watcher cannot watch an empty path.\n");
+        Log::log->error("The file watcher cannot watch an empty path.");
         m_thread_exit_code = SCAPE_EINTERNAL;
         return;
     }
 
+    Log::log->trace(fmt::format("Starting file watcher for '{}'.", m_path));
     m_thread_exit_code = SCAPE_EOK;
 
     /* Before we enter the main loop, we check if the file exists. If it
@@ -76,6 +78,8 @@ void FileWatcher::MainLoop()
         if (m_should_stop.wait_for(std::chrono::milliseconds(250)) == std::future_status::ready)
             break;
     }
+
+    Log::log->trace(fmt::format("Stopping file watcher for '{}'.", m_path));
 }
 
 void FileWatcher::ReadContents(std::string &str)

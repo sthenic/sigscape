@@ -93,7 +93,7 @@ void DataProcessing::MainLoop()
     m_thread_exit_code = SCAPE_EOK;
     auto time_point_last_record = std::chrono::high_resolution_clock::now();
 
-    Log::log->trace(FormatLog("Entering the data processing thread's main loop."));
+    Log::log->trace(FormatLog("Starting data processing."));
 
     for (;;)
     {
@@ -148,7 +148,7 @@ void DataProcessing::MainLoop()
         ADQ_ReturnRecordBuffer(m_handle, m_index, channel, time_domain);
     }
 
-    Log::log->trace(FormatLog("Exiting the data processing thread's main loop."));
+    Log::log->trace(FormatLog("Stopping data processing."));
 }
 
 template <typename T>

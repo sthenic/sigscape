@@ -1,4 +1,6 @@
 #include "ui.h"
+#include "log.h"
+#include "fmt/format.h"
 
 #include "png.h"
 #include "GL/gl3w.h"
@@ -20,7 +22,7 @@ static void signal_handler(int)
 
 static void GlfwErrorCallback(int error, const char *description)
 {
-    std::fprintf(stderr, "Glfw Error %d: %s\n", error, description);
+    Log::log->error(fmt::format("Glfw Error {}: {}.", error, description));
 }
 
 static bool SavePng(const std::string &filename, uint8_t *pixels, int width, int height)
@@ -124,7 +126,7 @@ int main(int, char **)
 
     if (gl3wInit())
     {
-        std::fprintf(stderr, "Failed to initialize OpenGL loader!\n");
+        Log::log->error("Failed to initialize the OpenGL loader.");
         return -1;
     }
 

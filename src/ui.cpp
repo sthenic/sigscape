@@ -88,7 +88,7 @@ void Ui::ChannelUiState::SaveToFile(const std::filesystem::path &path)
     std::ofstream ofs(lpath, std::ios::trunc);
     if (ofs.fail())
     {
-        fprintf(stderr, "Failed to open file '%s'.\n", lpath.string().c_str());
+        Log::log->error(fmt::format("Failed to open file '{}'.", lpath.string()));
         return;
     }
 
@@ -195,7 +195,7 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version,
        identification on detecting an error. */
     if (SCAPE_EOK != m_hotplug.Start())
     {
-        fprintf(stderr, "Failed to initialize hotplug notification.\n");
+        Log::log->error("Failed to initialize hotplug notification.");
         IdentifyDigitizers();
     }
 #endif
@@ -266,7 +266,7 @@ void Ui::Render(float width, float height)
                                           NowAsIso8601());
 
         if (!Screenshot(filename))
-            fprintf(stderr, "%s\n", fmt::format("Failed to save PNG image '{}'.", filename).c_str());
+            Log::log->error(fmt::format("Failed to save PNG image '{}'.", filename));
         m_should_screenshot = false;
     }
 }
@@ -540,7 +540,8 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
 
     default:
         /* These are not expected as a message from a digitizer thread. */
-        fprintf(stderr, "%s\n", fmt::format("Unsupported message id '{}'.", message.id).c_str());
+        Log::log->error(fmt::format("Unsupported message id '{}' from digitizer {}.", message.id,
+                                    digitizer.ui.identifier));
         break;
     }
 }
@@ -3170,8 +3171,7 @@ std::string Ui::NowAsIso8601()
     }
     else
     {
-        /* FIXME: Communicate in some other way? */
-        fprintf(stderr, "Failed to generate an ISO8601 filename.\n");
+        Log::log->error("Failed to generate an ISO8601 filename.");
         return "";
     }
 }

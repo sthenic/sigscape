@@ -1,4 +1,5 @@
 #include "hotplug_linux.h"
+#include "log.h"
 
 #include <cstdio>
 #include <stdexcept>
@@ -55,7 +56,7 @@ void HotplugLinux::CheckForEvents()
     {
         if (enumerator != NULL)
             udev_enumerate_unref(enumerator);
-        fprintf(stderr, "%s\n", e.what());
+        Log::log->error(e.what());
     }
 }
 
@@ -63,14 +64,14 @@ int HotplugLinux::CreateHandle()
 {
     if (m_handle != NULL)
     {
-        fprintf(stderr, "libudev is already initialized.\n");
+        Log::log->error("libudev is already initialized.");
         return SCAPE_ENOTREADY;
     }
 
     m_handle = udev_new();
     if (m_handle == NULL)
     {
-        fprintf(stderr, "Failed to create libudev handle.\n");
+        Log::log->error("Failed to create libudev handle.");
         return SCAPE_EINTERNAL;
     }
 
@@ -93,6 +94,8 @@ void HotplugLinux::MainLoop()
         return;
     }
 
+    Log::log->trace("Starting Linux hotplug event detector.");
+
     for (;;)
     {
         /* Check for any hotplug events. */
@@ -103,6 +106,8 @@ void HotplugLinux::MainLoop()
         if (m_should_stop.wait_for(std::chrono::milliseconds(1000)) == std::future_status::ready)
             break;
     }
+
+    Log::log->trace("Stopping Linux hotplug event detector.");
 }
 
 int HotplugLinux::Stop()

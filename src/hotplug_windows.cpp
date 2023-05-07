@@ -1,4 +1,5 @@
 #include "hotplug_windows.h"
+#include "log.h"
 
 #include <cstdio>
 
@@ -44,7 +45,7 @@ void HotplugWindows::CheckForEvents()
     CONFIGRET result = CM_Get_Device_ID_List_SizeA(&list_size, GUID, LIST_FLAGS);
     if (result != CR_SUCCESS)
     {
-        fprintf(stderr, "CM_Get_Device_ID_List_SizeA failed, code %d.\n", result);
+        Log::log->error(fmt::format("CM_Get_Device_ID_List_SizeA failed, code {}.", result));
         return;
     }
 
@@ -54,7 +55,7 @@ void HotplugWindows::CheckForEvents()
     result = CM_Get_Device_ID_ListA(GUID, (PZZSTR)list.data(), (ULONG)list.capacity(), LIST_FLAGS);
     if (result != CR_SUCCESS)
     {
-        fprintf(stderr, "CM_Get_Device_ID_ListA failed, code %d.\n", result);
+        Log::log->error(fmt::format("CM_Get_Device_ID_ListA failed, code {}.", result));
         return;
     }
 
@@ -70,6 +71,7 @@ void HotplugWindows::CheckForEvents()
 void HotplugWindows::MainLoop()
 {
     m_thread_exit_code = SCAPE_EOK;
+    Log::log->trace("Starting Windows hotplug event detector.");
     for (;;)
     {
         /* Check for any hotplug events. */
@@ -80,4 +82,5 @@ void HotplugWindows::MainLoop()
         if (m_should_stop.wait_for(std::chrono::milliseconds(1000)) == std::future_status::ready)
             break;
     }
+    Log::log->trace("Stopping Windows hotplug event detector.");
 }

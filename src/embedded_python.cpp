@@ -1,4 +1,5 @@
 #include "embedded_python.h"
+#include "log.h"
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -174,7 +175,7 @@ static bool RedirectStderr()
     }
     catch (const std::runtime_error &)
     {
-        fprintf(stderr, "Failed to redirect stderr from Python.\n");
+        Log::log->error("Failed to redirect stderr from Python.");
         return false;
     }
 }
@@ -220,7 +221,6 @@ static std::string GetErrorString()
     }
     catch (const std::runtime_error &)
     {
-        fprintf(stderr, "Failed to get the last error message.\n");
         return "Failed to construct the error message.";
     }
 }
@@ -246,7 +246,7 @@ public:
         if (!InitializeRunTimeLinking() && m_dll != NULL)
         {
             if (FreeLibrary(m_dll) == 0)
-                fprintf(stderr, "Failed to free the run-time linked Python library handle.\n");
+                Log::log->error("Failed to free the run-time linked Python library handle.");
             m_dll = NULL;
         }
     }
@@ -257,7 +257,7 @@ public:
         if (m_dll != NULL)
         {
             if (FreeLibrary(m_dll) == 0)
-                fprintf(stderr, "Failed to free the run-time linked Python library handle.\n");
+                Log::log->error("Failed to free the run-time linked Python library handle.");
             m_dll = NULL;
         }
     }
@@ -382,8 +382,7 @@ private:
         if (PyBytes_AsString == NULL)
             return false;
 
-        /* FIXME: Remove */
-        printf("Successfully completed run-time loading of the Python DLL.\n");
+        Log::log->trace("Successfully completed run-time loading of 'python3.dll'.");
         return true;
     }
 };
@@ -401,7 +400,6 @@ class PythonSession
 public:
     PythonSession()
     {
-        printf("Constructing PythonSession\n");
         /* Initialize the Python session and release the global interpreter lock
            (GIL). We need to remember the state until we run the destructor, at
            which point it's _very_ important that we restore it when acquiring
@@ -416,12 +414,10 @@ public:
 
     ~PythonSession()
     {
-        printf("Destroying PythonSession\n");
         if (IsInitialized())
         {
             PyEval_RestoreThread(m_state);
-            if (Py_FinalizeEx() != 0)
-                fprintf(stderr, "Failed to destroy the Python session.\n");
+            Py_FinalizeEx();
         }
     }
 

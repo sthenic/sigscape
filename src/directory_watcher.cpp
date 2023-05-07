@@ -1,4 +1,5 @@
 #include "directory_watcher.h"
+#include "log.h"
 
 #include <algorithm>
 
@@ -23,11 +24,12 @@ void DirectoryWatcher::MainLoop()
     /* Avoid watching an empty path. */
     if (m_path.empty())
     {
-        fprintf(stderr, "The directory watcher cannot watch an empty path.\n");
+        Log::log->error("The directory watcher cannot watch an empty path.");
         m_thread_exit_code = SCAPE_EINTERNAL;
         return;
     }
 
+    Log::log->trace(fmt::format("Starting directory watcher for '{}'.", m_path));
     m_thread_exit_code = SCAPE_EOK;
 
     for (;;)
@@ -101,4 +103,6 @@ void DirectoryWatcher::MainLoop()
         if (m_should_stop.wait_for(std::chrono::milliseconds(1000)) == std::future_status::ready)
             break;
     }
+
+    Log::log->trace(fmt::format("Stopping directory watcher for '{}'.", m_path));
 }

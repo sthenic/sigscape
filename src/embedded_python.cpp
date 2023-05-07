@@ -125,6 +125,24 @@ private:
     PyObject *m_object;
 };
 
+/* A scoped lock that leverages RAII to reduce the complexity in the code below. */
+class PyLock
+{
+public:
+    PyLock()
+    {
+        m_state = PyGILState_Ensure();
+    }
+
+    ~PyLock()
+    {
+        PyGILState_Release(m_state);
+    }
+
+private:
+    PyGILState_STATE m_state;
+};
+
 static bool RedirectStderr()
 {
     /* This code redirects Python's stderr to a io.StringIO() object. The code
@@ -429,7 +447,7 @@ int EmbeddedPython::AddToPath(const std::string &directory)
     if (!IsInitialized())
         return SCAPE_ENOTREADY;
 
-    auto state = PyGILState_Ensure();
+    const PyLock lock{};
     int result = SCAPE_EOK;
     try
     {
@@ -457,18 +475,16 @@ int EmbeddedPython::AddToPath(const std::string &directory)
         result = SCAPE_EEXTERNAL;
     }
 
-    PyGILState_Release(state);
     return result;
 }
 
 bool EmbeddedPython::HasMain(const std::filesystem::path &path)
 {
     if (!IsInitialized())
-        return SCAPE_ENOTREADY;
+        return false;
 
-    auto state = PyGILState_Ensure();
+    const PyLock lock{};
     bool result;
-
     try
     {
         UniquePyObject module{PyImport_ImportModule(path.stem().string().c_str())};
@@ -485,7 +501,6 @@ bool EmbeddedPython::HasMain(const std::filesystem::path &path)
         result = false;
     }
 
-    PyGILState_Release(state);
     return result;
 }
 
@@ -601,7 +616,11 @@ int EmbeddedPython::CallMain(const std::string &module_str, void *handle, int in
     if (!IsInitialized())
         return SCAPE_ENOTREADY;
 
-    auto state = PyGILState_Ensure();
+    /* It's important that the lock is released after we've left the scope of
+       the try block since the `UniquePyObject` destructors will interact w/ the
+       Python session to decrement the reference counts. */
+    const PyLock lock{};
+
     int result = SCAPE_EOK;
     try
     {
@@ -641,9 +660,5 @@ int EmbeddedPython::CallMain(const std::string &module_str, void *handle, int in
         result = SCAPE_EEXTERNAL;
     }
 
-    /* It's important that the lock is released after we've left the scope of
-       the try block since the `UniquePyObject` destructors will interact w/ the
-       Python session to decrement the reference counts. */
-    PyGILState_Release(state);
     return result;
 }

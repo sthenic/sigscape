@@ -59,11 +59,6 @@ TEST(Digitizer, Initialize)
     STRCMP_EQUAL("SPD-SIM01", msg.constant_parameters.serial_number);
     LONGS_EQUAL(1, msg.constant_parameters.nof_channels);
 
-    /* Idle after initialization. */
-    LONGS_EQUAL(SCAPE_EOK, digitizer->WaitForMessage(msg, TIMEOUT_MS));
-    LONGS_EQUAL(DigitizerMessageId::STATE, msg.id);
-    LONGS_EQUAL(DigitizerState::IDLE, msg.state);
-
     /* System manager objects (boot status). */
     LONGS_EQUAL(SCAPE_EOK, digitizer->WaitForMessage(msg, TIMEOUT_MS));
     LONGS_EQUAL(DigitizerMessageId::BOOT_STATUS, msg.id);
@@ -73,6 +68,11 @@ TEST(Digitizer, Initialize)
     LONGS_EQUAL(SCAPE_EOK, digitizer->WaitForMessage(msg, TIMEOUT_MS));
     LONGS_EQUAL(DigitizerMessageId::SENSOR_TREE, msg.id);
     CHECK(msg.sensor_tree.size() > 0);
+
+    /* Idle after initialization. */
+    LONGS_EQUAL(SCAPE_EOK, digitizer->WaitForMessage(msg, TIMEOUT_MS));
+    LONGS_EQUAL(DigitizerMessageId::STATE, msg.id);
+    LONGS_EQUAL(DigitizerState::IDLE, msg.state);
 
     /* File watchers reporting dirty parameters. */
     LONGS_EQUAL(SCAPE_EOK, digitizer->WaitForMessage(msg, 2000));

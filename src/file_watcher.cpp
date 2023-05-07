@@ -79,6 +79,9 @@ void FileWatcher::MainLoop()
             break;
     }
 
+    /* FIXME: Actually need an explicit destructor calling Stop() because
+              otherwise the members get destroyed (while the thread may be
+              running) before Stop() gets called by the base class destructor. */
     Log::log->trace(fmt::format("Stopping file watcher for '{}'.", m_path));
 }
 

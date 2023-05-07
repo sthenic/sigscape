@@ -241,6 +241,8 @@ private:
     std::chrono::high_resolution_clock::time_point m_sensor_last_record_timestamp;
     std::chrono::high_resolution_clock::time_point m_last_status_timestamp;
 
+    void MainInitialization();
+
     void SignalError(const std::string &message);
     void ProcessMessages();
     void ProcessWatcherMessages();

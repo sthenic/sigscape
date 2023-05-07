@@ -64,60 +64,17 @@ int Digitizer::WaitForSensorRecords(std::shared_ptr<std::vector<SensorRecord>> &
 
 void Digitizer::MainLoop()
 {
-    /* When the main loop is started, we assume ownership of the digitizer with
-       the identifier we were given when this object was constructed. We begin
-       by initializing the digitizer, completing its initial setup procedure. */
-    SetState(DigitizerState::INITIALIZATION);
-
-    /* Performing this operation in a thread safe manner requires that
-       ADQControlUnit_OpenDeviceInterface() has been called (and returned
-       successfully) in a single thread process. */
-    int result = ADQControlUnit_SetupDevice(m_id.handle, m_id.index - 1);
-    if (result != 1)
-    {
-        m_thread_exit_code = SCAPE_EINTERNAL;
-        SetState(DigitizerState::NOT_INITIALIZED);
-        return;
-    }
-
-    /* Read the digitizer's constant parameters. */
-    result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CONSTANT, &m_constant);
-    if (result != sizeof(m_constant))
-    {
-        m_thread_exit_code = SCAPE_EINTERNAL;
-        SetState(DigitizerState::NOT_INITIALIZED);
-        return;
-    }
-
-    /* Instantiate one data processing thread for each digitizer channel. */
-    for (int ch = 0; ch < m_constant.nof_channels; ++ch)
-    {
-        std::string label = fmt::format("{} {} CH{}", m_constant.product_name,
-                                        m_constant.serial_number, m_constant.channel[ch].label);
-        m_processing_threads.emplace_back(
-            std::make_unique<DataProcessing>(m_id.handle, m_id.index, ch, label, m_constant)
-        );
-    }
-
-    /* Initialize the file watchers now that we know the identifying properties of the digitizer. */
-    InitializeFileWatchers();
-
-    /* Signal that the digitizer was set up correctly, that we're entering the
-       IDLE state and enter the main loop. */
-    m_read_queue.EmplaceWrite(DigitizerMessageId::CONSTANT_PARAMETERS, m_constant);
-    SetState(DigitizerState::IDLE);
-
     try
     {
-        /* Initialize the objects associated with the system manager, like
-           sensors and boot status. */
-        InitializeSystemManagerObjects();
+        MainInitialization();
+        SetState(DigitizerState::IDLE);
     }
     catch (const DigitizerException &e)
     {
+        SetState(DigitizerState::NOT_INITIALIZED);
         SignalError(e.what());
+        return;
     }
-
 
     m_thread_exit_code = SCAPE_EOK;
     for (;;)
@@ -143,6 +100,53 @@ void Digitizer::MainLoop()
     }
 
     StopDataAcquisition();
+}
+
+void Digitizer::MainInitialization()
+{
+    /* When the main loop is started, we assume ownership of the digitizer with
+       the identifier we were given when this object was constructed. We begin
+       by initializing the digitizer, completing its initial setup procedure. */
+    SetState(DigitizerState::INITIALIZATION);
+
+    /* Performing this operation in a thread safe manner requires that
+       ADQControlUnit_OpenDeviceInterface() has been called (and returned
+       successfully) in a single thread process. */
+    int result = ADQControlUnit_SetupDevice(m_id.handle, m_id.index - 1);
+    if (result != 1)
+    {
+        m_thread_exit_code = SCAPE_EINTERNAL;
+        ThrowDigitizerException("Failed to initialize the digitizer, status {}.", result);
+    }
+
+    /* Read the digitizer's constant parameters. */
+    result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CONSTANT, &m_constant);
+    if (result != sizeof(m_constant))
+    {
+        m_thread_exit_code = SCAPE_EINTERNAL;
+        ThrowDigitizerException("Failed to get the constant parameters, status {}.", result);
+    }
+
+    /* Instantiate one data processing thread for each digitizer channel. */
+    for (int ch = 0; ch < m_constant.nof_channels; ++ch)
+    {
+        const auto label = fmt::format("{} {} CH{}", m_constant.product_name,
+                                       m_constant.serial_number, m_constant.channel[ch].label);
+        m_processing_threads.emplace_back(
+            std::make_unique<DataProcessing>(m_id.handle, m_id.index, ch, std::move(label), m_constant)
+        );
+    }
+
+    /* Initialize the file watchers now that we know the identifying properties
+       of the digitizer. */
+    InitializeFileWatchers();
+
+    /* Send the constant parameters, triggering the GUI initialization. */
+    m_read_queue.EmplaceWrite(DigitizerMessageId::CONSTANT_PARAMETERS, m_constant);
+
+    /* Initialize the objects associated with the system manager, like sensors
+       and boot status. */
+    InitializeSystemManagerObjects();
 }
 
 void Digitizer::SignalError(const std::string &message)

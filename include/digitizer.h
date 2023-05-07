@@ -277,6 +277,10 @@ private:
     void GetParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher);
     void InitializeFileWatchers();
 
+    /* Throws a `DigitizerException` with a object-specific header prepended to the message. */
+    template <typename... Args>
+    void ThrowDigitizerException(Args &&... args);
+
     static constexpr double SENSOR_SAMPLING_PERIOD_MS = 1000.0;
     static constexpr double STATUS_SAMPLING_PERIOD_MS = 1000.0;
     static constexpr int DEFAULT_ACTIVITY_THRESHOLD_MS = 1000;

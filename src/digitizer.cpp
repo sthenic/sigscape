@@ -147,7 +147,7 @@ void Digitizer::MainLoop()
 
 void Digitizer::SignalError(const std::string &message)
 {
-    Log::log->error(std::string(m_constant.serial_number) + ": " + message);
+    Log::log->error(message);
     m_read_queue.EmplaceWrite(DigitizerMessageId::ERR);
 }
 
@@ -208,7 +208,7 @@ void Digitizer::InitializeSystemManagerBootStatus()
                                             SystemManagerCommand::BOOT_GET_NOF_ENTRIES, NULL, 0,
                                             &nof_entries, sizeof(nof_entries));
     if (result != ADQ_EOK)
-        throw DigitizerException(fmt::format("BOOT_GET_NOF_ENTRIES failed, status {}.", result));
+        ThrowDigitizerException("BOOT_GET_NOF_ENTRIES failed, status {}.", result);
 
     std::vector<uint32_t> boot_map(nof_entries + 1); /* +1 for EOM */
     result = ADQ_SmTransactionImmediate(m_id.handle, m_id.index,
@@ -216,7 +216,7 @@ void Digitizer::InitializeSystemManagerBootStatus()
                                         NULL, 0, boot_map.data(),
                                         sizeof(boot_map[0]) * boot_map.size());
     if (result != ADQ_EOK)
-        throw DigitizerException(fmt::format("BOOT_GET_MAP failed, status {}.", result));
+        ThrowDigitizerException("BOOT_GET_MAP failed, status {}.", result);
 
     boot_map.resize(nof_entries);
     for (auto &boot_id : boot_map)
@@ -227,7 +227,7 @@ void Digitizer::InitializeSystemManagerBootStatus()
                                             sizeof(boot_id), &boot_information,
                                             sizeof(boot_information));
         if (result != ADQ_EOK)
-            throw DigitizerException(fmt::format("BOOT_GET_INFO, status {}.", result));
+            ThrowDigitizerException("BOOT_GET_INFO, status {}.", result);
 
         boot_entries.emplace_back(boot_id, boot_information.label, boot_information.status);
 
@@ -240,14 +240,14 @@ void Digitizer::InitializeSystemManagerBootStatus()
     result = ADQ_SmTransactionImmediate(m_id.handle, m_id.index, SystemManagerCommand::GET_STATE,
                                         NULL, 0, &state, sizeof(state));
     if (result != ADQ_EOK)
-        throw DigitizerException(fmt::format("GET_STATE, status {}.", result));
+        ThrowDigitizerException("GET_STATE, status {}.", result);
 
     struct SystemManagerStateInformation state_information;
     result = ADQ_SmTransactionImmediate(m_id.handle, m_id.index,
                                         SystemManagerCommand::GET_STATE_INFO, &state, sizeof(state),
                                         &state_information, sizeof(state_information));
     if (result != ADQ_EOK)
-        throw DigitizerException(fmt::format("GET_STATE_INFO, status {}.", result));
+        ThrowDigitizerException("GET_STATE_INFO, status {}.", result);
 
     m_read_queue.EmplaceWrite(DigitizerMessageId::BOOT_STATUS, state, state_information.label,
                               std::move(boot_entries));
@@ -264,7 +264,7 @@ void Digitizer::InitializeSystemManagerSensors()
                                             SystemManagerCommand::SENSOR_GET_NOF_SENSORS, NULL,
                                             0, &nof_sensors, sizeof(nof_sensors));
     if (result != ADQ_EOK)
-        throw DigitizerException(fmt::format("SENSOR_GET_NOF_SENSORS failed, status {}.", result));
+        ThrowDigitizerException("SENSOR_GET_NOF_SENSORS failed, status {}.", result);
 
     std::vector<uint32_t> sensor_map(nof_sensors + 1); /* +1 for EOM */
     result = ADQ_SmTransactionImmediate(m_id.handle, m_id.index,
@@ -272,7 +272,7 @@ void Digitizer::InitializeSystemManagerSensors()
                                         NULL, 0, sensor_map.data(),
                                         sizeof(sensor_map[0]) * sensor_map.size());
     if (result != ADQ_EOK)
-        throw DigitizerException(fmt::format("SENSOR_GET_MAP failed, status {}.", result));
+        ThrowDigitizerException("SENSOR_GET_MAP failed, status {}.", result);
 
     /* Resize to remove EOM, then walk through the sensor map, retrieving the
        static information about each sensor. While we have a flat sequence of
@@ -289,7 +289,7 @@ void Digitizer::InitializeSystemManagerSensors()
                                             SystemManagerCommand::SENSOR_GET_INFO, &sensor_id,
                                             sizeof(sensor_id), &information, sizeof(information));
         if (result != ADQ_EOK)
-            throw DigitizerException(fmt::format("SENSOR_GET_INFO, status {}.", result));
+            ThrowDigitizerException("SENSOR_GET_INFO, status {}.", result);
 
         /* If we encounter a new group, read its information and create new entry. */
         if (information.group_id != group_id)
@@ -300,7 +300,7 @@ void Digitizer::InitializeSystemManagerSensors()
                                                 &information.group_id, sizeof(information.group_id),
                                                 &group_information, sizeof(group_information));
             if (result != ADQ_EOK)
-                throw DigitizerException(fmt::format("SENSOR_GET_GROUP_INFO, status {}.", result));
+                ThrowDigitizerException("SENSOR_GET_GROUP_INFO, status {}.", result);
 
             sensor_tree.emplace_back(group_information.id, group_information.label);
             group_id = group_information.id;
@@ -440,13 +440,13 @@ void Digitizer::StartDataAcquisition()
         struct ADQAnalogFrontendParameters afe;
         int result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_ANALOG_FRONTEND, &afe);
         if (result != sizeof(afe))
-            throw DigitizerException(fmt::format("ADQ_GetParameters failed, result {}.", result));
+            ThrowDigitizerException("ADQ_GetParameters failed, result {}.", result);
 
         /* TODO: Temporary workaround until the `time_unit` precision is fixed. */
         struct ADQClockSystemParameters clock_system;
         result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CLOCK_SYSTEM, &clock_system);
         if (result != sizeof(clock_system))
-            throw DigitizerException(fmt::format("ADQ_GetParameters failed, result {}.", result));
+            ThrowDigitizerException("ADQ_GetParameters failed, result {}.", result);
 
         for (size_t i = 0; i < m_processing_threads.size(); ++i)
         {
@@ -459,12 +459,12 @@ void Digitizer::StartDataAcquisition()
         for (const auto &t : m_processing_threads)
         {
             if (SCAPE_EOK != t->Start())
-                throw DigitizerException("Failed to start one of the data processing threads.");
+                ThrowDigitizerException("Failed to start one of the data processing threads.");
         }
 
         result = ADQ_StartDataAcquisition(m_id.handle, m_id.index);
         if (result != ADQ_EOK)
-            throw DigitizerException(fmt::format("ADQ_GetParameters failed, result {}.", result));
+            ThrowDigitizerException("ADQ_GetParameters failed, result {}.", result);
 
         /* Reset the activity monitoring. */
         m_no_activity_threshold_ms = DEFAULT_ACTIVITY_THRESHOLD_MS;
@@ -494,12 +494,12 @@ void Digitizer::SetState(DigitizerState state)
 
 void Digitizer::HandleMessageInNotInitialized(const struct DigitizerMessage &message)
 {
-    throw DigitizerException(fmt::format("Unsupported action in NOT INITIALIZED '{}'.", message.id));
+    ThrowDigitizerException("Unsupported action in NOT INITIALIZED '{}'.", message.id);
 }
 
 void Digitizer::HandleMessageInInitialization(const struct DigitizerMessage &message)
 {
-    throw DigitizerException(fmt::format("Unsupported action in INITIALIZATION '{}'.", message.id));
+    ThrowDigitizerException("Unsupported action in INITIALIZATION '{}'.", message.id);
 }
 
 void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
@@ -593,12 +593,13 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
         catch (const EmbeddedPythonException &e)
         {
             /* Translate to the local exception type. */
-            throw DigitizerException(e.what());
+            ThrowDigitizerException("Error when calling main() in module '{}':\n{}", message.str,
+                                    e.what());
         }
         break;
 
     default:
-        throw DigitizerException(fmt::format("Unsupported action in IDLE '{}'.", message.id));
+        ThrowDigitizerException("Unsupported action in IDLE '{}'.", message.id);
     }
 }
 
@@ -694,7 +695,7 @@ void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &messag
         break;
 
     default:
-        throw DigitizerException(fmt::format("Unsupported action in ACQUISITION '{}'.", message.id));
+        ThrowDigitizerException("Unsupported action in ACQUISITION '{}'.", message.id);
     }
 }
 
@@ -726,33 +727,33 @@ void Digitizer::HandleMessageInState(const struct DigitizerMessage &message)
 void Digitizer::ConfigureInternalReference()
 {
 #ifdef MOCK_ADQAPI
-    throw DigitizerException("ConfigureInternalReference() not implemented.");
+    ThrowDigitizerException("ConfigureInternalReference() not implemented.");
 #else
     struct ADQClockSystemParameters clock_system;
     int result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CLOCK_SYSTEM,
                                           &clock_system);
     if (result != sizeof(clock_system))
-        throw DigitizerException(fmt::format("Failed to initialize clock system parameters, result {}.", result));
+        ThrowDigitizerException("Failed to initialize clock system parameters, result {}.", result);
 
     clock_system.clock_generator = ADQ_CLOCK_GENERATOR_INTERNAL_PLL;
     clock_system.reference_source = ADQ_REFERENCE_CLOCK_SOURCE_INTERNAL;
 
     result = ADQ_SetParameters(m_id.handle, m_id.index, &clock_system);
     if (result != sizeof(clock_system))
-        throw DigitizerException(fmt::format("Failed to set clock system parameters, result {}.", result));
+        ThrowDigitizerException("Failed to set clock system parameters, result {}.", result);
 #endif
 }
 
 void Digitizer::ConfigureExternalReference()
 {
 #ifdef MOCK_ADQAPI
-    throw DigitizerException("ConfigureExternalReference() not implemented.");
+    ThrowDigitizerException("ConfigureExternalReference() not implemented.");
 #else
     struct ADQClockSystemParameters clock_system;
     int result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CLOCK_SYSTEM,
                                           &clock_system);
     if (result != sizeof(clock_system))
-        throw DigitizerException(fmt::format("Failed to initialize clock system parameters, result {}.", result));
+        ThrowDigitizerException("Failed to initialize clock system parameters, result {}.", result);
 
     clock_system.clock_generator = ADQ_CLOCK_GENERATOR_INTERNAL_PLL;
     clock_system.reference_source = ADQ_REFERENCE_CLOCK_SOURCE_PORT_CLK;
@@ -761,26 +762,26 @@ void Digitizer::ConfigureExternalReference()
 
     result = ADQ_SetParameters(m_id.handle, m_id.index, &clock_system);
     if (result != sizeof(clock_system))
-        throw DigitizerException(fmt::format("Failed to set clock system parameters, result {}.", result));
+        ThrowDigitizerException("Failed to set clock system parameters, result {}.", result);
 #endif
 }
 
 void Digitizer::ConfigureExternalClock()
 {
 #ifdef MOCK_ADQAPI
-    throw DigitizerException("ConfigureExternalClock() not implemented.");
+    ThrowDigitizerException("ConfigureExternalClock() not implemented.");
 #else
     struct ADQClockSystemParameters clock_system;
     int result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CLOCK_SYSTEM,
                                           &clock_system);
     if (result != sizeof(clock_system))
-        throw DigitizerException(fmt::format("Failed to initialize clock system parameters, result {}.", result));
+        ThrowDigitizerException("Failed to initialize clock system parameters, result {}.", result);
 
     clock_system.clock_generator = ADQ_CLOCK_GENERATOR_EXTERNAL_CLOCK;
 
     result = ADQ_SetParameters(m_id.handle, m_id.index, &clock_system);
     if (result != sizeof(clock_system))
-        throw DigitizerException(fmt::format("Failed to set clock system parameters, result {}.", result));
+        ThrowDigitizerException("Failed to set clock system parameters, result {}.", result);
 #endif
 }
 
@@ -790,22 +791,22 @@ void Digitizer::ConfigureDefaultAcquisition()
     struct ADQEventSourcePeriodicParameters periodic;
     int result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_EVENT_SOURCE_PERIODIC, &periodic);
     if (result != sizeof(periodic))
-        throw DigitizerException(fmt::format("Failed to get periodic parameters, result {}.", result));
+        ThrowDigitizerException("Failed to get periodic parameters, result {}.", result);
 
     struct ADQDataAcquisitionParameters acquisition;
     result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_DATA_ACQUISITION, &acquisition);
     if (result != sizeof(acquisition))
-        throw DigitizerException(fmt::format("Failed to get acquisition parameters, result {}.", result));
+        ThrowDigitizerException("Failed to get acquisition parameters, result {}.", result);
 
     struct ADQDataTransferParameters transfer;
     result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_DATA_TRANSFER, &transfer);
     if (result != sizeof(transfer))
-        throw DigitizerException(fmt::format("Failed to get transfer parameters, result {}.", result));
+        ThrowDigitizerException("Failed to get transfer parameters, result {}.", result);
 
     struct ADQDataReadoutParameters readout;
     result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_DATA_READOUT, &readout);
     if (result != sizeof(readout))
-        throw DigitizerException(fmt::format("Failed to get readout parameters, result {}.", result));
+        ThrowDigitizerException("Failed to get readout parameters, result {}.", result);
 
     /* The default acquisition parameters is an infinite stream of records from
        each available channel triggered by the periodic event generator. */
@@ -835,19 +836,19 @@ void Digitizer::ConfigureDefaultAcquisition()
 
     result = ADQ_SetParameters(m_id.handle, m_id.index, &periodic);
     if (result != sizeof(periodic))
-        throw DigitizerException(fmt::format("Failed to set periodic parameters, result {}.", result));
+        ThrowDigitizerException("Failed to set periodic parameters, result {}.", result);
 
     result = ADQ_SetParameters(m_id.handle, m_id.index, &acquisition);
     if (result != sizeof(acquisition))
-        throw DigitizerException(fmt::format("Failed to set acquisition parameters, result {}.", result));
+        ThrowDigitizerException("Failed to set acquisition parameters, result {}.", result);
 
     result = ADQ_SetParameters(m_id.handle, m_id.index, &transfer);
     if (result != sizeof(transfer))
-        throw DigitizerException(fmt::format("Failed to set transfer parameters, result {}.", result));
+        ThrowDigitizerException("Failed to set transfer parameters, result {}.", result);
 
     result = ADQ_SetParameters(m_id.handle, m_id.index, &readout);
     if (result != sizeof(readout))
-        throw DigitizerException(fmt::format("Failed to set readout parameters, result {}.", result));
+        ThrowDigitizerException("Failed to set readout parameters, result {}.", result);
 
     /* Finish up by getting the current parameters to make these settings
        reflect in the configuration file. */
@@ -858,7 +859,7 @@ void Digitizer::ConfigureDefaultAcquisition()
 void Digitizer::ForceAcquisition()
 {
     /* TODO: Implement */
-    throw DigitizerException("ForceAcquisition() not implemented.");
+    ThrowDigitizerException("ForceAcquisition() not implemented.");
 }
 
 void Digitizer::SetParameters(const std::shared_ptr<std::string> &str, DigitizerMessageId clean_id)
@@ -868,7 +869,7 @@ void Digitizer::SetParameters(const std::shared_ptr<std::string> &str, Digitizer
     if (result > 0)
         m_read_queue.Write(clean_id);
     else
-        throw DigitizerException(fmt::format("ADQ_SetParametersString() failed, result {}.", result));
+        ThrowDigitizerException("ADQ_SetParametersString() failed, result {}.", result);
 }
 
 void Digitizer::InitializeParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher)
@@ -885,8 +886,7 @@ void Digitizer::InitializeParameters(enum ADQParameterId id, const std::unique_p
     }
     else
     {
-        throw DigitizerException(
-            fmt::format("ADQ_InitializeParametersString failed, result {}.", result));
+        ThrowDigitizerException("ADQ_InitializeParametersString failed, result {}.", result);
     }
 }
 
@@ -905,7 +905,7 @@ void Digitizer::GetParameters(enum ADQParameterId id, const std::unique_ptr<File
     }
     else
     {
-        throw DigitizerException(fmt::format("ADQ_GetParametersString failed, result {}.", result));
+        ThrowDigitizerException("ADQ_GetParametersString failed, result {}.", result);
     }
 }
 
@@ -929,4 +929,12 @@ void Digitizer::InitializeFileWatchers()
 
     m_watchers.top->Start();
     m_watchers.clock_system->Start();
+}
+
+template <typename... Args>
+void Digitizer::ThrowDigitizerException(Args &&... args)
+{
+    const auto message = fmt::format("{} {}: ", m_constant.product_name, m_constant.serial_number) +
+                         fmt::format(std::forward<Args>(args)...);
+    throw DigitizerException(std::move(message));
 }

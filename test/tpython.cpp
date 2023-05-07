@@ -60,11 +60,14 @@ TEST_GROUP(Python)
 TEST(Python, CheckAndCall)
 {
     LONGS_EQUAL(1, EmbeddedPython::IsInitialized());
-    LONGS_EQUAL(SCAPE_EOK, EmbeddedPython::AddToPath(std::filesystem::current_path().string()));
+
+    /* Throws on error. */
+    EmbeddedPython::AddToPath(std::filesystem::current_path().string());
 
     LONGS_EQUAL(0, EmbeddedPython::HasMain("without_main.py"));
     LONGS_EQUAL(1, EmbeddedPython::HasMain("with_main.py"));
 
+    /* Throws on error. */
     int dummy = 1024;
-    LONGS_EQUAL(SCAPE_EOK, EmbeddedPython::CallMain("with_main", &dummy, 10));
+    EmbeddedPython::CallMain("with_main", &dummy, 10);
 }

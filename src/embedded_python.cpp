@@ -11,6 +11,7 @@
 /* Use anonymous structs to emulate the library behavior: only pointer use. */
 struct PyObject;
 struct PyThreadState;
+typedef int PyGILState_STATE;
 
 /* Typedefs for functions we're going to load from the library. */
 typedef void (__cdecl *Py_Initialize_t)();

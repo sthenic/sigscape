@@ -6,8 +6,6 @@
 #include "Python.h"
 #endif
 
-#include <stdexcept>
-
 /* Run-time dynamic linking helpers. */
 #if defined(_WIN32)
 /* Use anonymous structs to emulate the library behavior: only pointer use. */
@@ -35,6 +33,12 @@ typedef int (__cdecl *PyTuple_SetItem_t)(PyObject *, SSIZE_T, PyObject *);
 typedef PyObject *(__cdecl *PyObject_CallObject_t)(PyObject *, PyObject *);
 typedef PyObject *(__cdecl *PyLong_FromSize_t_t)(SIZE_T);
 typedef PyObject *(__cdecl *PyLong_FromLong_t)(long);
+typedef PyObject *(__cdecl *PyObject_CallFunctionObjArgs_t)(PyObject *, ...);
+typedef int (__cdecl *PySys_SetObject_t)(const char *, PyObject *);
+typedef PyObject *(__cdecl *PySys_GetObject_t)(const char *);
+typedef PyObject *(__cdecl *PyObject_CallMethod_t)(PyObject *, const char *, const char*, ...);
+typedef PyObject *(__cdecl *PyUnicode_AsEncodedString_t)(PyObject *, const char *, const char *);
+typedef char *(__cdecl *PyBytes_AsString_t)(PyObject *);
 
 /* Static function pointers. We'll populate these once we load the library. */
 static Py_Initialize_t Py_Initialize = NULL;
@@ -57,6 +61,12 @@ static PyTuple_SetItem_t PyTuple_SetItem = NULL;
 static PyObject_CallObject_t PyObject_CallObject = NULL;
 static PyLong_FromSize_t_t PyLong_FromSize_t = NULL;
 static PyLong_FromLong_t PyLong_FromLong = NULL;
+static PyObject_CallFunctionObjArgs_t PyObject_CallFunctionObjArgs = NULL;
+static PySys_SetObject_t PySys_SetObject = NULL;
+static PySys_GetObject_t PySys_GetObject = NULL;
+static PyObject_CallMethod_t PyObject_CallMethod = NULL;
+static PyUnicode_AsEncodedString_t PyUnicode_AsEncodedString = NULL;
+static PyBytes_AsString_t PyBytes_AsString = NULL;
 #endif
 
 /* This is a wrapper around a `PyObject *` that mimics the behavior of a
@@ -114,6 +124,91 @@ public:
 private:
     PyObject *m_object;
 };
+
+static bool RedirectStderr()
+{
+    /* This code redirects Python's stderr to a io.StringIO() object. The code
+       below is equivalent to:
+
+         import sys
+         from io import StringIO
+         sys.stderr = StringIO() */
+
+    try
+    {
+        UniquePyObject io{PyImport_ImportModule("io")};
+        if (io == NULL)
+            throw std::runtime_error("");
+
+        UniquePyObject stringio{PyObject_GetAttrString(io.get(), "StringIO")};
+        if (stringio == NULL)
+            throw std::runtime_error("");
+
+        UniquePyObject instance{PyObject_CallFunctionObjArgs(stringio.get(), NULL)};
+        if (instance == NULL)
+            throw std::runtime_error("");
+
+        if (PySys_SetObject("stderr", instance.get()) == -1)
+            throw std::runtime_error("");
+
+        return true;
+    }
+    catch (const std::runtime_error &)
+    {
+        fprintf(stderr, "Failed to redirect stderr from Python.\n");
+        return false;
+    }
+}
+
+static std::string GetErrorString()
+{
+    /* This code reads from the (presumed) string object associated with
+       Python's stderr. The code is equivalent to:
+
+         import sys
+         value = sys.stderr.getvalue()
+         encoded = value.encode() */
+
+    /* TODO: We can't throw EmbeddedPythonException in here since this function
+             is called in the exception constructor. */
+    try
+    {
+        /* It's crucial that we call PyErr_Print() before we proceed. Otherwise
+           stderr will be empty. */
+        PyErr_Print();
+
+        /* Borrowed reference from PySys_GetObject so no smart object. */
+        auto py_stderr = PySys_GetObject("stderr");
+        if (py_stderr == NULL)
+            throw std::runtime_error("");
+
+        UniquePyObject value{PyObject_CallMethod(py_stderr, "getvalue", NULL)};
+        if (value == NULL)
+            throw std::runtime_error("");
+
+        UniquePyObject encoded{PyUnicode_AsEncodedString(value.get(), "utf-8", "strict")};
+        if (encoded == NULL)
+            throw std::runtime_error("");
+
+        const char *str = PyBytes_AsString(encoded.get());
+        if (str == NULL)
+            throw std::runtime_error("");
+
+        /* Before we leave, set up a clean buffer to receive new error messages. */
+        RedirectStderr();
+
+        return std::string{str};
+    }
+    catch (const std::runtime_error &)
+    {
+        fprintf(stderr, "Failed to get the last error message.\n");
+        return "Failed to construct the error message.";
+    }
+}
+
+EmbeddedPythonException::EmbeddedPythonException()
+    : std::runtime_error(GetErrorString())
+{}
 
 /* A base class to use for the Python session on Windows where we rely on
    run-time dynamic linking. */
@@ -240,6 +335,30 @@ private:
         if (PyLong_FromLong == NULL)
             return false;
 
+        PyObject_CallFunctionObjArgs = (PyObject_CallFunctionObjArgs_t)GetProcAddress(m_dll, "PyObject_CallFunctionObjArgs");
+        if (PyObject_CallFunctionObjArgs == NULL)
+            return false;
+
+        PySys_SetObject = (PySys_SetObject_t)GetProcAddress(m_dll, "PySys_SetObject");
+        if (PySys_SetObject == NULL)
+            return false;
+
+        PySys_GetObject = (PySys_GetObject_t)GetProcAddress(m_dll, "PySys_GetObject");
+        if (PySys_GetObject == NULL)
+            return false;
+
+        PyObject_CallMethod = (PyObject_CallMethod_t)GetProcAddress(m_dll, "PyObject_CallMethod");
+        if (PyObject_CallMethod == NULL)
+            return false;
+
+        PyUnicode_AsEncodedString = (PyUnicode_AsEncodedString_t)GetProcAddress(m_dll, "PyUnicode_AsEncodedString");
+        if (PyUnicode_AsEncodedString == NULL)
+            return false;
+
+        PyBytes_AsString = (PyBytes_AsString_t)GetProcAddress(m_dll, "PyBytes_AsString");
+        if (PyBytes_AsString == NULL)
+            return false;
+
         /* FIXME: Remove */
         printf("Successfully completed run-time loading of the Python DLL.\n");
         return true;
@@ -267,6 +386,7 @@ public:
         if (IsInitialized())
         {
             Py_Initialize();
+            RedirectStderr();
             m_state = PyEval_SaveThread();
         }
     }
@@ -298,13 +418,6 @@ private:
 
 /* The global Python session object. */
 static PythonSession PYTHON_SESSION;
-
-/* A private exception type that we use for simplified control flow. */
-class EmbeddedPythonException : public std::runtime_error
-{
-public:
-    EmbeddedPythonException() : std::runtime_error("") {};
-};
 
 bool EmbeddedPython::IsInitialized()
 {
@@ -338,9 +451,9 @@ int EmbeddedPython::AddToPath(const std::string &directory)
         if (PyList_Insert(sys_path.get(), 0, path.get()) != 0)
             throw EmbeddedPythonException();
     }
-    catch (const EmbeddedPythonException &)
+    catch (const EmbeddedPythonException &e)
     {
-        PyErr_Print();
+        printf("Got an error: '%s'\n", e.what());
         result = SCAPE_EEXTERNAL;
     }
 
@@ -366,9 +479,9 @@ bool EmbeddedPython::HasMain(const std::filesystem::path &path)
         UniquePyObject function{PyObject_GetAttrString(module.get(), "main")};
         result = function != NULL && PyCallable_Check(function.get()) > 0;
     }
-    catch (const EmbeddedPythonException &)
+    catch (const EmbeddedPythonException &e)
     {
-        PyErr_Print();
+        printf("Got an error: '%s'\n", e.what());
         result = false;
     }
 
@@ -522,9 +635,9 @@ int EmbeddedPython::CallMain(const std::string &module_str, void *handle, int in
             throw EmbeddedPythonException();
         }
     }
-    catch (const EmbeddedPythonException &)
+    catch (const EmbeddedPythonException &e)
     {
-        PyErr_Print();
+        printf("Got an error: '%s'\n", e.what());
         result = SCAPE_EEXTERNAL;
     }
 

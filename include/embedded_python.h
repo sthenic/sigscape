@@ -3,6 +3,13 @@
 #include "error.h"
 #include <string>
 #include <filesystem>
+#include <stdexcept>
+
+class EmbeddedPythonException : public std::runtime_error
+{
+public:
+    EmbeddedPythonException();
+};
 
 namespace EmbeddedPython
 {

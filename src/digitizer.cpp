@@ -588,7 +588,15 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
         break;
 
     case DigitizerMessageId::CALL_PYTHON:
-        EmbeddedPython::CallMain(message.str, m_id.handle, m_id.index);
+        try
+        {
+            EmbeddedPython::CallMain(message.str, m_id.handle, m_id.index);
+        }
+        catch (const EmbeddedPythonException &e)
+        {
+            /* Translate to the local exception type. */
+            throw DigitizerException(e.what());
+        }
         break;
 
     default:

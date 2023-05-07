@@ -201,8 +201,15 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version,
 
     /* Set up the path to the persistent directory we use to store Python
        scripts and start the watcher. */
-    EmbeddedPython::AddToPath(m_persistent_directories.GetPythonDirectory());
-    m_python_directory_watcher.Start();
+    try
+    {
+        EmbeddedPython::AddToPath(m_persistent_directories.GetPythonDirectory());
+        m_python_directory_watcher.Start();
+    }
+    catch (const EmbeddedPythonException &)
+    {
+        fprintf(stderr, "Failed to append persistent directory to embedded Python session.\n");
+    }
 }
 
 void Ui::Terminate()

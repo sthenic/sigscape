@@ -228,6 +228,10 @@ EmbeddedPythonException::EmbeddedPythonException()
     : std::runtime_error(GetErrorString())
 {}
 
+EmbeddedPythonException::EmbeddedPythonException(const std::string &str)
+    : std::runtime_error(str)
+{}
+
 /* A base class to use for the Python session on Windows where we rely on
    run-time dynamic linking. */
 #if defined(_WIN32)
@@ -442,40 +446,29 @@ bool EmbeddedPython::IsInitialized()
     return PYTHON_SESSION.IsInitialized();
 }
 
-int EmbeddedPython::AddToPath(const std::string &directory)
+void EmbeddedPython::AddToPath(const std::string &directory)
 {
     if (!IsInitialized())
-        return SCAPE_ENOTREADY;
+        throw EmbeddedPythonException("Not initialized");
 
     const PyLock lock{};
-    int result = SCAPE_EOK;
-    try
-    {
-        UniquePyObject sys{PyImport_ImportModule("sys")};
-        if (sys == NULL)
-            throw EmbeddedPythonException();
+    UniquePyObject sys{PyImport_ImportModule("sys")};
+    if (sys == NULL)
+        throw EmbeddedPythonException();
 
-        UniquePyObject sys_path{PyObject_GetAttrString(sys.get(), "path")};
-        if (sys_path == NULL)
-            throw EmbeddedPythonException();
+    UniquePyObject sys_path{PyObject_GetAttrString(sys.get(), "path")};
+    if (sys_path == NULL)
+        throw EmbeddedPythonException();
 
-        UniquePyObject path{PyUnicode_DecodeFSDefault(directory.c_str())};
-        if (path == NULL)
-            throw EmbeddedPythonException();
+    UniquePyObject path{PyUnicode_DecodeFSDefault(directory.c_str())};
+    if (path == NULL)
+        throw EmbeddedPythonException();
 
-        /* Prepend to the path so that any local modules get found first. This
-           is required for the test suite (custom `pyadq`), but could be a bad
-           idea in general? */
-        if (PyList_Insert(sys_path.get(), 0, path.get()) != 0)
-            throw EmbeddedPythonException();
-    }
-    catch (const EmbeddedPythonException &e)
-    {
-        printf("Got an error: '%s'\n", e.what());
-        result = SCAPE_EEXTERNAL;
-    }
-
-    return result;
+    /* Prepend to the path so that any local modules get found first. */
+    /* TODO: This is required for the test suite (custom `pyadq`), but could be
+       a bad idea in general? */
+    if (PyList_Insert(sys_path.get(), 0, path.get()) != 0)
+        throw EmbeddedPythonException();
 }
 
 bool EmbeddedPython::HasMain(const std::filesystem::path &path)
@@ -484,7 +477,6 @@ bool EmbeddedPython::HasMain(const std::filesystem::path &path)
         return false;
 
     const PyLock lock{};
-    bool result;
     try
     {
         UniquePyObject module{PyImport_ImportModule(path.stem().string().c_str())};
@@ -493,15 +485,13 @@ bool EmbeddedPython::HasMain(const std::filesystem::path &path)
         module = UniquePyObject{PyImport_ReloadModule(module.get())};
 
         UniquePyObject function{PyObject_GetAttrString(module.get(), "main")};
-        result = function != NULL && PyCallable_Check(function.get()) > 0;
-    }
-    catch (const EmbeddedPythonException &e)
-    {
-        printf("Got an error: '%s'\n", e.what());
-        result = false;
-    }
 
-    return result;
+        return function != NULL && PyCallable_Check(function.get()) > 0;
+    }
+    catch (const EmbeddedPythonException &)
+    {
+        return false;
+    }
 }
 
 static PyObject *LibAdqAsCtypesDll()
@@ -611,54 +601,40 @@ static PyObject *AsPyAdqDevice(void *handle, int index)
     return result;
 }
 
-int EmbeddedPython::CallMain(const std::string &module_str, void *handle, int index)
+void EmbeddedPython::CallMain(const std::string &module, void *handle, int index)
 {
     if (!IsInitialized())
-        return SCAPE_ENOTREADY;
+        throw EmbeddedPythonException("Not initialized");
 
     /* It's important that the lock is released after we've left the scope of
        the try block since the `UniquePyObject` destructors will interact w/ the
        Python session to decrement the reference counts. */
     const PyLock lock{};
 
-    int result = SCAPE_EOK;
-    try
-    {
-        UniquePyObject module{PyImport_ImportModule(module_str.c_str())};
-        if (module == NULL)
-            throw EmbeddedPythonException();
+    UniquePyObject mod{PyImport_ImportModule(module.c_str())};
+    if (mod == NULL)
+        throw EmbeddedPythonException();
 
-        /* `PyImport_ImportModule` makes use of any cached version of the
-            module, so we always reload the module because its contents could
-            have changed between calls. */
-        module = UniquePyObject{PyImport_ReloadModule(module.get())};
+    /* `PyImport_ImportModule` makes use of any cached version of the
+        module, so we always reload the module because its contents could
+        have changed between calls. */
+    mod = UniquePyObject{PyImport_ReloadModule(mod.get())};
 
-        UniquePyObject function{PyObject_GetAttrString(module.get(), "main")};
-        if (function != NULL && PyCallable_Check(function.get()))
-        {
-            /* The PyObject reference will be stolen by `PyTuple_SetItem` so we
-               should not track these objects as a `UniquePyObject`. */
-            UniquePyObject args{PyTuple_New(1)};
-            if (args == NULL)
-                throw EmbeddedPythonException();
+    /* FIXME: Some other combination of calling the function? */
+    UniquePyObject function{PyObject_GetAttrString(mod.get(), "main")};
+    if (function == NULL)
+        throw EmbeddedPythonException();
 
-            if (PyTuple_SetItem(args.get(), 0, AsPyAdqDevice(handle, index)) != 0)
-                throw EmbeddedPythonException();
+    /* The PyObject reference will be stolen by `PyTuple_SetItem` so we should
+       not track these objects as a `UniquePyObject`. */
+    UniquePyObject args{PyTuple_New(1)};
+    if (args == NULL)
+        throw EmbeddedPythonException();
 
-            UniquePyObject call_result{PyObject_CallObject(function.get(), args.get())};
-            if (call_result == NULL)
-                throw EmbeddedPythonException();
-        }
-        else
-        {
-            throw EmbeddedPythonException();
-        }
-    }
-    catch (const EmbeddedPythonException &e)
-    {
-        printf("Got an error: '%s'\n", e.what());
-        result = SCAPE_EEXTERNAL;
-    }
+    if (PyTuple_SetItem(args.get(), 0, AsPyAdqDevice(handle, index)) != 0)
+        throw EmbeddedPythonException();
 
-    return result;
+    UniquePyObject result{PyObject_CallObject(function.get(), args.get())};
+    if (result == NULL)
+        throw EmbeddedPythonException();
 }

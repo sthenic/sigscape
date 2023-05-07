@@ -22,6 +22,7 @@ bool IsInitialized();
 
 /* Prepend the `directory` to the `sys.path` object. `SCAPE_EOK` is returned on
    success and an `EmbeddedPythonException` is raised on any error. */
+/* FIXME: `const std::filesystem::path &path` instead? */
 void AddToPath(const std::string &directory);
 
 /* Test if the module (read as the _stem_) at `path` has a `main()` function.

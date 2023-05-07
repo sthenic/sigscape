@@ -180,4 +180,8 @@ private:
 
     /* Process messages posted to the thread. */
     void ProcessMessages();
+
+    /* Format the log message using `fmt::format`, attaching the thread-specific header. */
+    template <typename... Args>
+    std::string FormatLog(Args &&... args);
 };

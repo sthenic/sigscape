@@ -2,6 +2,7 @@
 
 #include "fft.h"
 #include "fft_settings.h"
+#include "log.h"
 
 #include "ADQAPI.h"
 
@@ -92,6 +93,8 @@ void DataProcessing::MainLoop()
     m_thread_exit_code = SCAPE_EOK;
     auto time_point_last_record = std::chrono::high_resolution_clock::now();
 
+    Log::log->trace(FormatLog("Entering the data processing thread's main loop."));
+
     for (;;)
     {
         /* Check if the stop event has been set. */
@@ -113,7 +116,7 @@ void DataProcessing::MainLoop()
         }
         else if (bytes_received < 0)
         {
-            fprintf(stderr, "Failed to get a time domain buffer %" PRId64 ".\n", bytes_received);
+            Log::log->error(FormatLog("Failed to get a time domain buffer {}.", bytes_received));
             m_thread_exit_code = SCAPE_EINTERNAL;
             return;
         }
@@ -138,11 +141,14 @@ void DataProcessing::MainLoop()
         else
         {
             static int nof_discarded = 0;
-            fprintf(stderr, "Skipping (no FFT or allocation) since queue is full (%d).\n", nof_discarded++);
+            Log::log->info(FormatLog("Skipping (no FFT or allocation) since queue is full ({}).",
+                                     nof_discarded++));
         }
 
         ADQ_ReturnRecordBuffer(m_handle, m_index, channel, time_domain);
     }
+
+    Log::log->trace(FormatLog("Exiting the data processing thread's main loop."));
 }
 
 template <typename T>
@@ -211,9 +217,14 @@ int DataProcessing::ProcessRecord(const ADQGen4Record *raw_time_domain,
     if (m_constant.firmware.type == ADQ_FIRMWARE_TYPE_FWATD)
     {
         if (raw_time_domain->header->firmware_specific > 0)
+        {
             code_normalization *= raw_time_domain->header->firmware_specific;
+        }
         else
-            fprintf(stderr, "Expected a nonzero number of accumulations, skipping normalization.\n");
+        {
+            Log::log->warn(
+                FormatLog("Expected a nonzero number of accumulations, skipping normalization."));
+        }
     }
 
     try
@@ -226,7 +237,7 @@ int DataProcessing::ProcessRecord(const ADQGen4Record *raw_time_domain,
     }
     catch (const std::invalid_argument &e)
     {
-        fprintf(stderr, "%s\n", e.what());
+        Log::log->error(FormatLog(e.what()));
         return SCAPE_EINTERNAL;
     }
 
@@ -280,7 +291,8 @@ int DataProcessing::ProcessRecord(const ADQGen4Record *raw_time_domain,
         break;
 
     default:
-        fprintf(stderr, "Unknown data format '%" PRIu8 "'.\n", raw_time_domain->header->data_format);
+        Log::log->error(
+            FormatLog("Unknown data format '{}'.", raw_time_domain->header->data_format));
         return SCAPE_EINTERNAL;
     }
 
@@ -289,7 +301,7 @@ int DataProcessing::ProcessRecord(const ADQGen4Record *raw_time_domain,
     auto yc = std::vector<std::complex<double>>(FFT_LENGTH);
     if (!simple_fft::FFT(y, yc, FFT_LENGTH, error))
     {
-        fprintf(stderr, "Failed to compute FFT: %s.\n", error);
+        Log::log->error(FormatLog("Failed to compute FFT, reason '{}'.", error));
         return SCAPE_EINTERNAL;
     }
 
@@ -701,4 +713,10 @@ void DataProcessing::ProcessMessages()
             break;
         }
     }
+}
+
+template <typename... Args>
+std::string DataProcessing::FormatLog(Args &&... args)
+{
+    return m_label + ": " + fmt::format(std::forward<Args>(args)...);
 }

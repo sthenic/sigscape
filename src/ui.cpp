@@ -2,6 +2,7 @@
 #include "implot_internal.h" /* To be able to get item visibility state. */
 #include "imgui_extensions.h"
 
+#include "log.h"
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "embedded_python.h"
@@ -201,14 +202,18 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version,
 
     /* Set up the path to the persistent directory we use to store Python
        scripts and start the watcher. */
+    Log::log->set_level(spdlog::level::trace);
+    Log::log->info("Initialized");
+
     try
     {
         EmbeddedPython::AddToPath(m_persistent_directories.GetPythonDirectory());
         m_python_directory_watcher.Start();
     }
-    catch (const EmbeddedPythonException &)
+    catch (const EmbeddedPythonException &e)
     {
-        fprintf(stderr, "Failed to append persistent directory to embedded Python session.\n");
+        Log::log->error("Failed to append persistent directory to embedded Python session.");
+        Log::log->error(e.what());
     }
 }
 
@@ -2448,8 +2453,16 @@ void Ui::RenderLog(const ImVec2 &position, const ImVec2 &size)
 {
     ImGui::SetNextWindowPos(position);
     ImGui::SetNextWindowSize(size);
-    ImGui::Begin("Log", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+    const int flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
+                      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+    ImGui::Begin("Log", NULL, flags);
     m_collapsed.log = ImGui::IsWindowCollapsed();
+
+    for (const auto &line : Log::buffer->last_formatted())
+        ImGui::Text(line);
+
+    /* FIXME: Implement correct scrolling behavior. */
+    ImGui::SetScrollHereY();
     ImGui::End();
 }
 

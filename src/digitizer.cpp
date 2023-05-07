@@ -16,6 +16,7 @@
 #include "fmt/core.h"
 #include "fmt/format.h"
 #include "embedded_python.h"
+#include "log.h"
 
 #include <algorithm>
 #include <cctype>
@@ -146,8 +147,7 @@ void Digitizer::MainLoop()
 
 void Digitizer::SignalError(const std::string &message)
 {
-    /* TODO: Propagate message in some other way? We just write it to stderr for now. */
-    std::fprintf(stderr, "%s", fmt::format("ERROR: {}\n", message).c_str());
+    Log::log->error(std::string(m_constant.serial_number) + ": " + message);
     m_read_queue.EmplaceWrite(DigitizerMessageId::ERR);
 }
 
@@ -494,14 +494,12 @@ void Digitizer::SetState(DigitizerState state)
 
 void Digitizer::HandleMessageInNotInitialized(const struct DigitizerMessage &message)
 {
-    /* TODO: Nothing to do? */
-    (void)message;
+    throw DigitizerException(fmt::format("Unsupported action in NOT INITIALIZED '{}'.", message.id));
 }
 
 void Digitizer::HandleMessageInInitialization(const struct DigitizerMessage &message)
 {
-    /* TODO: Nothing to do? */
-    (void)message;
+    throw DigitizerException(fmt::format("Unsupported action in INITIALIZATION '{}'.", message.id));
 }
 
 void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
@@ -600,7 +598,7 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
         break;
 
     default:
-        throw DigitizerException(fmt::format("Unsupported action '{}'.", message.id));
+        throw DigitizerException(fmt::format("Unsupported action in IDLE '{}'.", message.id));
     }
 }
 
@@ -696,7 +694,7 @@ void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &messag
         break;
 
     default:
-        throw DigitizerException(fmt::format("Unsupported action '{}'.", message.id));
+        throw DigitizerException(fmt::format("Unsupported action in ACQUISITION '{}'.", message.id));
     }
 }
 

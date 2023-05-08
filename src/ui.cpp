@@ -175,6 +175,9 @@ Ui::Ui()
 void Ui::Initialize(GLFWwindow *window, const char *glsl_version,
                     bool (*ScreenshotCallback)(const std::string &filename))
 {
+    Log::log->set_level(spdlog::level::trace);
+    Log::log->info("Initializing");
+
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImPlot::CreateContext();
@@ -200,21 +203,7 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version,
     }
 #endif
 
-    /* Set up the path to the persistent directory we use to store Python
-       scripts and start the watcher. */
-    Log::log->set_level(spdlog::level::trace);
-    Log::log->info("Initialized");
-
-    try
-    {
-        EmbeddedPython::AddToPath(m_persistent_directories.GetPythonDirectory());
-        m_python_directory_watcher.Start();
-    }
-    catch (const EmbeddedPythonException &e)
-    {
-        Log::log->error("Failed to append persistent directory to embedded Python session.");
-        Log::log->error(e.what());
-    }
+    InitializeEmbeddedPython();
 }
 
 void Ui::Terminate()
@@ -268,6 +257,32 @@ void Ui::Render(float width, float height)
         if (!Screenshot(filename))
             Log::log->error(fmt::format("Failed to save PNG image '{}'.", filename));
         m_should_screenshot = false;
+    }
+}
+
+void Ui::InitializeEmbeddedPython()
+{
+    if (!EmbeddedPython::IsInitialized())
+    {
+        Log::log->warn("Embedded Python session failed to initialize.");
+        return;
+    }
+    else
+    {
+        Log::log->info("Embedded Python session initialized.");
+    }
+
+    /* Set up the path to the persistent directory we use to store Python
+       scripts and start the watcher. */
+    try
+    {
+        EmbeddedPython::AddToPath(m_persistent_directories.GetPythonDirectory());
+        m_python_directory_watcher.Start();
+    }
+    catch (const EmbeddedPythonException &e)
+    {
+        Log::log->error("Failed to append persistent directory to embedded Python session.");
+        Log::log->error(e.what());
     }
 }
 

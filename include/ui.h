@@ -182,6 +182,7 @@ private:
     uint32_t m_api_revision;
     ImGui::FileBrowser m_file_browser;
 
+    void InitializeEmbeddedPython();
 
     void ClearChannelSelection();
     bool IsAnySolo() const;

@@ -175,7 +175,6 @@ static bool RedirectStderr()
     }
     catch (const std::runtime_error &)
     {
-        Log::log->error("Failed to redirect stderr from Python.");
         return false;
     }
 }
@@ -242,22 +241,18 @@ public:
     PythonSessionRunTimeLinking()
         : m_dll(NULL)
     {
-        printf("Constructing PythonSessionRunTimeLinking\n");
         if (!InitializeRunTimeLinking() && m_dll != NULL)
         {
-            if (FreeLibrary(m_dll) == 0)
-                Log::log->error("Failed to free the run-time linked Python library handle.");
+            FreeLibrary(m_dll);
             m_dll = NULL;
         }
     }
 
     ~PythonSessionRunTimeLinking()
     {
-        printf("Destroying PythonSessionRunTimeLinking\n");
         if (m_dll != NULL)
         {
-            if (FreeLibrary(m_dll) == 0)
-                Log::log->error("Failed to free the run-time linked Python library handle.");
+            FreeLibrary(m_dll);
             m_dll = NULL;
         }
     }
@@ -382,7 +377,6 @@ private:
         if (PyBytes_AsString == NULL)
             return false;
 
-        Log::log->trace("Successfully completed run-time loading of 'python3.dll'.");
         return true;
     }
 };

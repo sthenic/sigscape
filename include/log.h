@@ -1,5 +1,6 @@
 #pragma once
 
+#define SPDLOG_FMT_EXTERNAL
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/ringbuffer_sink.h"
 

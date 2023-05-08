@@ -175,7 +175,7 @@ Ui::Ui()
 void Ui::Initialize(GLFWwindow *window, const char *glsl_version,
                     bool (*ScreenshotCallback)(const std::string &filename))
 {
-    Log::log->set_level(spdlog::level::trace);
+    Log::log->set_level(spdlog::level::info);
     Log::log->info("Initializing");
 
     IMGUI_CHECKVERSION();
@@ -640,6 +640,27 @@ void Ui::RenderMenuBar()
         }
         ImGui::EndMenu();
     }
+
+    if (ImGui::BeginMenu("Log"))
+    {
+        const auto LogLevelGetter = [](void *data, int idx, const char **label) -> bool
+        {
+            /* Assume a straight mapping between the index and the log level enumeration. */
+            (void)data;
+            static std::vector<spdlog::string_view_t> log_levels SPDLOG_LEVEL_NAMES;
+            *label = log_levels.at(idx).data();
+            return true;
+        };
+
+        static int log_level = spdlog::level::info;
+        if (ImGui::Combo("##combologlevel", &log_level, LogLevelGetter, NULL, spdlog::level::n_levels))
+        {
+            Log::log->set_level(static_cast<spdlog::level::level_enum>(log_level));
+        }
+
+        ImGui::EndMenu();
+    }
+
     ImGui::EndMainMenuBar();
 }
 

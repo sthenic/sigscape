@@ -7,6 +7,7 @@ Identification::Identification(const PersistentDirectories &persistent_directori
 
 void Identification::MainLoop()
 {
+    Log::log->trace("Starting identification.");
     uint32_t revision = ADQAPI_GetRevision();
 
     /* We only abort if the API is incompatible. */
@@ -59,6 +60,8 @@ void Identification::MainLoop()
             break;
         }
     }
+
+    Log::log->info("Found {} compatible digitizers (out of {}).", nof_gen4_digitizers, nof_devices);
 
     /* Get the persistent directory used to store the digitizer's configuration files. */
     const auto &configuration_directory = m_persistent_directories.GetConfigurationDirectory();

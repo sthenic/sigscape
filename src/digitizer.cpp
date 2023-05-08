@@ -108,6 +108,7 @@ void Digitizer::MainInitialization()
        the identifier we were given when this object was constructed. We begin
        by initializing the digitizer, completing its initial setup procedure. */
     SetState(DigitizerState::INITIALIZATION);
+    Log::log->trace("Starting initialization of digitizer {}.", m_id.index);
 
     /* Performing this operation in a thread safe manner requires that
        ADQControlUnit_OpenDeviceInterface() has been called (and returned
@@ -729,6 +730,7 @@ void Digitizer::HandleMessageInState(const struct DigitizerMessage &message)
     }
 
     /* If the message was processed successfully, we send the 'all clear'. */
+    Log::log->trace(FormatLog("Processed message {}.", message.id));
     m_read_queue.EmplaceWrite(DigitizerMessageId::CLEAR);
 }
 
@@ -942,8 +944,11 @@ void Digitizer::InitializeFileWatchers()
 template <typename... Args>
 std::string Digitizer::FormatLog(Args &&... args)
 {
-    return fmt::format("{} {}: ", m_constant.product_name, m_constant.serial_number) +
-           fmt::format(std::forward<Args>(args)...);
+    std::string result{};
+    if (m_constant.product_name[0] && m_constant.serial_number[0])
+        result = fmt::format("{} {}: ", m_constant.product_name, m_constant.serial_number);
+
+    return result + fmt::format(std::forward<Args>(args)...);
 }
 
 template <typename... Args>

@@ -69,5 +69,8 @@ TEST(Python, CheckAndCall)
 
     /* Throws on error. */
     int dummy = 1024;
-    EmbeddedPython::CallMain("with_main", &dummy, 10);
+    std::string out{};
+    EmbeddedPython::CallMain("with_main", &dummy, 10, out);
+    CHECK(out.size() > 0);
+    STRCMP_CONTAINS("Called main() with '<pyadq.ADQ object at", out.c_str());
 }

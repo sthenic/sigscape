@@ -32,6 +32,6 @@ bool HasMain(const std::filesystem::path &path);
 /* Call the `main()` function of the `module` and pass a `pyadq.ADQ` object
    constructed from the `handle` and `index` as the sole argument. An
    `EmbeddedPythonException` is raised on any error. */
-void CallMain(const std::string &module, void *handle, int index);
+void CallMain(const std::string &module, void *handle, int index, std::string &out);
 };
 

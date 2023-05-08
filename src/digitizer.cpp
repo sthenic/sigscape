@@ -592,12 +592,16 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
     case DigitizerMessageId::CALL_PYTHON:
         try
         {
-            EmbeddedPython::CallMain(message.str, m_id.handle, m_id.index);
+            std::string out{};
+            EmbeddedPython::CallMain(message.str, m_id.handle, m_id.index, out);
+            Log::log->info(FormatLog("Successfully called main() in module '{}'.", message.str));
+            if (out.size() > 0)
+                Log::log->info(FormatLog("Captured stdout:\n\n{}", out));
         }
         catch (const EmbeddedPythonException &e)
         {
             /* Translate to the local exception type. */
-            ThrowDigitizerException("Error when calling main() in module '{}':\n{}", message.str,
+            ThrowDigitizerException("Error when calling main() in module '{}':\n\n{}", message.str,
                                     e.what());
         }
         break;
@@ -936,9 +940,14 @@ void Digitizer::InitializeFileWatchers()
 }
 
 template <typename... Args>
+std::string Digitizer::FormatLog(Args &&... args)
+{
+    return fmt::format("{} {}: ", m_constant.product_name, m_constant.serial_number) +
+           fmt::format(std::forward<Args>(args)...);
+}
+
+template <typename... Args>
 void Digitizer::ThrowDigitizerException(Args &&... args)
 {
-    const auto message = fmt::format("{} {}: ", m_constant.product_name, m_constant.serial_number) +
-                         fmt::format(std::forward<Args>(args)...);
-    throw DigitizerException(std::move(message));
+    throw DigitizerException(std::move(FormatLog(std::forward<Args>(args)...)));
 }

@@ -279,6 +279,10 @@ private:
     void GetParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher);
     void InitializeFileWatchers();
 
+    /* Prepend an object-specific header to the message and return the `fmt::format` string. */
+    template <typename... Args>
+    std::string FormatLog(Args &&... args);
+
     /* Throws a `DigitizerException` with a object-specific header prepended to the message. */
     template <typename... Args>
     void ThrowDigitizerException(Args &&... args);

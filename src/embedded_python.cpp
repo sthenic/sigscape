@@ -145,7 +145,7 @@ private:
     PyGILState_STATE m_state;
 };
 
-static bool RedirectStderr()
+static bool RedirectStream(const std::string &stream)
 {
     /* This code redirects Python's stderr to a io.StringIO() object. The code
        below is equivalent to:
@@ -168,7 +168,7 @@ static bool RedirectStderr()
         if (instance == NULL)
             throw std::runtime_error("");
 
-        if (PySys_SetObject("stderr", instance.get()) == -1)
+        if (PySys_SetObject(stream.c_str(), instance.get()) == -1)
             throw std::runtime_error("");
 
         return true;
@@ -179,29 +179,30 @@ static bool RedirectStderr()
     }
 }
 
-static std::string GetErrorString()
+static std::string GetStringFromStream(const std::string &stream)
 {
     /* This code reads from the (presumed) string object associated with
-       Python's stderr. The code is equivalent to:
+       Python's stderr. The code is equivalent to (for stderr):
 
          import sys
          value = sys.stderr.getvalue()
          encoded = value.encode() */
 
     /* TODO: We can't throw EmbeddedPythonException in here since this function
-             is called in the exception constructor. */
+             is called in that same exception's constructor. */
     try
     {
         /* It's crucial that we call PyErr_Print() before we proceed. Otherwise
            stderr will be empty. */
-        PyErr_Print();
+        if (stream == "stderr")
+            PyErr_Print();
 
         /* Borrowed reference from PySys_GetObject so no smart object. */
-        auto py_stderr = PySys_GetObject("stderr");
-        if (py_stderr == NULL)
+        auto stringio = PySys_GetObject(stream.c_str());
+        if (stringio == NULL)
             throw std::runtime_error("");
 
-        UniquePyObject value{PyObject_CallMethod(py_stderr, "getvalue", NULL)};
+        UniquePyObject value{PyObject_CallMethod(stringio, "getvalue", NULL)};
         if (value == NULL)
             throw std::runtime_error("");
 
@@ -213,8 +214,8 @@ static std::string GetErrorString()
         if (str == NULL)
             throw std::runtime_error("");
 
-        /* Before we leave, set up a clean buffer to receive new error messages. */
-        RedirectStderr();
+        /* Before we leave, set up a clean buffer for the target stream. */
+        RedirectStream(stream);
 
         return std::string{str};
     }
@@ -225,7 +226,7 @@ static std::string GetErrorString()
 }
 
 EmbeddedPythonException::EmbeddedPythonException()
-    : std::runtime_error(GetErrorString())
+    : std::runtime_error(GetStringFromStream("stderr"))
 {}
 
 EmbeddedPythonException::EmbeddedPythonException(const std::string &str)
@@ -401,7 +402,7 @@ public:
         if (IsInitialized())
         {
             Py_Initialize();
-            RedirectStderr();
+            RedirectStream("stderr");
             m_state = PyEval_SaveThread();
         }
     }
@@ -589,7 +590,7 @@ static PyObject *AsPyAdqDevice(void *handle, int index)
     return result;
 }
 
-void EmbeddedPython::CallMain(const std::string &module, void *handle, int index)
+void EmbeddedPython::CallMain(const std::string &module, void *handle, int index, std::string &out)
 {
     if (!IsInitialized())
         throw EmbeddedPythonException("Not initialized");
@@ -598,6 +599,9 @@ void EmbeddedPython::CallMain(const std::string &module, void *handle, int index
        the try block since the `UniquePyObject` destructors will interact w/ the
        Python session to decrement the reference counts. */
     const PyLock lock{};
+
+    /* Redirect stdout to a fresh string object. */
+    RedirectStream("stdout");
 
     UniquePyObject mod{PyImport_ImportModule(module.c_str())};
     if (mod == NULL)
@@ -625,4 +629,7 @@ void EmbeddedPython::CallMain(const std::string &module, void *handle, int index
     UniquePyObject result{PyObject_CallObject(function.get(), args.get())};
     if (result == NULL)
         throw EmbeddedPythonException();
+
+    /* Right now, you only get stdout if the script completes successfully. */
+    out = GetStringFromStream("stdout");
 }

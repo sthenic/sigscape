@@ -254,8 +254,11 @@ void Ui::Render(float width, float height)
                                           m_persistent_directories.GetScreenshotDirectory(),
                                           NowAsIso8601());
 
-        if (!Screenshot(filename))
+        if (Screenshot(filename))
+            Log::log->info("Saved screenshot as '{}'.", filename);
+        else
             Log::log->error("Failed to save PNG image '{}'.", filename);
+
         m_should_screenshot = false;
     }
 }

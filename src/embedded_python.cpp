@@ -147,8 +147,8 @@ private:
 
 static bool RedirectStream(const std::string &stream)
 {
-    /* This code redirects Python's stderr to a io.StringIO() object. The code
-       below is equivalent to:
+    /* This code redirects the target stream to a io.StringIO() object.
+       The code below is equivalent to (for stderr):
 
          import sys
          from io import StringIO
@@ -182,7 +182,7 @@ static bool RedirectStream(const std::string &stream)
 static std::string GetStringFromStream(const std::string &stream)
 {
     /* This code reads from the (presumed) string object associated with
-       Python's stderr. The code is equivalent to (for stderr):
+       the target stream. The code is equivalent to (for stderr):
 
          import sys
          value = sys.stderr.getvalue()
@@ -192,8 +192,8 @@ static std::string GetStringFromStream(const std::string &stream)
              is called in that same exception's constructor. */
     try
     {
-        /* It's crucial that we call PyErr_Print() before we proceed. Otherwise
-           stderr will be empty. */
+        /* It's crucial that if we're targeting stderr, we call PyErr_Print()
+           before we proceed. Otherwise the string object will be empty. */
         if (stream == "stderr")
             PyErr_Print();
 

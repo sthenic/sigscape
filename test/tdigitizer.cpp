@@ -32,7 +32,7 @@ TEST_GROUP(Digitizer)
                                                        {"A", 2, {2500.0}, 65536},
                                                    }});
 
-        digitizer = std::make_unique<Digitizer>(&mock_control_unit, 1, ".");
+        digitizer = std::make_unique<Digitizer>(&mock_control_unit, 0, 1, ".");
     }
 
     void teardown()

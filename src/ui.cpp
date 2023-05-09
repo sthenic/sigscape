@@ -88,7 +88,7 @@ void Ui::ChannelUiState::SaveToFile(const std::filesystem::path &path)
     std::ofstream ofs(lpath, std::ios::trunc);
     if (ofs.fail())
     {
-        Log::log->error(fmt::format("Failed to open file '{}'.", lpath.string()));
+        Log::log->error("Failed to open file '{}'.", lpath.string());
         return;
     }
 
@@ -255,7 +255,7 @@ void Ui::Render(float width, float height)
                                           NowAsIso8601());
 
         if (!Screenshot(filename))
-            Log::log->error(fmt::format("Failed to save PNG image '{}'.", filename));
+            Log::log->error("Failed to save PNG image '{}'.", filename);
         m_should_screenshot = false;
     }
 }
@@ -555,8 +555,8 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
 
     default:
         /* These are not expected as a message from a digitizer thread. */
-        Log::log->error(fmt::format("Unsupported message id '{}' from digitizer {}.", message.id,
-                                    digitizer.ui.identifier));
+        Log::log->error("Unsupported message id '{}' from digitizer {}.", message.id,
+                        digitizer.ui.identifier);
         break;
     }
 }

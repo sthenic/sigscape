@@ -29,7 +29,7 @@ void DirectoryWatcher::MainLoop()
         return;
     }
 
-    Log::log->trace(fmt::format("Starting directory watcher for '{}'.", m_path));
+    Log::log->trace("Starting directory watcher for '{}'.", m_path);
     m_thread_exit_code = SCAPE_EOK;
 
     for (;;)
@@ -104,5 +104,5 @@ void DirectoryWatcher::MainLoop()
             break;
     }
 
-    Log::log->trace(fmt::format("Stopping directory watcher for '{}'.", m_path));
+    Log::log->trace("Stopping directory watcher for '{}'.", m_path);
 }

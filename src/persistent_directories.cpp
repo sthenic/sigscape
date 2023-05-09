@@ -1,6 +1,5 @@
 #include "persistent_directories.h"
 #include "log.h"
-#include "fmt/format.h"
 
 #include <cstdlib>
 #include <filesystem>
@@ -25,8 +24,7 @@ static bool ValidateDirectoryCreateIfNeeded(const std::string &path)
         }
         catch (const std::filesystem::filesystem_error &e)
         {
-            Log::log->error(
-                fmt::format("Failed to create directory '{}': {}.", path.c_str(), e.what()));
+            Log::log->error("Failed to create directory '{}': {}.", path.c_str(), e.what());
             return false;
         }
     }

@@ -45,7 +45,7 @@ void HotplugWindows::CheckForEvents()
     CONFIGRET result = CM_Get_Device_ID_List_SizeA(&list_size, GUID, LIST_FLAGS);
     if (result != CR_SUCCESS)
     {
-        Log::log->error(fmt::format("CM_Get_Device_ID_List_SizeA failed, code {}.", result));
+        Log::log->error("CM_Get_Device_ID_List_SizeA failed, code {}.", result);
         return;
     }
 
@@ -55,7 +55,7 @@ void HotplugWindows::CheckForEvents()
     result = CM_Get_Device_ID_ListA(GUID, (PZZSTR)list.data(), (ULONG)list.capacity(), LIST_FLAGS);
     if (result != CR_SUCCESS)
     {
-        Log::log->error(fmt::format("CM_Get_Device_ID_ListA failed, code {}.", result));
+        Log::log->error("CM_Get_Device_ID_ListA failed, code {}.", result);
         return;
     }
 

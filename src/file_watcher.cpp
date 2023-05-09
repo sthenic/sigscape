@@ -30,7 +30,7 @@ void FileWatcher::MainLoop()
         return;
     }
 
-    Log::log->trace(fmt::format("Starting file watcher for '{}'.", m_path));
+    Log::log->trace("Starting file watcher for '{}'.", m_path);
     m_thread_exit_code = SCAPE_EOK;
 
     /* Before we enter the main loop, we check if the file exists. If it
@@ -82,7 +82,7 @@ void FileWatcher::MainLoop()
     /* FIXME: Actually need an explicit destructor calling Stop() because
               otherwise the members get destroyed (while the thread may be
               running) before Stop() gets called by the base class destructor. */
-    Log::log->trace(fmt::format("Stopping file watcher for '{}'.", m_path));
+    Log::log->trace("Stopping file watcher for '{}'.", m_path);
 }
 
 void FileWatcher::ReadContents(std::string &str)

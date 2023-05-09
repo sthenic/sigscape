@@ -30,7 +30,8 @@
 enum ADQProductID_Enum
 {
   PID_ADQ32 = 0x0031,
-  PID_ADQ36 = 0x0033
+  PID_ADQ36 = 0x0033,
+  PID_ADQ30 = 0x0034
 };
 
 struct ADQInfoListEntry

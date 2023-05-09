@@ -109,7 +109,7 @@ void Digitizer::MainInitialization()
        the identifier we were given when this object was constructed. We begin
        by initializing the digitizer, completing its initial setup procedure. */
     SetState(DigitizerState::INITIALIZATION);
-    Log::log->trace("Starting initialization of digitizer {}.", m_id.index);
+    Log::log->info("Starting initialization of digitizer {}.", m_id.index);
 
     /* Performing this operation in a thread safe manner requires that
        ADQControlUnit_OpenDeviceInterface() has been called (and returned
@@ -128,6 +128,8 @@ void Digitizer::MainInitialization()
         m_thread_exit_code = SCAPE_EINTERNAL;
         ThrowDigitizerException("Failed to get the constant parameters, status {}.", result);
     }
+
+    Log::log->info("Digitizer {} is {}.", m_id.index, m_constant.serial_number);
 
     /* Instantiate one data processing thread for each digitizer channel. */
     for (int ch = 0; ch < m_constant.nof_channels; ++ch)

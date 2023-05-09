@@ -176,7 +176,7 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version,
                     bool (*ScreenshotCallback)(const std::string &filename))
 {
     Log::log->set_level(spdlog::level::info);
-    Log::log->info("Initializing");
+    Log::log->info("Initializing UI");
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -1595,8 +1595,8 @@ void Ui::RenderStaticInformation()
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
 
             Row("sigscape", SIGSCAPE_REVISION);
-            Row("libadq", fmt::format("0x{:08x}", m_api_revision));
-            Row("Embedded Python", EmbeddedPython::IsInitialized() ? "Yes" : "No");
+            Row("libadq",  fmt::format("0x{:08x}", m_api_revision));
+            Row("Embedded Python", EmbeddedPython::IsInitialized() ? "Initialized" : "Not initialized");
 
             ImGui::EndTable();
         }

@@ -10,12 +10,11 @@ Identification::Identification(const PersistentDirectories &persistent_directori
 void Identification::MainLoop()
 {
     Log::log->trace("Starting identification.");
-    uint32_t revision = ADQAPI_GetRevision();
 
-    /* We only abort if the API is incompatible. */
+    /* We double-check the compatibility and abort if the API is incompatible. */
     if (ADQAPI_ValidateVersion(ADQAPI_VERSION_MAJOR, ADQAPI_VERSION_MINOR) == -1)
     {
-        m_read_queue.Write({NULL, revision, false, {}});
+        Log::log->error("The loaded libadq is not compatible with this version of sigscape.");
         m_thread_exit_code = SCAPE_EINTERNAL;
         return;
     }
@@ -88,7 +87,6 @@ void Identification::MainLoop()
     }
 
     /* Forward the control unit handle along with digitizer objects. */
-    /* TODO: Propagate errors? */
-    m_read_queue.Write({handle, revision, true, digitizers});
+    m_read_queue.Write({handle, digitizers});
     m_thread_exit_code = SCAPE_EOK;
 }

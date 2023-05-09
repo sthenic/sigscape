@@ -177,9 +177,12 @@ private:
     bool m_should_auto_fit_time_domain;
     bool m_should_auto_fit_frequency_domain;
     bool m_should_auto_fit_waterfall;
-
-    bool m_popup_compatibility_error;
-    uint32_t m_api_revision;
+    struct
+    {
+        uint32_t revision;
+        bool compatible;
+        bool popup;
+    } m_libadq;
     ImGui::FileBrowser m_file_browser;
 
     void InitializeEmbeddedPython();

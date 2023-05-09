@@ -165,8 +165,7 @@ Ui::Ui()
     , m_should_auto_fit_time_domain(true)
     , m_should_auto_fit_frequency_domain(true)
     , m_should_auto_fit_waterfall(true)
-    , m_popup_compatibility_error(false)
-    , m_api_revision(0)
+    , m_libadq{}
     , m_file_browser(ImGuiFileBrowserFlags_EnterNewFilename | ImGuiFileBrowserFlags_CreateNewDir |
                      ImGuiFileBrowserFlags_CloseOnEsc)
 {
@@ -176,7 +175,7 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version,
                     bool (*ScreenshotCallback)(const std::string &filename))
 {
     Log::log->set_level(spdlog::level::info);
-    Log::log->info("Initializing UI");
+    Log::log->info("Initializing UI.");
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -188,6 +187,23 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version,
 
     /* Set up the ImGui configuration file. */
     ImGui::GetIO().IniFilename = m_persistent_directories.GetImGuiInitializationFile();
+
+    /* Initialize the embedded Python session. */
+    InitializeEmbeddedPython();
+
+    /* Get the static information about the ADQAPI and check the compatibility.
+       If the API is incompatible, we can't proceed beyond this point. We toggle
+       the popup message and return. */
+    m_libadq.revision = ADQAPI_GetRevision();
+    m_libadq.compatible = true;
+    m_libadq.popup = false;
+
+    if (ADQAPI_ValidateVersion(ADQAPI_VERSION_MAJOR, ADQAPI_VERSION_MINOR) == -1)
+    {
+        m_libadq.popup = true;
+        m_libadq.compatible = false;
+        return;
+    }
 
 #ifdef MOCK_ADQAPI
     IdentifyDigitizers();
@@ -202,8 +218,6 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version,
         IdentifyDigitizers();
     }
 #endif
-
-    InitializeEmbeddedPython();
 }
 
 void Ui::Terminate()
@@ -415,16 +429,7 @@ void Ui::HandleMessage(const IdentificationMessage &message)
 {
     /* Stop the identification thread. */
     m_identification.Stop();
-    m_api_revision = message.revision;
     m_adq_control_unit = message.handle;
-
-    /* If the API is incompatible, we can't proceed beyond this point. We toggle
-       the popup message and return. */
-    if (!message.compatible)
-    {
-        m_popup_compatibility_error = true;
-        return;
-    }
 
     /* If we get a message, the identification went well. Prepare to
        reinitialize the entire user interface.*/
@@ -821,7 +826,7 @@ void Ui::RenderLeft(float width, float height)
 
 void Ui::RenderPopups()
 {
-    if (m_popup_compatibility_error)
+    if (m_libadq.popup)
         RenderPopupCompatibilityError();
 
     for (size_t i = 0; i < m_digitizers.size(); ++i)
@@ -850,14 +855,15 @@ void Ui::RenderPopupCompatibilityError()
     ImGui::OpenPopup("Incompatible libadq");
     if (ImGui::BeginPopupModal("Incompatible libadq", NULL, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        ImGui::Text("The loaded libadq version (0x%08x) is not \n"
-                    "compatible with this version of sigscape.",
-                    m_api_revision);
+        ImGui::Text("The loaded libadq (revision 0x%08x) is not \n"
+                    "compatible with this version of sigscape.\n\n"
+                    "Compiled with v%d.%d",
+                    m_libadq.revision, ADQAPI_VERSION_MAJOR, ADQAPI_VERSION_MINOR);
 
         ImGui::Separator();
         if (ImGui::Button("Ok"))
         {
-            m_popup_compatibility_error = false;
+            m_libadq.popup = false;
             ImGui::CloseCurrentPopup();
         }
 
@@ -915,13 +921,18 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
             digitizer.ui.is_selected = false;
     }
 
+    /* We disable this button if the loaded libadq is incompatible. */
     std::string label = "Reinitialize all";
     ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - ImGui::GetCursorPosX() -
                     ImGui::CalcTextSize(label.c_str()).x);
+    if (!m_libadq.compatible)
+        ImGui::BeginDisabled();
     if (ImGui::Button(label.c_str()))
         IdentifyDigitizers();
-    ImGui::Separator();
+    if (!m_libadq.compatible)
+        ImGui::EndDisabled();
 
+    ImGui::Separator();
     if (m_digitizers.size() == 0)
     {
         ImGui::Text("No digitizers found.");
@@ -1595,7 +1606,7 @@ void Ui::RenderStaticInformation()
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
 
             Row("sigscape", SIGSCAPE_REVISION);
-            Row("libadq",  fmt::format("0x{:08x}", m_api_revision));
+            Row("libadq",  fmt::format("0x{:08x}{}", m_libadq.revision, m_libadq.compatible ? "" : " (incompatible)"));
             Row("Embedded Python", EmbeddedPython::IsInitialized() ? "Initialized" : "Not initialized");
 
             ImGui::EndTable();

@@ -182,7 +182,7 @@ struct DigitizerMessage
 class Digitizer : public MessageThread<Digitizer, DigitizerMessage>
 {
 public:
-    Digitizer(void *handle, int index, const std::string &configuration_directory);
+    Digitizer(void *handle, int init_index, int index, const std::string &configuration_directory);
     ~Digitizer() = default;
 
     /* Making copies of an object of this type is not allowed. */
@@ -203,10 +203,13 @@ private:
     enum DigitizerState m_state;
 
     /* The digitizer identification information. This consists of a handle and
-       an index. These values must be known at the time of construction. */
+       two indexes: the `init_index` is _only_ used in the call to
+       `SetupDevice()` while the one simply named `index` is used in all the
+       `ADQ_*` calls. These values must be known at the time of construction. */
     const struct Identifier
     {
         void *handle;
+        int init_index;
         int index;
     } m_id;
 

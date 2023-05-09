@@ -30,9 +30,10 @@ public:
     DigitizerException(const std::string &str) : std::runtime_error(str) {};
 };
 
-Digitizer::Digitizer(void *handle, int index, const std::string &configuration_directory)
+Digitizer::Digitizer(void *handle, int init_index, int index,
+                     const std::string &configuration_directory)
     : m_state(DigitizerState::NOT_INITIALIZED)
-    , m_id{handle, index}
+    , m_id{handle, init_index, index}
     , m_configuration_directory(configuration_directory)
     , m_constant{}
     , m_watchers{}
@@ -113,7 +114,7 @@ void Digitizer::MainInitialization()
     /* Performing this operation in a thread safe manner requires that
        ADQControlUnit_OpenDeviceInterface() has been called (and returned
        successfully) in a single thread process. */
-    int result = ADQControlUnit_SetupDevice(m_id.handle, m_id.index - 1);
+    int result = ADQControlUnit_SetupDevice(m_id.handle, m_id.init_index);
     if (result != 1)
     {
         m_thread_exit_code = SCAPE_EINTERNAL;

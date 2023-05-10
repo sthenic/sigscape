@@ -69,6 +69,14 @@ static PySys_GetObject_t PySys_GetObject = NULL;
 static PyObject_CallMethod_t PyObject_CallMethod = NULL;
 static PyUnicode_AsEncodedString_t PyUnicode_AsEncodedString = NULL;
 static PyBytes_AsString_t PyBytes_AsString = NULL;
+
+#define INITIALIZE_PROC_ADDRESS(name)                                                              \
+    do                                                                                             \
+    {                                                                                              \
+        name = (name##_t)GetProcAddress(m_dll, #name);                                             \
+        if (name == NULL)                                                                          \
+            return false;                                                                          \
+    } while (0)
 #endif
 
 /* This is a wrapper around a `PyObject *` that mimics the behavior of a
@@ -269,114 +277,36 @@ private:
 
     bool InitializeRunTimeLinking()
     {
-        /* FIXME: Search for multiple versions. */
         m_dll = LoadLibraryA("python3.dll");
         if (m_dll == NULL)
             return false;
 
-        Py_Initialize = (Py_Initialize_t)GetProcAddress(m_dll, "Py_Initialize");
-        if (Py_Initialize == NULL)
-            return false;
-
-        Py_FinalizeEx = (Py_FinalizeEx_t)GetProcAddress(m_dll, "Py_FinalizeEx");
-        if (Py_FinalizeEx == NULL)
-            return false;
-
-        Py_DecRef = (Py_DecRef_t)GetProcAddress(m_dll, "Py_DecRef");
-        if (Py_DecRef == NULL)
-            return false;
-
-        PyEval_SaveThread = (PyEval_SaveThread_t)GetProcAddress(m_dll, "PyEval_SaveThread");
-        if (PyEval_SaveThread == NULL)
-            return false;
-
-        PyEval_RestoreThread = (PyEval_RestoreThread_t)GetProcAddress(m_dll, "PyEval_RestoreThread");
-        if (PyEval_RestoreThread == NULL)
-            return false;
-
-        PyGILState_Ensure = (PyGILState_Ensure_t)GetProcAddress(m_dll, "PyGILState_Ensure");
-        if (PyGILState_Ensure == NULL)
-            return false;
-
-        PyImport_ImportModule = (PyImport_ImportModule_t)GetProcAddress(m_dll, "PyImport_ImportModule");
-        if (PyImport_ImportModule == NULL)
-            return false;
-
-        PyObject_GetAttrString = (PyObject_GetAttrString_t)GetProcAddress(m_dll, "PyObject_GetAttrString");
-        if (PyObject_GetAttrString == NULL)
-            return false;
-
-        PyUnicode_DecodeFSDefault = (PyUnicode_DecodeFSDefault_t)GetProcAddress(m_dll, "PyUnicode_DecodeFSDefault");
-        if (PyUnicode_DecodeFSDefault == NULL)
-            return false;
-
-        PyList_Append = (PyList_Append_t)GetProcAddress(m_dll, "PyList_Append");
-        if (PyList_Append == NULL)
-            return false;
-
-        PyList_Insert = (PyList_Insert_t)GetProcAddress(m_dll, "PyList_Insert");
-        if (PyList_Insert == NULL)
-            return false;
-
-        PyErr_Print = (PyErr_Print_t)GetProcAddress(m_dll, "PyErr_Print");
-        if (PyErr_Print == NULL)
-            return false;
-
-        PyGILState_Release = (PyGILState_Release_t)GetProcAddress(m_dll, "PyGILState_Release");
-        if (PyGILState_Release == NULL)
-            return false;
-
-        PyImport_ReloadModule = (PyImport_ReloadModule_t)GetProcAddress(m_dll, "PyImport_ReloadModule");
-        if (PyImport_ReloadModule == NULL)
-            return false;
-
-        PyCallable_Check = (PyCallable_Check_t)GetProcAddress(m_dll, "PyCallable_Check");
-        if (PyCallable_Check == NULL)
-            return false;
-
-        PyTuple_New = (PyTuple_New_t)GetProcAddress(m_dll, "PyTuple_New");
-        if (PyTuple_New == NULL)
-            return false;
-
-        PyTuple_SetItem = (PyTuple_SetItem_t)GetProcAddress(m_dll, "PyTuple_SetItem");
-        if (PyTuple_SetItem == NULL)
-            return false;
-
-        PyObject_CallObject = (PyObject_CallObject_t)GetProcAddress(m_dll, "PyObject_CallObject");
-        if (PyObject_CallObject == NULL)
-            return false;
-
-        PyLong_FromSize_t = (PyLong_FromSize_t_t)GetProcAddress(m_dll, "PyLong_FromSize_t");
-        if (PyLong_FromSize_t == NULL)
-            return false;
-
-        PyLong_FromLong = (PyLong_FromLong_t)GetProcAddress(m_dll, "PyLong_FromLong");
-        if (PyLong_FromLong == NULL)
-            return false;
-
-        PyObject_CallFunctionObjArgs = (PyObject_CallFunctionObjArgs_t)GetProcAddress(m_dll, "PyObject_CallFunctionObjArgs");
-        if (PyObject_CallFunctionObjArgs == NULL)
-            return false;
-
-        PySys_SetObject = (PySys_SetObject_t)GetProcAddress(m_dll, "PySys_SetObject");
-        if (PySys_SetObject == NULL)
-            return false;
-
-        PySys_GetObject = (PySys_GetObject_t)GetProcAddress(m_dll, "PySys_GetObject");
-        if (PySys_GetObject == NULL)
-            return false;
-
-        PyObject_CallMethod = (PyObject_CallMethod_t)GetProcAddress(m_dll, "PyObject_CallMethod");
-        if (PyObject_CallMethod == NULL)
-            return false;
-
-        PyUnicode_AsEncodedString = (PyUnicode_AsEncodedString_t)GetProcAddress(m_dll, "PyUnicode_AsEncodedString");
-        if (PyUnicode_AsEncodedString == NULL)
-            return false;
-
-        PyBytes_AsString = (PyBytes_AsString_t)GetProcAddress(m_dll, "PyBytes_AsString");
-        if (PyBytes_AsString == NULL)
-            return false;
+        INITIALIZE_PROC_ADDRESS(Py_Initialize);
+        INITIALIZE_PROC_ADDRESS(Py_FinalizeEx);
+        INITIALIZE_PROC_ADDRESS(Py_DecRef);
+        INITIALIZE_PROC_ADDRESS(PyEval_SaveThread);
+        INITIALIZE_PROC_ADDRESS(PyEval_RestoreThread);
+        INITIALIZE_PROC_ADDRESS(PyGILState_Ensure);
+        INITIALIZE_PROC_ADDRESS(PyImport_ImportModule);
+        INITIALIZE_PROC_ADDRESS(PyObject_GetAttrString);
+        INITIALIZE_PROC_ADDRESS(PyUnicode_DecodeFSDefault);
+        INITIALIZE_PROC_ADDRESS(PyList_Append);
+        INITIALIZE_PROC_ADDRESS(PyList_Insert);
+        INITIALIZE_PROC_ADDRESS(PyErr_Print);
+        INITIALIZE_PROC_ADDRESS(PyGILState_Release);
+        INITIALIZE_PROC_ADDRESS(PyImport_ReloadModule);
+        INITIALIZE_PROC_ADDRESS(PyCallable_Check);
+        INITIALIZE_PROC_ADDRESS(PyTuple_New);
+        INITIALIZE_PROC_ADDRESS(PyTuple_SetItem);
+        INITIALIZE_PROC_ADDRESS(PyObject_CallObject);
+        INITIALIZE_PROC_ADDRESS(PyLong_FromSize_t);
+        INITIALIZE_PROC_ADDRESS(PyLong_FromLong);
+        INITIALIZE_PROC_ADDRESS(PyObject_CallFunctionObjArgs);
+        INITIALIZE_PROC_ADDRESS(PySys_SetObject);
+        INITIALIZE_PROC_ADDRESS(PySys_GetObject);
+        INITIALIZE_PROC_ADDRESS(PyObject_CallMethod);
+        INITIALIZE_PROC_ADDRESS(PyUnicode_AsEncodedString);
+        INITIALIZE_PROC_ADDRESS(PyBytes_AsString);
 
         return true;
     }

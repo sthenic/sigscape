@@ -15,6 +15,8 @@ application by the digitizer's API.
 ## Index
 
 - [Core concepts](#core-concepts)
+- [Persistent data](#persistent-data)
+- [Embedded Python](#embedded-python)
 - [Building](#building)
 - [License](#license)
 - [Third-party dependencies](#third-party-dependencies)
@@ -43,6 +45,89 @@ thread-safe is leveraged to create a performant application with individual
 data processing threads for each channel.
 
 Running this application on CPUs with a low number of cores is not recommended.
+
+## Persistent Data
+
+When the application is launched, the system is searched for a place to store
+persistent files. These files are separated into two categories: *configuration*
+and *data*. *Configuration files* are typically the digitizers' JSON parameter
+files. What constitutes a *data file* is more loosely defined. Currently the
+definition includes screenshots, digitizer trace logs and Python scripts used to
+define [custom commands](#embedded-python). The rules for locating these
+*persistent directories* are platform dependent.
+
+On Windows, configuration files are stored in `%APPDATA%/sigscape/config` and
+data files are stored in `%APPDATA%/sigscape/share`.
+
+On Linux, configuration files are stored in
+
+- `$XDG_CONFIG_HOME/sigscape`, if the environment variable `XDG_CONFIG_HOME` is
+  set; and
+- `$HOME/.config/sigscape` otherwise.
+
+Data files are stored in
+
+- `$XDG_DATA_HOME/sigscape`, if the environment variable `XDG_DATA_HOME` is set;
+  and
+- `$HOME/.local/share/sigscape` otherwise.
+
+## Embedded Python
+
+You can extend the command palette with your own custom commands. These are
+defined in Python and utilizes the `pyadq` package to control the digitizer.
+
+Python scripts that define custom commands *must*
+
+- be located in `<persistent_data>/python`; *and*
+- define `main` as a callable function taking exactly one argument: the
+  digitizer as a `pyadq.ADQ` object.
+
+The filename (stem) will be used to identify the command in the UI. The script
+directory is continuously monitored so there is no need to restart the
+application to synchronize changes.
+
+As an example, consider the following script that simply calls `ADQ_Blink()` for
+the target digitizer, causing it to slowly blink with a designated LED in the
+front panel.
+
+```python
+import pyadq
+
+def main(digitizer: pyadq.ADQ):
+    print(f"Blinking with {digitizer}")
+    digitizer.ADQ_Blink()
+```
+
+The streams `stdout` and `stderr` are captured each time a script is called and
+presented in the application log (unless they're empty).
+
+### Environment
+
+It is important to note that `sigscape` does not bundle a Python environment,
+but instead makes use of the one available on the system. This is so you have
+access to the same environment and all your packages that you're used to.
+
+**`sigscape` hooks into the global Python environment. Virtual environments are
+not supported.**
+
+On Linux, the Python environment is often well-defined and managed by the
+distribution's package manager. When `sigscape` is compiled, the shared library
+for Python will be dynamically linked to the executable. Thus, if this library
+is missing from the system where `sigscape` is launched, there will be a runtime
+error.
+
+On Windows, the location of the Python environment is more loosely defined. For
+this reason, `sigscape` uses runtime dynamic linking to still allow the
+application to start even if a Python environment cannot be found on the system.
+The location of the Python runtime must indexed by the system's `PATH`;
+specifically `python3.dll`, which contains the ABI-stable C-API. A
+well-provisioned Python distribution normally contains this file together with
+the version-specific shared library, e.g. `python310.dll` for Python 3.10. The
+official package from https://python.org/ provides such an environment.
+**Remember to add the installation directory to the `PATH` when prompted.**
+
+There will be a message in the application log indicating whether or not the
+embedded Python environment could be initialized.
 
 ## Building
 

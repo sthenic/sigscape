@@ -94,7 +94,7 @@ void HotplugLinux::MainLoop()
         return;
     }
 
-    Log::log->trace("Starting Linux hotplug event detector.");
+    Log::log->info("Starting Linux hotplug event detector.");
 
     for (;;)
     {

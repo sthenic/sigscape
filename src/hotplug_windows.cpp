@@ -71,7 +71,7 @@ void HotplugWindows::CheckForEvents()
 void HotplugWindows::MainLoop()
 {
     m_thread_exit_code = SCAPE_EOK;
-    Log::log->trace("Starting Windows hotplug event detector.");
+    Log::log->info("Starting Windows hotplug event detector.");
     for (;;)
     {
         /* Check for any hotplug events. */

@@ -119,7 +119,7 @@ error.
 On Windows, the location of the Python environment is more loosely defined. For
 this reason, `sigscape` uses runtime dynamic linking to still allow the
 application to start even if a Python environment cannot be found on the system.
-The location of the Python runtime must indexed by the system's `PATH`;
+The location of the Python runtime must be indexed by the system's `PATH`;
 specifically `python3.dll`, which contains the ABI-stable C-API. A
 well-provisioned Python distribution normally contains this file together with
 the version-specific shared library, e.g. `python310.dll` for Python 3.10. The

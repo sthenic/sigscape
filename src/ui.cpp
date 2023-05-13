@@ -62,7 +62,6 @@ Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
 
 void Ui::ChannelUiState::SaveToFile(const std::filesystem::path &path)
 {
-    /* FIXME: Display errors in some user friendly way. */
     /* TODO: Prevent saving if the existing extension is not '.json'? */
     /* TODO: Popup if the file already exists? */
 
@@ -95,7 +94,7 @@ void Ui::ChannelUiState::SaveToFile(const std::filesystem::path &path)
     ofs << json.dump(4).c_str() << "\n";
     ofs.close();
 
-    /* TODO: Notify save complete? */
+    Log::log->info("Saved file '{}'.", lpath.string());
 }
 
 std::string Ui::ChannelUiState::GetDefaultFilename()
@@ -508,7 +507,6 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
 
     case DigitizerMessageId::DIRTY_TOP_PARAMETERS:
         digitizer.ui.set_top_color = COLOR_ORANGE;
-        /* FIXME: Remove since debug convenience */
         digitizer.interface->PushMessage(DigitizerMessageId::SET_TOP_PARAMETERS);
         break;
 

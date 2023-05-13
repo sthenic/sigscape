@@ -105,7 +105,7 @@ presented in the application log (unless they're empty).
 
 It is important to note that `sigscape` does not bundle a Python environment,
 but instead makes use of the one available on the system. This is so you have
-access to the same environment and all your packages that you're used to.
+access to the same environment and all the packages that you're used to.
 
 **`sigscape` hooks into the global Python environment. Virtual environments are
 not supported.**

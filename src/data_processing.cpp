@@ -272,8 +272,12 @@ int DataProcessing::ProcessRecord(const ADQGen4Record *raw_time_domain,
     case FrequencyDomainScaling::AMPLITUDE:
         scale_factor = (window != NULL) ? window->amplitude_factor : 1.0;
         break;
+
     case FrequencyDomainScaling::ENERGY:
         scale_factor = (window != NULL) ? window->energy_factor : 1.0;
+        break;
+
+    default:
         break;
     }
 

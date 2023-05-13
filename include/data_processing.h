@@ -11,8 +11,11 @@
 enum class FrequencyDomainScaling
 {
     AMPLITUDE,
-    ENERGY
+    ENERGY,
+    NOF_ENTRIES
 };
+
+#define FREQUENCY_DOMAIN_SCALING_LABELS {"Amplitude", "Energy"}
 
 enum class DataProcessingMessageId
 {

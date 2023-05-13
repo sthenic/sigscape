@@ -649,11 +649,10 @@ void Ui::RenderMenuBar()
 
     if (ImGui::BeginMenu("Log"))
     {
-        const auto LogLevelGetter = [](void *data, int idx, const char **label) -> bool
+        const auto LogLevelGetter = [](void *, int idx, const char **label) -> bool
         {
             /* Assume a straight mapping between the index and the log level enumeration. */
-            (void)data;
-            static std::vector<spdlog::string_view_t> log_levels SPDLOG_LEVEL_NAMES;
+            static const std::vector<spdlog::string_view_t> log_levels SPDLOG_LEVEL_NAMES;
             *label = log_levels.at(idx).data();
             return true;
         };
@@ -1799,63 +1798,37 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
 
     const float WIDGET_WIDTH = 0.6f * size.x;
 
-    /* FIXME: Use Begin/EndCombo() */
-    static int window_idx = 2;
-    static int window_idx_prev = 2;
-    const char *window_labels[] = {"No window", "Blackman-Harris", "Flat top", "Hamming", "Hanning"};
-    ImGui::SetNextItemWidth(WIDGET_WIDTH);
-    ImGui::Combo("Window", &window_idx, window_labels, IM_ARRAYSIZE(window_labels));
-
-    if (window_idx != window_idx_prev)
+    const auto WindowGetter = [](void *, int idx, const char **label) -> bool
     {
-        switch (window_idx)
-        {
-        case 0:
-            m_processing_parameters.window_type = WindowType::NONE;
-            break;
+        /* Assume a straight mapping between the index and the enumeration. */
+        static const std::vector<const char *> window_labels = WINDOW_TYPE_LABELS;
+        *label = window_labels.at(idx);
+        return true;
+    };
 
-        case 1:
-            m_processing_parameters.window_type = WindowType::BLACKMAN_HARRIS;
-            break;
-
-        case 2:
-            m_processing_parameters.window_type = WindowType::FLAT_TOP;
-            break;
-
-        case 3:
-            m_processing_parameters.window_type = WindowType::HAMMING;
-            break;
-
-        case 4:
-            m_processing_parameters.window_type = WindowType::HANNING;
-            break;
-        }
-
-        window_idx_prev = window_idx;
+    static int window_idx = static_cast<int>(DataProcessingParameters().window_type);
+    ImGui::SetNextItemWidth(WIDGET_WIDTH);
+    if (ImGui::Combo("Window", &window_idx, WindowGetter, NULL,
+                     static_cast<int>(WindowType::NOF_ENTRIES)))
+    {
+        m_processing_parameters.window_type = static_cast<WindowType>(window_idx);
         push_parameters = true;
     }
 
-    /* FIXME: Use Begin/EndCombo() */
-    static int scaling_idx = 0;
-    static int scaling_idx_prev = 0;
-    const char *scaling_labels[] = {"Amplitude", "Energy"};
-    ImGui::SetNextItemWidth(WIDGET_WIDTH);
-    ImGui::Combo("Scaling", &scaling_idx, scaling_labels, IM_ARRAYSIZE(scaling_labels));
-
-    if (scaling_idx != scaling_idx_prev)
+    const auto ScalingGetter = [](void *, int idx, const char **label) -> bool
     {
-        switch (scaling_idx)
-        {
-        case 0:
-            m_processing_parameters.fft_scaling = FrequencyDomainScaling::AMPLITUDE;
-            break;
+        /* Assume a straight mapping between the index and the enumeration. */
+        static const std::vector<const char *> scaling_labels = FREQUENCY_DOMAIN_SCALING_LABELS;
+        *label = scaling_labels.at(idx);
+        return true;
+    };
 
-        case 1:
-            m_processing_parameters.fft_scaling = FrequencyDomainScaling::ENERGY;
-            break;
-        }
-
-        scaling_idx_prev = scaling_idx;
+    static int scaling_idx = static_cast<int>(DataProcessingParameters().fft_scaling);
+    ImGui::SetNextItemWidth(WIDGET_WIDTH);
+    if (ImGui::Combo("Scaling", &scaling_idx, ScalingGetter, NULL,
+                     static_cast<int>(FrequencyDomainScaling::NOF_ENTRIES)))
+    {
+        m_processing_parameters.fft_scaling = static_cast<FrequencyDomainScaling>(scaling_idx);
         push_parameters = true;
     }
 

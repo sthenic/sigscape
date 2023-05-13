@@ -10,8 +10,11 @@ enum class WindowType
     HAMMING,
     BLACKMAN_HARRIS,
     FLAT_TOP,
-    HANNING
+    HANNING,
+    NOF_ENTRIES
 };
+
+#define WINDOW_TYPE_LABELS {"No window", "Hamming", "Blackman-Harris", "Flat top", "Hanning"}
 
 struct Window
 {

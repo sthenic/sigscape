@@ -37,7 +37,7 @@ std::string Format::Metric(double value, const std::string &format, double highe
             return fmt::format(format, value / LIMITS[i].first, LIMITS[i].second);
     }
 
-    return fmt::format(format, value / LIMITS[0].first, LIMITS[0].second);
+    return fmt::format(format, value / LIMITS.back().first, LIMITS.back().second);
 }
 
 /* Static member function to parametrize the construction of the fmt::format string. */

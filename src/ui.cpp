@@ -2659,8 +2659,6 @@ void Ui::RenderFourierTransformPlot()
     if (ImPlot::BeginPlot("FFT##plot", ImVec2(-1, -1), ImPlotFlags_NoTitle))
     {
         ImPlot::SetupLegend(ImPlotLocation_NorthEast, ImPlotLegendFlags_Sort);
-        ImPlot::SetupAxisLimits(ImAxis_Y1, -100.0, 10.0);
-        ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, 1e9);
         PlotFourierTransformSelected();
         RemoveDoubleClickedMarkers(m_frequency_domain_markers);
         RenderUnitsPerDivision(m_frequency_domain_units_per_division.Format());

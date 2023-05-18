@@ -39,6 +39,7 @@ enum class DigitizerMessageId
     SET_EXTERNAL_REFERENCE,
     SET_EXTERNAL_CLOCK,
     DEFAULT_ACQUISITION,
+    SCALE_RECORD_LENGTH,
     FORCE_ACQUISITION,
     START_ACQUISITION,
     STOP_ACQUISITION,
@@ -276,6 +277,7 @@ private:
     void ConfigureExternalReference();
     void ConfigureExternalClock();
     void ConfigureDefaultAcquisition();
+    void ScaleRecordLength(double factor);
     void ForceAcquisition();
     void SetParameters(const std::shared_ptr<std::string> &str, DigitizerMessageId clean_id);
     void InitializeParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher);
@@ -364,6 +366,9 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
             break;
         case DigitizerMessageId::DEFAULT_ACQUISITION:
             name = "DEFAULT_ACQUISITION";
+            break;
+        case DigitizerMessageId::SCALE_RECORD_LENGTH:
+            name = "SCALE_RECORD_LENGTH";
             break;
         case DigitizerMessageId::FORCE_ACQUISITION:
             name = "FORCE_ACQUISITION";

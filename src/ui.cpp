@@ -1071,8 +1071,22 @@ void Ui::RenderDefaultCommandPalette(bool enable)
     if (ImGui::Button("Validate", COMMAND_PALETTE_BUTTON_SIZE))
         PushMessage(DigitizerMessageId::VALIDATE_PARAMETERS);
 
-    if (ImGui::Button("32k 15Hz", COMMAND_PALETTE_BUTTON_SIZE))
+    const auto FRAME_PADDING = ImGui::GetStyle().FramePadding;
+    const ImVec2 TALL_BUTTON_SIZE{COMMAND_PALETTE_BUTTON_SIZE.x / 2 - FRAME_PADDING.x,
+                                  COMMAND_PALETTE_BUTTON_SIZE.y};
+
+    if (ImGui::Button("32k\n15Hz", TALL_BUTTON_SIZE))
         PushMessage(DigitizerMessageId::DEFAULT_ACQUISITION);
+
+    const ImVec2 SMALL_BUTTON_SIZE{COMMAND_PALETTE_BUTTON_SIZE.x / 2 - FRAME_PADDING.x,
+                                   (COMMAND_PALETTE_BUTTON_SIZE.y - FRAME_PADDING.y) / 2};
+    ImGui::SameLine();
+    ImGui::BeginGroup();
+    if (ImGui::Button("x2", SMALL_BUTTON_SIZE))
+        PushMessage({DigitizerMessageId::SCALE_RECORD_LENGTH, 2.0});
+    if (ImGui::Button("/2", SMALL_BUTTON_SIZE))
+        PushMessage({DigitizerMessageId::SCALE_RECORD_LENGTH, 0.5});
+    ImGui::EndGroup();
 
     ImGui::SameLine();
     if (ImGui::Button("Internal\nClock Ref.", COMMAND_PALETTE_BUTTON_SIZE))

@@ -474,9 +474,10 @@ void Digitizer::StartDataAcquisition()
         if (result != ADQ_EOK)
             ThrowDigitizerException("ADQ_GetParameters failed, result {}.", result);
 
-        /* Reset the activity monitoring. */
+        /* Reset the activity monitoring and enter the acquisition state. */
         m_no_activity_threshold_ms = DEFAULT_ACTIVITY_THRESHOLD_MS;
         m_notified_no_activity = false;
+        SetState(DigitizerState::ACQUISITION);
     }
     catch (const DigitizerException &)
     {
@@ -492,6 +493,7 @@ void Digitizer::StopDataAcquisition()
     for (const auto &t : m_processing_threads)
         t->Stop();
     ADQ_StopDataAcquisition(m_id.handle, m_id.index);
+    SetState(DigitizerState::IDLE);
 }
 
 void Digitizer::SetState(DigitizerState state)
@@ -512,13 +514,11 @@ void Digitizer::HandleMessageInInitialization(const struct DigitizerMessage &mes
 
 void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
 {
-    /* In the IDLE state we just let the exceptions propagate to the upper
-       layers to create an error message. */
+    /* Any exception propagates to the upper layers to create an error message. */
     switch (message.id)
     {
     case DigitizerMessageId::START_ACQUISITION:
         StartDataAcquisition();
-        SetState(DigitizerState::ACQUISITION);
         break;
 
     case DigitizerMessageId::SET_TOP_PARAMETERS:
@@ -542,6 +542,10 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
 
     case DigitizerMessageId::DEFAULT_ACQUISITION:
         ConfigureDefaultAcquisition();
+        break;
+
+    case DigitizerMessageId::SCALE_RECORD_LENGTH:
+        ScaleRecordLength(message.dvalue);
         break;
 
     case DigitizerMessageId::FORCE_ACQUISITION:
@@ -617,70 +621,41 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
 
 void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &message)
 {
-    /* If we encounter an exception in the ACQUISITION state, we have to abort
-       and return to the IDLE state. We pass on the exception to the upper
-       layers to create an error message. */
+    /* Any exception propagates to the upper layers to create an error message. */
     switch (message.id)
     {
     case DigitizerMessageId::STOP_ACQUISITION:
         StopDataAcquisition();
-        SetState(DigitizerState::IDLE);
         break;
 
     case DigitizerMessageId::DEFAULT_ACQUISITION:
-        try
-        {
-            StopDataAcquisition();
-            ConfigureDefaultAcquisition();
-            StartDataAcquisition();
-        }
-        catch (const DigitizerException &)
-        {
-            SetState(DigitizerState::IDLE);
-            throw;
-        }
+        StopDataAcquisition();
+        ConfigureDefaultAcquisition();
+        StartDataAcquisition();
+        break;
+
+    case DigitizerMessageId::SCALE_RECORD_LENGTH:
+        StopDataAcquisition();
+        ScaleRecordLength(message.dvalue);
+        StartDataAcquisition();
         break;
 
     case DigitizerMessageId::FORCE_ACQUISITION:
-        try
-        {
-            StopDataAcquisition();
-            ForceAcquisition();
-        }
-        catch (const DigitizerException &)
-        {
-            SetState(DigitizerState::IDLE);
-            throw;
-        }
+        StopDataAcquisition();
+        ForceAcquisition();
         break;
 
     case DigitizerMessageId::SET_TOP_PARAMETERS:
-        try
-        {
-            StopDataAcquisition();
-            SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
-            StartDataAcquisition();
-        }
-        catch (const DigitizerException &)
-        {
-            SetState(DigitizerState::IDLE);
-            throw;
-        }
+        StopDataAcquisition();
+        SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+        StartDataAcquisition();
         break;
 
     case DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
-        try
-        {
-            StopDataAcquisition();
-            SetParameters(m_parameters.clock_system, DigitizerMessageId::CLEAN_CLOCK_SYSTEM_PARAMETERS);
-            SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
-            StartDataAcquisition();
-        }
-        catch (const DigitizerException &)
-        {
-            SetState(DigitizerState::IDLE);
-            throw;
-        }
+        StopDataAcquisition();
+        SetParameters(m_parameters.clock_system, DigitizerMessageId::CLEAN_CLOCK_SYSTEM_PARAMETERS);
+        SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+        StartDataAcquisition();
         break;
 
     case DigitizerMessageId::SET_PROCESSING_PARAMETERS:
@@ -823,25 +798,25 @@ void Digitizer::ConfigureDefaultAcquisition()
 
     /* The default acquisition parameters is an infinite stream of records from
        each available channel triggered by the periodic event generator. */
-    for (int i = 0; i < m_constant.nof_channels; ++i)
+    for (int ch = 0; ch < m_constant.nof_channels; ++ch)
     {
-        acquisition.channel[i].nof_records = ADQ_INFINITE_NOF_RECORDS;
-        acquisition.channel[i].record_length = 32 * 1024;
-        acquisition.channel[i].horizontal_offset = 0;
-        acquisition.channel[i].trigger_source = ADQ_EVENT_SOURCE_PERIODIC;
-        acquisition.channel[i].trigger_edge = ADQ_EDGE_RISING;
-        acquisition.channel[i].trigger_blocking_source = ADQ_FUNCTION_INVALID;
+        acquisition.channel[ch].nof_records = ADQ_INFINITE_NOF_RECORDS;
+        acquisition.channel[ch].record_length = 32 * 1024;
+        acquisition.channel[ch].horizontal_offset = 0;
+        acquisition.channel[ch].trigger_source = ADQ_EVENT_SOURCE_PERIODIC;
+        acquisition.channel[ch].trigger_edge = ADQ_EDGE_RISING;
+        acquisition.channel[ch].trigger_blocking_source = ADQ_FUNCTION_INVALID;
 
-        transfer.channel[i].metadata_enabled = 1;
-        transfer.channel[i].nof_buffers = ADQ_MAX_NOF_BUFFERS;
-        transfer.channel[i].record_size = acquisition.channel[i].bytes_per_sample
-                                          * acquisition.channel[i].record_length;
-        transfer.channel[i].record_buffer_size = transfer.channel[i].record_size;
-        transfer.channel[i].metadata_buffer_size = sizeof(ADQGen4RecordHeader);
+        transfer.channel[ch].metadata_enabled = 1;
+        transfer.channel[ch].nof_buffers = ADQ_MAX_NOF_BUFFERS;
+        transfer.channel[ch].record_size = acquisition.channel[ch].bytes_per_sample
+                                          * acquisition.channel[ch].record_length;
+        transfer.channel[ch].record_buffer_size = transfer.channel[ch].record_size;
+        transfer.channel[ch].metadata_buffer_size = sizeof(ADQGen4RecordHeader);
 
         /* TODO: Only if FWATD? */
-        readout.channel[i].nof_record_buffers_max = ADQ_INFINITE_NOF_RECORDS;
-        readout.channel[i].record_buffer_size_max = ADQ_INFINITE_RECORD_LENGTH;
+        readout.channel[ch].nof_record_buffers_max = ADQ_INFINITE_NOF_RECORDS;
+        readout.channel[ch].record_buffer_size_max = ADQ_INFINITE_RECORD_LENGTH;
     }
 
     /* Default trigger frequency of 15 Hz. */
@@ -866,6 +841,45 @@ void Digitizer::ConfigureDefaultAcquisition()
     /* Finish up by getting the current parameters to make these settings
        reflect in the configuration file. */
     GetParameters(ADQ_PARAMETER_ID_TOP, m_watchers.top);
+#endif
+}
+
+void Digitizer::ScaleRecordLength(double factor)
+{
+#ifdef MOCK_ADQAPI
+    ThrowDigitizerException("ScaleRecordLength({}) not implemented.", factor);
+#else
+    struct ADQDataAcquisitionParameters acquisition;
+    int result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_DATA_ACQUISITION, &acquisition);
+    if (result != sizeof(acquisition))
+        ThrowDigitizerException("Failed to get acquisition parameters, result {}.", result);
+
+    struct ADQDataTransferParameters transfer;
+    result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_DATA_TRANSFER, &transfer);
+    if (result != sizeof(transfer))
+        ThrowDigitizerException("Failed to get transfer parameters, result {}.", result);
+
+    for (int ch = 0; ch < m_constant.nof_channels; ++ch)
+    {
+        if (acquisition.channel[ch].nof_records == 0 || transfer.channel[ch].nof_buffers == 0)
+            continue;
+
+        const auto record_length = static_cast<int64_t>(
+            std::round(factor * static_cast<double>(acquisition.channel[ch].record_length)));
+
+        acquisition.channel[ch].record_length = record_length;
+        transfer.channel[ch].record_size = record_length * acquisition.channel[ch].bytes_per_sample;
+        transfer.channel[ch].record_buffer_size = transfer.channel[ch].record_size;
+        transfer.channel[ch].metadata_buffer_size = sizeof(ADQGen4RecordHeader);
+    }
+
+    result = ADQ_SetParameters(m_id.handle, m_id.index, &acquisition);
+    if (result != sizeof(acquisition))
+        ThrowDigitizerException("Failed to set acquisition parameters, result {}.", result);
+
+    result = ADQ_SetParameters(m_id.handle, m_id.index, &transfer);
+    if (result != sizeof(transfer))
+        ThrowDigitizerException("Failed to set transfer parameters, result {}.", result);
 #endif
 }
 

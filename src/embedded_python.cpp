@@ -402,7 +402,10 @@ bool EmbeddedPython::HasMain(const std::filesystem::path &path)
         UniquePyObject module{PyImport_ImportModule(path.stem().string().c_str())};
         if (module == NULL)
             throw EmbeddedPythonException();
+
         module = UniquePyObject{PyImport_ReloadModule(module.get())};
+        if (module == NULL)
+            throw EmbeddedPythonException();
 
         UniquePyObject function{PyObject_GetAttrString(module.get(), "main")};
         return function != NULL && PyCallable_Check(function.get()) > 0;
@@ -541,6 +544,8 @@ void EmbeddedPython::CallMain(const std::string &module, void *handle, int index
         module, so we always reload the module because its contents could
         have changed between calls. */
     mod = UniquePyObject{PyImport_ReloadModule(mod.get())};
+    if (mod == NULL)
+        throw EmbeddedPythonException();
 
     /* FIXME: Some other combination of calling the function? */
     UniquePyObject function{PyObject_GetAttrString(mod.get(), "main")};

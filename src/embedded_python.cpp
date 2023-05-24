@@ -30,12 +30,8 @@ typedef void (__cdecl *PyErr_Print_t)();
 typedef void (__cdecl *PyGILState_Release_t)(int);
 typedef PyObject *(__cdecl *PyImport_ReloadModule_t)(PyObject *);
 typedef int (__cdecl *PyCallable_Check_t)(PyObject *);
-typedef PyObject *(__cdecl *PyTuple_New_t)(SSIZE_T);
-typedef int (__cdecl *PyTuple_SetItem_t)(PyObject *, SSIZE_T, PyObject *);
-typedef PyObject *(__cdecl *PyObject_CallObject_t)(PyObject *, PyObject *);
 typedef PyObject *(__cdecl *PyLong_FromSize_t_t)(SIZE_T);
 typedef PyObject *(__cdecl *PyLong_FromLong_t)(long);
-typedef PyObject *(__cdecl *PyObject_CallFunctionObjArgs_t)(PyObject *, ...);
 typedef int (__cdecl *PySys_SetObject_t)(const char *, PyObject *);
 typedef PyObject *(__cdecl *PySys_GetObject_t)(const char *);
 typedef PyObject *(__cdecl *PyObject_CallMethod_t)(PyObject *, const char *, const char*, ...);
@@ -58,12 +54,8 @@ static PyErr_Print_t PyErr_Print = NULL;
 static PyGILState_Release_t PyGILState_Release = NULL;
 static PyImport_ReloadModule_t PyImport_ReloadModule = NULL;
 static PyCallable_Check_t PyCallable_Check = NULL;
-static PyTuple_New_t PyTuple_New = NULL;
-static PyTuple_SetItem_t PyTuple_SetItem = NULL;
-static PyObject_CallObject_t PyObject_CallObject = NULL;
 static PyLong_FromSize_t_t PyLong_FromSize_t = NULL;
 static PyLong_FromLong_t PyLong_FromLong = NULL;
-static PyObject_CallFunctionObjArgs_t PyObject_CallFunctionObjArgs = NULL;
 static PySys_SetObject_t PySys_SetObject = NULL;
 static PySys_GetObject_t PySys_GetObject = NULL;
 static PyObject_CallMethod_t PyObject_CallMethod = NULL;
@@ -168,11 +160,7 @@ static bool RedirectStream(const std::string &stream)
         if (io == NULL)
             throw std::runtime_error("");
 
-        UniquePyObject stringio{PyObject_GetAttrString(io.get(), "StringIO")};
-        if (stringio == NULL)
-            throw std::runtime_error("");
-
-        UniquePyObject instance{PyObject_CallFunctionObjArgs(stringio.get(), NULL)};
+        UniquePyObject instance{PyObject_CallMethod(io.get(), "StringIO", NULL)};
         if (instance == NULL)
             throw std::runtime_error("");
 
@@ -296,12 +284,8 @@ private:
         INITIALIZE_PROC_ADDRESS(PyGILState_Release);
         INITIALIZE_PROC_ADDRESS(PyImport_ReloadModule);
         INITIALIZE_PROC_ADDRESS(PyCallable_Check);
-        INITIALIZE_PROC_ADDRESS(PyTuple_New);
-        INITIALIZE_PROC_ADDRESS(PyTuple_SetItem);
-        INITIALIZE_PROC_ADDRESS(PyObject_CallObject);
         INITIALIZE_PROC_ADDRESS(PyLong_FromSize_t);
         INITIALIZE_PROC_ADDRESS(PyLong_FromLong);
-        INITIALIZE_PROC_ADDRESS(PyObject_CallFunctionObjArgs);
         INITIALIZE_PROC_ADDRESS(PySys_SetObject);
         INITIALIZE_PROC_ADDRESS(PySys_GetObject);
         INITIALIZE_PROC_ADDRESS(PyObject_CallMethod);
@@ -426,15 +410,6 @@ static PyObject *LibAdqAsCtypesDll()
     if (cdll == NULL)
         throw EmbeddedPythonException();
 
-    UniquePyObject constructor{PyObject_GetAttrString(cdll.get(), "LoadLibrary")};
-    if (constructor == NULL)
-        throw EmbeddedPythonException();
-
-    /* Reference to `value` is stolen by `PyTuple_SetItem`. */
-    UniquePyObject args{PyTuple_New(1)};
-    if (args == NULL)
-        throw EmbeddedPythonException();
-
     auto value = PyUnicode_DecodeFSDefault(
 #if defined(MOCK_ADQAPI_PATH)
         MOCK_ADQAPI_PATH
@@ -445,10 +420,7 @@ static PyObject *LibAdqAsCtypesDll()
 #endif
     );
 
-    if (PyTuple_SetItem(args.get(), 0, value) != 0)
-        throw EmbeddedPythonException();
-
-    auto result = PyObject_CallObject(constructor.get(), args.get());
+    auto result = PyObject_CallMethod(cdll.get(), "LoadLibrary", "(N)", value);
     if (result == NULL)
         throw EmbeddedPythonException();
 
@@ -461,23 +433,8 @@ static PyObject *AsCtypesPointer(void *handle)
     if (ctypes == NULL)
         throw EmbeddedPythonException();
 
-    UniquePyObject constructor{PyObject_GetAttrString(ctypes.get(), "c_void_p")};
-    if (constructor == NULL)
-        throw EmbeddedPythonException();
-
-    /* Reference to `value` is stolen by `PyTuple_SetItem`. */
-    UniquePyObject args{PyTuple_New(1)};
-    if (args == NULL)
-        throw EmbeddedPythonException();
-
-    auto value = PyLong_FromSize_t(reinterpret_cast<size_t>(handle));
-    if (value == NULL)
-        throw EmbeddedPythonException();
-
-    if (PyTuple_SetItem(args.get(), 0, value) != 0)
-        throw EmbeddedPythonException();
-
-    auto result = PyObject_CallObject(constructor.get(), args.get());
+    auto result = PyObject_CallMethod(ctypes.get(), "c_void_p", "(N)",
+                                      PyLong_FromSize_t(reinterpret_cast<size_t>(handle)));
     if (result == NULL)
         throw EmbeddedPythonException();
 
@@ -498,25 +455,11 @@ static PyObject *AsPyAdqDevice(void *handle, int index)
     if (pyadq == NULL)
         throw EmbeddedPythonException();
 
-    UniquePyObject constructor{PyObject_GetAttrString(pyadq.get(), "ADQ")};
-    if (constructor == NULL)
-        throw EmbeddedPythonException();
-
-    /* References are stolen by `PyTuple_SetItem`. */
-    UniquePyObject args{PyTuple_New(3)};
-    if (args == NULL)
-        throw EmbeddedPythonException();
-
-    if (PyTuple_SetItem(args.get(), 0, LibAdqAsCtypesDll()) != 0)
-        throw EmbeddedPythonException();
-
-    if (PyTuple_SetItem(args.get(), 1, AsCtypesPointer(handle)) != 0)
-        throw EmbeddedPythonException();
-
-    if (PyTuple_SetItem(args.get(), 2, AsPyLong(index)) != 0)
-        throw EmbeddedPythonException();
-
-    auto result = PyObject_CallObject(constructor.get(), args.get());
+    /* Call the `pyadq.ADQ` constructor to create an unmanaged PyObject. The `N`
+       format specifier steals references so we have to make sure that and all
+       the function calls return unmanaged PyObjects. */
+    auto result = PyObject_CallMethod(pyadq.get(), "ADQ", "(N,N,N)", LibAdqAsCtypesDll(),
+                                      AsCtypesPointer(handle), AsPyLong(index));
     if (result == NULL)
         throw EmbeddedPythonException();
 
@@ -547,21 +490,8 @@ void EmbeddedPython::CallMain(const std::string &module, void *handle, int index
     if (mod == NULL)
         throw EmbeddedPythonException();
 
-    /* FIXME: Some other combination of calling the function? */
-    UniquePyObject function{PyObject_GetAttrString(mod.get(), "main")};
-    if (function == NULL)
-        throw EmbeddedPythonException();
-
-    /* The PyObject reference will be stolen by `PyTuple_SetItem` so we should
-       not track these objects as a `UniquePyObject`. */
-    UniquePyObject args{PyTuple_New(1)};
-    if (args == NULL)
-        throw EmbeddedPythonException();
-
-    if (PyTuple_SetItem(args.get(), 0, AsPyAdqDevice(handle, index)) != 0)
-        throw EmbeddedPythonException();
-
-    UniquePyObject result{PyObject_CallObject(function.get(), args.get())};
+    /* The `N` format specifier steals a reference which is why we pass an unmanaged PyObject. */
+    UniquePyObject result{PyObject_CallMethod(mod.get(), "main", "(N)", AsPyAdqDevice(handle, index))};
     if (result == NULL)
         throw EmbeddedPythonException();
 

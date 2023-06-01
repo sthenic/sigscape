@@ -153,6 +153,7 @@ if (UNIX)
 elseif (WIN32)
     target_sources(${PROJECT_NAME} PRIVATE
         src/hotplug_windows.cpp
+        data/sigscape.rc
     )
 endif()
 
@@ -275,6 +276,11 @@ install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})
 install(FILES THIRD_PARTY_LICENSES.md DESTINATION ${CMAKE_INSTALL_DOCDIR})
 install(FILES README.md DESTINATION ${CMAKE_INSTALL_DOCDIR})
 
+if(UNIX)
+    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/data/sigscape.desktop DESTINATION share/applications)
+    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/data/sigscape128.png DESTINATION share/pixmaps)
+endif()
+
 set(CPACK_RESOURCE_FILE_LICENSE ${CMAKE_CURRENT_SOURCE_DIR}/LICENSE)
 set(CPACK_RESOURCE_FILE_README ${CMAKE_CURRENT_SOURCE_DIR}/README.md)
 
@@ -292,6 +298,8 @@ set(CPACK_PACKAGE_EXECUTABLES "${PROJECT_NAME};${PROJECT_NAME}")
 
 # The branding text at the bottom of the installer. Default is "Nullsoft Install System vX.YY")
 set(CPACK_NSIS_BRANDING_TEXT " ")
+set(CPACK_NSIS_MUI_ICON ${CMAKE_CURRENT_SOURCE_DIR}/data/sigscape.ico)
+set(CPACK_NSIS_MUI_UNIICON ${CMAKE_CURRENT_SOURCE_DIR}/data/sigscape.ico)
 
 # TODO: Figure of if needed?
 set(CPACK_NSIS_URL_INFO_ABOUT ${CMAKE_PROJECT_HOMEPAGE_URL})

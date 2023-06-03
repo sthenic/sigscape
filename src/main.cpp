@@ -3,6 +3,15 @@
 
 #include "GL/gl3w.h"
 #include <GLFW/glfw3.h>
+#include "fmt/format.h"
+
+#if defined(_WIN32)
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+#include "sigscape16.h"
+#include "sigscape32.h"
+#include "sigscape48.h"
+#endif
 
 #include <csignal>
 
@@ -16,6 +25,65 @@ static void GlfwErrorCallback(int error, const char *description)
 {
     Log::log->error("Glfw error {}: {}.", error, description);
 }
+
+#if defined (_WIN32)
+struct ManagedGlfwImage : public GLFWimage
+{
+    ManagedGlfwImage(const std::string &path)
+    {
+        pixels = stbi_load(path.c_str(), &width, &height, NULL, 4);
+        if (pixels == NULL)
+            throw std::runtime_error(fmt::format("Failed to load image '{}'.", path));
+    }
+
+    ManagedGlfwImage(const uint8_t *buffer, size_t len)
+    {
+        pixels = stbi_load_from_memory(buffer, len, &width, &height, NULL, 4);
+        if (pixels == NULL)
+            throw std::runtime_error("Failed to load image from memory.");
+    }
+
+    ~ManagedGlfwImage()
+    {
+        if (pixels != NULL)
+            stbi_image_free(pixels);
+    }
+
+    ManagedGlfwImage(const ManagedGlfwImage &other) = delete;
+    ManagedGlfwImage &operator=(const ManagedGlfwImage &other) = delete;
+    ManagedGlfwImage &operator=(ManagedGlfwImage &&other) = delete;
+
+    ManagedGlfwImage(ManagedGlfwImage &&other)
+    {
+        pixels = other.pixels;
+        width = other.width;
+        height = other.height;
+        other.pixels = NULL;
+        other.width = 0;
+        other.height = 0;
+    };
+};
+
+static void SetWindowIcon(GLFWwindow *window)
+{
+    try
+    {
+        /* On Windows, the image data is embedded into the application. We load
+           the images and provide them to the function responsible for the
+           window icon. Recommended sizes are 16x16, 32x32 and 48x48. */
+        std::vector<ManagedGlfwImage> images{};
+        images.emplace_back(sigscape16_png, sizeof(sigscape16_png));
+        images.emplace_back(sigscape32_png, sizeof(sigscape32_png));
+        images.emplace_back(sigscape48_png, sizeof(sigscape48_png));
+        glfwSetWindowIcon(window, images.size(), images.data());
+        Log::log->trace("Initialized window icon.");
+    }
+    catch (const std::runtime_error &e)
+    {
+        Log::log->error(e.what());
+    }
+}
+#endif
 
 int main(int, char **)
 {
@@ -45,9 +113,15 @@ int main(int, char **)
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1); /* Enable VSYNC */
 
+#if defined (_WIN32)
+    SetWindowIcon(window);
+#endif
+
     if (gl3wInit())
     {
         Log::log->error("Failed to initialize the OpenGL loader.");
+        glfwDestroyWindow(window);
+        glfwTerminate();
         return -1;
     }
 

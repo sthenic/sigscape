@@ -166,6 +166,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${spdlog_SOURCE_DIR}/include
     vendor/simple_fft
     vendor/gl3w
+    vendor/stb
+    data
     include
 )
 

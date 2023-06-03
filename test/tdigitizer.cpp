@@ -55,7 +55,7 @@ TEST(Digitizer, Initialize)
     LONGS_EQUAL(DigitizerState::INITIALIZATION, msg.state);
 
     LONGS_EQUAL(SCAPE_EOK, digitizer->WaitForMessage(msg, 1000));
-    LONGS_EQUAL(DigitizerMessageId::CONSTANT_PARAMETERS, msg.id);
+    LONGS_EQUAL(DigitizerMessageId::INITIALIZED, msg.id);
     STRCMP_EQUAL("SPD-SIM01", msg.constant_parameters.serial_number);
     LONGS_EQUAL(1, msg.constant_parameters.nof_channels);
 

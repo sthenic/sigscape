@@ -22,6 +22,7 @@ enum class DigitizerMessageId
     DIRTY_CLOCK_SYSTEM_PARAMETERS,
     CLEAN_TOP_PARAMETERS,
     CLEAN_CLOCK_SYSTEM_PARAMETERS,
+    INITIALIZED,
     CONSTANT_PARAMETERS,
     STATE,
     ERR,
@@ -282,6 +283,7 @@ private:
     void SetParameters(const std::shared_ptr<std::string> &str, DigitizerMessageId clean_id);
     void InitializeParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher);
     void GetParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher);
+    void EmitConstantParameters();
     void InitializeFileWatchers();
 
     /* Prepend an object-specific header to the message and return the `fmt::format` string. */
@@ -318,6 +320,9 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
             break;
         case DigitizerMessageId::CLEAN_CLOCK_SYSTEM_PARAMETERS:
             name = "CLEAN_CLOCK_SYSTEM_PARAMETERS";
+            break;
+        case DigitizerMessageId::INITIALIZED:
+            name = "INITIALIZED";
             break;
         case DigitizerMessageId::CONSTANT_PARAMETERS:
             name = "CONSTANT_PARAMETERS";

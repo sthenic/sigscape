@@ -131,6 +131,7 @@ int MockDigitizer::GetParameters(enum ADQParameterId id, void *const parameters)
 
     if (id == ADQ_PARAMETER_ID_CONSTANT)
     {
+        m_constant.clock_system = m_clock_system;
         std::memcpy(parameters, &m_constant, sizeof(m_constant));
         return sizeof(m_constant);
     }

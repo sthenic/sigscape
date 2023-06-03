@@ -145,8 +145,8 @@ void Digitizer::MainInitialization()
        of the digitizer. */
     InitializeFileWatchers();
 
-    /* Send the constant parameters, triggering the GUI initialization. */
-    m_read_queue.EmplaceWrite(DigitizerMessageId::CONSTANT_PARAMETERS, m_constant);
+    /* Send the post-initialization message, triggering the GUI initialization. */
+    m_read_queue.EmplaceWrite(DigitizerMessageId::INITIALIZED, m_constant);
 
     /* Initialize the objects associated with the system manager, like sensors
        and boot status. */
@@ -555,6 +555,7 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
     case DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
         SetParameters(m_parameters.clock_system, DigitizerMessageId::CLEAN_CLOCK_SYSTEM_PARAMETERS);
         SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+        EmitConstantParameters();
         break;
 
     case DigitizerMessageId::GET_TOP_PARAMETERS:
@@ -655,6 +656,7 @@ void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &messag
         StopDataAcquisition();
         SetParameters(m_parameters.clock_system, DigitizerMessageId::CLEAN_CLOCK_SYSTEM_PARAMETERS);
         SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+        EmitConstantParameters();
         StartDataAcquisition();
         break;
 
@@ -934,6 +936,15 @@ void Digitizer::GetParameters(enum ADQParameterId id, const std::unique_ptr<File
     {
         ThrowDigitizerException("ADQ_GetParametersString failed, result {}.", result);
     }
+}
+
+void Digitizer::EmitConstantParameters()
+{
+    int result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CONSTANT, &m_constant);
+    if (result != sizeof(m_constant))
+        ThrowDigitizerException("Failed to get constant parameters, result {}.", result);
+
+    m_read_queue.EmplaceWrite(DigitizerMessageId::CONSTANT_PARAMETERS, m_constant);
 }
 
 void Digitizer::InitializeFileWatchers()

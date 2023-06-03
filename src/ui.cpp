@@ -458,13 +458,19 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
 {
     switch (message.id)
     {
-    case DigitizerMessageId::CONSTANT_PARAMETERS:
+    case DigitizerMessageId::INITIALIZED:
         digitizer.ui.identifier = fmt::format("{} {} {}", message.constant_parameters.product_name,
                                               message.constant_parameters.serial_number,
                                               message.constant_parameters.firmware.name);
         digitizer.ui.channels.clear();
         for (int ch = 0; ch < message.constant_parameters.nof_channels; ++ch)
             digitizer.ui.channels.emplace_back(m_nof_channels_total);
+        /* FALLTHROUGH */
+    case DigitizerMessageId::CONSTANT_PARAMETERS:
+        /* We get updates to the constant parameters when the clock system
+           configuration changes. However, we never expect the number of
+           channels to change so we have to make sure not to repeat the code
+           from `INITIALIZED`, that's only run once for each digitizer object. */
         digitizer.ui.constant = std::move(message.constant_parameters);
         break;
 
@@ -1594,20 +1600,26 @@ void Ui::RenderBootStatus()
 
 void Ui::RenderStaticInformation()
 {
-    auto Row = [](const std::string &label, const std::string &value)
+    auto Row = [](const std::string &label, const std::string &value, bool enable = true)
     {
+        if (!enable)
+            ImGui::BeginDisabled();
+
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGui::Text(label);
         ImGui::TableSetColumnIndex(1);
         ImGui::Text(value);
+
+        if (!enable)
+            ImGui::EndDisabled();
     };
 
     ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
                             ImGuiTableFlags_BordersInnerV;
 
     /* "Sigscape version" is the worst case width */
-    const float WIDTH = ImGui::CalcTextSize("Sigscape version").x;
+    const float WIDTH = ImGui::CalcTextSize("Reference frequency").x;
 
     if (ImGui::CollapsingHeader("Software", ImGuiTreeNodeFlags_DefaultOpen))
     {
@@ -1727,16 +1739,64 @@ void Ui::RenderStaticInformation()
         }
     }
 
-    if (ImGui::CollapsingHeader("Clock System"))
+    if (ImGui::CollapsingHeader("Clock System", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        WIP(); /* FIXME: */
+        if (ImGui::BeginTable("Clock System", 2, flags))
+        {
+            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, WIDTH);
+            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
+
+            Row("Generator", [](enum ADQClockGenerator generator) -> std::string {
+                switch (generator)
+                {
+                case ADQ_CLOCK_GENERATOR_INTERNAL_PLL:
+                    return "Internal";
+                case ADQ_CLOCK_GENERATOR_EXTERNAL_CLOCK:
+                    return "External clock";
+                default:
+                    return "Unknown";
+                }
+            }(ui->constant.clock_system.clock_generator));
+
+            Row("Reference",
+                [](enum ADQReferenceClockSource source) -> std::string {
+                    switch (source)
+                    {
+                    case ADQ_REFERENCE_CLOCK_SOURCE_INTERNAL:
+                        return "Internal";
+                    case ADQ_REFERENCE_CLOCK_SOURCE_PORT_CLK:
+                        return "Port CLK";
+                    case ADQ_REFERENCE_CLOCK_SOURCE_PXIE_10M:
+                        return "PXIe 10 MHz";
+                    default:
+                        return "Unknown";
+                    }
+                }(ui->constant.clock_system.reference_source),
+                ui->constant.clock_system.clock_generator != ADQ_CLOCK_GENERATOR_EXTERNAL_CLOCK);
+
+            Row("Low jitter mode",
+                ui->constant.clock_system.low_jitter_mode_enabled ? "Enabled" : "Disabled");
+
+            Row("Sampling frequency",
+                Format::Metric(ui->constant.clock_system.sampling_frequency, "{:7.2f} {}Hz", 1e6));
+
+            Row("Reference frequency",
+                Format::Metric(ui->constant.clock_system.reference_frequency, "{:7.2f} {}Hz", 1e6),
+                ui->constant.clock_system.clock_generator != ADQ_CLOCK_GENERATOR_EXTERNAL_CLOCK);
+
+            Row("Delay adjustment",
+                Format::Metric(ui->constant.clock_system.delay_adjustment, "{:7.2f} {}s"),
+                ui->constant.clock_system.delay_adjustment_enabled);
+
+            ImGui::EndTable();
+        }
     }
 
     if (ImGui::CollapsingHeader("Interface", ImGuiTreeNodeFlags_DefaultOpen))
     {
         if (ImGui::BeginTable("Interface", 2, flags))
         {
-            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
+            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, WIDTH);
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
 
             auto Stringify = [](enum ADQCommunicationInterface interface) -> std::string

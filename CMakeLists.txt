@@ -57,7 +57,7 @@ FetchContent_MakeAvailable(implot)
 FetchContent_Declare(
     imgui
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
-    GIT_TAG v1.89.5
+    GIT_TAG v1.89.6
 )
 FetchContent_MakeAvailable(imgui)
 

@@ -270,7 +270,7 @@ void Ui::Render(float width, float height)
         if (Screenshot(filename))
             Log::log->info("Saved screenshot as '{}'.", filename);
         else
-            Log::log->error("Failed to save PNG image '{}'.", filename);
+            Log::log->error("Failed to screenshot '{}'.", filename);
 
         m_should_screenshot = false;
     }

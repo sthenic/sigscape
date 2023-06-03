@@ -21,67 +21,74 @@ static void signal_handler(int)
 
 static void GlfwErrorCallback(int error, const char *description)
 {
-    Log::log->error("Glfw Error {}: {}.", error, description);
+    Log::log->error("Glfw error {}: {}.", error, description);
 }
 
-static bool SavePng(const std::string &filename, uint8_t *pixels, int width, int height)
+static bool SaveAsPng(const std::string &filename, uint8_t *pixels, int width, int height)
 {
-    /* FIXME: C++-ify */
-    png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-    if (png == NULL)
-        return false;
+    png_structp png = NULL;
+    png_infop info = NULL;
+    png_colorp palette = NULL;
+    png_bytepp rows = NULL;
+    FILE *fp = NULL;
 
-    png_infop info = png_create_info_struct(png);
-    if (info == NULL)
+    try
     {
-        png_destroy_write_struct(&png, &info);
-        return false;
-    }
+        png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+        if (png == NULL)
+            throw std::runtime_error("libpng: png_create_write_struct failed.");
 
-    FILE *fp = fopen(filename.c_str(), "wb");
-    if (fp == NULL)
-    {
-        png_destroy_write_struct(&png, &info);
-        return false;
-    }
+        info = png_create_info_struct(png);
+        if (info == NULL)
+            throw std::runtime_error("libpng: png_create_info_struct failed.");
 
-    png_init_io(png, fp);
-    png_set_IHDR(png, info, width, height, 8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
-                 PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
+        fp = std::fopen(filename.c_str(), "wb");
+        if (fp == NULL)
+            throw std::runtime_error(fmt::format("Failed to open '{}' for writing.", filename));
 
-    auto palette =
-        static_cast<png_colorp>(png_malloc(png, PNG_MAX_PALETTE_LENGTH * sizeof(png_color)));
-    if (palette == NULL)
-    {
-        fclose(fp);
-        png_destroy_write_struct(&png, &info);
-        return false;
-    }
+        png_init_io(png, fp);
+        png_set_IHDR(png, info, width, height, 8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
+                     PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
 
-    png_set_PLTE(png, info, palette, PNG_MAX_PALETTE_LENGTH);
-    png_write_info(png, info);
-    png_set_packing(png);
+        palette = static_cast<png_colorp>(png_malloc(png, PNG_MAX_PALETTE_LENGTH * sizeof(png_color)));
+        if (palette == NULL)
+            throw std::runtime_error("libpng: failed to allocate memory for the palette.");
 
-    auto rows = static_cast<png_bytepp>(png_malloc(png, height * sizeof(png_bytep)));
-    if (rows == NULL)
-    {
-        fclose(fp);
+        png_set_PLTE(png, info, palette, PNG_MAX_PALETTE_LENGTH);
+        png_write_info(png, info);
+        png_set_packing(png);
+
+        rows = static_cast<png_bytepp>(png_malloc(png, height * sizeof(png_bytep)));
+        if (rows == NULL)
+            throw std::runtime_error("libpng: failed to allocate memory for image data.");
+
+        for (int i = 0; i < height; ++i)
+            rows[i] = static_cast<png_bytep>(pixels + (height - i - 1) * width * 3);
+
+        png_write_image(png, rows);
+        png_write_end(png, info);
+
+        png_free(png, rows);
         png_free(png, palette);
-        png_destroy_write_struct(&png, &info);
+        png_destroy_write_struct(&png, &info); /* Also destroys `info`. */
+        std::fclose(fp);
+        return true;
+    }
+    catch (const std::runtime_error &e)
+    {
+        Log::log->error(e.what());
+
+        if (rows != NULL)
+            png_free(png, rows);
+        if (palette != NULL)
+            png_free(png, palette);
+        if (png != NULL)
+            png_destroy_write_struct(&png, &info);
+        if (fp != NULL)
+            std::fclose(fp);
+
         return false;
     }
-
-    for (int i = 0; i < height; ++i)
-        rows[i] = static_cast<png_bytep>(pixels + (height - i - 1) * width * 3);
-
-    png_write_image(png, rows);
-    png_write_end(png, info);
-
-    png_free(png, rows);
-    png_free(png, palette);
-    png_destroy_write_struct(&png, &info);
-    fclose(fp);
-    return true;
 }
 
 static bool Screenshot(const std::string &filename)
@@ -93,7 +100,7 @@ static bool Screenshot(const std::string &filename)
     std::vector<uint8_t> pixels(width * height * 3);
     glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
 
-    return SavePng(filename, pixels.data(), width, height);
+    return SaveAsPng(filename, pixels.data(), width, height);
 }
 
 int main(int, char **)

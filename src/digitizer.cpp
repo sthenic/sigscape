@@ -27,7 +27,7 @@
 class DigitizerException : public std::runtime_error
 {
 public:
-    DigitizerException(const std::string &str) : std::runtime_error(str) {};
+    DigitizerException(const std::string &str) : std::runtime_error(str) {}
 };
 
 Digitizer::Digitizer(void *handle, int init_index, int index,

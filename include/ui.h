@@ -30,13 +30,12 @@ public:
     Ui();
     ~Ui() = default;
 
-    void Initialize(GLFWwindow *window, const char *glsl_version,
-                    bool (* ScreenshotCallback)(const std::string &filename));
+    void Initialize(GLFWwindow *window, const char *glsl_version);
     void Render(float width, float height);
     void Terminate();
 
 private:
-    bool (* Screenshot)(const std::string &filename);
+    std::function<bool(const std::string &filename)> Screenshot;
     bool m_should_screenshot;
     PersistentDirectories m_persistent_directories;
     DirectoryWatcher m_python_directory_watcher;

@@ -6,6 +6,7 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "embedded_python.h"
+#include "screenshot.h"
 #include <cinttypes>
 #include <cmath>
 #include <ctime>
@@ -170,8 +171,7 @@ Ui::Ui()
 {
 }
 
-void Ui::Initialize(GLFWwindow *window, const char *glsl_version,
-                    bool (*ScreenshotCallback)(const std::string &filename))
+void Ui::Initialize(GLFWwindow *window, const char *glsl_version)
 {
     Log::log->set_level(spdlog::level::info);
     Log::log->info("Initializing UI.");
@@ -182,7 +182,11 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version,
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
     ImGui::StyleColorsDark();
-    Screenshot = ScreenshotCallback;
+
+    /* We explicitly bind the `window` to the screenshot call and store _that_
+       as a member (instead of the window pointer) to avoid keeping the 'raw'
+       form of objects which we don't need on this level. */
+    Screenshot = std::bind(Screenshot::Screenshot, window, std::placeholders::_1);
 
     /* Set up the ImGui configuration file. */
     ImGui::GetIO().IniFilename = m_persistent_directories.GetImGuiInitializationFile();

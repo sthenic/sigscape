@@ -126,7 +126,8 @@ int main(int, char **)
 
     window = glfwCreateWindow(1920, 1080, "sigscape", NULL, NULL);
     if (window == NULL)
-        return 1;
+        return -1;
+
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1); /* Enable VSYNC */
 

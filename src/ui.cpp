@@ -2846,10 +2846,9 @@ void Ui::RenderHeaderButtons(ChannelUiState &ui)
 }
 
 
-std::vector<std::vector<std::string>> Ui::FormatTimeDomainMetrics(
-    const ProcessedRecord *processed_record)
+std::vector<std::vector<std::string>> Ui::FormatTimeDomainMetrics(const ProcessedRecord &processed_record)
 {
-    const auto &record = processed_record->time_domain;
+    const auto &record = processed_record.time_domain;
     const double peak_to_peak = record->max.value - record->min.value; /* FIXME: +1.0 'unit' */
     const double peak_to_peak_range = record->range_max.value - record->range_min.value;
 
@@ -2894,19 +2893,18 @@ std::vector<std::vector<std::string>> Ui::FormatTimeDomainMetrics(
         },
         {
             "Trigger frequency",
-            processed_record->trigger_frequency.Format(),
+            processed_record.trigger_frequency.Format(),
         },
         {
             "Throughput",
-            processed_record->throughput.Format(),
+            processed_record.throughput.Format(),
         },
     };
 }
 
-std::vector<std::vector<std::string>> Ui::FormatFrequencyDomainMetrics(
-    const ProcessedRecord *processed_record)
+std::vector<std::vector<std::string>> Ui::FormatFrequencyDomainMetrics(const ProcessedRecord &processed_record)
 {
-    const auto &record = processed_record->frequency_domain;
+    const auto &record = processed_record.frequency_domain;
     return {
         {
             "SNR",
@@ -3089,7 +3087,7 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                     ImGui::TableSetupColumn("Extra0", ImGuiTableColumnFlags_WidthFixed);
                     ImGui::TableSetupColumn("Extra1", ImGuiTableColumnFlags_WidthFixed);
 
-                    for (const auto &row : FormatTimeDomainMetrics(ui.record.get()))
+                    for (const auto &row : FormatTimeDomainMetrics(*ui.record))
                     {
                         ImGui::TableNextRow();
                         for (const auto &column : row)
@@ -3216,7 +3214,7 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
                     ImGui::TableSetupColumn("Value1", ImGuiTableColumnFlags_WidthFixed);
                     ImGui::TableSetupColumn("Value2", ImGuiTableColumnFlags_WidthFixed);
 
-                    for (const auto &row : FormatFrequencyDomainMetrics(ui.record.get()))
+                    for (const auto &row : FormatFrequencyDomainMetrics(*ui.record))
                     {
                         ImGui::TableNextRow();
                         for (const auto &column : row)

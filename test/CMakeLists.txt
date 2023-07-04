@@ -42,6 +42,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     tgenerator.cpp
     tdata_processing.cpp
     tthread_safe_queue.cpp
+    tlockfree_queue.cpp
     tmessage_thread.cpp
     tfile_watcher.cpp
     tdirectory_watcher.cpp

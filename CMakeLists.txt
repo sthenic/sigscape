@@ -12,8 +12,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(MOCK_ADQAPI "With this set to ON, only the simulator mode is available." OFF)
 
 # Optional path to libadq. Set with -DLIBADQ_PATH=<path-to-libadq/ADQAPI>
-# TODO: Allow setting the path to libadq and ADQAPI.h separately?
 set(LIBADQ_PATH "" CACHE PATH "Optional path to libadq.so/ADQAPI.dll.")
+set(LIBADQ_IPATH "" CACHE PATH "Optional path to ADQAPI.h (if other than LIBADQ_PATH).")
 
 if (APPLE)
   set(MOCK_ADQAPI ON)
@@ -205,6 +205,13 @@ if (NOT MOCK_ADQAPI AND NOT TARGET adq)
     # Create imported library it the adq target doesn't exist (i.e. included from other sources)
     add_library(adq SHARED IMPORTED)
 
+    if (LIBADQ_PATH)
+        message(STATUS "Using ADQ library hint '${LIBADQ_PATH}'.")
+    endif()
+    if (LIBADQ_IPATH)
+        message(STATUS "Using ADQ include hint '${LIBADQ_IPATH}'.")
+    endif()
+
     if (WIN32)
         if("${CMAKE_SIZEOF_VOID_P}" STREQUAL "8")
             list(APPEND LIBADQ_PATH "$ENV{PROGRAMFILES}/SP Devices/ADQAPI_x64")
@@ -213,21 +220,26 @@ if (NOT MOCK_ADQAPI AND NOT TARGET adq)
         endif()
 
         find_library(ADQ_LIBRARIES NAMES ADQAPI HINTS ${LIBADQ_PATH} REQUIRED)
-        find_path(ADQ_INCLUDE_PATH NAMES ADQAPI.h HINTS ${LIBADQ_PATH} REQUIRED)
+        find_path(ADQ_INCLUDE_PATH NAMES ADQAPI.h HINTS ${LIBADQ_IPATH} ${LIBADQ_PATH} REQUIRED)
         find_file(ADQ_DLL NAMES ADQAPI.dll HINTS ${LIBADQ_PATH} REQUIRED)
 
         set_target_properties(adq PROPERTIES
             IMPORTED_LOCATION ${ADQ_DLL}
             INTERFACE_INCLUDE_DIRECTORIES ${ADQ_INCLUDE_PATH}
             IMPORTED_IMPLIB ${ADQ_LIBRARIES})
+
+        message(STATUS "Using ADQ DLL '${ADQ_DLL}'.")
     else()
         find_library(ADQ_LIBRARIES NAMES adq HINTS ${LIBADQ_PATH} REQUIRED)
-        find_path(ADQ_INCLUDE_PATH NAMES ADQAPI.h HINTS ${LIBADQ_PATH} REQUIRED)
+        find_path(ADQ_INCLUDE_PATH NAMES ADQAPI.h HINTS ${LIBADQ_IPATH} ${LIBADQ_PATH} REQUIRED)
         set_target_properties(adq PROPERTIES
             IMPORTED_LOCATION ${ADQ_LIBRARIES}
             INTERFACE_INCLUDE_DIRECTORIES ${ADQ_INCLUDE_PATH}
         )
     endif()
+
+    message(STATUS "Using ADQ library '${ADQ_LIBRARIES}'.")
+    message(STATUS "Using ADQ include path '${ADQ_INCLUDE_PATH}'.")
 endif()
 
 if (WIN32)

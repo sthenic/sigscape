@@ -176,6 +176,7 @@ private:
     bool m_should_auto_fit_time_domain;
     bool m_should_auto_fit_frequency_domain;
     bool m_should_auto_fit_waterfall;
+    bool m_popup_add_python_script;
     struct
     {
         uint32_t revision;
@@ -210,6 +211,7 @@ private:
 
     void RenderPopupCompatibilityError();
     void RenderPopupInitializeWouldOverwrite(size_t idx);
+    void RenderPopupAddPythonScript();
     void RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size);
     void RenderPythonCommandPalette(bool enable);
     void RenderDefaultCommandPalette(bool enable);

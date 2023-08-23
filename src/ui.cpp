@@ -165,6 +165,7 @@ Ui::Ui()
     , m_should_auto_fit_time_domain(true)
     , m_should_auto_fit_frequency_domain(true)
     , m_should_auto_fit_waterfall(true)
+    , m_popup_add_python_script(false)
     , m_libadq{}
     , m_file_browser(ImGuiFileBrowserFlags_EnterNewFilename | ImGuiFileBrowserFlags_CreateNewDir |
                      ImGuiFileBrowserFlags_CloseOnEsc)
@@ -836,6 +837,9 @@ void Ui::RenderPopups()
     if (m_libadq.popup)
         RenderPopupCompatibilityError();
 
+    if (m_popup_add_python_script)
+        RenderPopupAddPythonScript();
+
     for (size_t i = 0; i < m_digitizers.size(); ++i)
     {
         if (m_digitizers[i].ui.popup_initialize_would_overwrite)
@@ -904,6 +908,57 @@ void Ui::RenderPopupInitializeWouldOverwrite(size_t idx)
             ImGui::CloseCurrentPopup();
         }
 
+        ImGui::EndPopup();
+    }
+}
+
+void Ui::RenderPopupAddPythonScript()
+{
+    ImGui::OpenPopup("Add Python script");
+    if (ImGui::BeginPopupModal("Add Python script", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text(m_persistent_directories.GetPythonDirectory() + "/");
+        static char stem[64] = "";
+        ImGui::SameLine(0.0f, 0.0f);
+        ImGui::InputText("##pythonstem", stem, sizeof(stem));
+        ImGui::SameLine(0.0f, 0.0f);
+        ImGui::Text(".py");
+
+        const auto path = fmt::format("{}/{}.py", m_persistent_directories.GetPythonDirectory(), stem);
+        bool valid = stem[0] != '\0' && !std::filesystem::exists(path);
+        if (!valid)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, COLOR_RED);
+            if (stem[0] != '\0')
+                ImGui::Text("A file with that name already exists.");
+            else
+                ImGui::Text("Invalid filename.");
+            ImGui::PopStyleColor();
+            ImGui::BeginDisabled();
+        }
+
+        ImGui::Separator();
+        if (ImGui::Button("Add"))
+        {
+            std::ofstream ofs(path, std::ios::out | std::ios::trunc);
+            ofs << "import pyadq\n\n"
+                   "def main(digitizer: pyadq.ADQ):\n"
+                   "    pass\n";
+
+            m_popup_add_python_script = false;
+            ImGui::CloseCurrentPopup();
+        }
+
+        if (!valid)
+            ImGui::EndDisabled();
+
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel"))
+        {
+            m_popup_add_python_script = false;
+            ImGui::CloseCurrentPopup();
+        }
         ImGui::EndPopup();
     }
 }
@@ -1014,10 +1069,16 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
 
 void Ui::RenderPythonCommandPalette(bool enable)
 {
-    ImGui::Text(fmt::format("Scripts in {}", m_persistent_directories.GetPythonDirectory()));
+    ImGui::Text(m_persistent_directories.GetPythonDirectory());
 
     if (!enable)
         ImGui::BeginDisabled();
+
+    ImGui::Separator();
+    if (ImGui::Button("Add"))
+        m_popup_add_python_script = true;
+
+    ImGui::Separator();
 
     int i = 0;
     for (const auto &path : m_python_files)
@@ -1037,6 +1098,18 @@ void Ui::RenderPythonCommandPalette(bool enable)
                 digitizer.interface->EmplaceMessage(DigitizerMessageId::CALL_PYTHON,
                                                     path.stem().string());
             }
+        }
+
+        /* Context menu for the button. */
+        if (ImGui::BeginPopupContextItem())
+        {
+            if (ImGui::MenuItem("Copy filename"))
+            {
+                ImGui::LogToClipboard();
+                ImGui::LogText("%s", path.string().c_str());
+                ImGui::LogFinish();
+            }
+            ImGui::EndPopup();
         }
     }
 

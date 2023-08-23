@@ -278,6 +278,7 @@ private:
     void ConfigureExternalReference();
     void ConfigureExternalClock();
     void ConfigureDefaultAcquisition();
+    void CallPython(const std::string &module);
     void ScaleRecordLength(double factor);
     void ForceAcquisition();
     void SetParameters(const std::shared_ptr<std::string> &str, DigitizerMessageId clean_id);

@@ -599,20 +599,7 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
         break;
 
     case DigitizerMessageId::CALL_PYTHON:
-        try
-        {
-            std::string out{};
-            EmbeddedPython::CallMain(message.str, m_id.handle, m_id.index, out);
-            Log::log->info(FormatLog("Successfully called main() in module '{}'.", message.str));
-            if (out.size() > 0)
-                Log::log->info(FormatLog("Captured stdout:\n\n{}", out));
-        }
-        catch (const EmbeddedPythonException &e)
-        {
-            /* Translate to the local exception type. */
-            ThrowDigitizerException("Error when calling main() in module '{}':\n\n{}", message.str,
-                                    e.what());
-        }
+        CallPython(message.str);
         break;
 
     default:
@@ -681,6 +668,12 @@ void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &messag
     case DigitizerMessageId::GET_CLOCK_SYSTEM_PARAMETERS_FILENAME:
         m_read_queue.EmplaceWrite(DigitizerMessageId::PARAMETERS_FILENAME,
                                   m_watchers.clock_system->GetPath());
+        break;
+
+    case DigitizerMessageId::CALL_PYTHON:
+        StopDataAcquisition();
+        CallPython(message.str);
+        StartDataAcquisition();
         break;
 
     default:
@@ -844,6 +837,24 @@ void Digitizer::ConfigureDefaultAcquisition()
        reflect in the configuration file. */
     GetParameters(ADQ_PARAMETER_ID_TOP, m_watchers.top);
 #endif
+}
+
+void Digitizer::CallPython(const std::string &module)
+{
+    try
+    {
+        std::string out{};
+        EmbeddedPython::CallMain(module, m_id.handle, m_id.index, out);
+        Log::log->info(FormatLog("Successfully called main() in module '{}'.", module));
+        if (out.size() > 0)
+            Log::log->info(FormatLog("Captured stdout:\n\n{}", out));
+    }
+    catch (const EmbeddedPythonException &e)
+    {
+        /* Translate to the local exception type. */
+        ThrowDigitizerException("Error when calling main() in module '{}':\n\n{}", module,
+                                e.what());
+    }
 }
 
 void Digitizer::ScaleRecordLength(double factor)

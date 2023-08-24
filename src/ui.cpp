@@ -917,15 +917,21 @@ void Ui::RenderPopupAddPythonScript()
     ImGui::OpenPopup("Add Python script");
     if (ImGui::BeginPopupModal("Add Python script", NULL, ImGuiWindowFlags_AlwaysAutoResize))
     {
+        const char separator =
+#if defined(_WIN32)
+        '\\';
+#else
+        '/';
+#endif
         ImGui::AlignTextToFramePadding();
-        ImGui::Text(m_persistent_directories.GetPythonDirectory() + "/");
+        ImGui::Text(m_persistent_directories.GetPythonDirectory() + separator);
         static char stem[64] = "";
         ImGui::SameLine(0.0f, 0.0f);
         ImGui::InputText("##pythonstem", stem, sizeof(stem));
         ImGui::SameLine(0.0f, 0.0f);
         ImGui::Text(".py");
 
-        const auto path = fmt::format("{}/{}.py", m_persistent_directories.GetPythonDirectory(), stem);
+        const auto path = fmt::format("{}{}{}.py", m_persistent_directories.GetPythonDirectory(), separator, stem);
         bool valid = stem[0] != '\0' && !std::filesystem::exists(path);
         if (!valid)
         {

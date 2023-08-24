@@ -942,7 +942,7 @@ void Ui::RenderPopupAddPythonScript()
         if (ImGui::Button("Add"))
         {
             std::ofstream ofs(path, std::ios::out | std::ios::trunc);
-            ofs << "import pyadq\n\n"
+            ofs << "import pyadq\n\n\n"
                    "def main(digitizer: pyadq.ADQ):\n"
                    "    pass\n";
 

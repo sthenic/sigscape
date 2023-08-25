@@ -49,8 +49,8 @@ FetchContent_MakeAvailable(glfw)
 
 FetchContent_Declare(
     implot
-    GIT_REPOSITORY https://github.com/sthenic/implot
-    GIT_TAG 88f2e8e4c69aadddf2ed548428c32ff5a91902c6
+    GIT_REPOSITORY https://github.com/epezent/implot
+    GIT_TAG v0.16
 )
 FetchContent_MakeAvailable(implot)
 

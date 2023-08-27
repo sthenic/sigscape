@@ -30,6 +30,11 @@ std::string Value::FormatDelta(double other, bool show_sign) const
     return FormatDelta(other, properties.precision, show_sign);
 }
 
+std::string Value::FormatInverseDelta(double other, bool show_sign) const
+{
+    return FormatInverseDelta(other, properties.precision, show_sign);
+}
+
 std::string Value::Format(double other, const std::string &precision, bool show_sign) const
 {
     return Format::Metric(other, Format::String(precision, properties.unit, show_sign),
@@ -40,6 +45,12 @@ std::string Value::FormatDelta(double other, const std::string &precision, bool 
 {
     return Format::Metric(other, Format::String(precision, properties.delta_unit, show_sign),
                           properties.highest_prefix, properties.lowest_prefix);
+}
+
+std::string Value::FormatInverseDelta(double other, const std::string &precision, bool show_sign) const
+{
+    return Format::Metric(other, Format::String(precision, properties.inverse_delta_unit, show_sign),
+                          1.0 / properties.lowest_prefix, 1.0 / properties.highest_prefix);
 }
 
 BaseRecord::~BaseRecord()

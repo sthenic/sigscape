@@ -27,9 +27,11 @@ struct Value
                    std::string delta_unit,
                    std::string precision,
                    double highest_prefix = 1e12,
-                   double lowest_prefix = 1e-12)
+                   double lowest_prefix = 1e-12,
+                   std::string inverse_delta_unit = "")
             : unit(unit)
             , delta_unit(delta_unit)
+            , inverse_delta_unit(inverse_delta_unit)
             , precision(precision)
             , highest_prefix(highest_prefix)
             , lowest_prefix(lowest_prefix)
@@ -38,12 +40,14 @@ struct Value
         Properties(std::string unit,
                    std::string precision,
                    double highest_prefix = 1e12,
-                   double lowest_prefix = 1e-12)
-            : Properties(unit, unit, precision, highest_prefix, lowest_prefix)
+                   double lowest_prefix = 1e-12,
+                   std::string inverse_delta_unit = "")
+            : Properties(unit, unit, precision, highest_prefix, lowest_prefix, inverse_delta_unit)
         {}
 
         std::string unit;
         std::string delta_unit;
+        std::string inverse_delta_unit;
         std::string precision;
         double highest_prefix;
         double lowest_prefix;
@@ -68,9 +72,11 @@ struct Value
        calculation involving this value. */
     std::string Format(double other, bool show_sign = false) const;
     std::string FormatDelta(double other, bool show_sign = false) const;
+    std::string FormatInverseDelta(double other, bool show_sign = false) const;
 
     std::string Format(double other, const std::string &precision, bool show_sign = false) const;
     std::string FormatDelta(double other, const std::string &precision, bool show_sign = false) const;
+    std::string FormatInverseDelta(double other, const std::string &precision, bool show_sign = false) const;
 
     double value;
     Properties properties;
@@ -120,7 +126,7 @@ struct TimeDomainRecord : public BaseRecord
                      double code_normalization,
                      bool convert_horizontal = true, bool convert_vertical = true)
         : BaseRecord(raw->header->record_length,
-                     convert_horizontal ? Value::Properties{"s", PRECISION, 1e-3, 1e-12}
+                     convert_horizontal ? Value::Properties{"s", PRECISION, 1e-3, 1e-12, "Hz"}
                                         : Value::Properties{"S", PRECISION_UNCONVERTED, 1.0, 1.0},
                      convert_vertical ? Value::Properties{"V", PRECISION, 1e-3, 1e-12}
                                       : Value::Properties{"", PRECISION_UNCONVERTED, 1.0, 1.0})

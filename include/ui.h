@@ -229,7 +229,7 @@ private:
 
     void Reduce(double xsize, double sampling_frequency, int &count, int &stride);
 
-    void MarkerTree(Markers &markers);
+    void MarkerTree(Markers &markers, bool inverse_delta);
 
     std::vector<std::tuple<size_t, size_t, ChannelUiState *>> FilterUiStates();
     static void GetUnitsPerDivision(const std::string &title, UnitsPerDivision &units_per_division);

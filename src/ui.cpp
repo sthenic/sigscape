@@ -1304,7 +1304,7 @@ void CenteredTextInCell(const std::string &str)
     ImGui::Text(str);
 }
 
-void Ui::MarkerTree(Markers &markers)
+void Ui::MarkerTree(Markers &markers, bool inverse_delta)
 {
     if (markers.empty())
         return;
@@ -1437,6 +1437,12 @@ void Ui::MarkerTree(Markers &markers)
                         ImGui::Text(fmt::format(" {}, {}",
                                                 marker.x.FormatDelta(delta_x, true),
                                                 marker.y.FormatDelta(delta_y, true)));
+
+                        if (inverse_delta && !marker.x.properties.inverse_delta_unit.empty())
+                        {
+                            const double idelta_x = std::abs(1.0 / delta_x);
+                            ImGui::Text(fmt::format(" {}", marker.x.FormatInverseDelta(idelta_x)));
+                        }
                     }
 
                     ImGui::EndTable();
@@ -1473,8 +1479,8 @@ void Ui::RenderMarkers()
         m_frequency_domain_markers.clear();
     }
 
-    MarkerTree(m_time_domain_markers);
-    MarkerTree(m_frequency_domain_markers);
+    MarkerTree(m_time_domain_markers, true);
+    MarkerTree(m_frequency_domain_markers, false);
 }
 
 void Ui::RenderMemory()

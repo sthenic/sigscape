@@ -184,6 +184,9 @@ private:
     /* Process messages posted to the thread. */
     void ProcessMessages();
 
+    /* Clear objects with memory: the waterfall, moving average logs etc. */
+    void Clear();
+
     /* Format the log message using `fmt::format`, attaching the thread-specific header. */
     template <typename... Args>
     std::string FormatLog(Args &&... args);

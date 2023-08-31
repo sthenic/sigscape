@@ -31,6 +31,7 @@ void Generator::MainLoop()
     m_thread_exit_code = SCAPE_EOK;
     int wait_us = static_cast<int>(1000000.0 / m_parameters.trigger_frequency);
     int record_number = 0;
+    uint64_t timestamp = 0;
 
     for (;;)
     {
@@ -52,6 +53,7 @@ void Generator::MainLoop()
         record->header->record_number = record_number;
         record->header->record_start = static_cast<int64_t>(m_distribution(m_random_generator) * 1000);
         record->header->time_unit = 25e-12f; /* TODO: 25ps steps for now */
+        record->header->timestamp = timestamp;
         record->header->sampling_period = static_cast<uint64_t>(
             1.0 / (record->header->time_unit * m_sampling_frequency) + 0.5);
 
@@ -65,6 +67,9 @@ void Generator::MainLoop()
 
         /* Update bookkeeping variables. */
         record_number++;
+
+        timestamp += static_cast<uint64_t>(
+            std::round(1.0 / (m_parameters.trigger_frequency * record->header->time_unit)));
 
         /* We implement the sleep using the stop event to be able to immediately
            react to the event being set. */

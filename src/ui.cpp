@@ -198,7 +198,7 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version)
     /* Get the static information about the ADQAPI and check the compatibility.
        If the API is incompatible, we can't proceed beyond this point. We toggle
        the popup message and return. */
-    m_libadq.revision = ADQAPI_GetRevision();
+    m_libadq.revision = ADQAPI_GetRevisionString();
     m_libadq.compatible = true;
     m_libadq.popup = false;
 
@@ -866,10 +866,10 @@ void Ui::RenderPopupCompatibilityError()
     ImGui::OpenPopup("Incompatible libadq");
     if (ImGui::BeginPopupModal("Incompatible libadq", NULL, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        ImGui::Text("The loaded libadq (revision 0x%08x) is not \n"
+        ImGui::Text("The loaded libadq (revision %s) is not \n"
                     "compatible with this version of sigscape.\n\n"
                     "Compiled with v%d.%d",
-                    m_libadq.revision, ADQAPI_VERSION_MAJOR, ADQAPI_VERSION_MINOR);
+                    m_libadq.revision.c_str(), ADQAPI_VERSION_MAJOR, ADQAPI_VERSION_MINOR);
 
         ImGui::Separator();
         if (ImGui::Button("Ok"))
@@ -1718,7 +1718,7 @@ void Ui::RenderStaticInformation()
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
 
             Row("sigscape", SIGSCAPE_REVISION);
-            Row("libadq",  fmt::format("0x{:08x}{}", m_libadq.revision, m_libadq.compatible ? "" : " (incompatible)"));
+            Row("libadq",  m_libadq.revision + (m_libadq.compatible ? "" : " (incompatible)"));
             Row("Embedded Python", EmbeddedPython::IsInitialized() ? "Initialized" : "Not initialized");
 
             ImGui::EndTable();

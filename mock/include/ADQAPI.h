@@ -336,6 +336,7 @@ ADQAPI_EXPORT void DeleteADQControlUnit(void *adq_cu);
 
 /* The ADQAPI_* functions we're mocking. */
 ADQAPI_EXPORT uint32_t ADQAPI_GetRevision();
+ADQAPI_EXPORT const char *ADQAPI_GetRevisionString();
 ADQAPI_EXPORT int ADQAPI_ValidateVersion(int major, int minor);
 
 /* The ADQControlUnit_* functions we're mocking. */

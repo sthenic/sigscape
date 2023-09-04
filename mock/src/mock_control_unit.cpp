@@ -216,6 +216,11 @@ uint32_t ADQAPI_GetRevision()
     return 0xdeadbeefu;
 }
 
+const char *ADQAPI_GetRevisionString()
+{
+    return SIGSCAPE_REVISION;
+}
+
 int ADQAPI_ValidateVersion(int major, int minor)
 {
     (void)major;

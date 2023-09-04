@@ -71,7 +71,8 @@ endif()
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     MOCK_ADQAPI
     MOCK_ADQAPI_PATH=\"$<TARGET_FILE:adq>\"
-    ADQAPI_INTERNAL)
+    ADQAPI_INTERNAL
+    SIGSCAPE_REVISION=\"${SIGSCAPE_REVISION}\")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Threads::Threads

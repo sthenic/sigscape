@@ -179,7 +179,7 @@ private:
     bool m_popup_add_python_script;
     struct
     {
-        uint32_t revision;
+        std::string revision;
         bool compatible;
         bool popup;
     } m_libadq;

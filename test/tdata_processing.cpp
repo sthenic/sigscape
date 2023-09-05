@@ -120,13 +120,10 @@ TEST(DataProcessing, RepeatedStartStop)
             std::shared_ptr<ProcessedRecord> record = NULL;
             int result = processing->WaitForBuffer(record, 1000);
             CHECK(record != NULL);
-            CHECK((result == SCAPE_EOK) || (result == SCAPE_ELAST));
+            CHECK(result == SCAPE_EOK);
 
-            if (result == SCAPE_ELAST)
-            {
-                LONGS_EQUAL(nof_records_received, record->time_domain->header.record_number);
-                nof_records_received++;
-            }
+            LONGS_EQUAL(nof_records_received, record->time_domain->header.record_number);
+            nof_records_received++;
 
             /* Cap the refresh rate to something reasonable, e.g. 120 Hz. */
             std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(1000.0 / 120.0)));

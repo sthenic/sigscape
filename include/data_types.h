@@ -438,19 +438,6 @@ struct Waterfall
     size_t columns;
 };
 
-struct Persistence
-{
-    Persistence(const std::deque<std::shared_ptr<TimeDomainRecord>> &persistence)
-        : data(persistence)
-    {}
-
-    /* Delete copy constructors until we need them. */
-    Persistence(const Persistence &other) = delete;
-    Persistence &operator=(const Persistence &other) = delete;
-
-    std::deque<std::shared_ptr<TimeDomainRecord>> data;
-};
-
 struct ProcessedRecord
 {
     inline static const std::string PRECISION = "8.2";
@@ -459,7 +446,6 @@ struct ProcessedRecord
         : time_domain(NULL)
         , frequency_domain(NULL)
         , waterfall(NULL)
-        , persistence(NULL)
         , label(label)
         , trigger_frequency(trigger_frequency, {"Hz", PRECISION, 1e6})
         , throughput(throughput, {"B/s", PRECISION, 1e6})
@@ -480,7 +466,6 @@ struct ProcessedRecord
     std::shared_ptr<TimeDomainRecord> time_domain;
     std::shared_ptr<FrequencyDomainRecord> frequency_domain;
     std::shared_ptr<Waterfall> waterfall;
-    std::shared_ptr<Persistence> persistence;
 
     std::string label;
     Value trigger_frequency;

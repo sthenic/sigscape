@@ -84,7 +84,6 @@ public:
 
 private:
     static const size_t WATERFALL_SIZE = 20;
-    static const size_t PERSISTENCE_SIZE = 30;
     static const size_t NOISE_MOVING_AVERAGE_SIZE = 50;
     void *m_handle;
     int m_index;
@@ -96,7 +95,6 @@ private:
     WindowCache m_window_cache;
     DataProcessingParameters m_parameters;
     std::deque<std::shared_ptr<FrequencyDomainRecord>> m_waterfall;
-    std::deque<std::shared_ptr<TimeDomainRecord>> m_persistence;
     std::deque<double> m_noise_moving_average;
     FftMovingAverage m_fft_moving_average;
 

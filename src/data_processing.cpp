@@ -77,7 +77,6 @@ DataProcessing::DataProcessing(void *handle, int index, int channel, const std::
     , m_window_cache()
     , m_parameters{}
     , m_waterfall{}
-    , m_persistence{}
     , m_noise_moving_average{}
     , m_fft_moving_average()
 {
@@ -244,11 +243,6 @@ int DataProcessing::ProcessRecord(const ADQGen4Record *raw_time_domain,
         return SCAPE_EINTERNAL;
     }
 
-    /* Add to the persistence memory. */
-    if (m_persistence.size() >= PERSISTENCE_SIZE)
-        m_persistence.pop_back();
-    m_persistence.push_front(processed_record.time_domain);
-    processed_record.persistence = std::make_shared<Persistence>(m_persistence);
 
     /* Calculate the FFT and assign parameters we know at this stage. */
     const size_t FFT_LENGTH = PreviousPowerOfTwo(raw_time_domain->header->record_length);
@@ -740,7 +734,6 @@ void DataProcessing::ProcessMessages()
 void DataProcessing::Clear()
 {
     m_waterfall.clear();
-    m_persistence.clear();
     m_noise_moving_average.clear();
     m_fft_moving_average.Clear();
 }

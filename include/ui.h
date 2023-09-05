@@ -74,7 +74,6 @@ private:
         bool is_muted;
         bool is_solo;
         bool is_sample_markers_enabled;
-        bool is_persistence_enabled;
         bool is_harmonics_annotated;
         bool is_interleaving_spurs_annotated;
         bool is_time_domain_visible;

@@ -46,7 +46,6 @@ Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     , is_muted(false)
     , is_solo(false)
     , is_sample_markers_enabled(false)
-    , is_persistence_enabled(false)
     , is_harmonics_annotated(true)
     , is_interleaving_spurs_annotated(true)
     , is_time_domain_visible(true)
@@ -2322,34 +2321,14 @@ void Ui::PlotTimeDomainSelected()
         if (m_should_auto_fit_time_domain)
           m_should_auto_fit_time_domain = false;
 
-        /* FIXME: A rough value to switch off persistent plotting when the
-                  window contains too many samples, heavily tanking the
-                  performance. */
+        if (ui->is_sample_markers_enabled)
+            ImPlot::SetNextMarkerStyle(ImPlotMarker_Cross);
 
-        bool is_persistence_performant =
-            ImPlot::GetPlotLimits().Size().x / ui->record->time_domain->step < 2048;
-
-        if (ui->is_persistence_enabled && is_persistence_performant)
-        {
-            ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
-            for (const auto &c : ui->record->persistence->data)
-            {
-                ImPlot::PlotScatter(ui->record->label.c_str(), c->x.data(), c->y.data(),
-                                    static_cast<int>(c->x.size()));
-            }
-            ImPlot::PopStyleVar();
-        }
-        else
-        {
-            if (ui->is_sample_markers_enabled)
-                ImPlot::SetNextMarkerStyle(ImPlotMarker_Cross);
-
-            ImPlot::PushStyleColor(ImPlotCol_Line, ui->color);
-            ImPlot::PlotLine(ui->record->label.c_str(), ui->record->time_domain->x.data(),
-                             ui->record->time_domain->y.data(),
-                             static_cast<int>(ui->record->time_domain->x.size()));
-            ImPlot::PopStyleColor();
-        }
+        ImPlot::PushStyleColor(ImPlotCol_Line, ui->color);
+        ImPlot::PlotLine(ui->record->label.c_str(), ui->record->time_domain->x.data(),
+                         ui->record->time_domain->y.data(),
+                         static_cast<int>(ui->record->time_domain->x.size()));
+        ImPlot::PopStyleColor();
 
         /* Plot any waveforms in memory. */
         if (!ui->memory.empty())
@@ -3006,8 +2985,6 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
 
                 if (ImGui::MenuItem("Add to memory"))
                     ui.memory.push_back(ui.record);
-
-                ImGui::MenuItem("Persistence", "", &ui.is_persistence_enabled);
 
                 if (ImGui::MenuItem("Save to file..."))
                 {

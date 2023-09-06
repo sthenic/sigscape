@@ -6,6 +6,19 @@
 
 #include <cmath>
 
+void ImGui::RenderTableContents(const std::vector<std::vector<std::string>> &rows)
+{
+    for (const auto &row : rows)
+    {
+        ImGui::TableNextRow();
+        for (const auto &column : row)
+        {
+            ImGui::TableNextColumn();
+            ImGui::Text(column);
+        }
+    }
+}
+
 ImGui::InputDoubleMetric::InputDoubleMetric(const std::string &label, double value,
                                             const std::string &format, double highest_prefix,
                                             ImGuiInputTextFlags flags)

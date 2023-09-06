@@ -231,6 +231,29 @@ struct TimeDomainRecord : public BaseRecord
     TimeDomainRecord(const TimeDomainRecord &other) = delete;
     TimeDomainRecord &operator=(const TimeDomainRecord &other) = delete;
 
+    /* Convert the metrics into a presentable format suitable for a table. */
+    std::vector<std::vector<std::string>> FormatMetrics() const
+    {
+        const double peak_to_peak = max.value - min.value; /* FIXME: +1.0 'unit' */
+        const double peak_to_peak_range = range_max.value - range_min.value;
+
+        return {
+            {"Record number", fmt::format("{: >8d}", header.record_number)},
+            {"Maximum", max.Format(), range_max.Format()},
+            {"Minimum", min.Format(), range_min.Format()},
+            {
+                "Peak-to-peak",
+                max.Format(peak_to_peak),
+                range_max.Format(peak_to_peak_range),
+                fmt::format("{:6.2f} %", 100.0 * peak_to_peak / peak_to_peak_range),
+            },
+            {"Mean", mean.Format(), range_mid.Format()},
+            {"Standard deviation", sdev.Format()},
+            {"Sampling rate", sampling_frequency.Format()},
+            {"Sampling period", sampling_period.Format()},
+        };
+    }
+
     /* The record header, as given to us by the ADQAPI. */
     struct ADQGen4RecordHeader header;
 
@@ -277,6 +300,69 @@ struct FrequencyDomainRecord : public BaseRecord
     /* Delete copy constructors until we need them. */
     FrequencyDomainRecord(const FrequencyDomainRecord &other) = delete;
     FrequencyDomainRecord &operator=(const FrequencyDomainRecord &other) = delete;
+
+    /* Convert the metrics into a presentable format suitable for a table. */
+    std::vector<std::vector<std::string>> FormatMetrics() const
+    {
+        return {
+            {
+                "SNR",
+                snr.Format(),
+                "Fund.",
+                std::get<0>(fundamental).Format(),
+                std::get<1>(fundamental).Format(), /* FIXME: mDBFS wrong */
+            },
+            {
+                "SINAD",
+                sinad.Format(),
+                "Spur",
+                std::get<0>(spur).Format(),
+                std::get<1>(spur).Format(),
+            },
+            {
+                "ENOB",
+                enob.Format() + "  ", /* Padding for table */
+                "HD2",
+                std::get<0>(harmonics.at(0)).Format(),
+                std::get<1>(harmonics.at(0)).Format(),
+            },
+            {
+                "THD",
+                thd.Format(),
+                "HD3",
+                std::get<0>(harmonics.at(1)).Format(),
+                std::get<1>(harmonics.at(1)).Format(),
+            },
+            {
+                "SFDR",
+                sfdr_dbfs.Format(),
+                "HD4",
+                std::get<0>(harmonics.at(2)).Format(),
+                std::get<1>(harmonics.at(2)).Format(),
+            },
+            {
+                "NPSD",
+                npsd.Format(),
+                "HD5",
+                std::get<0>(harmonics.at(3)).Format(),
+                std::get<1>(harmonics.at(3)).Format(),
+            },
+            {
+                "Size",
+                size.Format(),
+                "TIx",
+                std::get<0>(gain_phase_spur).Format(),
+                std::get<1>(gain_phase_spur).Format(),
+            },
+            {
+                "RBW",
+                rbw.Format(),
+                "TIo",
+                std::get<0>(offset_spur).Format(),
+                std::get<1>(offset_spur).Format(),
+            },
+        };
+    }
 
     /* Values that can be readily displayed in the UI. */
     std::tuple<Value, Value> fundamental;
@@ -382,6 +468,14 @@ struct ProcessedRecord
     /* Delete copy constructors until we need them. */
     ProcessedRecord(const ProcessedRecord &other) = delete;
     ProcessedRecord &operator=(const ProcessedRecord &other) = delete;
+
+    std::vector<std::vector<std::string>> FormatMetrics() const
+    {
+        return {
+            {"Trigger frequency", trigger_frequency.Format()},
+            {"Throughput", throughput.Format()},
+        };
+    }
 
     std::shared_ptr<TimeDomainRecord> time_domain;
     std::shared_ptr<FrequencyDomainRecord> frequency_domain;

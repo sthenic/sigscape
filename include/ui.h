@@ -268,11 +268,6 @@ private:
 
     static void RenderHeaderButtons(ChannelUiState &ui);
 
-    std::vector<std::vector<std::string>> FormatTimeDomainMetrics(
-        const ProcessedRecord &processed_record);
-    std::vector<std::vector<std::string>> FormatFrequencyDomainMetrics(
-        const ProcessedRecord &processed_record);
-
     void CopyFreqencyDomainMetricsToClipboard(const ProcessedRecord *processed_record);
 
     void RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size);

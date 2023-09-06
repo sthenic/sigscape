@@ -2930,126 +2930,6 @@ void Ui::RenderHeaderButtons(ChannelUiState &ui)
     ImGui::SameLine();
 }
 
-
-std::vector<std::vector<std::string>> Ui::FormatTimeDomainMetrics(const ProcessedRecord &processed_record)
-{
-    const auto &record = processed_record.time_domain;
-    const double peak_to_peak = record->max.value - record->min.value; /* FIXME: +1.0 'unit' */
-    const double peak_to_peak_range = record->range_max.value - record->range_min.value;
-
-    return {
-        {
-            "Record number",
-            fmt::format("{: >8d}", record->header.record_number),
-        },
-        {
-            "Maximum",
-            record->max.Format(),
-            record->range_max.Format(),
-        },
-        {
-            "Minimum",
-            record->min.Format(),
-            record->range_min.Format(),
-        },
-        {
-            "Peak-to-peak",
-            record->max.Format(peak_to_peak),
-            record->range_max.Format(peak_to_peak_range),
-            fmt::format("{:6.2f} %", 100.0 * peak_to_peak / peak_to_peak_range),
-        },
-        {
-            "Mean",
-            record->mean.Format(),
-            record->range_mid.Format(),
-        },
-        {
-            "Standard deviation",
-            record->sdev.Format(),
-        },
-        /* TODO: Hide these behind some 'show extra' toggle? */
-        {
-            "Sampling rate",
-            record->sampling_frequency.Format(),
-        },
-        {
-            "Sampling period",
-            record->sampling_period.Format(),
-        },
-        {
-            "Trigger frequency",
-            processed_record.trigger_frequency.Format(),
-        },
-        {
-            "Throughput",
-            processed_record.throughput.Format(),
-        },
-    };
-}
-
-std::vector<std::vector<std::string>> Ui::FormatFrequencyDomainMetrics(const ProcessedRecord &processed_record)
-{
-    const auto &record = processed_record.frequency_domain;
-    return {
-        {
-            "SNR",
-            record->snr.Format(),
-            "Fund.",
-            std::get<0>(record->fundamental).Format(),
-            std::get<1>(record->fundamental).Format(), /* FIXME: mDBFS wrong */
-        },
-        {
-            "SINAD",
-            record->sinad.Format(),
-            "Spur",
-            std::get<0>(record->spur).Format(),
-            std::get<1>(record->spur).Format(),
-        },
-        {
-            "ENOB",
-            record->enob.Format() + "  ", /* Padding for table */
-            "HD2",
-            std::get<0>(record->harmonics.at(0)).Format(),
-            std::get<1>(record->harmonics.at(0)).Format(),
-        },
-        {
-            "THD",
-            record->thd.Format(),
-            "HD3",
-            std::get<0>(record->harmonics.at(1)).Format(),
-            std::get<1>(record->harmonics.at(1)).Format(),
-        },
-        {
-            "SFDR",
-            record->sfdr_dbfs.Format(),
-            "HD4",
-            std::get<0>(record->harmonics.at(2)).Format(),
-            std::get<1>(record->harmonics.at(2)).Format(),
-        },
-        {
-            "NPSD",
-            record->npsd.Format(),
-            "HD5",
-            std::get<0>(record->harmonics.at(3)).Format(),
-            std::get<1>(record->harmonics.at(3)).Format(),
-        },
-        {
-            "Size",
-            record->size.Format(),
-            "TIx",
-            std::get<0>(record->gain_phase_spur).Format(),
-            std::get<1>(record->gain_phase_spur).Format(),
-        },
-        {
-            "RBW",
-            record->rbw.Format(),
-            "TIo",
-            std::get<0>(record->offset_spur).Format(),
-            std::get<1>(record->offset_spur).Format(),
-        },
-    };
-}
-
 void Ui::CopyFreqencyDomainMetricsToClipboard(const ProcessedRecord *processed_record)
 {
     const auto &record = processed_record->frequency_domain;
@@ -3172,15 +3052,8 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                     ImGui::TableSetupColumn("Extra0", ImGuiTableColumnFlags_WidthFixed);
                     ImGui::TableSetupColumn("Extra1", ImGuiTableColumnFlags_WidthFixed);
 
-                    for (const auto &row : FormatTimeDomainMetrics(*ui.record))
-                    {
-                        ImGui::TableNextRow();
-                        for (const auto &column : row)
-                        {
-                            ImGui::TableNextColumn();
-                            ImGui::Text(column);
-                        }
-                    }
+                    ImGui::RenderTableContents(ui.record->time_domain->FormatMetrics());
+                    ImGui::RenderTableContents(ui.record->FormatMetrics());
 
                     ImGui::EndTable();
                 }
@@ -3299,15 +3172,7 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
                     ImGui::TableSetupColumn("Value1", ImGuiTableColumnFlags_WidthFixed);
                     ImGui::TableSetupColumn("Value2", ImGuiTableColumnFlags_WidthFixed);
 
-                    for (const auto &row : FormatFrequencyDomainMetrics(*ui.record))
-                    {
-                        ImGui::TableNextRow();
-                        for (const auto &column : row)
-                        {
-                            ImGui::TableNextColumn();
-                            ImGui::Text(column);
-                        }
-                    }
+                    ImGui::RenderTableContents(ui.record->frequency_domain->FormatMetrics());
 
                     ImGui::EndTable();
                 }

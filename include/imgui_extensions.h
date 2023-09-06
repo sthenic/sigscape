@@ -2,6 +2,7 @@
 
 #include "imgui.h"
 #include <string>
+#include <vector>
 
 /* ImGui extensions to remove conversion clutter when calling certain functions. */
 namespace ImGui
@@ -10,6 +11,8 @@ inline void Text(const std::string &str)
 {
     ImGui::Text("%s", str.c_str());
 }
+
+void RenderTableContents(const std::vector<std::vector<std::string>> &rows);
 
 struct InputDoubleMetric
 {

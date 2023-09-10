@@ -18,6 +18,7 @@ const ImVec4 Ui::COLOR_RED = {1.0f, 0.0f, 0.2f, 0.6f};
 const ImVec4 Ui::COLOR_YELLOW = {1.0f, 1.0f, 0.3f, 0.8f};
 const ImVec4 Ui::COLOR_ORANGE = {0.86f, 0.38f, 0.1f, 0.8f};
 const ImVec4 Ui::COLOR_PURPLE = {0.6f, 0.3f, 1.0f, 0.8f};
+const ImVec4 Ui::COLOR_TAN = {0.51f, 0.45f, .25f, 1.0f};
 
 const ImVec4 Ui::COLOR_WOW_RED = {0.77f, 0.12f, 0.23f, 0.8f};
 const ImVec4 Ui::COLOR_WOW_DARK_MAGENTA = {0.64f, 0.19f, 0.79f, 0.8f};
@@ -46,12 +47,14 @@ Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     , is_muted(false)
     , is_solo(false)
     , is_sample_markers_enabled(false)
+    , is_plot_frame_enabled(false)
     , is_harmonics_annotated(true)
     , is_interleaving_spurs_annotated(true)
     , is_time_domain_visible(true)
     , is_frequency_domain_visible(true)
     , should_save_to_file(false)
-    , record(NULL)
+    , frame()
+    , record()
     , memory{}
 {
     if (nof_channels_total == 0)
@@ -404,11 +407,24 @@ void Ui::UpdateRecords()
               pops entries at the end once saturated, regardless if they've been
               read or not. */
 
-    /* Attempt to update the set of processed records for each digitizer. */
+    /* Attempt to update the set of processed records for each digitizer. We
+       empty the queue for each channel, pushing data to the corresponding frame
+       object. */
     for (auto &digitizer : m_digitizers)
     {
         for (int ch = 0; ch < static_cast<int>(digitizer.ui.channels.size()); ++ch)
-            digitizer.interface->WaitForProcessedRecord(ch, digitizer.ui.channels[ch].record);
+        {
+            /* TODO: What happens when we're running at kHz trigger rates here? */
+            std::shared_ptr<ProcessedRecord> record = NULL;
+            while (SCAPE_EOK == digitizer.interface->WaitForProcessedRecord(ch, record))
+            {
+                digitizer.ui.channels[ch].frame.PushRecord(record);
+                /* FIXME: Temporary workaround. A better solution is to use an
+                          access function instead and replace every use of
+                          `.record` with that. */
+                digitizer.ui.channels[ch].record = digitizer.ui.channels[ch].frame.Record();
+            }
+        }
     }
 }
 
@@ -684,7 +700,7 @@ void Ui::RenderRight(float width, float height)
     const float FRAME_HEIGHT = ImGui::GetFrameHeight();
     const float PLOT_WINDOW_HEIGHT = (height - 1 * FRAME_HEIGHT) / 2;
     const float POSITION_X = width * (FIRST_COLUMN_RELATIVE_WIDTH + SECOND_COLUMN_RELATIVE_WIDTH);
-    /* +1 extra pixel for various rounding errors un until this point. */
+    /* +1 extra pixel for various rounding errors up until this point. */
     const float SIZE_X = width * THIRD_COLUMN_RELATIVE_WIDTH + 1.0f;
 
     ImVec2 TIME_DOMAIN_POSITION{POSITION_X, FRAME_HEIGHT};
@@ -812,12 +828,23 @@ void Ui::RenderLeft(float width, float height)
 
     RenderApplicationMetrics(METRICS_POS, METRICS_SIZE);
 
-    ImVec2 PROCESSING_OPTIONS_POS(0.0f, METRICS_POS.y - 220.0f);
+    ImVec2 RECORD_FRAME_OPTIONS_POS(0.0f, METRICS_POS.y - 125.0f);
+    ImVec2 RECORD_FRAME_OPTIONS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 125.0f);
+
+    if (m_collapsed.record_frame_options)
+    {
+        RECORD_FRAME_OPTIONS_POS = ImVec2{0.0f, METRICS_POS.y - FRAME_HEIGHT};
+        RECORD_FRAME_OPTIONS_SIZE = ImVec2{width * FIRST_COLUMN_RELATIVE_WIDTH, FRAME_HEIGHT};
+    }
+
+    RenderRecordFrameOptions(RECORD_FRAME_OPTIONS_POS, RECORD_FRAME_OPTIONS_SIZE);
+
+    ImVec2 PROCESSING_OPTIONS_POS(0.0f, RECORD_FRAME_OPTIONS_POS.y - 220.0f);
     ImVec2 PROCESSING_OPTIONS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 220.0f);
 
     if (m_collapsed.processing_options)
     {
-        PROCESSING_OPTIONS_POS = ImVec2{0.0f, METRICS_POS.y - FRAME_HEIGHT};
+        PROCESSING_OPTIONS_POS = ImVec2{0.0f, RECORD_FRAME_OPTIONS_POS.y - FRAME_HEIGHT};
         PROCESSING_OPTIONS_SIZE = ImVec2{width * FIRST_COLUMN_RELATIVE_WIDTH, FRAME_HEIGHT};
     }
 
@@ -828,7 +855,7 @@ void Ui::RenderLeft(float width, float height)
     const ImVec2 TOOLS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH,
                             height - (FRAME_HEIGHT + DIGITIZER_SELECTION_SIZE.y +
                                       COMMAND_PALETTE_SIZE.y + PROCESSING_OPTIONS_SIZE.y +
-                                      METRICS_SIZE.y));
+                                      METRICS_SIZE.y + RECORD_FRAME_OPTIONS_SIZE.y));
     RenderTools(TOOLS_POS, TOOLS_SIZE);
 }
 
@@ -1130,7 +1157,15 @@ void Ui::RenderDefaultCommandPalette(bool enable)
 
     /* First row */
     if (ImGui::Button("Start", COMMAND_PALETTE_BUTTON_SIZE))
+    {
+        /* FIXME: Clean this up w/ a function. */
+        for (auto &digitizer : m_digitizers)
+        {
+            for (auto &channel : digitizer.ui.channels)
+                channel.frame.Clear();
+        }
         PushMessage(DigitizerMessageId::START_ACQUISITION);
+    }
 
     ImGui::SameLine();
     if (ImGui::Button("Stop", COMMAND_PALETTE_BUTTON_SIZE))
@@ -2077,6 +2112,112 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
     ImGui::End();
 }
 
+Ui::ChannelUiState *Ui::GetSelectedChannel()
+{
+    for (auto &digitizer : m_digitizers)
+    {
+        for (auto &chui : digitizer.ui.channels)
+        {
+            if (chui.is_selected)
+                return &chui;
+        }
+    }
+
+    return NULL;
+}
+
+void Ui::RenderRecordFrameOptions(const ImVec2 &position, const ImVec2 &size)
+{
+    ImGui::SetNextWindowPos(position);
+    ImGui::SetNextWindowSize(size);
+    ImGui::Begin("Record Frame Options", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+    m_collapsed.record_frame_options = ImGui::IsWindowCollapsed();
+    const float WIDGET_WIDTH = 0.6f * size.x;
+    bool push_parameters = false;
+    auto ui = GetSelectedChannel();
+    auto parameters = (ui != NULL) ? ui->frame.GetParameters() : RecordFrame::Parameters();
+    const bool disable_trigger = (ui == NULL);
+    const bool disable_idx = disable_trigger || parameters.trigger == RecordFrame::Trigger::DISABLED;
+    const bool disable_capacity = disable_idx || parameters.trigger != RecordFrame::Trigger::COUNTER;
+
+    const auto RecordFrameTriggerGetter = [](void *, int idx, const char **label) -> bool
+    {
+        /* Assume a straight mapping between the index and the enumeration. */
+        *label = RecordFrame::LABELS.at(idx);
+        return true;
+    };
+
+    if (ui == NULL || ui->record == NULL)
+        ImGui::SeparatorText("No channel selected.");
+    else
+        ImGui::SeparatorText(ui->record->label.c_str());
+
+    if (disable_trigger)
+        ImGui::BeginDisabled();
+
+    int trigger_idx = static_cast<int>(parameters.trigger);
+    ImGui::SetNextItemWidth(WIDGET_WIDTH);
+    if (ImGui::Combo("Trigger", &trigger_idx, RecordFrameTriggerGetter, NULL,
+                     static_cast<int>(RecordFrame::Trigger::NOF_ENTRIES)))
+    {
+        parameters.trigger = static_cast<RecordFrame::Trigger>(trigger_idx);
+        push_parameters = true;
+    }
+
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+    {
+        const std::string tooltip = RecordFrame::TOOLTIPS.at(trigger_idx);
+        if (!tooltip.empty())
+            ImGui::SetTooltip("%s", tooltip.c_str());
+    }
+
+    if (disable_trigger)
+        ImGui::EndDisabled();
+
+    if (disable_capacity)
+        ImGui::BeginDisabled();
+
+    ImGui::SetNextItemWidth(WIDGET_WIDTH);
+    static const ImU64 STEP = static_cast<ImU64>(1);
+    static const ImU64 STEP_FAST = static_cast<ImU64>(10);
+    ImU64 capacity = static_cast<ImU64>(parameters.capacity);
+    if (ImGui::InputScalar("Frame capacity", ImGuiDataType_U64, &capacity, &STEP, &STEP_FAST) &&
+        ImGui::IsItemDeactivatedAfterEdit())
+    {
+        /* The value is clamped by `SetParameters`. */
+        parameters.capacity = static_cast<size_t>(capacity);
+        push_parameters = true;
+    }
+
+    if (disable_capacity)
+        ImGui::EndDisabled();
+
+    if (disable_idx)
+        ImGui::BeginDisabled();
+
+    ImU64 idx = static_cast<ImU64>(parameters.idx);
+    ImGui::SetNextItemWidth(WIDGET_WIDTH);
+    if (ImGui::InputScalar("Displayed record", ImGuiDataType_U64, &idx, &STEP, &STEP_FAST) &&
+        ImGui::IsItemDeactivatedAfterEdit())
+    {
+        /* The value is clamped by `SetParameters`. */
+        parameters.idx = static_cast<size_t>(idx);
+        push_parameters = true;
+    }
+
+    if (disable_idx)
+        ImGui::EndDisabled();
+
+    if (push_parameters)
+    {
+        ui->frame.SetParameters(parameters);
+        /* FIXME: Remove once call refactor is done. */
+        ui->record = ui->frame.Record();
+    }
+
+    ImGui::End();
+}
+
 /* FIXME: Remove */
 void Ui::Reduce(double xsize, double sampling_period, int &count, int &stride)
 {
@@ -2325,9 +2466,31 @@ void Ui::PlotTimeDomainSelected()
             ImPlot::SetNextMarkerStyle(ImPlotMarker_Cross);
 
         ImPlot::PushStyleColor(ImPlotCol_Line, ui->color);
+        if (ui->is_plot_frame_enabled)
+        {
+            for (size_t i = 0; i < ui->frame.Records().size(); ++i)
+            {
+                /* Skip the record if we're going to plot it as 'the currently
+                   selected' record later on. */
+                const auto &record = ui->frame.Records().at(i);
+                if (record == ui->record)
+                    continue;
+
+                const std::string label = fmt::format("##{}{}", record->label.c_str(), i);
+                ImPlot::PlotLine(record->label.c_str(), record->time_domain->x.data(),
+                                 record->time_domain->y.data(),
+                                 static_cast<int>(record->time_domain->x.size()));
+            }
+        }
+
+        /* Always plot the active record because that's the one we present
+           information about and interact with via the markers and friends.
+           Depending on the current 'fill' of the frame, this may be a record
+           from the last frame and thus not plotted by the loop above. */
         ImPlot::PlotLine(ui->record->label.c_str(), ui->record->time_domain->x.data(),
                          ui->record->time_domain->y.data(),
                          static_cast<int>(ui->record->time_domain->x.size()));
+
         ImPlot::PopStyleColor();
 
         /* Plot any waveforms in memory. */
@@ -2982,6 +3145,7 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                 ImGui::MenuItem("Solo", "", &ui.is_solo);
                 ImGui::MenuItem("Mute", "", &ui.is_muted);
                 ImGui::MenuItem("Sample markers", "", &ui.is_sample_markers_enabled);
+                ImGui::MenuItem("Plot frame", "", &ui.is_plot_frame_enabled);
 
                 if (ImGui::MenuItem("Add to memory"))
                     ui.memory.push_back(ui.record);
@@ -3010,10 +3174,17 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
             if (node_open)
             {
                 if ((ui.is_muted || IsAnySolo()) && !ui.is_solo)
+                    ImGui::BeginDisabled();
+
+                if (ui.frame.GetParameters().trigger != RecordFrame::Trigger::DISABLED)
                 {
-                    auto text_color = ImGui::GetStyleColorVec4(ImGuiCol_Text);
-                    text_color.w *= 0.5f;
-                    ImGui::PushStyleColor(ImGuiCol_Text, text_color);
+                    const auto &[fraction, label] = ui.frame.Fill();
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::Text("Frame");
+                    ImGui::SameLine();
+                    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ui.color);
+                    ImGui::ProgressBar(fraction, ImVec2{-1.0, 0.0}, label.c_str());
+                    ImGui::PopStyleColor();
                 }
 
                 flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
@@ -3039,7 +3210,7 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                 ImGui::PopStyleVar();
 
                 if ((ui.is_muted || IsAnySolo()) && !ui.is_solo)
-                    ImGui::PopStyleColor();
+                    ImGui::EndDisabled();
 
                 ImGui::TreePop();
             }
@@ -3129,11 +3300,7 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
                 }
 
                 if ((ui.is_muted || IsAnySolo()) && !ui.is_solo)
-                {
-                    auto text_color = ImGui::GetStyleColorVec4(ImGuiCol_Text);
-                    text_color.w *= 0.5f;
-                    ImGui::PushStyleColor(ImGuiCol_Text, text_color);
-                }
+                    ImGui::BeginDisabled();
 
                 /* Increase the horizontal cell padding. */
                 ImGui::PushStyleVar(ImGuiStyleVar_CellPadding,
@@ -3158,7 +3325,7 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
                 ImGui::PopStyleVar();
 
                 if ((ui.is_muted || IsAnySolo()) && !ui.is_solo)
-                    ImGui::PopStyleColor();
+                    ImGui::EndDisabled();
 
                 ImGui::TreePop();
             }

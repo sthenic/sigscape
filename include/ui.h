@@ -14,6 +14,7 @@
 #include "identification.h"
 #include "marker.h"
 #include "format.h"
+#include "record_frame.h"
 #if defined(_WIN32)
 #include "hotplug_windows.h"
 #else
@@ -58,6 +59,7 @@ private:
         bool time_domain_metrics;
         bool frequency_domain_metrics;
         bool processing_options;
+        bool record_frame_options;
         bool application_metrics;
     } m_collapsed;
     int m_nof_channels_total;
@@ -74,12 +76,14 @@ private:
         bool is_muted;
         bool is_solo;
         bool is_sample_markers_enabled;
+        bool is_plot_frame_enabled;
         bool is_harmonics_annotated;
         bool is_interleaving_spurs_annotated;
         bool is_time_domain_visible;
         bool is_frequency_domain_visible;
         bool should_save_to_file;
-        std::shared_ptr<ProcessedRecord> record;
+        RecordFrame frame;
+        std::shared_ptr<ProcessedRecord> record; /* FIXME: Remove and replace w/ frame access. */
         std::vector<std::shared_ptr<ProcessedRecord>> memory;
     };
 
@@ -225,12 +229,14 @@ private:
     void RenderStaticInformation();
     void RenderSensors();
     void RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size);
+    void RenderRecordFrameOptions(const ImVec2 &position, const ImVec2 &size);
 
     void Reduce(double xsize, double sampling_frequency, int &count, int &stride);
 
     void MarkerTree(Markers &markers, bool inverse_delta);
 
-    std::vector<std::tuple<size_t, size_t, ChannelUiState *>> FilterUiStates();
+    ChannelUiState *GetSelectedChannel();
+    std::vector<std::tuple<size_t, size_t, ChannelUiState *>> FilterUiStates(); /* FIXME: References here instead of pointers? */
     static void GetUnitsPerDivision(const std::string &title, UnitsPerDivision &units_per_division);
     static void RenderUnitsPerDivision(const std::string &str);
 
@@ -286,6 +292,7 @@ private:
     static const ImVec4 COLOR_YELLOW;
     static const ImVec4 COLOR_ORANGE;
     static const ImVec4 COLOR_PURPLE;
+    static const ImVec4 COLOR_TAN;
 
     static const ImVec4 COLOR_WOW_RED;
     static const ImVec4 COLOR_WOW_DARK_MAGENTA;

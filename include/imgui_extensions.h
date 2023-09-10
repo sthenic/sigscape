@@ -43,6 +43,4 @@ private:
     static int Callback(ImGuiInputTextCallbackData *data);
 };
 
-// bool InputDoubleMetric(const char *label, std::string &str, ImGuiInputTextFlags flags = 0);
-
 }

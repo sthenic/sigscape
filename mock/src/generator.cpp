@@ -62,6 +62,12 @@ void Generator::MainLoop()
         if (overrange)
             record->header->record_status |= ADQ_RECORD_STATUS_OVERRANGE;
 
+        record->header->timestamp_synchronization_counter = record_number / 100;
+        if (!(record_number % 50))
+            record->header->misc |= 0x1u;
+        if (!(record_number % 30))
+            record->header->misc |= 0x2u;
+
         /* Add to the outgoing queue. */
         m_read_queue.Write(record);
 

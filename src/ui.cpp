@@ -685,7 +685,8 @@ void Ui::RenderRight(float width, float height)
     const float FRAME_HEIGHT = ImGui::GetFrameHeight();
     const float PLOT_WINDOW_HEIGHT = (height - 1 * FRAME_HEIGHT) / 2;
     const float POSITION_X = width * (FIRST_COLUMN_RELATIVE_WIDTH + SECOND_COLUMN_RELATIVE_WIDTH);
-    const float SIZE_X = width * SECOND_COLUMN_RELATIVE_WIDTH;
+    /* +1 extra pixel for various rounding errors un until this point. */
+    const float SIZE_X = width * THIRD_COLUMN_RELATIVE_WIDTH + 1.0f;
 
     ImVec2 TIME_DOMAIN_POSITION{POSITION_X, FRAME_HEIGHT};
     ImVec2 TIME_DOMAIN_SIZE{SIZE_X, PLOT_WINDOW_HEIGHT};
@@ -702,7 +703,7 @@ void Ui::RenderRight(float width, float height)
 
     if (m_collapsed.frequency_domain_metrics)
     {
-        TIME_DOMAIN_SIZE = ImVec2{POSITION_X, height - 2 * FRAME_HEIGHT};
+        TIME_DOMAIN_SIZE = ImVec2{SIZE_X, height - 2 * FRAME_HEIGHT};
         FREQUENCY_DOMAIN_POSITION = ImVec2{POSITION_X, height - FRAME_HEIGHT};
         FREQUENCY_DOMAIN_SIZE = ImVec2{SIZE_X, FRAME_HEIGHT};
     }

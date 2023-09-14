@@ -376,10 +376,23 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
         frequency_domain->ValueY(offset_spur.PowerInDecibels()),
     };
 
-    /* Calculate the noise power by removing the power of the fundamental tone
-       and other spectral components from the total power. */
-    const double noise_power = total_power - fundamental.power - dc.power -
-                               harmonic_distortion_power - interleaving_spur_power;
+    /* We calculate the noise power by removing the power of the fundamental
+       tone and other spectral components from the total power.
+
+       Due to the way floating point numbers work, we may end up with a negative
+       number, or indeed zero (for a small FFT where the tones occupy the entire
+       spectrum). These values are disastrous for the upcoming calculations and
+       an indication that the overlapping tones have resulted in a spectrum
+       whose metrics shouldn't be trusted. We already signal that w/ the
+       'overlap' state, but here we cheat a bit and reassign the machine epsilon
+       as the noise power to allow the calculations to proceed and the record to
+       propagate, rather than to throw it all away. */
+
+    double noise_power = total_power - fundamental.power - dc.power - harmonic_distortion_power -
+                         interleaving_spur_power;
+
+    if (noise_power < std::numeric_limits<double>::epsilon())
+        noise_power = std::numeric_limits<double>::epsilon();
 
     /* TODO: Linear interpolation? */
     frequency_domain->fundamental = {

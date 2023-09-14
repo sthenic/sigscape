@@ -646,6 +646,8 @@ void DataProcessing::ResolveInterleavingSpurOverlaps(const Tone &dc, const Tone 
         ResolveOverlap(gain, harmonic, overlap);
         ResolveOverlap(offset, harmonic, overlap);
     }
+
+    ResolveOverlap(gain, offset, overlap);
 }
 
 void DataProcessing::ResolveOverlap(Tone &tone, const Tone &other, bool &overlap)

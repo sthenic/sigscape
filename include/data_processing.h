@@ -112,6 +112,7 @@ private:
     {
         Tone() = default;
         Tone(const FrequencyDomainRecord &record, double frequency, size_t nof_skirt_bins);
+        std::string Stringify() const;
 
         /* Get the power in decibels. */
         double PowerInDecibels() { return 10.0 * std::log10(power); };
@@ -129,6 +130,7 @@ private:
         double idx_fraction;
         size_t idx_low;
         size_t idx_high;
+        bool overlap;
         std::vector<double> values;
     };
 
@@ -165,16 +167,16 @@ private:
 
     /* Resolve overlaps between the harmonics and the other spectral components. */
     void ResolveHarmonicOverlaps(const Tone &dc, const Tone &fundamental,
-                                 std::vector<Tone> &harmonics, bool &overlap);
+                                 std::vector<Tone> &harmonics);
 
     /* Resolve overlaps between the interleaving spurs and the other spectral components. */
     void ResolveInterleavingSpurOverlaps(const Tone &dc, const Tone &fundamental,
                                          const std::vector<Tone> &harmonics, Tone &gain,
-                                         Tone &offset, bool &overlap);
+                                         Tone &offset);
 
     /* Resolve overlap between two tones. If `tone` and `other` overlap, the
        overlapping bins in `tone` will be set to zero. */
-    void ResolveOverlap(Tone &tone, const Tone &other, bool &overlap);
+    void ResolveOverlap(Tone &tone, const Tone &other);
 
     /* Analyze the time domain data. */
     void AnalyzeTimeDomain(TimeDomainRecord &record);

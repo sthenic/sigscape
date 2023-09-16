@@ -54,9 +54,10 @@ struct Value
     };
 
     Value() = default;
-    Value(double value, const Properties &properties)
+    Value(double value, const Properties &properties, bool valid = true)
         : value(value)
         , properties(properties)
+        , valid(valid)
     {}
 
     /* Formatter returning a string for UI presentation. */
@@ -80,6 +81,7 @@ struct Value
 
     double value;
     Properties properties;
+    bool valid;
 };
 
 struct BaseRecord
@@ -96,15 +98,15 @@ struct BaseRecord
     virtual ~BaseRecord() = 0;
 
     /* Object-bound constructor of a value in the x-dimension. */
-    Value ValueX(double value) const
+    Value ValueX(double value, bool valid = true) const
     {
-        return Value(value, x_properties);
+        return Value(value, x_properties, valid);
     }
 
     /* Object-bound constructor of a value in the y-dimension. */
-    Value ValueY(double value) const
+    Value ValueY(double value, bool valid = true) const
     {
-        return Value(value, y_properties);
+        return Value(value, y_properties, valid);
     }
 
     std::vector<double> x;
@@ -364,6 +366,39 @@ struct FrequencyDomainRecord : public BaseRecord
         };
     }
 
+    bool AreAllMetricsValid()
+    {
+        const auto IsTupleValid = [](const std::tuple<Value, Value> &t) -> bool
+        {
+            const auto &[x, y] = t;
+            return x.valid && y.valid;
+        };
+
+        const auto IsVectorValid = [&](const std::vector<std::tuple<Value, Value>> &v) -> bool
+        {
+            bool result = true;
+            for (const auto &x : v)
+                result = result && IsTupleValid(x);
+            return result;
+        };
+
+        return IsTupleValid(fundamental)
+               && IsTupleValid(spur)
+               && IsTupleValid(gain_phase_spur)
+               && IsTupleValid(offset_spur)
+               && IsVectorValid(harmonics)
+               && snr.valid
+               && sinad.valid
+               && enob.valid
+               && sfdr_dbc.valid
+               && sfdr_dbfs.valid
+               && thd.valid
+               && npsd.valid
+               && noise_moving_average.valid
+               && size.valid
+               && rbw.valid;
+    }
+
     /* Values that can be readily displayed in the UI. */
     std::tuple<Value, Value> fundamental;
     std::tuple<Value, Value> spur;
@@ -380,7 +415,6 @@ struct FrequencyDomainRecord : public BaseRecord
     Value noise_moving_average;
     Value size;
     Value rbw;
-    bool overlap;
     double scale_factor;
     double energy_factor;
 };

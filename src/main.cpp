@@ -26,7 +26,7 @@ static void GlfwErrorCallback(int error, const char *description)
     Log::log->error("Glfw error {}: {}.", error, description);
 }
 
-#if defined (_WIN32)
+#if defined(_WIN32)
 struct ManagedGlfwImage : public GLFWimage
 {
     ManagedGlfwImage(const std::string &path)

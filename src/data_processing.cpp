@@ -27,6 +27,7 @@ DataProcessing::Tone::Tone(const FrequencyDomainRecord &record, double f, size_t
     , idx_fraction{}
     , idx_low{}
     , idx_high{}
+    , overlap{false}
     , values{}
 {
     /* We use the same approach as for the tone analysis identifying the
@@ -63,6 +64,14 @@ DataProcessing::Tone::Tone(const FrequencyDomainRecord &record, double f, size_t
     /* This power estimation does not take overlaps into account. This must
        be handled separately. */
     power = denominator;
+}
+
+std::string DataProcessing::Tone::Stringify() const
+{
+    /* For debug purposes. */
+    return fmt::format("Tone @ {}, [{:>4}, {:>4}] ({:>-6.1f}) {}.",
+                       Format::Metric(frequency, "{:>-6.2f}{}Hz", 1e6), idx_low, idx_high,
+                       static_cast<double>(idx_low) + idx_fraction, overlap);
 }
 
 DataProcessing::DataProcessing(void *handle, int index, int channel, const std::string &label,
@@ -336,8 +345,7 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
     PlaceHarmonics(fundamental, record, harmonics);
 
     auto &frequency_domain = record.frequency_domain;
-    frequency_domain->overlap = false;
-    ResolveHarmonicOverlaps(dc, fundamental, harmonics, frequency_domain->overlap);
+    ResolveHarmonicOverlaps(dc, fundamental, harmonics);
 
     /* Reevaluate the power now that overlaps have been resolved. */
     double harmonic_distortion_power = 0.0;
@@ -346,7 +354,7 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
         harmonic_distortion_power += harmonic.UpdatePower();
         frequency_domain->harmonics.emplace_back(
             frequency_domain->ValueX(harmonic.frequency),
-            frequency_domain->ValueY(harmonic.PowerInDecibels())
+            frequency_domain->ValueY(harmonic.PowerInDecibels(), !harmonic.overlap)
         );
     }
 
@@ -354,20 +362,19 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
     Tone gain_phase_spur{};
     Tone offset_spur{};
     PlaceInterleavingSpurs(fundamental, record, gain_phase_spur, offset_spur);
-    ResolveInterleavingSpurOverlaps(dc, fundamental, harmonics, gain_phase_spur, offset_spur,
-                                    frequency_domain->overlap);
+    ResolveInterleavingSpurOverlaps(dc, fundamental, harmonics, gain_phase_spur, offset_spur);
 
     const double interleaving_spur_power = gain_phase_spur.UpdatePower() +
                                            offset_spur.UpdatePower();
 
     frequency_domain->gain_phase_spur = {
         frequency_domain->ValueX(gain_phase_spur.frequency),
-        frequency_domain->ValueY(gain_phase_spur.PowerInDecibels()),
+        frequency_domain->ValueY(gain_phase_spur.PowerInDecibels(), !gain_phase_spur.overlap),
     };
 
     frequency_domain->offset_spur = {
         frequency_domain->ValueX(offset_spur.frequency),
-        frequency_domain->ValueY(offset_spur.PowerInDecibels()),
+        frequency_domain->ValueY(offset_spur.PowerInDecibels(), !offset_spur.overlap),
     };
 
     /* We calculate the noise power by removing the power of the fundamental
@@ -391,7 +398,7 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
     /* TODO: Linear interpolation? */
     frequency_domain->fundamental = {
         frequency_domain->ValueX(fundamental.frequency),
-        frequency_domain->ValueY(fundamental.PowerInDecibels()),
+        frequency_domain->ValueY(fundamental.PowerInDecibels(), !fundamental.overlap),
     };
 
     frequency_domain->spur = {
@@ -406,9 +413,9 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
                                               interleaving_spur_power;
     frequency_domain->sinad.value = 10.0 * std::log10(fundamental.power / noise_and_distortion_power);
 
-    double sinad_for_enob = frequency_domain->sinad.value;
-    if (m_parameters.fullscale_enob)
-        sinad_for_enob = 10.0 * std::log10(1.0 / noise_and_distortion_power);
+    const double sinad_for_enob = m_parameters.fullscale_enob
+                                      ? 10.0 * std::log10(1.0 / noise_and_distortion_power)
+                                      : frequency_domain->sinad.value;
 
     frequency_domain->enob.value = (sinad_for_enob - 1.76) / 6.02;
 
@@ -613,7 +620,7 @@ void DataProcessing::PlaceInterleavingSpurs(const Tone &fundamental, const Proce
 }
 
 void DataProcessing::ResolveHarmonicOverlaps(const Tone &dc, const Tone &fundamental,
-                                             std::vector<Tone> &harmonics, bool &overlap)
+                                             std::vector<Tone> &harmonics)
 {
     /* Now we have to figure out if these tones overlap in any way. If they do,
        we mark the metrics as 'not trustworthy' but still perform the
@@ -628,49 +635,51 @@ void DataProcessing::ResolveHarmonicOverlaps(const Tone &dc, const Tone &fundame
             2. other harmonics. */
 
         /* TODO: Check against worst spur too? */
-        ResolveOverlap(harmonics[i], fundamental, overlap);
-        ResolveOverlap(harmonics[i], dc, overlap);
+        ResolveOverlap(harmonics[i], fundamental);
+        ResolveOverlap(harmonics[i], dc);
 
         /* When we check for overlap with the other harmonics, we swap the order
            around to prioritize keeping the power for lower index harmonics. */
         for (size_t j = i + 1; j < harmonics.size(); ++j)
-            ResolveOverlap(harmonics[j], harmonics[i], overlap);
+            ResolveOverlap(harmonics[j], harmonics[i]);
     }
 }
 
 void DataProcessing::ResolveInterleavingSpurOverlaps(const Tone &dc, const Tone &fundamental,
                                                      const std::vector<Tone> &harmonics, Tone &gain,
-                                                     Tone &offset, bool &overlap)
+                                                     Tone &offset)
 {
-    ResolveOverlap(gain, fundamental, overlap);
-    ResolveOverlap(offset, fundamental, overlap);
+    ResolveOverlap(gain, fundamental);
+    ResolveOverlap(offset, fundamental);
 
-    ResolveOverlap(gain, dc, overlap);
-    ResolveOverlap(offset, dc, overlap);
+    ResolveOverlap(gain, dc);
+    ResolveOverlap(offset, dc);
 
     for (const auto &harmonic : harmonics)
     {
-        ResolveOverlap(gain, harmonic, overlap);
-        ResolveOverlap(offset, harmonic, overlap);
+        ResolveOverlap(gain, harmonic);
+        ResolveOverlap(offset, harmonic);
     }
 
-    ResolveOverlap(gain, offset, overlap);
+    ResolveOverlap(gain, offset);
 }
 
-void DataProcessing::ResolveOverlap(Tone &tone, const Tone &other, bool &overlap)
+void DataProcessing::ResolveOverlap(Tone &tone, const Tone &other)
 {
     /* Set the overlapping bins to zero for the tone if there's an overlap. */
     if ((tone.idx_low >= other.idx_low) && (tone.idx_low <= other.idx_high))
     {
         for (size_t j = 0; j <= (other.idx_high - tone.idx_low) && j < tone.values.size(); ++j)
             tone.values.at(j) = 0;
-        overlap = true;
+
+        tone.overlap = true;
     }
     else if ((tone.idx_high <= other.idx_high) && (tone.idx_high >= other.idx_low))
     {
         for (size_t j = (other.idx_low - tone.idx_low); j < tone.values.size(); ++j)
             tone.values.at(j) = 0;
-        overlap = true;
+
+        tone.overlap = true;
     }
 }
 

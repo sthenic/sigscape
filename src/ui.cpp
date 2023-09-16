@@ -3291,11 +3291,11 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
 
             if (node_open)
             {
-                if (ui.record->frequency_domain->overlap)
+                if (!ui.record->frequency_domain->AreAllMetricsValid())
                 {
                     ImGui::SameLine();
                     ImGui::PushStyleColor(ImGuiCol_Button, COLOR_RED);
-                    ImGui::SmallButton("OVERLAP");
+                    ImGui::SmallButton("INVALID");
                     ImGui::PopStyleColor();
                 }
 

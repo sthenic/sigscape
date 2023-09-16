@@ -349,9 +349,11 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
 
     /* Reevaluate the power now that overlaps have been resolved. */
     double harmonic_distortion_power = 0.0;
+    size_t harmonic_distortion_bins = 0;
     for (auto &harmonic : harmonics)
     {
         harmonic_distortion_power += harmonic.UpdatePower();
+        harmonic_distortion_bins += harmonic.Bins();
         frequency_domain->harmonics.emplace_back(
             frequency_domain->ValueX(harmonic.frequency),
             frequency_domain->ValueY(harmonic.PowerInDecibels(), !harmonic.overlap)
@@ -366,6 +368,7 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
 
     const double interleaving_spur_power = gain_phase_spur.UpdatePower() +
                                            offset_spur.UpdatePower();
+    const size_t interleaving_spur_bins = gain_phase_spur.Bins() + offset_spur.Bins();
 
     frequency_domain->gain_phase_spur = {
         frequency_domain->ValueX(gain_phase_spur.frequency),
@@ -377,24 +380,6 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
         frequency_domain->ValueY(offset_spur.PowerInDecibels(), !offset_spur.overlap),
     };
 
-    /* We calculate the noise power by removing the power of the fundamental
-       tone and other spectral components from the total power.
-
-       Due to the way floating point numbers work, we may end up with a negative
-       number, or indeed zero (for a small FFT where the tones occupy the entire
-       spectrum). These values are disastrous for the upcoming calculations and
-       an indication that the overlapping tones have resulted in a spectrum
-       whose metrics shouldn't be trusted. We already signal that w/ the
-       'overlap' state, but here we cheat a bit and reassign the machine epsilon
-       as the noise power to allow the calculations to proceed and the record to
-       propagate, rather than to throw it all away. */
-
-    double noise_power = total_power - fundamental.power - dc.power - harmonic_distortion_power -
-                         interleaving_spur_power;
-
-    if (noise_power < std::numeric_limits<double>::epsilon())
-        noise_power = std::numeric_limits<double>::epsilon();
-
     /* TODO: Linear interpolation? */
     frequency_domain->fundamental = {
         frequency_domain->ValueX(fundamental.frequency),
@@ -405,6 +390,29 @@ void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<doub
         frequency_domain->ValueX(spur.frequency),
         frequency_domain->ValueY(spur.PowerInDecibels()),
     };
+
+    /* We calculate the noise power by removing the power of the fundamental
+       tone and other spectral components from the total power.
+
+       However, we can be put in a situation where overlapping tones, or not
+       enough bins left for a accurate estimate of the noise power, will result
+       in garbage values for the upcoming metric calculations. We signal this by
+       invalidating the corresponding metrics and take an early exit. */
+
+    const size_t nof_spur_bins = fundamental.Bins() + dc.Bins() + harmonic_distortion_bins +
+                                 interleaving_spur_bins;
+
+    const bool noise_valid = frequency_domain->AreAllMetricsValid() &&
+                             nof_spur_bins < frequency_domain->x.size() / 2;
+
+    if (!noise_valid)
+    {
+        frequency_domain->InvalidateNoiseMetrics();
+        return;
+    }
+
+    const double noise_power = total_power - fundamental.power - dc.power -
+                               harmonic_distortion_power - interleaving_spur_power;
 
     frequency_domain->snr.value = 10.0 * std::log10(fundamental.power / noise_power);
     frequency_domain->thd.value = 10.0 * std::log10(fundamental.power / harmonic_distortion_power);

@@ -115,13 +115,21 @@ private:
         std::string Stringify() const;
 
         /* Get the power in decibels. */
-        double PowerInDecibels() { return 10.0 * std::log10(power); };
+        double PowerInDecibels() const { return 10.0 * std::log10(power); }
         double UpdatePower()
         {
             power = 0.0;
             for (const auto &v : values)
                 power += v;
             return power;
+        }
+
+        size_t Bins() const
+        {
+            size_t result = 0;
+            for (const auto &v : values)
+                result += (v != 0.0) ? 1 : 0;
+            return result;
         }
 
         double power;

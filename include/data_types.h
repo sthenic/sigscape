@@ -399,6 +399,18 @@ struct FrequencyDomainRecord : public BaseRecord
                && rbw.valid;
     }
 
+    void InvalidateNoiseMetrics()
+    {
+        snr.valid = false;
+        sinad.valid = false;
+        enob.valid = false;
+        sfdr_dbc.valid = false;
+        sfdr_dbfs.valid = false;
+        thd.valid = false;
+        npsd.valid = false;
+        noise_moving_average.valid = false;
+    }
+
     /* Values that can be readily displayed in the UI. */
     std::tuple<Value, Value> fundamental;
     std::tuple<Value, Value> spur;

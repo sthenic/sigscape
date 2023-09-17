@@ -37,6 +37,7 @@ struct DataProcessingParameters
     bool convert_horizontal;
     bool convert_vertical;
     bool fullscale_enob;
+    bool fft_maximum_hold;
 };
 
 struct DataProcessingMessage
@@ -96,7 +97,7 @@ private:
     DataProcessingParameters m_parameters;
     std::deque<std::shared_ptr<FrequencyDomainRecord>> m_waterfall;
     std::deque<double> m_noise_moving_average;
-    FftMovingAverage m_fft_moving_average;
+    FftPreprocessing m_fft_preprocessing;
 
     template <typename T>
     static size_t NextPowerOfTwo(T i);

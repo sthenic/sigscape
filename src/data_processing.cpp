@@ -18,6 +18,7 @@ DataProcessingParameters::DataProcessingParameters()
     , convert_horizontal(true)
     , convert_vertical(true)
     , fullscale_enob(true)
+    , fft_maximum_hold(false)
 {}
 
 DataProcessing::Tone::Tone(const FrequencyDomainRecord &record, double f, size_t nof_skirt_bins)
@@ -87,7 +88,7 @@ DataProcessing::DataProcessing(void *handle, int index, int channel, const std::
     , m_parameters{}
     , m_waterfall{}
     , m_noise_moving_average{}
-    , m_fft_moving_average()
+    , m_fft_preprocessing()
 {
 }
 
@@ -492,8 +493,8 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
         return std::pow(2.0 * std::abs(value) / static_cast<double>(fft.size()), 2.0);
     };
 
-    /* Prepare the FFT moving average object to receive a new entry. */
-    m_fft_moving_average.PrepareNewEntry(fft.size());
+    /* Prepare the FFT preprocessing object to receive a new entry. */
+    m_fft_preprocessing.Prepare(fft.size());
 
     /* If we're performing the analysis with a fixed fundamental frequency, we
        start off by constructing that `Tone` object. */
@@ -510,7 +511,7 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
                revisit these bins in the loop below and thus recalculate these
                values. This obviously slightly suboptimal, but I think the code
                is clearer and the drawbacks are not that significant. */
-            double value = m_fft_moving_average.InsertAndAverage(i, FromComplex(fft[i]));
+            const double value = m_fft_preprocessing.Preprocess(i, FromComplex(fft[i]));
             fundamental.values.push_back(value * energy_factor);
         }
 
@@ -527,7 +528,7 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
         x[i] = static_cast<double>(i) * bin_range;
 
         /* Calculate the unscaled value. */
-        y[i] = m_fft_moving_average.InsertAndAverage(i, FromComplex(fft[i]));
+        y[i] = m_fft_preprocessing.Preprocess(i, FromComplex(fft[i]));
 
         /* We will always need the energy-accurate bin value for the calculations below. */
         const double y_power = y[i] * energy_factor;
@@ -733,12 +734,13 @@ void DataProcessing::ProcessMessages()
 
         case DataProcessingMessageId::SET_PROCESSING_PARAMETERS:
             m_parameters = std::move(message.processing);
-            m_fft_moving_average.SetNumberOfAverages(m_parameters.nof_fft_averages);
+            m_fft_preprocessing.SetParameters(m_parameters.nof_fft_averages,
+                                              m_parameters.fft_maximum_hold);
             m_noise_moving_average.clear();
             break;
 
         case DataProcessingMessageId::CLEAR_PROCESSING_MEMORY:
-            m_fft_moving_average.Clear();
+            m_fft_preprocessing.Clear();
             m_noise_moving_average.clear();
             break;
 
@@ -752,7 +754,7 @@ void DataProcessing::Clear()
 {
     m_waterfall.clear();
     m_noise_moving_average.clear();
-    m_fft_moving_average.Clear();
+    m_fft_preprocessing.Clear();
 }
 
 template <typename... Args>

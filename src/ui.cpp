@@ -839,8 +839,8 @@ void Ui::RenderLeft(float width, float height)
 
     RenderRecordFrameOptions(RECORD_FRAME_OPTIONS_POS, RECORD_FRAME_OPTIONS_SIZE);
 
-    ImVec2 PROCESSING_OPTIONS_POS(0.0f, RECORD_FRAME_OPTIONS_POS.y - 220.0f);
-    ImVec2 PROCESSING_OPTIONS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 220.0f);
+    ImVec2 PROCESSING_OPTIONS_POS(0.0f, RECORD_FRAME_OPTIONS_POS.y - 238.0f);
+    ImVec2 PROCESSING_OPTIONS_SIZE(width * FIRST_COLUMN_RELATIVE_WIDTH, 238.0f);
 
     if (m_collapsed.processing_options)
     {
@@ -2087,6 +2087,9 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
         m_processing_parameters.nof_fft_averages = static_cast<int>(1u << nof_fft_averages);
         push_parameters = true;
     }
+
+    if (ImGui::Checkbox("FFT maximum hold", &m_processing_parameters.fft_maximum_hold))
+        push_parameters = true;
 
     /* TODO: Right now, any visible time domain markers end up in incorrect
              positions when the x/y conversion is toggled. Just clear them for

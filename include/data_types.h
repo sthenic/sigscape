@@ -583,3 +583,58 @@ private:
     /* The number of averages (maximum size of the log). */
     size_t m_nof_averages;
 };
+
+class FftMaximumHold
+{
+public:
+    FftMaximumHold();
+
+    /* Delete copy constructors until we need them. */
+    FftMaximumHold(const FftMaximumHold &other) = delete;
+    FftMaximumHold &operator=(const FftMaximumHold &other) = delete;
+
+    /* Compare y[i] with what's currently in the memory and return the greater
+       of the two values. If y[i] is a new maximum, the memory is updated. */
+    double Compare(size_t i, double y);
+
+    /* Enable or disable the maximum hold. Disabling renders the `Compare`
+       operation into a no-op. */
+    void Enable(bool enable);
+
+    /* Clear the memory. */
+    void Clear();
+
+private:
+    /* We keep a log of the maximum values in a vector. */
+    std::vector<double> m_log;
+    bool m_enable;
+};
+
+class FftPreprocessing
+{
+public:
+    FftPreprocessing();
+
+    /* Delete copy constructors until we need them. */
+    FftPreprocessing(const FftPreprocessing &other) = delete;
+    FftPreprocessing &operator=(const FftPreprocessing &other) = delete;
+
+    /* Set the FFT preprocessing parameters. */
+    void SetParameters(size_t nof_averages, bool enable_max_hold);
+
+    /* This function must be called for each new FFT to prepare the
+       preprocessing pipeline to new data. Specifically, it's needed to
+       configure the bounds of the moving average. */
+    void Prepare(size_t size);
+
+    /* Preprocess the FFT value y[i], potentially running the value through the
+       moving average and the maximum hold, depending on the current configuration. */
+    double Preprocess(size_t i, double y);
+
+    /* Clear the preprocessing pipeline. */
+    void Clear();
+
+private:
+    FftMovingAverage m_moving_average;
+    FftMaximumHold m_maximum_hold;
+};

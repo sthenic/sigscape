@@ -35,6 +35,7 @@ void Generator::MainLoop()
 
     for (;;)
     {
+        auto start = std::chrono::high_resolution_clock::now();
         ADQGen4Record *record = NULL;
         int result = ReuseOrAllocateBuffer(record, m_parameters.record_length * sizeof(int16_t));
         if (result != SCAPE_EOK)
@@ -77,9 +78,12 @@ void Generator::MainLoop()
         timestamp += static_cast<uint64_t>(
             std::round(1.0 / (m_parameters.trigger_frequency * record->header->time_unit)));
 
+        const auto delta = (std::chrono::high_resolution_clock::now() - start).count();
+        const int remainder_us = std::max(wait_us - static_cast<int>(delta / 1e3), 0);
+
         /* We implement the sleep using the stop event to be able to immediately
            react to the event being set. */
-        if (m_should_stop.wait_for(std::chrono::microseconds(wait_us)) == std::future_status::ready)
+        if (m_should_stop.wait_for(std::chrono::microseconds(remainder_us)) == std::future_status::ready)
             break;
     }
 }

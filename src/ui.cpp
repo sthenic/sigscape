@@ -1974,6 +1974,7 @@ void Ui::RenderTools(const ImVec2 &position, const ImVec2 &size)
            color manipulation. However, that also means that we need to bind
            `this` to the function pointer we pass to render the tab's contents.
            We could also have used a macro. */
+        ImGui::SetNextItemWidth(-1.0f);
         TabItem("Markers", std::bind(&Ui::RenderMarkers, this));
         TabItem("Memory", std::bind(&Ui::RenderMemory, this));
         TabItem("Sensors", std::bind(&Ui::RenderSensors, this), IsAnySensorError());

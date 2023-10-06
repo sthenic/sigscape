@@ -179,6 +179,7 @@ private:
     bool m_should_auto_fit_time_domain;
     bool m_should_auto_fit_frequency_domain;
     bool m_should_auto_fit_waterfall;
+    bool m_should_save_sensors_to_file;
     bool m_popup_add_python_script;
     struct
     {
@@ -194,6 +195,7 @@ private:
     bool IsAnySolo() const;
     bool IsAnySensorError() const;
     bool IsAnyBootError() const;
+    bool IsAnySensorPlotted() const;
 
     void IdentifyDigitizers();
     void PushMessage(const DigitizerMessage &message, bool only_selected = true);
@@ -274,6 +276,7 @@ private:
     static void RenderHeaderButtons(ChannelUiState &ui);
 
     void CopyFreqencyDomainMetricsToClipboard(const ProcessedRecord *processed_record);
+    void SaveSensorsToFile(const std::filesystem::path &path);
 
     void RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size);

@@ -167,6 +167,7 @@ Ui::Ui()
     , m_should_auto_fit_time_domain(true)
     , m_should_auto_fit_frequency_domain(true)
     , m_should_auto_fit_waterfall(true)
+    , m_should_save_sensors_to_file(false)
     , m_popup_add_python_script(false)
     , m_libadq{}
     , m_file_browser(ImGuiFileBrowserFlags_EnterNewFilename | ImGuiFileBrowserFlags_CreateNewDir |
@@ -334,7 +335,6 @@ bool Ui::IsAnySolo() const
 
 bool Ui::IsAnySensorError() const
 {
-    bool result = false;
     for (const auto &digitizer : m_digitizers)
     {
         if (!digitizer.ui.is_selected)
@@ -345,19 +345,16 @@ bool Ui::IsAnySensorError() const
             for (const auto &[sensor_id, sensor] : group.sensors)
             {
                 if (sensor.record.status != 0)
-                {
-                    result = true;
-                    break;
-                }
+                    return true;
             }
         }
     }
-    return result;
+
+    return false;
 }
 
 bool Ui::IsAnyBootError() const
 {
-    bool result = false;
     for (const auto &digitizer : m_digitizers)
     {
         if (!digitizer.ui.is_selected)
@@ -366,13 +363,31 @@ bool Ui::IsAnyBootError() const
         for (const auto &boot_entry : digitizer.ui.boot_status.boot_entries)
         {
             if (boot_entry.status != 0)
+                return true;
+        }
+    }
+
+    return false;
+}
+
+bool Ui::IsAnySensorPlotted() const
+{
+    for (const auto &digitizer : m_digitizers)
+    {
+        if (!digitizer.ui.is_selected)
+            continue;
+
+        for (const auto &[group_id, group] : digitizer.ui.sensor_groups)
+        {
+            for (const auto &[sensor_id, sensor] : group.sensors)
             {
-                result = true;
-                break;
+                if (sensor.is_plotted)
+                    return true;
             }
         }
     }
-    return result;
+
+    return false;
 }
 
 void Ui::IdentifyDigitizers()
@@ -867,6 +882,20 @@ void Ui::RenderPopups()
     if (m_popup_add_python_script)
         RenderPopupAddPythonScript();
 
+    if (m_should_save_sensors_to_file)
+    {
+        m_file_browser.Display();
+        if (m_file_browser.HasSelected())
+        {
+            SaveSensorsToFile(m_file_browser.GetSelected());
+            m_should_save_sensors_to_file = false;
+        }
+        else if (!m_file_browser.IsOpened())
+        {
+            m_should_save_sensors_to_file = false;
+        }
+    }
+
     for (size_t i = 0; i < m_digitizers.size(); ++i)
     {
         if (m_digitizers[i].ui.popup_initialize_would_overwrite)
@@ -881,6 +910,10 @@ void Ui::RenderPopups()
                 if (m_file_browser.HasSelected())
                 {
                     chui.SaveToFile(m_file_browser.GetSelected());
+                    chui.should_save_to_file = false;
+                }
+                else if (!m_file_browser.IsOpened())
+                {
                     chui.should_save_to_file = false;
                 }
             }
@@ -1549,7 +1582,11 @@ void Ui::RenderSensorGroup(SensorGroupUiState &group, bool is_first)
         if (ImGui::MenuItem("Plot"))
         {
             for (auto &[sensor_id, sensor] : group.sensors)
+            {
+                if (sensor.record.status != 0)
+                    continue;
                 sensor.is_plotted = true;
+            }
         }
         ImGui::EndPopup();
     }
@@ -1639,6 +1676,10 @@ void Ui::RenderSensors()
                     2 * ImGui::GetStyle().ItemInnerSpacing.x -
                     ImGui::CalcTextSize("Unplot").x);
 
+    auto enable = IsAnySensorPlotted();
+    if (!enable)
+        ImGui::BeginDisabled();
+
     if (ImGui::SmallButton("Unplot"))
     {
         for (auto &[group_id, group] : ui->sensor_groups)
@@ -1647,6 +1688,9 @@ void Ui::RenderSensors()
                 sensor.is_plotted = false;
         }
     }
+
+    if (!enable)
+        ImGui::EndDisabled();
 
     ImGui::Separator();
 
@@ -2748,6 +2792,28 @@ void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
 
         if (ImGui::BeginTabItem("Sensors"))
         {
+            if (ImGui::BeginPopupContextItem())
+            {
+                auto enabled = IsAnySensorPlotted();
+                if (!enabled)
+                    ImGui::BeginDisabled();
+
+                if (ImGui::MenuItem("Save to file..."))
+                {
+                    /* Open the file browsing dialog with a prefilled filename for fast saving. */
+                    m_should_save_sensors_to_file = true;
+                    m_file_browser.SetTitle("Save plotted sensor data to file...");
+                    m_file_browser.SetTypeFilters({".json"});
+                    m_file_browser.Open();
+                    m_file_browser.SetInputName(fmt::format("sensors_{}.json", NowAsIso8601()));
+                }
+
+                if (!enabled)
+                    ImGui::EndDisabled();
+
+                ImGui::EndPopup();
+            }
+
             RenderSensorPlot();
             ImGui::EndTabItem();
         }
@@ -3103,6 +3169,48 @@ void Ui::CopyFreqencyDomainMetricsToClipboard(const ProcessedRecord *processed_r
     ImGui::LogText("TIo,%s,%s\n", std::get<0>(record->offset_spur).FormatCsv().c_str(),
                                   std::get<1>(record->offset_spur).FormatCsv().c_str());
     ImGui::LogFinish();
+}
+
+void Ui::SaveSensorsToFile(const std::filesystem::path &path)
+{
+    /* TODO: Prevent saving if the existing extension is not '.json'? */
+    /* TODO: Popup if the file already exists? */
+
+    /* Append '.json' if needed. */
+    std::filesystem::path lpath(path);
+    if (!lpath.has_extension())
+        lpath.replace_extension(".json");
+
+    nlohmann::json json;
+
+    for (const auto &digitizer : m_digitizers)
+    {
+        for (const auto &[group_id, group] : digitizer.ui.sensor_groups)
+        {
+            for (const auto &[sensor_id, sensor] : group.sensors)
+            {
+                if (!sensor.is_plotted)
+                    continue;
+
+                json[digitizer.ui.identifier][group.label][sensor.label]["x"]["data"] = sensor.record.x;
+                json[digitizer.ui.identifier][group.label][sensor.label]["x"]["unit"] = sensor.record.x_properties.unit;
+                json[digitizer.ui.identifier][group.label][sensor.label]["y"]["data"] = sensor.record.y;
+                json[digitizer.ui.identifier][group.label][sensor.label]["y"]["unit"] = sensor.record.y_properties.unit;
+            }
+        }
+    }
+
+    std::ofstream ofs(lpath, std::ios::trunc);
+    if (ofs.fail())
+    {
+        Log::log->error("Failed to open file '{}'.", lpath.string());
+        return;
+    }
+
+    ofs << json.dump(4).c_str() << "\n";
+    ofs.close();
+
+    Log::log->info("Saved file '{}'.", lpath.string());
 }
 
 void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)

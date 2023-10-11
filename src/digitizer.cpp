@@ -528,16 +528,19 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
     case DigitizerMessageId::SET_INTERNAL_REFERENCE:
         ConfigureInternalReference();
         SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+        EmitConstantParameters();
         break;
 
     case DigitizerMessageId::SET_EXTERNAL_REFERENCE:
         ConfigureExternalReference();
         SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+        EmitConstantParameters();
         break;
 
     case DigitizerMessageId::SET_EXTERNAL_CLOCK:
         ConfigureExternalClock();
         SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+        EmitConstantParameters();
         break;
 
     case DigitizerMessageId::DEFAULT_ACQUISITION:
@@ -642,6 +645,30 @@ void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &messag
     case DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
         StopDataAcquisition();
         SetParameters(m_parameters.clock_system, DigitizerMessageId::CLEAN_CLOCK_SYSTEM_PARAMETERS);
+        SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+        EmitConstantParameters();
+        StartDataAcquisition();
+        break;
+
+    case DigitizerMessageId::SET_INTERNAL_REFERENCE:
+        StopDataAcquisition();
+        ConfigureInternalReference();
+        SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+        EmitConstantParameters();
+        StartDataAcquisition();
+        break;
+
+    case DigitizerMessageId::SET_EXTERNAL_REFERENCE:
+        StopDataAcquisition();
+        ConfigureExternalReference();
+        SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+        EmitConstantParameters();
+        StartDataAcquisition();
+        break;
+
+    case DigitizerMessageId::SET_EXTERNAL_CLOCK:
+        StopDataAcquisition();
+        ConfigureExternalClock();
         SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
         EmitConstantParameters();
         StartDataAcquisition();

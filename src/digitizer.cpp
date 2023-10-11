@@ -960,18 +960,17 @@ void Digitizer::EmitConstantParameters()
 
 void Digitizer::InitializeFileWatchers()
 {
-    auto MakeLowercase = [](unsigned char c){ return static_cast<char>(std::tolower(c)); };
+    auto MakeLowercase = [](char c) { return static_cast<char>(std::tolower(c)); };
 
-    std::string serial_number(m_constant.serial_number);
-    std::transform(serial_number.begin(), serial_number.end(), serial_number.begin(),
-                   MakeLowercase);
+    auto identifier = fmt::format("{}_{}", m_constant.serial_number, m_constant.firmware.name);
+    std::transform(identifier.begin(), identifier.end(), identifier.begin(), MakeLowercase);
 
     /* Creating new file watchers will destroy the old ones (correctly stopping the threads). */
     m_watchers.top = std::make_unique<FileWatcher>(
-        fmt::format("{}/parameters_top_{}.json", m_configuration_directory, serial_number));
+        fmt::format("{}/parameters_top_{}.json", m_configuration_directory, identifier));
 
     m_watchers.clock_system = std::make_unique<FileWatcher>(
-        fmt::format("{}/parameters_clock_system_{}.json", m_configuration_directory, serial_number));
+        fmt::format("{}/parameters_clock_system_{}.json", m_configuration_directory, identifier));
 
     m_parameters.top = std::make_shared<std::string>("");
     m_parameters.clock_system = std::make_shared<std::string>("");

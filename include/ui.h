@@ -116,19 +116,34 @@ private:
         std::vector<BootEntry> boot_entries;
     };
 
+    /* Forward declaration to let a command store an action affecting the UI state. */
+    struct DigitizerUiState;
+    struct CommandUiState
+    {
+        CommandUiState(
+            const DigitizerMessage &message,
+            std::function<void(DigitizerUiState *ui)> Preamble = [](auto) {});
+
+        void MaybeRestoreColor();
+
+        static constexpr int RESTORE_COLOR_MS = 2000;
+        std::chrono::high_resolution_clock::time_point timestamp;
+        std::function<void(DigitizerUiState *ui)> Preamble;
+        const DigitizerMessage message;
+        ImVec4 color;
+    };
+
     /* Representation of a digitizer's state in the UI. */
     struct DigitizerUiState
     {
         DigitizerUiState();
 
-        struct ADQConstantParameters constant;
+        ADQConstantParameters constant;
         std::string identifier;
         std::string state;
-        std::string event; /* TODO: Make this into a queue? */
+        std::string event;
         ImVec4 state_color;
         ImVec4 event_color;
-        ImVec4 set_top_color;
-        ImVec4 set_clock_system_color;
         bool popup_initialize_would_overwrite;
         bool is_selected;
         float dram_fill;
@@ -136,6 +151,7 @@ private:
         BootStatusUiState boot_status;
         std::map<uint32_t, SensorGroupUiState> sensor_groups;
         std::vector<ChannelUiState> channels;
+        std::map<std::string, CommandUiState> commands;
     };
 
     /* Representation of a digitizer in the UI. */
@@ -221,8 +237,6 @@ private:
     void RenderPythonCommandPalette(bool enable);
     void RenderDefaultCommandPalette(bool enable);
     void RenderCommandPalette(const ImVec2 &position, const ImVec2 &size);
-    void RenderSetTopParametersButton(const ImVec2 &size);
-    void RenderSetClockSystemParametersButton(const ImVec2 &size);
     void RenderTools(const ImVec2 &position, const ImVec2 &size);
     void RenderMarkers();
     void RenderMemory();
@@ -238,6 +252,7 @@ private:
     void MarkerTree(Markers &markers, bool inverse_delta);
 
     ChannelUiState *GetSelectedChannel();
+    std::vector<DigitizerUi *> GetSelectedDigitizers();
     std::vector<std::tuple<size_t, size_t, ChannelUiState *>> FilterUiStates(); /* FIXME: References here instead of pointers? */
     static void GetUnitsPerDivision(const std::string &title, UnitsPerDivision &units_per_division);
     static void RenderUnitsPerDivision(const std::string &str);

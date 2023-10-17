@@ -7,6 +7,7 @@
 #include "nlohmann/json.hpp"
 #include "embedded_python.h"
 #include "screenshot.h"
+#include "commands.h"
 #include <cinttypes>
 #include <cmath>
 #include <ctime>
@@ -126,6 +127,27 @@ Ui::SensorGroupUiState::SensorGroupUiState(const std::string &label,
         SensorGroupUiState::sensors.try_emplace(sensor.id, sensor.label);
 }
 
+Ui::CommandUiState::CommandUiState(
+    const DigitizerMessage &message,
+    std::function<void(DigitizerUiState *ui)> Preamble)
+    : timestamp()
+    , Preamble(Preamble)
+    , message(message)
+    , color{ImGui::GetStyleColorVec4(ImGuiCol_Button)}
+{
+}
+
+void Ui::CommandUiState::MaybeRestoreColor()
+{
+    if (color == ImGui::GetStyleColorVec4(ImGuiCol_Button))
+        return;
+
+    auto now = std::chrono::high_resolution_clock::now();
+    auto delta_ms = static_cast<double>((now - timestamp).count()) / 1e6;
+    if (static_cast<int>(delta_ms) > RESTORE_COLOR_MS)
+        color = ImGui::GetStyleColorVec4(ImGuiCol_Button);
+}
+
 Ui::DigitizerUiState::DigitizerUiState()
     : constant{}
     , identifier("Unknown")
@@ -133,15 +155,41 @@ Ui::DigitizerUiState::DigitizerUiState()
     , event("")
     , state_color(COLOR_GREEN)
     , event_color(COLOR_GREEN)
-    , set_top_color(ImGui::GetStyleColorVec4(ImGuiCol_Button))
-    , set_clock_system_color(ImGui::GetStyleColorVec4(ImGuiCol_Button))
     , popup_initialize_would_overwrite(false)
     , is_selected(false)
     , dram_fill(0.0f)
     , boot_status()
     , sensor_groups{}
     , channels{}
+    , commands{}
 {
+    /* The order in which the commands are displayed is static and determined by
+       the UI rendering function. When a button is pressed to execute a command,
+       we look up the matching entry in this map to figure out what to do. */
+    commands.emplace(
+        COMMAND_START, CommandUiState{
+                           DigitizerMessageId::START_ACQUISITION,
+                           [](auto ui) {
+                               for (auto &channel : ui->channels)
+                                   channel.frame.Clear();
+                           },
+                       });
+
+    commands.emplace(COMMAND_STOP, DigitizerMessageId::STOP_ACQUISITION);
+    commands.emplace(COMMAND_SET_TOP, DigitizerMessageId::SET_TOP_PARAMETERS);
+    commands.emplace(COMMAND_SET_CLOCK, DigitizerMessageId::GET_TOP_PARAMETERS);
+    commands.emplace(COMMAND_FORCE, DigitizerMessageId::FORCE_ACQUISITION);
+    commands.emplace(COMMAND_SET_CLOCK_SYSTEM, DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS);
+    commands.emplace(COMMAND_INITIALIZE, DigitizerMessageId::INITIALIZE_PARAMETERS);
+    commands.emplace(COMMAND_VALIDATE, DigitizerMessageId::VALIDATE_PARAMETERS);
+    commands.emplace(COMMAND_DEFAULT_ACQUISITION, DigitizerMessageId::DEFAULT_ACQUISITION);
+    commands.emplace(COMMAND_SCALE_DOUBLE, DigitizerMessage{DigitizerMessageId::SCALE_RECORD_LENGTH, 2.0});
+    commands.emplace(COMMAND_SCALE_HALF, DigitizerMessage{DigitizerMessageId::SCALE_RECORD_LENGTH, 0.5});
+    commands.emplace(COMMAND_INTERNAL_REFERENCE, DigitizerMessageId::SET_INTERNAL_REFERENCE);
+    commands.emplace(COMMAND_EXTERNAL_REFERENCE, DigitizerMessageId::SET_EXTERNAL_REFERENCE);
+    commands.emplace(COMMAND_EXTERNAL_CLOCK, DigitizerMessageId::SET_EXTERNAL_CLOCK);
+    commands.emplace(COMMAND_COPY_TOP, DigitizerMessageId::GET_TOP_PARAMETERS_FILENAME);
+    commands.emplace(COMMAND_COPY_CLOCK, DigitizerMessageId::GET_CLOCK_SYSTEM_PARAMETERS_FILENAME);
 }
 
 Ui::Ui()
@@ -247,6 +295,12 @@ void Ui::Render(float width, float height)
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+
+    for (auto &digitizer : m_digitizers)
+    {
+        for (auto &[_, command] : digitizer.ui.commands)
+            command.MaybeRestoreColor();
+    }
 
     HandleHotplugEvents();
     HandleMessages();
@@ -509,18 +563,28 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
         digitizer.ui.constant = std::move(message.constant_parameters);
         break;
 
-    case DigitizerMessageId::CONFIGURATION:
+    case DigitizerMessageId::EVENT_ERROR:
+        digitizer.ui.event = "ERROR";
+        digitizer.ui.event_color = COLOR_RED;
+        break;
+
+    case DigitizerMessageId::EVENT_CLEAR:
+        digitizer.ui.event = "";
+        break;
+
+    case DigitizerMessageId::EVENT_OVERFLOW:
+        digitizer.ui.event = "OVERFLOW";
+        digitizer.ui.event_color = COLOR_RED;
+        break;
+
+    case DigitizerMessageId::EVENT_CONFIGURATION:
         digitizer.ui.event = "CONFIGURATION";
         digitizer.ui.event_color = COLOR_WOW_TAN;
         break;
 
-    case DigitizerMessageId::CLEAR:
-        digitizer.ui.event = "";
-        break;
-
-    case DigitizerMessageId::ERR:
-        digitizer.ui.event = "ERROR";
-        digitizer.ui.event_color = COLOR_RED;
+    case DigitizerMessageId::EVENT_NO_ACTIVITY:
+        digitizer.ui.event = "NO ACTIVITY";
+        digitizer.ui.event_color = COLOR_WOW_PURPLE;
         break;
 
     case DigitizerMessageId::STATE:
@@ -546,21 +610,13 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
         }
         break;
 
-    case DigitizerMessageId::DIRTY_TOP_PARAMETERS:
-        digitizer.ui.set_top_color = COLOR_ORANGE;
-        digitizer.interface->PushMessage(DigitizerMessageId::SET_TOP_PARAMETERS);
+    case DigitizerMessageId::CHANGED_TOP_PARAMETERS:
+        digitizer.ui.commands.at(COMMAND_SET_TOP).color = COLOR_ORANGE;
+        digitizer.interface->EmplaceMessage(DigitizerMessageId::SET_TOP_PARAMETERS, "Set");
         break;
 
-    case DigitizerMessageId::DIRTY_CLOCK_SYSTEM_PARAMETERS:
-        digitizer.ui.set_clock_system_color = COLOR_ORANGE;
-        break;
-
-    case DigitizerMessageId::CLEAN_TOP_PARAMETERS:
-        digitizer.ui.set_top_color = COLOR_GREEN;
-        break;
-
-    case DigitizerMessageId::CLEAN_CLOCK_SYSTEM_PARAMETERS:
-        digitizer.ui.set_clock_system_color = COLOR_GREEN;
+    case DigitizerMessageId::CHANGED_CLOCK_SYSTEM_PARAMETERS:
+        digitizer.ui.commands.at(COMMAND_SET_CLOCK_SYSTEM).color = COLOR_ORANGE;
         break;
 
     case DigitizerMessageId::INITIALIZE_WOULD_OVERWRITE:
@@ -580,11 +636,6 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
         digitizer.ui.boot_status.boot_entries = std::move(message.boot_entries);
         break;
 
-    case DigitizerMessageId::NO_ACTIVITY:
-        digitizer.ui.event = "NO ACTIVITY";
-        digitizer.ui.event_color = COLOR_WOW_PURPLE;
-        break;
-
     case DigitizerMessageId::PARAMETERS_FILENAME:
         ImGui::LogToClipboard();
         ImGui::LogText("%s", message.str.c_str());
@@ -595,15 +646,21 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
         digitizer.ui.dram_fill = static_cast<float>(message.dvalue);
         break;
 
-    case DigitizerMessageId::OVF:
-        digitizer.ui.event = "OVERFLOW";
-        digitizer.ui.event_color = COLOR_RED;
-        break;
-
     default:
-        /* These are not expected as a message from a digitizer thread. */
-        Log::log->error("Unsupported message id '{}' from digitizer {}.", message.id,
-                        digitizer.ui.identifier);
+        /* If we get any other message id, it's a command we sent to the
+           digitizer earlier which has executed and is now giving us the result
+           from that operation. A vast majority of the commands are tied to a
+           button in the UI so we signal success/fail by changing the color of
+           the UI element. */
+        for (auto &[_, command] : digitizer.ui.commands)
+        {
+            if (message.id == command.message.id)
+            {
+                command.color = (SCAPE_EOK == message.result) ? COLOR_GREEN : COLOR_RED;
+                command.timestamp = std::chrono::high_resolution_clock::now();
+            }
+        }
+
         break;
     }
 }
@@ -1188,83 +1245,105 @@ void Ui::RenderDefaultCommandPalette(bool enable)
     if (!enable)
         ImGui::BeginDisabled();
 
-    /* First row */
-    if (ImGui::Button("Start", COMMAND_PALETTE_BUTTON_SIZE))
+    auto CommandButton = [&](const std::string &label, const ImVec2 &size)
     {
-        /* FIXME: Clean this up w/ a function. */
-        for (auto &digitizer : m_digitizers)
+        const auto digitizers = GetSelectedDigitizers();
+        auto color = ImGui::GetStyleColorVec4(ImGuiCol_Button);
+        auto hover_color = ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered);
+        auto active_color = ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive);
+
+        if (digitizers.size() > 0)
         {
-            for (auto &channel : digitizer.ui.channels)
-                channel.frame.Clear();
+            /* If we have selected a digitizer, set the button colors to the one
+               defined by the matching command state. */
+            const auto &commands = digitizers.front()->ui.commands;
+            if (const auto match = commands.find(label); match != commands.end())
+            {
+                color = match->second.color;
+                hover_color = color;
+                hover_color.w = 0.8f;
+                active_color = color;
+                active_color.w = 0.6f;
+            }
         }
-        PushMessage(DigitizerMessageId::START_ACQUISITION);
-    }
+
+        ImGui::PushStyleColor(ImGuiCol_Button, color);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, hover_color);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, active_color);
+
+        if (ImGui::Button(label.c_str(), size))
+        {
+            for (const auto digitizer : digitizers)
+            {
+                const auto &commands = digitizer->ui.commands;
+                if (const auto match = commands.find(label); match != commands.end())
+                {
+                    /* Execute any preamble and then push the message to the target digitizer. */
+                    const auto &command = match->second;
+                    command.Preamble(&digitizer->ui);
+                    digitizer->interface->PushMessage(command.message);
+                }
+            }
+        }
+
+        ImGui::PopStyleColor(3);
+    };
+
+    /* First row */
+    CommandButton(COMMAND_START, COMMAND_PALETTE_BUTTON_SIZE);
 
     ImGui::SameLine();
-    if (ImGui::Button("Stop", COMMAND_PALETTE_BUTTON_SIZE))
-        PushMessage(DigitizerMessageId::STOP_ACQUISITION);
+    CommandButton(COMMAND_STOP, COMMAND_PALETTE_BUTTON_SIZE);
 
     ImGui::SameLine();
-    RenderSetTopParametersButton(COMMAND_PALETTE_BUTTON_SIZE);
+    CommandButton(COMMAND_SET_TOP, COMMAND_PALETTE_BUTTON_SIZE);
 
     ImGui::SameLine();
-    if (ImGui::Button("Get", COMMAND_PALETTE_BUTTON_SIZE))
-        PushMessage(DigitizerMessageId::GET_TOP_PARAMETERS);
+    CommandButton(COMMAND_SET_CLOCK, COMMAND_PALETTE_BUTTON_SIZE);
 
     /* Second row */
     ImGui::BeginDisabled();
-    if (ImGui::Button("Force", COMMAND_PALETTE_BUTTON_SIZE))
-        PushMessage(DigitizerMessageId::FORCE_ACQUISITION);
+    CommandButton(COMMAND_FORCE, COMMAND_PALETTE_BUTTON_SIZE);
     ImGui::EndDisabled();
 
     ImGui::SameLine();
-    RenderSetClockSystemParametersButton(COMMAND_PALETTE_BUTTON_SIZE);
+    CommandButton(COMMAND_SET_CLOCK_SYSTEM, COMMAND_PALETTE_BUTTON_SIZE);
 
     ImGui::SameLine();
-    if (ImGui::Button("Initialize", COMMAND_PALETTE_BUTTON_SIZE))
-        PushMessage(DigitizerMessageId::INITIALIZE_PARAMETERS);
+    CommandButton(COMMAND_INITIALIZE, COMMAND_PALETTE_BUTTON_SIZE);
 
     ImGui::SameLine();
-    if (ImGui::Button("Validate", COMMAND_PALETTE_BUTTON_SIZE))
-        PushMessage(DigitizerMessageId::VALIDATE_PARAMETERS);
+    CommandButton(COMMAND_VALIDATE, COMMAND_PALETTE_BUTTON_SIZE);
 
     const auto FRAME_PADDING = ImGui::GetStyle().FramePadding;
     const ImVec2 TALL_BUTTON_SIZE{COMMAND_PALETTE_BUTTON_SIZE.x / 2 - FRAME_PADDING.x,
                                   COMMAND_PALETTE_BUTTON_SIZE.y};
 
-    if (ImGui::Button("32k\n15Hz", TALL_BUTTON_SIZE))
-        PushMessage(DigitizerMessageId::DEFAULT_ACQUISITION);
+    CommandButton(COMMAND_DEFAULT_ACQUISITION, TALL_BUTTON_SIZE);
 
     const ImVec2 SMALL_BUTTON_SIZE{COMMAND_PALETTE_BUTTON_SIZE.x / 2 - FRAME_PADDING.x,
                                    (COMMAND_PALETTE_BUTTON_SIZE.y - FRAME_PADDING.y) / 2};
     ImGui::SameLine();
     ImGui::BeginGroup();
-    if (ImGui::Button("x2", SMALL_BUTTON_SIZE))
-        PushMessage({DigitizerMessageId::SCALE_RECORD_LENGTH, 2.0});
-    if (ImGui::Button("/2", SMALL_BUTTON_SIZE))
-        PushMessage({DigitizerMessageId::SCALE_RECORD_LENGTH, 0.5});
+    CommandButton(COMMAND_SCALE_DOUBLE, SMALL_BUTTON_SIZE);
+    CommandButton(COMMAND_SCALE_HALF, SMALL_BUTTON_SIZE);
     ImGui::EndGroup();
 
     ImGui::SameLine();
-    if (ImGui::Button("Internal\nClock Ref.", COMMAND_PALETTE_BUTTON_SIZE))
-        PushMessage(DigitizerMessageId::SET_INTERNAL_REFERENCE);
+    CommandButton(COMMAND_INTERNAL_REFERENCE, COMMAND_PALETTE_BUTTON_SIZE);
 
     ImGui::SameLine();
-    if (ImGui::Button("External\nClock Ref.", COMMAND_PALETTE_BUTTON_SIZE))
-        PushMessage(DigitizerMessageId::SET_EXTERNAL_REFERENCE);
+    CommandButton(COMMAND_EXTERNAL_REFERENCE, COMMAND_PALETTE_BUTTON_SIZE);
 
     ImGui::SameLine();
-    if (ImGui::Button("External\nClock", COMMAND_PALETTE_BUTTON_SIZE))
-        PushMessage(DigitizerMessageId::SET_EXTERNAL_CLOCK);
+    CommandButton(COMMAND_EXTERNAL_CLOCK, COMMAND_PALETTE_BUTTON_SIZE);
 
     /* Third row */
     /* FIXME: Only first selected? */
-    if (ImGui::Button("Copy Top\nFilename", COMMAND_PALETTE_BUTTON_SIZE))
-        PushMessage(DigitizerMessageId::GET_TOP_PARAMETERS_FILENAME);
+    CommandButton(COMMAND_COPY_TOP, COMMAND_PALETTE_BUTTON_SIZE);
 
     ImGui::SameLine();
-    if (ImGui::Button("Copy Clock\nSystem\nFilename", COMMAND_PALETTE_BUTTON_SIZE))
-        PushMessage(DigitizerMessageId::GET_CLOCK_SYSTEM_PARAMETERS_FILENAME);
+    CommandButton(COMMAND_COPY_CLOCK, COMMAND_PALETTE_BUTTON_SIZE);
 
     if (!enable)
         ImGui::EndDisabled();
@@ -1320,48 +1399,6 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
     }
 
     ImGui::End();
-}
-
-void Ui::RenderSetTopParametersButton(const ImVec2 &size)
-{
-    ImVec4 color = ImGui::GetStyleColorVec4(ImGuiCol_Button);
-    for (auto &digitizer : m_digitizers)
-    {
-        if (!digitizer.ui.is_selected)
-            continue;
-
-        /* FIXME: Figure out color when multiple units are selected. Perhaps we
-                  need to store the state... */
-        color = digitizer.ui.set_top_color;
-        break;
-    }
-
-    ImGui::PushStyleColor(ImGuiCol_Button, color);
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, color);
-    if (ImGui::Button("Set", size))
-        PushMessage(DigitizerMessageId::SET_TOP_PARAMETERS);
-    ImGui::PopStyleColor(2);
-}
-
-void Ui::RenderSetClockSystemParametersButton(const ImVec2 &size)
-{
-    ImVec4 color = ImGui::GetStyleColorVec4(ImGuiCol_Button);
-    for (auto &digitizer : m_digitizers)
-    {
-        if (!digitizer.ui.is_selected)
-            continue;
-
-        /* FIXME: Figure out color when multiple units are selected. Perhaps we
-                  need to store the state... */
-        color = digitizer.ui.set_clock_system_color;
-        break;
-    }
-
-    ImGui::PushStyleColor(ImGuiCol_Button, color);
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, color);
-    if (ImGui::Button("Set Clock\nSystem", size))
-        PushMessage(DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS);
-    ImGui::PopStyleColor(2);
 }
 
 /* FIXME: Remove if no longer needed. */
@@ -2172,6 +2209,19 @@ Ui::ChannelUiState *Ui::GetSelectedChannel()
     }
 
     return NULL;
+}
+
+std::vector<Ui::DigitizerUi *> Ui::GetSelectedDigitizers()
+{
+    std::vector<DigitizerUi *> result{};
+
+    for (auto &digitizer : m_digitizers)
+    {
+        if (digitizer.ui.is_selected)
+            result.push_back(&digitizer);
+    }
+
+    return result;
 }
 
 void Ui::RenderRecordFrameOptions(const ImVec2 &position, const ImVec2 &size)
@@ -3105,8 +3155,8 @@ void Ui::RenderHeaderButtons(ChannelUiState &ui)
         auto button_color = COLOR_WOW_RED;
         button_color.w = 0.8f;
 
-        auto hovered_color = button_color;
-        hovered_color.w = 1.0f;
+        auto hover_color = button_color;
+        hover_color.w = 1.0f;
 
         auto active_color = button_color;
         active_color.w = 0.8f;
@@ -3115,7 +3165,7 @@ void Ui::RenderHeaderButtons(ChannelUiState &ui)
         if (lstate)
         {
             ImGui::PushStyleColor(ImGuiCol_Button, button_color);
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, hovered_color);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, hover_color);
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, active_color);
         }
 

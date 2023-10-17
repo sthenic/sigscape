@@ -18,24 +18,23 @@
 enum class DigitizerMessageId
 {
     /* Digitizer -> the world */
-    DIRTY_TOP_PARAMETERS,
-    DIRTY_CLOCK_SYSTEM_PARAMETERS,
-    CLEAN_TOP_PARAMETERS,
-    CLEAN_CLOCK_SYSTEM_PARAMETERS,
+    CHANGED_TOP_PARAMETERS,
+    CHANGED_CLOCK_SYSTEM_PARAMETERS,
     INITIALIZED,
     CONSTANT_PARAMETERS,
     STATE,
-    ERR,
-    CLEAR,
-    CONFIGURATION,
+    EVENT_ERROR,
+    EVENT_CLEAR,
+    EVENT_OVERFLOW,
+    EVENT_CONFIGURATION,
+    EVENT_NO_ACTIVITY,
     INITIALIZE_WOULD_OVERWRITE,
     SENSOR_TREE,
     BOOT_STATUS,
-    NO_ACTIVITY,
     PARAMETERS_FILENAME,
     DRAM_FILL,
-    OVF,
-    /* The world -> digitizer */
+    /* The world -> digitizer (command) */
+    /* Digitizer -> the world (execution result) */
     SET_INTERNAL_REFERENCE,
     SET_EXTERNAL_REFERENCE,
     SET_EXTERNAL_CLOCK,
@@ -174,6 +173,7 @@ struct DigitizerMessage
     DigitizerState state;
     std::string str;
     int ivalue;
+    int result;
     double dvalue;
     DataProcessingParameters processing_parameters;
     SensorTree sensor_tree;
@@ -267,12 +267,11 @@ private:
 
     void SetState(DigitizerState state);
 
-    void HandleMessageInNotInitialized(const struct DigitizerMessage &message);
-    void HandleMessageInInitialization(const struct DigitizerMessage &message);
-    void HandleMessageInIdle(const struct DigitizerMessage &message);
-    void HandleMessageInConfiguration(const struct DigitizerMessage &message);
-    void HandleMessageInAcquisition(const struct DigitizerMessage &message);
-    void HandleMessageInState(const struct DigitizerMessage &message);
+    void HandleMessageInNotInitialized(const DigitizerMessage &message);
+    void HandleMessageInInitialization(const DigitizerMessage &message);
+    void HandleMessageInIdle(const DigitizerMessage &message);
+    void HandleMessageInAcquisition(const DigitizerMessage &message);
+    void HandleMessageInState(const DigitizerMessage &message);
 
     void ConfigureInternalReference();
     void ConfigureExternalReference();
@@ -281,7 +280,7 @@ private:
     void CallPython(const std::string &module);
     void ScaleRecordLength(double factor);
     void ForceAcquisition();
-    void SetParameters(const std::shared_ptr<std::string> &str, DigitizerMessageId clean_id);
+    void SetParameters(const std::shared_ptr<std::string> &str);
     void InitializeParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher);
     void GetParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher);
     void EmitConstantParameters();
@@ -310,17 +309,11 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
         string_view name = "unknown";
         switch (id)
         {
-        case DigitizerMessageId::DIRTY_TOP_PARAMETERS:
-            name = "DIRTY_TOP_PARAMETERS";
+        case DigitizerMessageId::CHANGED_TOP_PARAMETERS:
+            name = "CHANGED_TOP_PARAMETERS";
             break;
-        case DigitizerMessageId::DIRTY_CLOCK_SYSTEM_PARAMETERS:
-            name = "DIRTY_CLOCK_SYSTEM_PARAMETERS";
-            break;
-        case DigitizerMessageId::CLEAN_TOP_PARAMETERS:
-            name = "CLEAN_TOP_PARAMETERS";
-            break;
-        case DigitizerMessageId::CLEAN_CLOCK_SYSTEM_PARAMETERS:
-            name = "CLEAN_CLOCK_SYSTEM_PARAMETERS";
+        case DigitizerMessageId::CHANGED_CLOCK_SYSTEM_PARAMETERS:
+            name = "CHANGED_CLOCK_SYSTEM_PARAMETERS";
             break;
         case DigitizerMessageId::INITIALIZED:
             name = "INITIALIZED";
@@ -331,14 +324,20 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
         case DigitizerMessageId::STATE:
             name = "STATE";
             break;
-        case DigitizerMessageId::ERR:
-            name = "ERROR";
+        case DigitizerMessageId::EVENT_ERROR:
+            name = "EVENT_ERROR";
             break;
-        case DigitizerMessageId::CLEAR:
-            name = "CLEAR";
+        case DigitizerMessageId::EVENT_CLEAR:
+            name = "EVENT_CLEAR";
             break;
-        case DigitizerMessageId::CONFIGURATION:
-            name = "CONFIGURATION";
+        case DigitizerMessageId::EVENT_OVERFLOW:
+            name = "EVENT_OVERFLOW";
+            break;
+        case DigitizerMessageId::EVENT_CONFIGURATION:
+            name = "EVENT_CONFIGURATION";
+            break;
+        case DigitizerMessageId::EVENT_NO_ACTIVITY:
+            name = "EVENT_NO_ACTIVITY";
             break;
         case DigitizerMessageId::INITIALIZE_WOULD_OVERWRITE:
             name = "INITIALIZE_WOULD_OVERWRITE";
@@ -349,17 +348,11 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
         case DigitizerMessageId::BOOT_STATUS:
             name = "BOOT_STATUS";
             break;
-        case DigitizerMessageId::NO_ACTIVITY:
-            name = "NO_ACTIVITY";
-            break;
         case DigitizerMessageId::PARAMETERS_FILENAME:
             name = "PARAMETERS_FILENAME";
             break;
         case DigitizerMessageId::DRAM_FILL:
             name = "DRAM_FILL";
-            break;
-        case DigitizerMessageId::OVF:
-            name = "OVF";
             break;
         case DigitizerMessageId::SET_INTERNAL_REFERENCE:
             name = "SET_INTERNAL_REFERENCE";

@@ -42,5 +42,7 @@ private:
 
     static int Callback(ImGuiInputTextCallbackData *data);
 };
-
 }
+
+static inline bool operator==(const ImVec2 &lhs, const ImVec2 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
+static inline bool operator==(const ImVec4 &lhs, const ImVec4 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z && lhs.w == rhs.w; }

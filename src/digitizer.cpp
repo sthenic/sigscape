@@ -156,7 +156,7 @@ void Digitizer::MainInitialization()
 void Digitizer::SignalError(const std::string &message)
 {
     Log::log->error(message);
-    m_read_queue.EmplaceWrite(DigitizerMessageId::ERR);
+    m_read_queue.EmplaceWrite(DigitizerMessageId::EVENT_ERROR);
 }
 
 void Digitizer::ProcessMessages()
@@ -169,9 +169,9 @@ void Digitizer::ProcessMessages()
 void Digitizer::ProcessWatcherMessages()
 {
     ProcessWatcherMessages(m_watchers.top, m_parameters.top,
-                           DigitizerMessageId::DIRTY_TOP_PARAMETERS, ADQ_PARAMETER_ID_TOP);
+                           DigitizerMessageId::CHANGED_TOP_PARAMETERS, ADQ_PARAMETER_ID_TOP);
     ProcessWatcherMessages(m_watchers.clock_system, m_parameters.clock_system,
-                           DigitizerMessageId::DIRTY_CLOCK_SYSTEM_PARAMETERS,
+                           DigitizerMessageId::CHANGED_CLOCK_SYSTEM_PARAMETERS,
                            ADQ_PARAMETER_ID_CLOCK_SYSTEM);
 }
 
@@ -396,13 +396,13 @@ void Digitizer::CheckActivity()
 
     if (milliseconds_max > m_no_activity_threshold_ms + ACTIVITY_HYSTERESIS_MS)
     {
-        m_read_queue.EmplaceWrite(DigitizerMessageId::NO_ACTIVITY);
+        m_read_queue.EmplaceWrite(DigitizerMessageId::EVENT_NO_ACTIVITY);
         m_no_activity_threshold_ms = milliseconds_max;
         m_notified_no_activity = true;
     }
     else if (m_notified_no_activity && milliseconds_max + ACTIVITY_HYSTERESIS_MS < m_no_activity_threshold_ms)
     {
-        m_read_queue.EmplaceWrite(DigitizerMessageId::CLEAR);
+        m_read_queue.EmplaceWrite(DigitizerMessageId::EVENT_CLEAR);
         m_notified_no_activity = false;
     }
 }
@@ -436,7 +436,7 @@ void Digitizer::CheckStatus()
             ADQ_GetStatus(m_id.handle, m_id.index, ADQ_STATUS_ID_OVERFLOW, &overflow_status))
         {
             if (overflow_status.overflow)
-                m_read_queue.EmplaceWrite(DigitizerMessageId::OVF);
+                m_read_queue.EmplaceWrite(DigitizerMessageId::EVENT_OVERFLOW);
         }
     }
 }
@@ -502,17 +502,17 @@ void Digitizer::SetState(DigitizerState state)
     m_read_queue.EmplaceWrite(DigitizerMessageId::STATE, state);
 }
 
-void Digitizer::HandleMessageInNotInitialized(const struct DigitizerMessage &message)
+void Digitizer::HandleMessageInNotInitialized(const DigitizerMessage &message)
 {
     ThrowDigitizerException("Unsupported action in NOT INITIALIZED '{}'.", message.id);
 }
 
-void Digitizer::HandleMessageInInitialization(const struct DigitizerMessage &message)
+void Digitizer::HandleMessageInInitialization(const DigitizerMessage &message)
 {
     ThrowDigitizerException("Unsupported action in INITIALIZATION '{}'.", message.id);
 }
 
-void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
+void Digitizer::HandleMessageInIdle(const DigitizerMessage &message)
 {
     /* Any exception propagates to the upper layers to create an error message. */
     switch (message.id)
@@ -522,24 +522,24 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
         break;
 
     case DigitizerMessageId::SET_TOP_PARAMETERS:
-        SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+        SetParameters(m_parameters.top);
         break;
 
     case DigitizerMessageId::SET_INTERNAL_REFERENCE:
         ConfigureInternalReference();
-        SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+        SetParameters(m_parameters.top);
         EmitConstantParameters();
         break;
 
     case DigitizerMessageId::SET_EXTERNAL_REFERENCE:
         ConfigureExternalReference();
-        SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+        SetParameters(m_parameters.top);
         EmitConstantParameters();
         break;
 
     case DigitizerMessageId::SET_EXTERNAL_CLOCK:
         ConfigureExternalClock();
-        SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+        SetParameters(m_parameters.top);
         EmitConstantParameters();
         break;
 
@@ -556,8 +556,8 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
         break;
 
     case DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
-        SetParameters(m_parameters.clock_system, DigitizerMessageId::CLEAN_CLOCK_SYSTEM_PARAMETERS);
-        SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+        SetParameters(m_parameters.clock_system);
+        SetParameters(m_parameters.top);
         EmitConstantParameters();
         break;
 
@@ -610,7 +610,7 @@ void Digitizer::HandleMessageInIdle(const struct DigitizerMessage &message)
     }
 }
 
-void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &message)
+void Digitizer::HandleMessageInAcquisition(const DigitizerMessage &message)
 {
     /* Any exception propagates to the upper layers to create an error message. */
     switch (message.id)
@@ -638,14 +638,14 @@ void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &messag
 
     case DigitizerMessageId::SET_TOP_PARAMETERS:
         StopDataAcquisition();
-        SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+        SetParameters(m_parameters.top);
         StartDataAcquisition();
         break;
 
     case DigitizerMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
         StopDataAcquisition();
-        SetParameters(m_parameters.clock_system, DigitizerMessageId::CLEAN_CLOCK_SYSTEM_PARAMETERS);
-        SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+        SetParameters(m_parameters.clock_system);
+        SetParameters(m_parameters.top);
         EmitConstantParameters();
         StartDataAcquisition();
         break;
@@ -653,7 +653,7 @@ void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &messag
     case DigitizerMessageId::SET_INTERNAL_REFERENCE:
         StopDataAcquisition();
         ConfigureInternalReference();
-        SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+        SetParameters(m_parameters.top);
         EmitConstantParameters();
         StartDataAcquisition();
         break;
@@ -661,7 +661,7 @@ void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &messag
     case DigitizerMessageId::SET_EXTERNAL_REFERENCE:
         StopDataAcquisition();
         ConfigureExternalReference();
-        SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+        SetParameters(m_parameters.top);
         EmitConstantParameters();
         StartDataAcquisition();
         break;
@@ -669,7 +669,7 @@ void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &messag
     case DigitizerMessageId::SET_EXTERNAL_CLOCK:
         StopDataAcquisition();
         ConfigureExternalClock();
-        SetParameters(m_parameters.top, DigitizerMessageId::CLEAN_TOP_PARAMETERS);
+        SetParameters(m_parameters.top);
         EmitConstantParameters();
         StartDataAcquisition();
         break;
@@ -708,30 +708,48 @@ void Digitizer::HandleMessageInAcquisition(const struct DigitizerMessage &messag
     }
 }
 
-void Digitizer::HandleMessageInState(const struct DigitizerMessage &message)
+void Digitizer::HandleMessageInState(const DigitizerMessage &message)
 {
-    switch (m_state)
+    try
     {
-    case DigitizerState::NOT_INITIALIZED:
-        HandleMessageInNotInitialized(message);
-        break;
+        switch (m_state)
+        {
+        case DigitizerState::NOT_INITIALIZED:
+            HandleMessageInNotInitialized(message);
+            break;
 
-    case DigitizerState::INITIALIZATION:
-        HandleMessageInInitialization(message);
-        break;
+        case DigitizerState::INITIALIZATION:
+            HandleMessageInInitialization(message);
+            break;
 
-    case DigitizerState::IDLE:
-        HandleMessageInIdle(message);
-        break;
+        case DigitizerState::IDLE:
+            HandleMessageInIdle(message);
+            break;
 
-    case DigitizerState::ACQUISITION:
-        HandleMessageInAcquisition(message);
-        break;
+        case DigitizerState::ACQUISITION:
+            HandleMessageInAcquisition(message);
+            break;
+        }
+
+        /* If the message was processed successfully, we reply back with the
+           same message with `result` set to `SCAKE_EOK` and send the 'all
+           clear' event. */
+        Log::log->trace(FormatLog("Processed message {}.", message.id));
+        auto response = message;
+        response.result = SCAPE_EOK;
+        m_read_queue.EmplaceWrite(std::move(response));
+        m_read_queue.EmplaceWrite(DigitizerMessageId::EVENT_CLEAR);
     }
-
-    /* If the message was processed successfully, we send the 'all clear'. */
-    Log::log->trace(FormatLog("Processed message {}.", message.id));
-    m_read_queue.EmplaceWrite(DigitizerMessageId::CLEAR);
+    catch (const DigitizerException &)
+    {
+        /* On error we reply back with the same message with `result` set to an
+           error code then rethrow the exception to trigger the "catch all"
+           error handling from the upper layers. */
+        auto response = message;
+        response.result = SCAPE_EINTERNAL;
+        m_read_queue.EmplaceWrite(std::move(response));
+        throw;
+    }
 }
 
 void Digitizer::ConfigureInternalReference()
@@ -929,13 +947,11 @@ void Digitizer::ForceAcquisition()
     ThrowDigitizerException("ForceAcquisition() not implemented.");
 }
 
-void Digitizer::SetParameters(const std::shared_ptr<std::string> &str, DigitizerMessageId clean_id)
+void Digitizer::SetParameters(const std::shared_ptr<std::string> &str)
 {
-    m_read_queue.EmplaceWrite(DigitizerMessageId::CONFIGURATION);
+    m_read_queue.EmplaceWrite(DigitizerMessageId::EVENT_CONFIGURATION);
     int result = ADQ_SetParametersString(m_id.handle, m_id.index, str->c_str(), str->size());
-    if (result > 0)
-        m_read_queue.Write(clean_id);
-    else
+    if (result <= 0)
         ThrowDigitizerException("ADQ_SetParametersString() failed, result {}.", result);
 }
 

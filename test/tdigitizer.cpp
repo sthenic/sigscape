@@ -76,10 +76,10 @@ TEST(Digitizer, Initialize)
 
     /* File watchers reporting dirty parameters. */
     LONGS_EQUAL(SCAPE_EOK, digitizer->WaitForMessage(msg, 2000));
-    LONGS_EQUAL(DigitizerMessageId::DIRTY_TOP_PARAMETERS, msg.id);
+    LONGS_EQUAL(DigitizerMessageId::CHANGED_TOP_PARAMETERS, msg.id);
 
     LONGS_EQUAL(SCAPE_EOK, digitizer->WaitForMessage(msg, TIMEOUT_MS));
-    LONGS_EQUAL(DigitizerMessageId::DIRTY_CLOCK_SYSTEM_PARAMETERS, msg.id);
+    LONGS_EQUAL(DigitizerMessageId::CHANGED_CLOCK_SYSTEM_PARAMETERS, msg.id);
 
     /* No more messages */
     LONGS_EQUAL(SCAPE_EAGAIN, digitizer->WaitForMessage(msg, TIMEOUT_MS));
@@ -92,9 +92,14 @@ TEST(Digitizer, Initialize)
     LONGS_EQUAL(DigitizerMessageId::STATE, msg.id);
     LONGS_EQUAL(DigitizerState::ACQUISITION, msg.state);
 
-    /* Expect a 'clear' message as an ack for the successfully processed message. */
+    /* Expect the same message back w/ `result` SCAPE_EOK followed by the
+       'all clear' event message. */
     LONGS_EQUAL(SCAPE_EOK, digitizer->WaitForMessage(msg, TIMEOUT_MS));
-    LONGS_EQUAL(DigitizerMessageId::CLEAR, msg.id);
+    LONGS_EQUAL(DigitizerMessageId::START_ACQUISITION, msg.id);
+    LONGS_EQUAL(SCAPE_EOK, msg.result);
+
+    LONGS_EQUAL(SCAPE_EOK, digitizer->WaitForMessage(msg, TIMEOUT_MS));
+    LONGS_EQUAL(DigitizerMessageId::EVENT_CLEAR, msg.id);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
@@ -117,9 +122,14 @@ TEST(Digitizer, Initialize)
     LONGS_EQUAL(DigitizerMessageId::STATE, msg.id);
     LONGS_EQUAL(DigitizerState::IDLE, msg.state);
 
-    /* Expect a 'clear' message as an ack for the successfully processed message. */
+    /* Expect the same message back w/ `result` SCAPE_EOK followed by the
+       'all clear' event message. */
     LONGS_EQUAL(SCAPE_EOK, digitizer->WaitForMessage(msg, TIMEOUT_MS));
-    LONGS_EQUAL(DigitizerMessageId::CLEAR, msg.id);
+    LONGS_EQUAL(DigitizerMessageId::STOP_ACQUISITION, msg.id);
+    LONGS_EQUAL(SCAPE_EOK, msg.result);
+
+    LONGS_EQUAL(SCAPE_EOK, digitizer->WaitForMessage(msg, TIMEOUT_MS));
+    LONGS_EQUAL(DigitizerMessageId::EVENT_CLEAR, msg.id);
 
     LONGS_EQUAL(SCAPE_EOK, digitizer->Stop());
 }

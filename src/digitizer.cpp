@@ -547,8 +547,12 @@ void Digitizer::HandleMessageInIdle(const DigitizerMessage &message)
         ConfigureDefaultAcquisition();
         break;
 
-    case DigitizerMessageId::SCALE_RECORD_LENGTH:
-        ScaleRecordLength(message.dvalue);
+    case DigitizerMessageId::SCALE_RECORD_LENGTH_DOUBLE:
+        ScaleRecordLength(2.0);
+        break;
+
+    case DigitizerMessageId::SCALE_RECORD_LENGTH_HALF:
+        ScaleRecordLength(0.5);
         break;
 
     case DigitizerMessageId::FORCE_ACQUISITION:
@@ -625,9 +629,15 @@ void Digitizer::HandleMessageInAcquisition(const DigitizerMessage &message)
         StartDataAcquisition();
         break;
 
-    case DigitizerMessageId::SCALE_RECORD_LENGTH:
+    case DigitizerMessageId::SCALE_RECORD_LENGTH_DOUBLE:
         StopDataAcquisition();
-        ScaleRecordLength(message.dvalue);
+        ScaleRecordLength(2.0);
+        StartDataAcquisition();
+        break;
+
+    case DigitizerMessageId::SCALE_RECORD_LENGTH_HALF:
+        StopDataAcquisition();
+        ScaleRecordLength(0.5);
         StartDataAcquisition();
         break;
 

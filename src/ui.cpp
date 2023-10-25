@@ -183,8 +183,8 @@ Ui::DigitizerUiState::DigitizerUiState()
     commands.emplace(COMMAND_INITIALIZE, DigitizerMessageId::INITIALIZE_PARAMETERS);
     commands.emplace(COMMAND_VALIDATE, DigitizerMessageId::VALIDATE_PARAMETERS);
     commands.emplace(COMMAND_DEFAULT_ACQUISITION, DigitizerMessageId::DEFAULT_ACQUISITION);
-    commands.emplace(COMMAND_SCALE_DOUBLE, DigitizerMessage{DigitizerMessageId::SCALE_RECORD_LENGTH, 2.0});
-    commands.emplace(COMMAND_SCALE_HALF, DigitizerMessage{DigitizerMessageId::SCALE_RECORD_LENGTH, 0.5});
+    commands.emplace(COMMAND_SCALE_DOUBLE, DigitizerMessageId::SCALE_RECORD_LENGTH_DOUBLE);
+    commands.emplace(COMMAND_SCALE_HALF, DigitizerMessageId::SCALE_RECORD_LENGTH_HALF);
     commands.emplace(COMMAND_INTERNAL_REFERENCE, DigitizerMessageId::SET_INTERNAL_REFERENCE);
     commands.emplace(COMMAND_EXTERNAL_REFERENCE, DigitizerMessageId::SET_EXTERNAL_REFERENCE);
     commands.emplace(COMMAND_EXTERNAL_CLOCK, DigitizerMessageId::SET_EXTERNAL_CLOCK);

@@ -39,7 +39,8 @@ enum class DigitizerMessageId
     SET_EXTERNAL_REFERENCE,
     SET_EXTERNAL_CLOCK,
     DEFAULT_ACQUISITION,
-    SCALE_RECORD_LENGTH,
+    SCALE_RECORD_LENGTH_DOUBLE,
+    SCALE_RECORD_LENGTH_HALF,
     FORCE_ACQUISITION,
     START_ACQUISITION,
     STOP_ACQUISITION,
@@ -366,8 +367,11 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
         case DigitizerMessageId::DEFAULT_ACQUISITION:
             name = "DEFAULT_ACQUISITION";
             break;
-        case DigitizerMessageId::SCALE_RECORD_LENGTH:
-            name = "SCALE_RECORD_LENGTH";
+        case DigitizerMessageId::SCALE_RECORD_LENGTH_DOUBLE:
+            name = "SCALE_RECORD_LENGTH_DOUBLE";
+            break;
+        case DigitizerMessageId::SCALE_RECORD_LENGTH_HALF:
+            name = "SCALE_RECORD_LENGTH_HALF";
             break;
         case DigitizerMessageId::FORCE_ACQUISITION:
             name = "FORCE_ACQUISITION";

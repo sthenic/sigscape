@@ -33,12 +33,11 @@ private:
     struct ADQConstantParameters m_constant;
     struct ADQAnalogFrontendParameters m_afe;
     struct ADQClockSystemParameters m_clock_system;
+    struct ADQDataTransferParameters m_transfer;
     struct ADQDramStatus m_dram_status;
     struct ADQOverflowStatus m_overflow_status;
     std::vector<std::unique_ptr<Generator>> m_generators;
     std::unique_ptr<MockSystemManager> m_sysman;
-    static const std::string DEFAULT_TOP_PARAMETERS;
-    static const std::string DEFAULT_CLOCK_SYSTEM_PARAMETERS;
     std::string m_top_parameters;
     std::string m_clock_system_parameters;
 

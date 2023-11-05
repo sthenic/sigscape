@@ -554,7 +554,7 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
                                               message.constant_parameters.serial_number,
                                               message.constant_parameters.firmware.name);
         digitizer.ui.channels.clear();
-        for (int ch = 0; ch < message.constant_parameters.nof_channels; ++ch)
+        for (int ch = 0; ch < message.constant_parameters.nof_transfer_channels; ++ch)
             digitizer.ui.channels.emplace_back(m_nof_channels_total);
         /* FALLTHROUGH */
     case DigitizerMessageId::CONSTANT_PARAMETERS:
@@ -1834,7 +1834,7 @@ void Ui::RenderStaticInformation()
                             ImGuiTableFlags_BordersInnerV;
 
     /* "Sigscape version" is the worst case width */
-    const float WIDTH = ImGui::CalcTextSize("Reference frequency").x;
+    const float WIDTH = ImGui::CalcTextSize("Acquisition channels").x;
 
     if (ImGui::CollapsingHeader("Software", ImGuiTreeNodeFlags_DefaultOpen))
     {
@@ -1872,11 +1872,12 @@ void Ui::RenderStaticInformation()
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, WIDTH);
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
 
-
             Row("Name", ui->constant.product_name);
             Row("Serial number", ui->constant.serial_number);
             Row("Options", ui->constant.product_options);
-            Row("Channels", fmt::format("{}", ui->constant.nof_channels));
+            Row("Analog channels", fmt::format("{}", ui->constant.nof_channels));
+            Row("Acquisition channels", fmt::format("{}", ui->constant.nof_acquisition_channels));
+            Row("Transfer channels", fmt::format("{}", ui->constant.nof_transfer_channels));
             Row("DRAM", fmt::format("{:.2f} MiB", ui->constant.dram_size / 1024.0 / 1024.0));
 
             ImGui::EndTable();
@@ -1898,6 +1899,8 @@ void Ui::RenderStaticInformation()
                     return "FWDAQ";
                 case ADQ_FIRMWARE_TYPE_FWATD:
                     return "FWATD";
+                case ADQ_FIRMWARE_TYPE_FWPD:
+                    return "FWPD";
                 default:
                     return "Unknown";
                 }
@@ -1938,10 +1941,6 @@ void Ui::RenderStaticInformation()
                 }
             };
 
-            ChannelRow("Base sampling rate", [&](int i) -> std::string {
-                return Format::Metric(ui->constant.channel[i].base_sampling_rate, "{:7.2f} {}Hz", 1e6);
-            });
-
             ChannelRow("Input range", [&](int i) -> std::string {
                 return Format::Metric(ui->constant.channel[i].input_range[0] / 1e3, "{:7.2f} {}V", 1e-3);
             });
@@ -1952,6 +1951,8 @@ void Ui::RenderStaticInformation()
 
             ImGui::EndTable();
         }
+
+        /* FIXME: Add for acquisition/transfer channels? At least labels. */
     }
 
     if (ImGui::CollapsingHeader("Clock System", ImGuiTreeNodeFlags_DefaultOpen))

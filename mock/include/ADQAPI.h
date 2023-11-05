@@ -151,7 +151,6 @@ struct ADQConstantParametersChannel
         : label{}
         , nof_adc_cores(static_cast<int32_t>(nof_adc_cores))
         , code_normalization(static_cast<int64_t>(code_normalization))
-        , base_sampling_rate(2.5e9)
         , input_range{}
     {
         std::memcpy(this->label, label.c_str(),
@@ -165,14 +164,14 @@ struct ADQConstantParametersChannel
     char label[8];
     int32_t nof_adc_cores;
     int64_t code_normalization;
-    double base_sampling_rate;
     double input_range[ADQ_MAX_NOF_INPUT_RANGES];
 };
 
 enum ADQFirmwareType
 {
     ADQ_FIRMWARE_TYPE_FWDAQ = 0,
-    ADQ_FIRMWARE_TYPE_FWATD = 1
+    ADQ_FIRMWARE_TYPE_FWATD = 1,
+    ADQ_FIRMWARE_TYPE_FWPD = 2
 };
 
 struct ADQConstantParametersFirmware
@@ -246,6 +245,8 @@ struct ADQConstantParameters
                           const std::vector<struct ADQConstantParametersChannel> &channel)
         : id(ADQ_PARAMETER_ID_CONSTANT)
         , nof_channels(static_cast<int32_t>(channel.size()))
+        , nof_acquisition_channels(static_cast<int32_t>(channel.size()))
+        , nof_transfer_channels(static_cast<int32_t>(channel.size()))
         , serial_number{}
         , product_name{}
         , product_options{}
@@ -254,6 +255,7 @@ struct ADQConstantParameters
         , channel{}
         , clock_system{}
         , dram_size(8ull * 1024 * 1024 * 1024)
+        , record_buffer_size_step(16320)
         , magic(ADQ_PARAMETERS_MAGIC)
     {
         std::memcpy(this->serial_number, serial_number.c_str(),
@@ -272,6 +274,8 @@ struct ADQConstantParameters
 
     enum ADQParameterId id;
     int32_t nof_channels;
+    int32_t nof_acquisition_channels;
+    int32_t nof_transfer_channels;
     char serial_number[16];
     char product_name[32];
     char product_options[32];
@@ -280,6 +284,7 @@ struct ADQConstantParameters
     struct ADQConstantParametersChannel channel[ADQ_MAX_NOF_CHANNELS];
     struct ADQClockSystemParameters clock_system;
     uint64_t dram_size;
+    int64_t record_buffer_size_step;
     uint64_t magic;
 };
 
@@ -295,6 +300,19 @@ struct ADQAnalogFrontendParameters
     int32_t reserved;
     struct ADQAnalogFrontendParametersChannel channel[ADQ_MAX_NOF_CHANNELS];
     uint64_t magic;
+};
+
+struct ADQDataTransferParametersChannel
+{
+  int64_t nof_buffers;
+};
+
+struct ADQDataTransferParameters
+{
+  enum ADQParameterId id;
+  int32_t reserved;
+  struct ADQDataTransferParametersChannel channel[ADQ_MAX_NOF_CHANNELS];
+  uint64_t magic;
 };
 
 enum ADQStatusId

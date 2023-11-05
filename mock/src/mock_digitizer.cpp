@@ -4,7 +4,7 @@
 #include <sstream>
 #include <type_traits>
 
-const std::string MockDigitizer::DEFAULT_TOP_PARAMETERS =
+static const std::string DEFAULT_TOP_PARAMETERS =
 R"""(TOP
 frequency:
     1e6, 9e6
@@ -22,7 +22,7 @@ noise standard deviation:
     0.1, 0.02
 )""";
 
-const std::string MockDigitizer::DEFAULT_CLOCK_SYSTEM_PARAMETERS =
+static const std::string DEFAULT_CLOCK_SYSTEM_PARAMETERS =
 R"""(CLOCK SYSTEM
 sampling frequency:
     500e6
@@ -32,6 +32,7 @@ MockDigitizer::MockDigitizer(const struct ADQConstantParameters &constant)
     : m_constant(constant)
     , m_afe{}
     , m_clock_system{}
+    , m_transfer{}
     , m_dram_status{}
     , m_overflow_status{}
     , m_generators{}
@@ -55,7 +56,16 @@ MockDigitizer::MockDigitizer(const struct ADQConstantParameters &constant)
         /* 'Activate' the first input range entry. */
         m_afe.channel[ch].input_range = constant.channel[ch].input_range[0];
         m_afe.channel[ch].dc_offset = 0;
+    }
+
+    for (int ch = 0; ch < constant.nof_acquisition_channels; ++ch)
+    {
         m_generators.push_back(std::make_unique<Generator>());
+    }
+
+    for (int ch = 0; ch < constant.nof_transfer_channels; ++ch)
+    {
+        m_transfer.channel[ch].nof_buffers = 2;
     }
 }
 
@@ -95,7 +105,7 @@ int64_t MockDigitizer::WaitForRecordBuffer(int *channel, void **buffer, int time
         return ADQ_EINVAL;
     if (*channel == -1)
         return ADQ_EUNSUPPORTED;
-    if ((*channel < 0) || (static_cast<size_t>(*channel) >= m_generators.size()))
+    if (*channel < 0 || static_cast<size_t>(*channel) >= m_generators.size())
         return ADQ_EINVAL;
 
     ADQGen4Record *lbuffer = NULL;
@@ -117,7 +127,7 @@ int MockDigitizer::ReturnRecordBuffer(int channel, void *buffer)
         return ADQ_EINVAL;
     if (channel == -1)
         return ADQ_EUNSUPPORTED;
-    if ((channel < 0) || (static_cast<size_t>(channel) >= m_generators.size()))
+    if (channel < 0 || static_cast<size_t>(channel) >= m_generators.size())
         return ADQ_EINVAL;
 
     /* FIXME: Error space */
@@ -129,24 +139,26 @@ int MockDigitizer::GetParameters(enum ADQParameterId id, void *const parameters)
     if (parameters == NULL)
         return ADQ_EINVAL;
 
-    if (id == ADQ_PARAMETER_ID_CONSTANT)
+    switch (id)
     {
+    case ADQ_PARAMETER_ID_CONSTANT:
         m_constant.clock_system = m_clock_system;
         std::memcpy(parameters, &m_constant, sizeof(m_constant));
         return sizeof(m_constant);
-    }
-    else if (id == ADQ_PARAMETER_ID_ANALOG_FRONTEND)
-    {
+
+    case ADQ_PARAMETER_ID_ANALOG_FRONTEND:
         std::memcpy(parameters, &m_afe, sizeof(m_afe));
         return sizeof(m_afe);
-    }
-    else if (id == ADQ_PARAMETER_ID_CLOCK_SYSTEM)
-    {
+
+    case ADQ_PARAMETER_ID_CLOCK_SYSTEM:
         std::memcpy(parameters, &m_clock_system, sizeof(m_clock_system));
         return sizeof(m_clock_system);
-    }
-    else
-    {
+
+    case ADQ_PARAMETER_ID_DATA_TRANSFER:
+        std::memcpy(parameters, &m_transfer, sizeof(m_transfer));
+        return sizeof(m_transfer);
+
+    default:
         return ADQ_EUNSUPPORTED;
     }
 }

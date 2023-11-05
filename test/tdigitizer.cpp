@@ -58,6 +58,8 @@ TEST(Digitizer, Initialize)
     LONGS_EQUAL(DigitizerMessageId::INITIALIZED, msg.id);
     STRCMP_EQUAL("SPD-SIM01", msg.constant_parameters.serial_number);
     LONGS_EQUAL(1, msg.constant_parameters.nof_channels);
+    LONGS_EQUAL(1, msg.constant_parameters.nof_acquisition_channels);
+    LONGS_EQUAL(1, msg.constant_parameters.nof_transfer_channels);
 
     /* System manager objects (boot status). */
     LONGS_EQUAL(SCAPE_EOK, digitizer->WaitForMessage(msg, TIMEOUT_MS));

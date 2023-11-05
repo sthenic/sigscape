@@ -52,7 +52,7 @@ Digitizer::Digitizer(void *handle, int init_index, int index,
 /* Interface to the digitizer's data processing threads, one per channel. */
 int Digitizer::WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedRecord> &record)
 {
-    if ((channel < 0) || (channel >= static_cast<int>(m_processing_threads.size())))
+    if (channel < 0 || channel >= static_cast<int>(m_processing_threads.size()))
         return SCAPE_EINVAL;
 
     return m_processing_threads[channel]->WaitForBuffer(record, 0);
@@ -131,8 +131,8 @@ void Digitizer::MainInitialization()
 
     Log::log->info("Digitizer {} is {}.", m_id.index, m_constant.serial_number);
 
-    /* Instantiate one data processing thread for each digitizer channel. */
-    for (int ch = 0; ch < m_constant.nof_channels; ++ch)
+    /* Instantiate one data processing thread for each transfer channel. */
+    for (int ch = 0; ch < m_constant.nof_transfer_channels; ++ch)
     {
         const auto label = fmt::format("{} {} CH{}", m_constant.product_name,
                                        m_constant.serial_number, m_constant.channel[ch].label);
@@ -450,6 +450,11 @@ void Digitizer::StartDataAcquisition()
         if (result != sizeof(afe))
             ThrowDigitizerException("ADQ_GetParameters failed, result {}.", result);
 
+        struct ADQDataTransferParameters transfer;
+        result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_DATA_TRANSFER, &transfer);
+        if (result != sizeof(transfer))
+            ThrowDigitizerException("ADQ_GetParameters failed, result {}.", result);
+
         /* TODO: Temporary workaround until the `time_unit` precision is fixed. */
         struct ADQClockSystemParameters clock_system;
         result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CLOCK_SYSTEM, &clock_system);
@@ -458,16 +463,21 @@ void Digitizer::StartDataAcquisition()
 
         for (size_t i = 0; i < m_processing_threads.size(); ++i)
         {
+            /* We only start processing threads for enabled channels. */
+            if (transfer.channel[i].nof_buffers == 0)
+                continue;
+
             m_processing_threads[i]->EmplaceMessage(
                 DataProcessingMessageId::SET_AFE_PARAMETERS, afe.channel[i]);
             m_processing_threads[i]->EmplaceMessage(
                 DataProcessingMessageId::SET_CLOCK_SYSTEM_PARAMETERS, clock_system);
-        }
 
-        for (const auto &t : m_processing_threads)
-        {
-            if (SCAPE_EOK != t->Start())
-                ThrowDigitizerException("Failed to start one of the data processing threads.");
+            if (SCAPE_EOK != m_processing_threads[i]->Start())
+            {
+                ThrowDigitizerException(
+                    "Failed to start data processing thread for channel {}.",
+                    m_constant.channel[i].label);
+            }
         }
 
         result = ADQ_StartDataAcquisition(m_id.handle, m_id.index);
@@ -847,8 +857,8 @@ void Digitizer::ConfigureDefaultAcquisition()
         ThrowDigitizerException("Failed to get readout parameters, result {}.", result);
 
     /* The default acquisition parameters is an infinite stream of records from
-       each available channel triggered by the periodic event generator. */
-    for (int ch = 0; ch < m_constant.nof_channels; ++ch)
+       each available acquisition channel triggered by the periodic event generator. */
+    for (int ch = 0; ch < m_constant.nof_acquisition_channels; ++ch)
     {
         acquisition.channel[ch].nof_records = ADQ_INFINITE_NOF_RECORDS;
         acquisition.channel[ch].record_length = 32 * 1024;
@@ -857,14 +867,12 @@ void Digitizer::ConfigureDefaultAcquisition()
         acquisition.channel[ch].trigger_edge = ADQ_EDGE_RISING;
         acquisition.channel[ch].trigger_blocking_source = ADQ_FUNCTION_INVALID;
 
-        transfer.channel[ch].metadata_enabled = 1;
         transfer.channel[ch].nof_buffers = ADQ_MAX_NOF_BUFFERS;
-        transfer.channel[ch].record_size = acquisition.channel[ch].bytes_per_sample
-                                          * acquisition.channel[ch].record_length;
-        transfer.channel[ch].record_buffer_size = transfer.channel[ch].record_size;
+        transfer.channel[ch].record_buffer_size = 8 * m_constant.record_buffer_size_step;
+        transfer.channel[ch].metadata_enabled = 1;
         transfer.channel[ch].metadata_buffer_size = sizeof(ADQGen4RecordHeader);
+        transfer.channel[ch].dynamic_record_length_enabled = 1;
 
-        /* TODO: Only if FWATD? */
         readout.channel[ch].nof_record_buffers_max = ADQ_INFINITE_NOF_RECORDS;
         readout.channel[ch].record_buffer_size_max = ADQ_INFINITE_RECORD_LENGTH;
     }
@@ -922,32 +930,20 @@ void Digitizer::ScaleRecordLength(double factor)
     if (result != sizeof(acquisition))
         ThrowDigitizerException("Failed to get acquisition parameters, result {}.", result);
 
-    struct ADQDataTransferParameters transfer;
-    result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_DATA_TRANSFER, &transfer);
-    if (result != sizeof(transfer))
-        ThrowDigitizerException("Failed to get transfer parameters, result {}.", result);
-
-    for (int ch = 0; ch < m_constant.nof_channels; ++ch)
+    for (int ch = 0; ch < m_constant.nof_acquisition_channels; ++ch)
     {
-        if (acquisition.channel[ch].nof_records == 0 || transfer.channel[ch].nof_buffers == 0)
+        if (acquisition.channel[ch].nof_records == 0)
             continue;
 
         const auto record_length = static_cast<int64_t>(
             std::round(factor * static_cast<double>(acquisition.channel[ch].record_length)));
 
         acquisition.channel[ch].record_length = record_length;
-        transfer.channel[ch].record_size = record_length * acquisition.channel[ch].bytes_per_sample;
-        transfer.channel[ch].record_buffer_size = transfer.channel[ch].record_size;
-        transfer.channel[ch].metadata_buffer_size = sizeof(ADQGen4RecordHeader);
     }
 
     result = ADQ_SetParameters(m_id.handle, m_id.index, &acquisition);
     if (result != sizeof(acquisition))
         ThrowDigitizerException("Failed to set acquisition parameters, result {}.", result);
-
-    result = ADQ_SetParameters(m_id.handle, m_id.index, &transfer);
-    if (result != sizeof(transfer))
-        ThrowDigitizerException("Failed to set transfer parameters, result {}.", result);
 #endif
 }
 

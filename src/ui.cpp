@@ -141,6 +141,8 @@ void Ui::CommandUiState::MaybeRestoreColor()
 {
     if (color == ImGui::GetStyleColorVec4(ImGuiCol_Button))
         return;
+    if (timestamp.time_since_epoch().count() == 0)
+        return;
 
     auto now = std::chrono::high_resolution_clock::now();
     auto delta_ms = static_cast<double>((now - timestamp).count()) / 1e6;
@@ -611,13 +613,21 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
         break;
 
     case DigitizerMessageId::CHANGED_TOP_PARAMETERS:
-        digitizer.ui.commands.at(COMMAND_SET_TOP).color = COLOR_ORANGE;
+    {
+        auto &command = digitizer.ui.commands.at(COMMAND_SET_TOP);
+        command.color = COLOR_ORANGE;
+        command.timestamp = {};
         digitizer.interface->EmplaceMessage(DigitizerMessageId::SET_TOP_PARAMETERS, "Set");
         break;
+    }
 
     case DigitizerMessageId::CHANGED_CLOCK_SYSTEM_PARAMETERS:
-        digitizer.ui.commands.at(COMMAND_SET_CLOCK_SYSTEM).color = COLOR_ORANGE;
+    {
+        auto &command = digitizer.ui.commands.at(COMMAND_SET_CLOCK_SYSTEM);
+        command.color = COLOR_ORANGE;
+        command.timestamp = {};
         break;
+    }
 
     case DigitizerMessageId::INITIALIZE_WOULD_OVERWRITE:
         digitizer.ui.popup_initialize_would_overwrite = true;

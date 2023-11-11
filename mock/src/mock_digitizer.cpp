@@ -63,7 +63,7 @@ MockDigitizer::MockDigitizer(const struct ADQConstantParameters &constant)
 
     for (int ch = 0; ch < constant.nof_acquisition_channels; ++ch)
     {
-        m_generators.push_back(std::make_unique<Generator>());
+        m_generators.push_back(std::make_unique<SineGenerator>());
     }
 
     for (int ch = 0; ch < constant.nof_transfer_channels; ++ch)
@@ -229,25 +229,25 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
             size_t i = 0;
             for (const auto &object : json["top"])
             {
-                Generator::Parameters parameters{};
+                SineGeneratorParameters parameters{};
                 parameters.record_length = object["record_length"];
                 parameters.trigger_frequency = object["trigger_frequency"];
-                parameters.sine.amplitude = object["amplitude"];
-                parameters.sine.frequency = object["frequency"];
-                parameters.sine.amplitude = object["amplitude"];
-                parameters.sine.noise = object["noise"];
-                parameters.sine.harmonic_distortion = object["harmonic_distortion"];
-                parameters.sine.interleaving_distortion = object["interleaving_distortion"];
+                parameters.amplitude = object["amplitude"];
+                parameters.frequency = object["frequency"];
+                parameters.amplitude = object["amplitude"];
+                parameters.noise = object["noise"];
+                parameters.harmonic_distortion = object["harmonic_distortion"];
+                parameters.interleaving_distortion = object["interleaving_distortion"];
 
                 if (i < m_generators.size())
-                    m_generators[i++]->SetParameters(parameters);
+                    m_generators[i++]->PushMessage(parameters);
             }
         }
         else if (json.contains("clock_system"))
         {
             const double frequency = json["clock_system"]["sampling_frequency"];
             for (auto &g: m_generators)
-                g->SetSamplingFrequency(frequency);
+                g->PushMessage(frequency);
         }
         else
         {

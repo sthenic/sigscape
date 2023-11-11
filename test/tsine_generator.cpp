@@ -1,12 +1,12 @@
 #include "CppUTest/TestHarness.h"
-#include "generator.h"
+#include "sine_generator.h"
 
 #include <thread>
 #include <chrono>
 
-TEST_GROUP(Generator)
+TEST_GROUP(SineGenerator)
 {
-    Generator generator;
+    SineGenerator generator;
 
     void setup()
     {
@@ -18,28 +18,28 @@ TEST_GROUP(Generator)
     }
 };
 
-TEST(Generator, Test0)
+TEST(SineGenerator, Test0)
 {
-    LONGS_EQUAL(SCAPE_EOK, generator.SetParameters(Generator::Parameters()));
-    LONGS_EQUAL(SCAPE_EOK, generator.SetSamplingFrequency(500e6));
+    LONGS_EQUAL(SCAPE_EOK, generator.PushMessage(SineGeneratorParameters{}));
+    LONGS_EQUAL(SCAPE_EOK, generator.PushMessage(500e6));
     LONGS_EQUAL(SCAPE_ENOTREADY, generator.Stop());
     LONGS_EQUAL(SCAPE_EOK, generator.Start());
     LONGS_EQUAL(SCAPE_ENOTREADY, generator.Start());
     LONGS_EQUAL(SCAPE_EOK, generator.Stop());
 }
 
-TEST(Generator, Records)
+TEST(SineGenerator, Records)
 {
     constexpr size_t RECORD_LENGTH = 1024;
     constexpr double TRIGGER_FREQUENCY = 30.0;
     constexpr int NOF_RECORDS = 60;
 
-    Generator::Parameters parameters;
+    SineGeneratorParameters parameters{};
     parameters.record_length = RECORD_LENGTH;
     parameters.trigger_frequency = TRIGGER_FREQUENCY;
 
-    LONGS_EQUAL(SCAPE_EOK, generator.SetParameters(parameters));
-    LONGS_EQUAL(SCAPE_EOK, generator.SetSamplingFrequency(500e6));
+    LONGS_EQUAL(SCAPE_EOK, generator.PushMessage(parameters));
+    LONGS_EQUAL(SCAPE_EOK, generator.PushMessage(500e6));
     LONGS_EQUAL(SCAPE_EOK, generator.Start());
 
     std::vector<ADQGen4Record *> records;
@@ -75,21 +75,21 @@ TEST(Generator, Records)
     LONGS_EQUAL(SCAPE_EOK, generator.Stop());
 }
 
-TEST(Generator, RepeatedStartStop)
+TEST(SineGenerator, RepeatedStartStop)
 {
     constexpr size_t RECORD_LENGTH = 8192;
     constexpr double TRIGGER_FREQUENCY = 1.0;
     constexpr int NOF_RECORDS = 2;
     constexpr int NOF_LOOPS = 5;
 
-    Generator::Parameters parameters;
+    SineGeneratorParameters parameters;
     parameters.record_length = RECORD_LENGTH;
     parameters.trigger_frequency = TRIGGER_FREQUENCY;
 
     for (int i = 0; i < NOF_LOOPS; ++i)
     {
-        LONGS_EQUAL(SCAPE_EOK, generator.SetParameters(parameters));
-        LONGS_EQUAL(SCAPE_EOK, generator.SetSamplingFrequency(500e6));
+        LONGS_EQUAL(SCAPE_EOK, generator.PushMessage(parameters));
+        LONGS_EQUAL(SCAPE_EOK, generator.PushMessage(500e6));
         LONGS_EQUAL(SCAPE_EOK, generator.Start());
 
         int nof_records_received = 0;

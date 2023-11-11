@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ADQAPI.h"
-#include "generator.h"
+#include "sine_generator.h"
 #include "mock_system_manager.h"
 #include <vector>
 
@@ -29,6 +29,7 @@ public:
 
     int SmTransaction(uint16_t cmd, void *wr_buf, size_t wr_buf_len, void *rd_buf, size_t rd_buf_len);
     int SmTransactionImmediate(uint16_t cmd, void *wr_buf, size_t wr_buf_len, void *rd_buf, size_t rd_buf_len);
+
 private:
     struct ADQConstantParameters m_constant;
     struct ADQAnalogFrontendParameters m_afe;
@@ -36,11 +37,8 @@ private:
     struct ADQDataTransferParameters m_transfer;
     struct ADQDramStatus m_dram_status;
     struct ADQOverflowStatus m_overflow_status;
-    std::vector<std::unique_ptr<Generator>> m_generators;
+    std::vector<std::unique_ptr<SineGenerator>> m_generators;
     std::unique_ptr<MockSystemManager> m_sysman;
     std::string m_top_parameters;
     std::string m_clock_system_parameters;
-
-    // template<typename T>
-    // int ParseLine(int line_idx, const std::string &str, std::vector<T> &values);
 };

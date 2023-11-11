@@ -38,7 +38,7 @@ std::string Value::FormatInverseDelta(double other, bool show_sign) const
 std::string Value::Format(double other, const std::string &precision, bool show_sign) const
 {
     if (!valid)
-        return "Invalid";
+        return Format::Invalid(precision, properties.unit);
 
     return Format::Metric(other, Format::String(precision, properties.unit, show_sign),
                           properties.highest_prefix, properties.lowest_prefix);
@@ -47,7 +47,7 @@ std::string Value::Format(double other, const std::string &precision, bool show_
 std::string Value::FormatDelta(double other, const std::string &precision, bool show_sign) const
 {
     if (!valid)
-        return "Invalid";
+        return Format::Invalid(precision, properties.delta_unit);
 
     return Format::Metric(other, Format::String(precision, properties.delta_unit, show_sign),
                           properties.highest_prefix, properties.lowest_prefix);
@@ -56,7 +56,7 @@ std::string Value::FormatDelta(double other, const std::string &precision, bool 
 std::string Value::FormatInverseDelta(double other, const std::string &precision, bool show_sign) const
 {
     if (!valid)
-        return "Invalid";
+        return Format::Invalid(precision, properties.inverse_delta_unit);
 
     return Format::Metric(other, Format::String(precision, properties.inverse_delta_unit, show_sign),
                           1.0 / properties.lowest_prefix, 1.0 / properties.highest_prefix);

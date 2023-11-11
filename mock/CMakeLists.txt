@@ -8,6 +8,14 @@ add_library(${PROJECT_NAME} SHARED)
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 
+include(FetchContent)
+FetchContent_Declare(
+    json
+    GIT_REPOSITORY https://github.com/nlohmann/json
+    GIT_TAG v3.11.2
+)
+FetchContent_MakeAvailable(json)
+
 target_sources(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/generator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/mock_control_unit.cpp
@@ -15,7 +23,8 @@ target_sources(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/mock_system_manager.cpp)
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${json_SOURCE_DIR}/include)
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include)

@@ -1,32 +1,35 @@
 #include "mock_digitizer.h"
+#include "nlohmann/json.hpp"
 
 #include <cstring>
 #include <sstream>
-#include <type_traits>
 
 static const std::string DEFAULT_TOP_PARAMETERS =
-R"""(TOP
-frequency:
-    1e6, 9e6
-amplitude:
-    1.0, 0.8
-record length:
-    18000, 18000
-trigger frequency:
-    5.0, 15.0
-harmonic distortion:
-    0, 1
-interleaving distortion:
-    0, 1
-noise standard deviation:
-    0.1, 0.02
-)""";
+R"""({"top": [
+    {
+        "record_length": 18000,
+        "trigger_frequency": 5.0,
+        "frequency": 1e6,
+        "amplitude": 1.0,
+        "noise": 0.1,
+        "harmonic_distortion": false,
+        "interleaving_distortion": false
+    },
+    {
+        "record_length": 18000,
+        "trigger_frequency": 15.0,
+        "frequency": 9e6,
+        "amplitude": 0.8,
+        "noise": 0.02,
+        "harmonic_distortion": true,
+        "interleaving_distortion": true
+    }
+]})""";
 
 static const std::string DEFAULT_CLOCK_SYSTEM_PARAMETERS =
-R"""(CLOCK SYSTEM
-sampling frequency:
-    500e6
-)""";
+R"""({"clock_system": {
+    "sampling_frequency": 500e6
+}})""";
 
 MockDigitizer::MockDigitizer(const struct ADQConstantParameters &constant)
     : m_constant(constant)
@@ -218,97 +221,46 @@ int MockDigitizer::InitializeParametersString(enum ADQParameterId id, char *cons
 
 int MockDigitizer::SetParametersString(const char *const string, size_t length)
 {
-    (void)length;
-    std::string parameters_str(string);
-    if (parameters_str.rfind("TOP", 0) == 0)
+    try
     {
-        std::vector<double> frequency;
-        if (SCAPE_EOK != ParseLine(2, parameters_str, frequency))
-            return SCAPE_EINVAL;
-        size_t nof_generators = frequency.size();
-
-        std::vector<double> amplitude;
-        if (SCAPE_EOK != ParseLine(4, parameters_str, amplitude))
-            return SCAPE_EINVAL;
-        nof_generators = std::min(nof_generators, amplitude.size());
-
-        std::vector<int> record_length;
-        if (SCAPE_EOK != ParseLine(6, parameters_str, record_length))
-            return SCAPE_EINVAL;
-        nof_generators = std::min(nof_generators, record_length.size());
-
-        std::vector<double> trigger_frequency;
-        if (SCAPE_EOK != ParseLine(8, parameters_str, trigger_frequency))
-            return SCAPE_EINVAL;
-        nof_generators = std::min(nof_generators, trigger_frequency.size());
-
-        std::vector<int> harmonic_distortion;
-        if (SCAPE_EOK != ParseLine(10, parameters_str, harmonic_distortion))
-            return SCAPE_EINVAL;
-        nof_generators = std::min(nof_generators, harmonic_distortion.size());
-
-        std::vector<int> interleaving_distortion;
-        if (SCAPE_EOK != ParseLine(12, parameters_str, interleaving_distortion))
-            return SCAPE_EINVAL;
-        nof_generators = std::min(nof_generators, interleaving_distortion.size());
-
-        std::vector<double> noise_std_dev;
-        if (SCAPE_EOK != ParseLine(14, parameters_str, noise_std_dev))
-            return SCAPE_EINVAL;
-        nof_generators = std::min(nof_generators, noise_std_dev.size());
-
-        std::vector<Generator::Parameters> parameters;
-        for (size_t i = 0; i < nof_generators; ++i)
+        const auto json = nlohmann::json::parse(std::stringstream(string));
+        if (json.contains("top"))
         {
-            parameters.push_back(Generator::Parameters());
-            parameters.back().record_length = record_length[i];
-            parameters.back().trigger_frequency = trigger_frequency[i];
-            parameters.back().sine.frequency = frequency[i];
-            parameters.back().sine.amplitude = amplitude[i];
-            parameters.back().sine.harmonic_distortion = harmonic_distortion[i] > 0;
-            parameters.back().sine.interleaving_distortion = interleaving_distortion[i] > 0;
-            parameters.back().sine.noise_std_dev = noise_std_dev[i];
-            parameters.back().sine.offset = 0.0;
-            parameters.back().sine.phase = 0.1;
+            size_t i = 0;
+            for (const auto &object : json["top"])
+            {
+                Generator::Parameters parameters{};
+                parameters.record_length = object["record_length"];
+                parameters.trigger_frequency = object["trigger_frequency"];
+                parameters.sine.amplitude = object["amplitude"];
+                parameters.sine.frequency = object["frequency"];
+                parameters.sine.amplitude = object["amplitude"];
+                parameters.sine.noise = object["noise"];
+                parameters.sine.harmonic_distortion = object["harmonic_distortion"];
+                parameters.sine.interleaving_distortion = object["interleaving_distortion"];
+
+                if (i < m_generators.size())
+                    m_generators[i++]->SetParameters(parameters);
+            }
         }
-
-        for (size_t i = 0; (i < parameters.size()) && (i < m_generators.size()); ++i)
-            m_generators[i]->SetParameters(parameters[i]);
-
-        /* Keep track of the string to be able to respond to get requests. */
-        m_top_parameters = string;
-
-        /* Emulate reconfiguration time. */
-        std::this_thread::sleep_for(std::chrono::milliseconds(250));
-    }
-    else if (parameters_str.rfind("CLOCK SYSTEM", 0) == 0)
-    {
-        std::vector<double> sampling_frequency;
-        if (SCAPE_EOK != ParseLine(2, parameters_str, sampling_frequency))
-            return SCAPE_EINVAL;
-
-        if (sampling_frequency.size() > 0)
+        else if (json.contains("clock_system"))
         {
-            for (auto &generator : m_generators)
-                generator->SetSamplingFrequency(sampling_frequency[0]);
-
-            /* Keep track of the string to be able to respond to get requests. */
-            m_clock_system_parameters = string;
-
-            /* Update the clock system parameters. */
-            m_clock_system.sampling_frequency = sampling_frequency[0];
-
-            /* Emulate reconfiguration time. */
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            const double frequency = json["clock_system"]["sampling_frequency"];
+            for (auto &g: m_generators)
+                g->SetSamplingFrequency(frequency);
+        }
+        else
+        {
+            fprintf(stderr, "Unrecognized parameter set.\n");
+            return ADQ_EINVAL;
         }
     }
-    else
+    catch (const nlohmann::json::exception &e)
     {
-        fprintf(stderr, "Unrecognized parameter set.\n");
+        fprintf(stderr, "Failed to parse the parameter set %s.\n", e.what());
         return ADQ_EINVAL;
     }
 
-    /* FIXME: Return value */
     return static_cast<int>(length);
 }
 
@@ -333,7 +285,6 @@ int MockDigitizer::GetParametersString(enum ADQParameterId id, char *const strin
 
 int MockDigitizer::ValidateParametersString(const char *const string, size_t length)
 {
-    /* FIXME: Implement */
     (void)string;
     (void)length;
     return ADQ_EUNSUPPORTED;
@@ -383,46 +334,4 @@ int MockDigitizer::SmTransactionImmediate(uint16_t cmd, void *wr_buf, size_t wr_
 {
     /* Exactly the same implementation since everything is emulated in software. */
     return SmTransaction(cmd, wr_buf, wr_buf_len, rd_buf, rd_buf_len);
-}
-
-template<typename T>
-int MockDigitizer::ParseLine(int line_idx, const std::string &str, std::vector<T> &values)
-{
-    /* Iterate through the string until we get to the target line, then attempt
-       to read a comma-separated list of elements of the target type. */
-    std::stringstream ss(str);
-    std::string line;
-    int idx = 0;
-
-    while (std::getline(ss, line, '\n'))
-    {
-        if (idx == line_idx)
-        {
-            std::stringstream lss(line);
-            std::string str_value;
-            while (std::getline(lss, str_value, ','))
-            {
-                try
-                {
-                    if (std::is_floating_point<T>::value)
-                        values.push_back(std::stod(str_value));
-                    else
-                        values.push_back(std::stoi(str_value));
-                }
-                catch (const std::invalid_argument &)
-                {
-                    return SCAPE_EINVAL;
-                }
-                catch (const std::out_of_range &)
-                {
-                    return SCAPE_EINVAL;
-                }
-            }
-
-            return SCAPE_EOK;
-        }
-        ++idx;
-    }
-
-    return SCAPE_EINVAL;
 }

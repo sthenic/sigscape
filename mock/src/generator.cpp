@@ -16,7 +16,7 @@ Generator::Generator()
 int Generator::SetParameters(const Parameters &parameters)
 {
     m_parameters = parameters;
-    m_distribution = std::normal_distribution<double>(0, m_parameters.sine.noise_std_dev);
+    m_distribution = std::normal_distribution<double>(0, m_parameters.sine.noise);
     return SCAPE_EOK;
 }
 

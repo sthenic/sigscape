@@ -41,6 +41,6 @@ private:
     std::string m_top_parameters;
     std::string m_clock_system_parameters;
 
-    template<typename T>
-    int ParseLine(int line_idx, const std::string &str, std::vector<T> &values);
+    // template<typename T>
+    // int ParseLine(int line_idx, const std::string &str, std::vector<T> &values);
 };

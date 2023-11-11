@@ -31,7 +31,7 @@ public:
                 , offset(0.0)
                 , frequency(13.12e6)
                 , phase(0.0)
-                , noise_std_dev(0.1)
+                , noise(0.1)
                 , harmonic_distortion(true)
                 , interleaving_distortion(true)
             {};
@@ -40,7 +40,7 @@ public:
             double offset;
             double frequency;
             double phase;
-            double noise_std_dev;
+            double noise;
             bool harmonic_distortion;
             bool interleaving_distortion;
         } sine;

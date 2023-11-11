@@ -38,8 +38,8 @@ MockDigitizer::MockDigitizer(const struct ADQConstantParameters &constant)
     , m_transfer{}
     , m_dram_status{}
     , m_overflow_status{}
-    , m_generators{}
-    , m_sysman(std::make_unique<MockSystemManager>())
+    , m_generators(constant.nof_acquisition_channels)
+    , m_sysman{}
     , m_top_parameters(DEFAULT_TOP_PARAMETERS)
     , m_clock_system_parameters(DEFAULT_CLOCK_SYSTEM_PARAMETERS)
 {
@@ -61,21 +61,14 @@ MockDigitizer::MockDigitizer(const struct ADQConstantParameters &constant)
         m_afe.channel[ch].dc_offset = 0;
     }
 
-    for (int ch = 0; ch < constant.nof_acquisition_channels; ++ch)
-    {
-        m_generators.push_back(std::make_unique<SineGenerator>());
-    }
-
     for (int ch = 0; ch < constant.nof_transfer_channels; ++ch)
-    {
         m_transfer.channel[ch].nof_buffers = 2;
-    }
 }
 
 int MockDigitizer::SetupDevice()
 {
     /* Start the system manager and emulate the rest as a delay. */
-    m_sysman->Start();
+    m_sysman.Start();
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     return 1;
 }
@@ -85,16 +78,16 @@ int MockDigitizer::StartDataAcquisition()
     m_dram_status = {};
     m_overflow_status = {};
 
-    for (const auto &g : m_generators)
-        g->Start();
+    for (auto &generator : m_generators)
+        generator.Start();
 
     return ADQ_EOK;
 }
 
 int MockDigitizer::StopDataAcquisition()
 {
-    for (const auto &g : m_generators)
-        g->Stop();
+    for (auto &generator : m_generators)
+        generator.Stop();
 
     return ADQ_EOK;
 }
@@ -112,7 +105,7 @@ int64_t MockDigitizer::WaitForRecordBuffer(int *channel, void **buffer, int time
         return ADQ_EINVAL;
 
     ADQGen4Record *lbuffer = NULL;
-    int result = m_generators[*channel]->WaitForBuffer(lbuffer, timeout);
+    int result = m_generators[*channel].WaitForBuffer(lbuffer, timeout);
     *buffer = lbuffer;
 
     /* FIXME: Error code space etc. */
@@ -125,7 +118,6 @@ int64_t MockDigitizer::WaitForRecordBuffer(int *channel, void **buffer, int time
 
 int MockDigitizer::ReturnRecordBuffer(int channel, void *buffer)
 {
-
     if (buffer == NULL)
         return ADQ_EINVAL;
     if (channel == -1)
@@ -134,7 +126,7 @@ int MockDigitizer::ReturnRecordBuffer(int channel, void *buffer)
         return ADQ_EINVAL;
 
     /* FIXME: Error space */
-    return m_generators[channel]->ReturnBuffer(static_cast<ADQGen4Record *>(buffer));
+    return m_generators[channel].ReturnBuffer(static_cast<ADQGen4Record *>(buffer));
 }
 
 int MockDigitizer::GetParameters(enum ADQParameterId id, void *const parameters)
@@ -240,14 +232,14 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
                 parameters.interleaving_distortion = object["interleaving_distortion"];
 
                 if (i < m_generators.size())
-                    m_generators[i++]->PushMessage(parameters);
+                    m_generators[i++].PushMessage(parameters);
             }
         }
         else if (json.contains("clock_system"))
         {
             const double frequency = json["clock_system"]["sampling_frequency"];
-            for (auto &g: m_generators)
-                g->PushMessage(frequency);
+            for (auto &generator: m_generators)
+                generator.PushMessage(frequency);
         }
         else
         {
@@ -299,13 +291,13 @@ int MockDigitizer::SmTransaction(uint16_t cmd, void *wr_buf, size_t wr_buf_len, 
         return ADQ_EINVAL;
 
     /* Add write message. */
-    int result = m_sysman->EmplaceMessage(static_cast<SystemManagerCommand>(cmd), wr_buf, wr_buf_len);
+    int result = m_sysman.EmplaceMessage(static_cast<SystemManagerCommand>(cmd), wr_buf, wr_buf_len);
     if (result != ADQ_EOK)
         return result;
 
     /* Wait for the reply. */
     SystemManagerMessage reply;
-    result = m_sysman->WaitForMessage(reply, 100);
+    result = m_sysman.WaitForMessage(reply, 100);
     if (result != ADQ_EOK)
         return result;
 

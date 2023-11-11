@@ -37,8 +37,8 @@ private:
     struct ADQDataTransferParameters m_transfer;
     struct ADQDramStatus m_dram_status;
     struct ADQOverflowStatus m_overflow_status;
-    std::vector<std::unique_ptr<SineGenerator>> m_generators;
-    std::unique_ptr<MockSystemManager> m_sysman;
+    std::vector<SineGenerator> m_generators;
+    MockSystemManager m_sysman;
     std::string m_top_parameters;
     std::string m_clock_system_parameters;
 };

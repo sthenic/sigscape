@@ -134,7 +134,7 @@ void Digitizer::MainInitialization()
     /* Instantiate one data processing thread for each transfer channel. */
     for (int ch = 0; ch < m_constant.nof_transfer_channels; ++ch)
     {
-        const auto label = fmt::format("{} {} CH{}", m_constant.product_name,
+        const auto label = fmt::format("{} {} {}", m_constant.product_name,
                                        m_constant.serial_number, m_constant.channel[ch].label);
         m_processing_threads.emplace_back(
             std::make_unique<DataProcessing>(m_id.handle, m_id.index, ch, std::move(label), m_constant)

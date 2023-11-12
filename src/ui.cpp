@@ -1923,7 +1923,7 @@ void Ui::RenderStaticInformation()
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
             for (int i = 0; i < ui->constant.nof_channels; ++i)
             {
-                ImGui::TableSetupColumn(fmt::format("CH {}", ui->constant.channel[i].label).c_str(),
+                ImGui::TableSetupColumn(ui->constant.channel[i].label,
                                         ImGuiTableColumnFlags_WidthStretch);
             }
             ImGui::TableHeadersRow();

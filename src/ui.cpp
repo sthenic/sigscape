@@ -236,6 +236,7 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version)
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
     ImGui::StyleColorsDark();
+    ImGui::GetStyle().FrameRounding = 1.0f;
 
     /* We explicitly bind the `window` to the screenshot call and store _that_
        as a member (instead of the window pointer) to avoid keeping the 'raw'

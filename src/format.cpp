@@ -2,6 +2,7 @@
 #include "fmt/format.h"
 
 #include <vector>
+#include <cctype>
 
 std::string Format::Metric(double value, const std::string &format, double highest_prefix,
                            double lowest_prefix)

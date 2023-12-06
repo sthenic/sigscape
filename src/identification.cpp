@@ -56,6 +56,7 @@ void Identification::MainLoop()
         case PID_ADQ32:
         case PID_ADQ36:
         case PID_ADQ30:
+        case PID_ADQ35:
             if (ADQControlUnit_OpenDeviceInterface(handle, i))
                 indexes.emplace_back(i, ++nof_opened_digitizers);
             ++nof_compatible_digitizers;

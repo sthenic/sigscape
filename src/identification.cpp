@@ -36,7 +36,7 @@ void Identification::MainLoop()
     }
 
     /* Filter out the Gen4 digitizers and construct a digitizer object for each one. */
-    struct ADQInfoListEntry *adq_list = NULL;
+    ADQInfoListEntry *adq_list = NULL;
     int nof_digitizers = 0;
     if (!ADQControlUnit_ListDevices(handle, &adq_list, (unsigned int *)&nof_digitizers))
     {

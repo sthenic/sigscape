@@ -241,9 +241,9 @@ struct ADQConstantParameters
     ADQConstantParameters() = default;
     ADQConstantParameters(const std::string &serial_number, const std::string &product_name,
                           const std::string &product_options,
-                          const struct ADQConstantParametersFirmware &firmware,
-                          const struct ADQConstantParametersCommunicationInterface &interface,
-                          const std::vector<struct ADQConstantParametersChannel> &channel)
+                          const ADQConstantParametersFirmware &firmware,
+                          const ADQConstantParametersCommunicationInterface &interface,
+                          const std::vector<ADQConstantParametersChannel> &channel)
         : id(ADQ_PARAMETER_ID_CONSTANT)
         , nof_channels(static_cast<int32_t>(channel.size()))
         , nof_acquisition_channels(static_cast<int32_t>(channel.size()))

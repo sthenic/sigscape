@@ -9,7 +9,7 @@ static bool has_added_digitizers = false;
 
 /* Mockup control functions */
 void MockControlUnit::AddDigitizer(enum ADQProductID_Enum pid,
-                                   const struct ADQConstantParameters &constant)
+                                   const ADQConstantParameters &constant)
 {
     m_info_list.push_back({pid});
     m_digitizers.push_back(std::make_unique<MockDigitizer>(constant));
@@ -25,7 +25,7 @@ int MockControlUnit::SetupDevice(int index)
     return m_digitizers[index]->SetupDevice();
 }
 
-int MockControlUnit::ListDevices(struct ADQInfoListEntry **list, unsigned int *nof_devices)
+int MockControlUnit::ListDevices(ADQInfoListEntry **list, unsigned int *nof_devices)
 {
     if ((list == NULL) || (nof_devices == NULL))
         return 0;
@@ -71,7 +71,7 @@ int MockControlUnit::StopDataAcquisition(int adq_num)
 }
 
 int64_t MockControlUnit::WaitForRecordBuffer(int adq_num, int *channel, void **buffer, int timeout,
-                                        struct ADQDataReadoutStatus *status)
+                                             ADQDataReadoutStatus *status)
 {
     /* -1 to follow the convention of the ADQAPI. */
     if ((adq_num == 0) || (adq_num > static_cast<int>(m_digitizers.size())))
@@ -236,7 +236,7 @@ int ADQControlUnit_SetupDevice(void *adq_cu, int adq_num)
     return static_cast<MockControlUnit *>(adq_cu)->SetupDevice(adq_num);
 }
 
-int ADQControlUnit_ListDevices(void *adq_cu, struct ADQInfoListEntry **list, unsigned int *nof_devices)
+int ADQControlUnit_ListDevices(void *adq_cu, ADQInfoListEntry **list, unsigned int *nof_devices)
 {
     if (adq_cu == NULL)
         return ADQ_EINVAL;
@@ -273,12 +273,12 @@ int ADQ_StopDataAcquisition(void *adq_cu, int adq_num)
 }
 
 int64_t ADQ_WaitForRecordBuffer(void *adq_cu, int adq_num, int *channel, void **buffer, int timeout,
-                                struct ADQDataReadoutStatus *status)
+                                ADQDataReadoutStatus *status)
 {
     if (adq_cu == NULL)
         return ADQ_EINVAL;
-    return static_cast<MockControlUnit *>(adq_cu)->WaitForRecordBuffer(adq_num, channel, buffer, timeout,
-                                                                  status);
+    return static_cast<MockControlUnit *>(adq_cu)->WaitForRecordBuffer(
+        adq_num, channel, buffer, timeout, status);
 }
 
 int ADQ_ReturnRecordBuffer(void *adq_cu, int adq_num, int channel, void *buffer)

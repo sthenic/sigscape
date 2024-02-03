@@ -13,18 +13,18 @@ public:
     MockControlUnit() = default;
 
     /* Mockup control functions. */
-    void AddDigitizer(enum ADQProductID_Enum pid, const struct ADQConstantParameters &constant);
+    void AddDigitizer(enum ADQProductID_Enum pid, const ADQConstantParameters &constant);
 
     /* Mocked functions. */
     int SetupDevice(int index);
-    int ListDevices(struct ADQInfoListEntry **list, unsigned int *nof_devices);
+    int ListDevices(ADQInfoListEntry **list, unsigned int *nof_devices);
     int OpenDeviceInterface(int index);
     int EnableErrorTrace(unsigned int level, const char *directory);
 
     int StartDataAcquisition(int adq_num);
     int StopDataAcquisition(int adq_num);
     int64_t WaitForRecordBuffer(int adq_num, int *channel, void **buffer, int timeout,
-                                struct ADQDataReadoutStatus *status);
+                                ADQDataReadoutStatus *status);
     int ReturnRecordBuffer(int adq_num, int channel, void *buffer);
 
     int GetParameters(int adq_num, enum ADQParameterId id, void *const parameters);

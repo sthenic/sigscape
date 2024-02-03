@@ -165,7 +165,7 @@ struct DigitizerMessage
     {}
 
     /* Create a message holding the digitizer's constant parameters. */
-    DigitizerMessage(DigitizerMessageId id, const struct ADQConstantParameters &constant_parameters)
+    DigitizerMessage(DigitizerMessageId id, const ADQConstantParameters &constant_parameters)
         : id(id)
         , constant_parameters(constant_parameters)
     {}
@@ -179,7 +179,7 @@ struct DigitizerMessage
     DataProcessingParameters processing_parameters;
     SensorTree sensor_tree;
     std::vector<BootEntry> boot_entries;
-    struct ADQConstantParameters constant_parameters;
+    ADQConstantParameters constant_parameters;
 };
 
 class Digitizer : public MessageThread<Digitizer, DigitizerMessage>
@@ -220,7 +220,7 @@ private:
     std::string m_configuration_directory;
 
     /* Storage of the digitizer's constant parameters for easy reference. */
-    struct ADQConstantParameters m_constant;
+    ADQConstantParameters m_constant;
 
     /* File watchers and queues to watch and propagate contents from the
        digitizer's configuration files. Anonymous structs are intentional. */

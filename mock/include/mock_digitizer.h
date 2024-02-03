@@ -8,7 +8,7 @@
 class MockDigitizer
 {
 public:
-    MockDigitizer(const struct ADQConstantParameters &constant);
+    MockDigitizer(const ADQConstantParameters &constant);
 
     /* Mocked functions. */
     int SetupDevice();
@@ -16,7 +16,7 @@ public:
     int StartDataAcquisition();
     int StopDataAcquisition();
     int64_t WaitForRecordBuffer(int *channel, void **buffer, int timeout,
-                                struct ADQDataReadoutStatus *status);
+                                ADQDataReadoutStatus *status);
     int ReturnRecordBuffer(int channel, void *buffer);
 
     int GetParameters(enum ADQParameterId id, void *const parameters);
@@ -31,12 +31,12 @@ public:
     int SmTransactionImmediate(uint16_t cmd, void *wr_buf, size_t wr_buf_len, void *rd_buf, size_t rd_buf_len);
 
 private:
-    struct ADQConstantParameters m_constant;
-    struct ADQAnalogFrontendParameters m_afe;
-    struct ADQClockSystemParameters m_clock_system;
-    struct ADQDataTransferParameters m_transfer;
-    struct ADQDramStatus m_dram_status;
-    struct ADQOverflowStatus m_overflow_status;
+    ADQConstantParameters m_constant;
+    ADQAnalogFrontendParameters m_afe;
+    ADQClockSystemParameters m_clock_system;
+    ADQDataTransferParameters m_transfer;
+    ADQDramStatus m_dram_status;
+    ADQOverflowStatus m_overflow_status;
     std::vector<SineGenerator> m_generators;
     MockSystemManager m_sysman;
     std::string m_top_parameters;

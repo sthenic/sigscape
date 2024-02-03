@@ -122,9 +122,9 @@ struct TimeDomainRecord : public BaseRecord
     inline static const std::string PRECISION = "8.2";
     inline static const std::string PRECISION_UNCONVERTED = "8.0";
 
-    TimeDomainRecord(const struct ADQGen4Record *raw,
-                     const struct ADQAnalogFrontendParametersChannel &afe,
-                     const struct ADQClockSystemParameters &clock_system,
+    TimeDomainRecord(const ADQGen4Record *raw,
+                     const ADQAnalogFrontendParametersChannel &afe,
+                     const ADQClockSystemParameters &clock_system,
                      double code_normalization,
                      bool convert_horizontal = true, bool convert_vertical = true)
         : BaseRecord(raw->header->record_length,
@@ -257,7 +257,7 @@ struct TimeDomainRecord : public BaseRecord
     }
 
     /* The record header, as given to us by the ADQAPI. */
-    struct ADQGen4RecordHeader header;
+    ADQGen4RecordHeader header;
 
     /* Values that can be readily displayed in the UI. */
     Value sampling_frequency;

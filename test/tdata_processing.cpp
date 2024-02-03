@@ -34,7 +34,7 @@ TEST_GROUP(DataProcessing)
                                                        {"A", 2, {2500.0}, 65536},
                                                    }});
 
-        struct ADQConstantParameters constant;
+        ADQConstantParameters constant;
         mock_control_unit.GetParameters(index, ADQ_PARAMETER_ID_CONSTANT, &constant);
         processing = std::make_unique<DataProcessing>(
             &mock_control_unit, index, channel, "SPD-SIM01 CHA", constant);

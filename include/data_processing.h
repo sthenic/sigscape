@@ -48,14 +48,12 @@ struct DataProcessingMessage
         : id(id)
     {}
 
-    DataProcessingMessage(DataProcessingMessageId id,
-                          struct ADQAnalogFrontendParametersChannel &afe)
+    DataProcessingMessage(DataProcessingMessageId id, ADQAnalogFrontendParametersChannel &afe)
         : id(id)
         , afe(afe)
     {}
 
-    DataProcessingMessage(DataProcessingMessageId id,
-                          struct ADQClockSystemParameters &clock_system)
+    DataProcessingMessage(DataProcessingMessageId id, ADQClockSystemParameters &clock_system)
         : id(id)
         , clock_system(clock_system)
     {}
@@ -66,8 +64,8 @@ struct DataProcessingMessage
     {}
 
     DataProcessingMessageId id;
-    struct ADQAnalogFrontendParametersChannel afe;
-    struct ADQClockSystemParameters clock_system;
+    ADQAnalogFrontendParametersChannel afe;
+    ADQClockSystemParameters clock_system;
     DataProcessingParameters processing;
 };
 
@@ -76,7 +74,7 @@ class DataProcessing
 {
 public:
     DataProcessing(void *handle, int index, int channel, const std::string &label,
-                   const struct ADQConstantParameters &constant);
+                   const ADQConstantParameters &constant);
     ~DataProcessing();
     DataProcessing(const DataProcessing &other) = delete;
     DataProcessing &operator=(const DataProcessing &other) = delete;
@@ -90,9 +88,9 @@ private:
     int m_index;
     int m_channel;
     std::string m_label;
-    struct ADQAnalogFrontendParametersChannel m_afe;
-    struct ADQConstantParameters m_constant;
-    struct ADQClockSystemParameters m_clock_system;
+    ADQAnalogFrontendParametersChannel m_afe;
+    ADQConstantParameters m_constant;
+    ADQClockSystemParameters m_clock_system;
     WindowCache m_window_cache;
     DataProcessingParameters m_parameters;
     std::deque<std::shared_ptr<FrequencyDomainRecord>> m_waterfall;

@@ -422,7 +422,7 @@ void Digitizer::CheckStatus()
         /* Update the timestamp. */
         m_last_status_timestamp = now;
 
-        struct ADQDramStatus dram_status;
+        ADQDramStatus dram_status;
         if (sizeof(dram_status) ==
             ADQ_GetStatus(m_id.handle, m_id.index, ADQ_STATUS_ID_DRAM, &dram_status))
         {
@@ -431,7 +431,7 @@ void Digitizer::CheckStatus()
             m_read_queue.EmplaceWrite(DigitizerMessageId::DRAM_FILL, fill_percent);
         }
 
-        struct ADQOverflowStatus overflow_status;
+        ADQOverflowStatus overflow_status;
         if (sizeof(overflow_status) ==
             ADQ_GetStatus(m_id.handle, m_id.index, ADQ_STATUS_ID_OVERFLOW, &overflow_status))
         {
@@ -445,18 +445,18 @@ void Digitizer::StartDataAcquisition()
 {
     try
     {
-        struct ADQAnalogFrontendParameters afe;
+        ADQAnalogFrontendParameters afe;
         int result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_ANALOG_FRONTEND, &afe);
         if (result != sizeof(afe))
             ThrowDigitizerException("ADQ_GetParameters failed, result {}.", result);
 
-        struct ADQDataTransferParameters transfer;
+        ADQDataTransferParameters transfer;
         result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_DATA_TRANSFER, &transfer);
         if (result != sizeof(transfer))
             ThrowDigitizerException("ADQ_GetParameters failed, result {}.", result);
 
         /* TODO: Temporary workaround until the `time_unit` precision is fixed. */
-        struct ADQClockSystemParameters clock_system;
+        ADQClockSystemParameters clock_system;
         result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CLOCK_SYSTEM, &clock_system);
         if (result != sizeof(clock_system))
             ThrowDigitizerException("ADQ_GetParameters failed, result {}.", result);
@@ -777,7 +777,7 @@ void Digitizer::ConfigureInternalReference()
 #ifdef MOCK_ADQAPI
     ThrowDigitizerException("ConfigureInternalReference() not implemented.");
 #else
-    struct ADQClockSystemParameters clock_system;
+    ADQClockSystemParameters clock_system;
     int result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CLOCK_SYSTEM,
                                           &clock_system);
     if (result != sizeof(clock_system))
@@ -797,7 +797,7 @@ void Digitizer::ConfigureExternalReference()
 #ifdef MOCK_ADQAPI
     ThrowDigitizerException("ConfigureExternalReference() not implemented.");
 #else
-    struct ADQClockSystemParameters clock_system;
+    ADQClockSystemParameters clock_system;
     int result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CLOCK_SYSTEM,
                                           &clock_system);
     if (result != sizeof(clock_system))
@@ -819,7 +819,7 @@ void Digitizer::ConfigureExternalClock()
 #ifdef MOCK_ADQAPI
     ThrowDigitizerException("ConfigureExternalClock() not implemented.");
 #else
-    struct ADQClockSystemParameters clock_system;
+    ADQClockSystemParameters clock_system;
     int result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_CLOCK_SYSTEM,
                                           &clock_system);
     if (result != sizeof(clock_system))
@@ -836,22 +836,22 @@ void Digitizer::ConfigureExternalClock()
 void Digitizer::ConfigureDefaultAcquisition()
 {
 #ifndef MOCK_ADQAPI
-    struct ADQEventSourcePeriodicParameters periodic;
+    ADQEventSourcePeriodicParameters periodic;
     int result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_EVENT_SOURCE_PERIODIC, &periodic);
     if (result != sizeof(periodic))
         ThrowDigitizerException("Failed to get periodic parameters, result {}.", result);
 
-    struct ADQDataAcquisitionParameters acquisition;
+    ADQDataAcquisitionParameters acquisition;
     result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_DATA_ACQUISITION, &acquisition);
     if (result != sizeof(acquisition))
         ThrowDigitizerException("Failed to get acquisition parameters, result {}.", result);
 
-    struct ADQDataTransferParameters transfer;
+    ADQDataTransferParameters transfer;
     result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_DATA_TRANSFER, &transfer);
     if (result != sizeof(transfer))
         ThrowDigitizerException("Failed to get transfer parameters, result {}.", result);
 
-    struct ADQDataReadoutParameters readout;
+    ADQDataReadoutParameters readout;
     result = ADQ_InitializeParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_DATA_READOUT, &readout);
     if (result != sizeof(readout))
         ThrowDigitizerException("Failed to get readout parameters, result {}.", result);
@@ -926,12 +926,12 @@ void Digitizer::ScaleRecordLength(double factor)
 #ifdef MOCK_ADQAPI
     ThrowDigitizerException("ScaleRecordLength({}) not implemented.", factor);
 #else
-    struct ADQDataAcquisitionParameters acquisition;
+    ADQDataAcquisitionParameters acquisition;
     int result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_DATA_ACQUISITION, &acquisition);
     if (result != sizeof(acquisition))
         ThrowDigitizerException("Failed to get acquisition parameters, result {}.", result);
 
-    struct ADQDataTransferParameters transfer;
+    ADQDataTransferParameters transfer;
     result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_DATA_TRANSFER, &transfer);
     if (result != sizeof(transfer))
         ThrowDigitizerException("Failed to get transfer parameters, result {}.", result);

@@ -76,7 +76,7 @@ std::string DataProcessing::Tone::Stringify() const
 }
 
 DataProcessing::DataProcessing(void *handle, int index, int channel, const std::string &label,
-                               const struct ADQConstantParameters &constant)
+                               const ADQConstantParameters &constant)
     : m_handle(handle)
     , m_index(index)
     , m_channel(channel)
@@ -116,7 +116,7 @@ void DataProcessing::MainLoop()
         /* Process any messages posted to the thread. */
         ProcessMessages();
 
-        struct ADQGen4Record *time_domain = NULL;
+        ADQGen4Record *time_domain = NULL;
         int channel = m_channel;
         int64_t bytes_received = ADQ_WaitForRecordBuffer(m_handle, m_index, &channel,
                                                          (void **)&time_domain, 100, NULL);

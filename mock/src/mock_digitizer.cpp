@@ -31,7 +31,7 @@ R"""({"clock_system": {
     "sampling_frequency": 500e6
 }})""";
 
-MockDigitizer::MockDigitizer(const struct ADQConstantParameters &constant)
+MockDigitizer::MockDigitizer(const ADQConstantParameters &constant)
     : m_constant(constant)
     , m_afe{}
     , m_clock_system{}
@@ -93,7 +93,7 @@ int MockDigitizer::StopDataAcquisition()
 }
 
 int64_t MockDigitizer::WaitForRecordBuffer(int *channel, void **buffer, int timeout,
-                                           struct ADQDataReadoutStatus *status)
+                                           ADQDataReadoutStatus *status)
 {
     (void)status;
 

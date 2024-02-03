@@ -3,7 +3,7 @@
 
 /* A static instance of the mocked ADQAPI. The user can decide whether to
    instantiate the object themselves or to use the CreateADQControlUnit()
-   interface. We only supports one control unit for now. */
+   interface. We only support one control unit for now. */
 static MockControlUnit mock_control_unit;
 static bool has_added_digitizers = false;
 

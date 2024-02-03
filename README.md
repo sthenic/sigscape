@@ -50,7 +50,7 @@ Running this application on CPUs with a low number of cores is not recommended.
 
 When the application is launched, the system is searched for a place to store
 persistent files. These files are separated into two categories: *configuration*
-and *data*. *Configuration files* are typically the digitizers' JSON parameter
+and *data*. *Configuration files* are typically the digitizer's JSON parameter
 files. What constitutes a *data file* is more loosely defined. Currently the
 definition includes screenshots, digitizer trace logs and Python scripts used to
 define [custom commands](#embedded-python). The rules for locating these
@@ -74,7 +74,7 @@ Data files are stored in
 ## Embedded Python
 
 You can extend the command palette with your own custom commands. These are
-defined in Python and utilizes the `pyadq` package to control the digitizer.
+defined in Python and utilize the `pyadq` package to control the digitizer.
 
 Python scripts that define custom commands *must*
 

@@ -1,5 +1,6 @@
 #include "data_processing.h"
 #include "mock_control_unit.h"
+#include "nlohmann/json.hpp"
 
 #include <thread>
 #include <chrono>
@@ -58,23 +59,25 @@ TEST(DataProcessing, Records)
     constexpr size_t RECORD_LENGTH = 8192;
     constexpr double TRIGGER_FREQUENCY = 20.0;
 
-    std::stringstream ss;
-    ss << R"""(TOP
-    frequency:
-        1e6
-    amplitude:
-        1.0
-    record length:
-    )""" << RECORD_LENGTH << R"""(
-    trigger frequency:
-    )""" << TRIGGER_FREQUENCY << R"""(
-    harmonic distortion:
-        0
-    noise standard deviation:
-        0.1
-    )""";
+    nlohmann::json top = {
+        {
+            "top",
+            {
+                {
+                    {"record_length", RECORD_LENGTH},
+                    {"trigger_frequency", TRIGGER_FREQUENCY},
+                    {"frequency", 1e6},
+                    {"amplitude", 1.0},
+                    {"noise", 0.1},
+                    {"harmonic_distortion", false},
+                    {"interleaving_distortion", false},
+                },
+            },
+        },
+    };
 
-    ADQ_SetParametersString(&mock_control_unit, index, ss.str().c_str(), ss.str().size());
+    auto str = top.dump();
+    ADQ_SetParametersString(&mock_control_unit, index, str.c_str(), str.size());
 
     LONGS_EQUAL(SCAPE_EOK, processing->Start());
     LONGS_EQUAL(ADQ_EOK, ADQ_StartDataAcquisition(&mock_control_unit, index));
@@ -91,23 +94,25 @@ TEST(DataProcessing, RepeatedStartStop)
     constexpr int NOF_RECORDS = 30;
     constexpr int NOF_LOOPS = 2;
 
-    std::stringstream ss;
-    ss << R"""(TOP
-    frequency:
-        1e6
-    amplitude:
-        1.0
-    record length:
-    )""" << RECORD_LENGTH << R"""(
-    trigger frequency:
-    )""" << TRIGGER_FREQUENCY << R"""(
-    harmonic distortion:
-        0
-    noise standard deviation:
-        0.1
-    )""";
+    nlohmann::json top = {
+        {
+            "top",
+            {
+                {
+                    {"record_length", RECORD_LENGTH},
+                    {"trigger_frequency", TRIGGER_FREQUENCY},
+                    {"frequency", 1e6},
+                    {"amplitude", 1.0},
+                    {"noise", 0.1},
+                    {"harmonic_distortion", false},
+                    {"interleaving_distortion", false},
+                },
+            },
+        },
+    };
 
-    ADQ_SetParametersString(&mock_control_unit, index, ss.str().c_str(), ss.str().size());
+    auto str = top.dump();
+    ADQ_SetParametersString(&mock_control_unit, index, str.c_str(), str.size());
 
     for (int i = 0; i < NOF_LOOPS; ++i)
     {
@@ -123,6 +128,7 @@ TEST(DataProcessing, RepeatedStartStop)
             CHECK(result == SCAPE_EOK);
 
             LONGS_EQUAL(nof_records_received, record->time_domain->header.record_number);
+            LONGS_EQUAL(RECORD_LENGTH, record->time_domain->header.record_length);
             nof_records_received++;
 
             /* Cap the refresh rate to something reasonable, e.g. 120 Hz. */

@@ -70,7 +70,7 @@ struct DataProcessingMessage
 };
 
 class DataProcessing
-    : public SmartBufferThread<DataProcessing, ProcessedRecord, DataProcessingMessage, 100>
+    : public SmartBufferThread<ProcessedRecord, DataProcessingMessage, 100>
 {
 public:
     DataProcessing(void *handle, int index, int channel, const std::string &label,

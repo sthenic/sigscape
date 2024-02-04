@@ -1,27 +1,23 @@
-/* This design is based on CRTP (https://en.wikipedia.org/wiki/Curiously_recurring_template_pattern). */
-
 #pragma once
 
-#include "thread_safe_queue.h"
-#include "message_channels.h"
-
-#include <thread>
-#include <future>
+#include "message_thread.h"
 #include <map>
 
-template <class C, typename T, typename M,  size_t CAPACITY = 0, bool PERSISTENT = false, bool PRESERVE = false>
-class SmartBufferThread : public MessageChannels<M>
+/* This class extends the `MessageThread` class with dynamic memory management
+   for objects of type `T` and channel-like interface to receive and return
+   these objects. The assumption is that the derived class has a need to
+   continuously create heap-allocated objects of type `T` and emit these to the
+   outside world. */
+
+template <typename T, typename M, size_t CAPACITY = 0, bool PERSISTENT = false, bool PRESERVE = false>
+class SmartBufferThread
+    : public MessageThread<SmartBufferThread<T, M, CAPACITY, PERSISTENT, PRESERVE>, M>
 {
 public:
     SmartBufferThread()
-        : m_thread()
-        , m_signal_stop()
-        , m_should_stop()
-        , m_is_running(false)
-        , m_thread_exit_code(SCAPE_EINTERRUPTED)
-        , m_mutex{}
+        : m_mutex{}
         , m_preserved_buffers{}
-        , m_read_queue(CAPACITY, PERSISTENT)
+        , m_read_queue{CAPACITY, PERSISTENT}
     {};
 
     virtual ~SmartBufferThread()
@@ -33,33 +29,22 @@ public:
     SmartBufferThread(const SmartBufferThread &other) = delete;
     SmartBufferThread &operator=(const SmartBufferThread &other) = delete;
 
-    virtual int Start()
+    /* We provide a default implementation of the outward facing interface. */
+    virtual int Start() override
     {
-        if (m_is_running)
-            return SCAPE_ENOTREADY;
-
         m_read_queue.Start();
-        m_signal_stop = std::promise<void>();
-        m_should_stop = m_signal_stop.get_future();
-        m_thread = std::thread([this]{ static_cast<C*>(this)->MainLoop(); });
-        m_is_running = true;
-        return SCAPE_EOK;
+        return MessageThread<SmartBufferThread<T, M, CAPACITY, PERSISTENT, PRESERVE>, M>::Start();
     }
 
-    virtual int Stop()
+    virtual int Stop() override
     {
-        if (!m_is_running)
-            return SCAPE_ENOTREADY;
-
         m_read_queue.Stop();
-        m_signal_stop.set_value();
-        m_thread.join();
+        int result =
+            MessageThread<SmartBufferThread<T, M, CAPACITY, PERSISTENT, PRESERVE>, M>::Stop();
         m_preserved_buffers.clear();
-        m_is_running = false;
-        return m_thread_exit_code;
+        return result;
     }
 
-    /* We provide a default implementation of the outward facing queue interface. */
     virtual int WaitForBuffer(std::shared_ptr<T> &buffer, int timeout)
     {
         return m_read_queue.Read(buffer, timeout);
@@ -96,11 +81,6 @@ public:
     }
 
 protected:
-    std::thread m_thread;
-    std::promise<void> m_signal_stop;
-    std::future<void> m_should_stop;
-    bool m_is_running;
-    int m_thread_exit_code;
     std::mutex m_mutex;
     std::map<const T *, std::shared_ptr<T>> m_preserved_buffers;
     ThreadSafeQueue<std::shared_ptr<T>> m_read_queue;
@@ -125,6 +105,4 @@ protected:
             return SCAPE_EINTERNAL;
         }
     }
-
-    virtual void MainLoop() = 0;
 };

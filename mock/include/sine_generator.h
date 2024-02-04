@@ -63,7 +63,7 @@ struct SineGeneratorMessage
 /* We don't use the SmartBufferThread here since we'll end up using this to
    emulate data emitted through void pointers by the ADQAPI. */
 class SineGenerator
-    : public SmartBufferThread<ADQGen4Record, SineGeneratorMessage, 0, false, true>
+    : public SmartBufferThread<ADQGen4Record, SineGeneratorMessage, true>
 {
 public:
     SineGenerator();

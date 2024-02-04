@@ -58,6 +58,7 @@ public:
         m_thread.join();
         m_is_running = false;
 
+        /* FIXME: This probably indicates wrong system design. Rethink? */
         this->StartMessageChannels();
         return m_thread_exit_code;
     }

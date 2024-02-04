@@ -194,7 +194,7 @@ public:
     bool IsFull()
     {
         std::unique_lock<std::mutex> lock(m_mutex);
-        return (m_capacity > 0) && (m_queue.size() >= m_capacity);
+        return m_capacity > 0 && m_queue.size() >= m_capacity;
     }
 
     bool IsEmpty()

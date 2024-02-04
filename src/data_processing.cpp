@@ -77,10 +77,11 @@ std::string DataProcessing::Tone::Stringify() const
 
 DataProcessing::DataProcessing(void *handle, int index, int channel, const std::string &label,
                                const ADQConstantParameters &constant)
-    : m_handle(handle)
-    , m_index(index)
-    , m_channel(channel)
-    , m_label(label)
+    : SmartBufferThread<ProcessedRecord, DataProcessingMessage>{100, false}
+    , m_handle{handle}
+    , m_index{index}
+    , m_channel{channel}
+    , m_label{label}
     , m_afe{1000.0, 0.0}
     , m_constant{constant}
     , m_clock_system{constant.clock_system}

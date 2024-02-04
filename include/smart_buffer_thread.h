@@ -9,15 +9,15 @@
    continuously create heap-allocated objects of type `T` and emit these to the
    outside world. */
 
-template <typename T, typename M, size_t CAPACITY = 0, bool PERSISTENT = false, bool PRESERVE = false>
+template <typename T, typename M, bool PRESERVE = false>
 class SmartBufferThread
-    : public MessageThread<SmartBufferThread<T, M, CAPACITY, PERSISTENT, PRESERVE>, M>
+    : public MessageThread<SmartBufferThread<T, M, PRESERVE>, M>
 {
 public:
-    SmartBufferThread()
+    SmartBufferThread(size_t capacity = 0, bool persistent = false)
         : m_mutex{}
         , m_preserved_buffers{}
-        , m_read_queue{CAPACITY, PERSISTENT}
+        , m_read_queue{capacity, persistent}
     {};
 
     virtual ~SmartBufferThread()
@@ -33,14 +33,14 @@ public:
     virtual int Start() override
     {
         m_read_queue.Start();
-        return MessageThread<SmartBufferThread<T, M, CAPACITY, PERSISTENT, PRESERVE>, M>::Start();
+        return MessageThread<SmartBufferThread<T, M, PRESERVE>, M>::Start();
     }
 
     virtual int Stop() override
     {
         m_read_queue.Stop();
         int result =
-            MessageThread<SmartBufferThread<T, M, CAPACITY, PERSISTENT, PRESERVE>, M>::Stop();
+            MessageThread<SmartBufferThread<T, M, PRESERVE>, M>::Stop();
         m_preserved_buffers.clear();
         return result;
     }

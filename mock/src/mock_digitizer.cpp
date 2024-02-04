@@ -241,13 +241,20 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
 
                 if (i < m_generators.size())
                     m_generators[i++].PushMessage(parameters);
+
             }
+
+            /* Emulate reconfiguration time. */
+            std::this_thread::sleep_for(std::chrono::milliseconds(250));
         }
         else if (json.contains("clock_system"))
         {
             const double frequency = json["clock_system"]["sampling_frequency"];
             for (auto &generator: m_generators)
                 generator.PushMessage(frequency);
+
+            /* Emulate reconfiguration time. */
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         }
         else
         {

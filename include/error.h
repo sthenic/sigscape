@@ -11,3 +11,11 @@
 #define SCAPE_EEXTERNAL (-7) /* External errors, e.g. from OS-level operations */
 #define SCAPE_EUNSUPPORTED (-8) /* Operation not supported by the device. */
 #define SCAPE_EINTERNAL (-9) /* Internal errors, cannot be addressed by the user. */
+
+#define RETURN_CALL(call)                                                                          \
+    do                                                                                             \
+    {                                                                                              \
+        int return_call_result = call;                                                             \
+        if (return_call_result != SCAPE_EOK)                                                       \
+            return return_call_result;                                                             \
+    } while (0)

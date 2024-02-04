@@ -7,8 +7,9 @@
 
 #include <thread>
 #include <future>
+#include <map>
 
-template <class C, typename T, typename M, size_t CAPACITY = 0, bool PERSISTENT = false>
+template <class C, typename T, typename M,  size_t CAPACITY = 0, bool PERSISTENT = false, bool PRESERVE = false>
 class SmartBufferThread
 {
 public:
@@ -18,10 +19,9 @@ public:
         , m_should_stop()
         , m_is_running(false)
         , m_thread_exit_code(SCAPE_EINTERRUPTED)
-        , m_nof_buffers_max(100)
-        , m_nof_buffers(0)
+        , m_mutex{}
+        , m_preserved_buffers{}
         , m_read_queue(CAPACITY, PERSISTENT)
-        , m_write_queue()
         , m_read_message_queue()
         , m_write_message_queue()
     {
@@ -45,7 +45,6 @@ public:
         if (m_is_running)
             return SCAPE_ENOTREADY;
 
-        m_write_queue.Start();
         m_read_queue.Start();
         m_signal_stop = std::promise<void>();
         m_should_stop = m_signal_stop.get_future();
@@ -59,10 +58,10 @@ public:
         if (!m_is_running)
             return SCAPE_ENOTREADY;
 
-        m_write_queue.Stop();
         m_read_queue.Stop();
         m_signal_stop.set_value();
         m_thread.join();
+        m_preserved_buffers.clear();
         m_is_running = false;
         return m_thread_exit_code;
     }
@@ -73,9 +72,29 @@ public:
         return m_read_queue.Read(buffer, timeout);
     }
 
+    virtual int ReturnBuffer(const T *buffer)
+    {
+        if (PRESERVE)
+        {
+            /* If the buffer has been kept alive through the preservation
+               mechanism, we remove it from the set of tracked buffers. Ideally
+               this brings the use count to zero and the memory is freed. */
+            std::unique_lock<std::mutex> lock{m_mutex};
+            if (m_preserved_buffers.erase(buffer) == 0)
+                return SCAPE_EINVAL;
+        }
+
+        return SCAPE_EOK;
+    }
+
     virtual int ReturnBuffer(std::shared_ptr<T> buffer)
     {
-        return m_write_queue.Write(buffer);
+        /* We maintain a wait/return interface to potentially reuse memory
+           manually in the future. For now though, we always allocate/free and
+           let the OS handle the rest. As far as this function is concerned that
+           means just letting the use count drop to zero after removing it from
+           any active tracking. */
+        return ReturnBuffer(buffer.get());
     }
 
     int GetTimeSinceLastActivity(int &milliseconds)
@@ -107,43 +126,32 @@ protected:
     std::future<void> m_should_stop;
     bool m_is_running;
     int m_thread_exit_code;
-    size_t m_nof_buffers_max;
-    size_t m_nof_buffers;
+
+    std::mutex m_mutex;
+    std::map<const T *, std::shared_ptr<T>> m_preserved_buffers;
 
     ThreadSafeQueue<std::shared_ptr<T>> m_read_queue;
-    ThreadSafeQueue<std::shared_ptr<T>> m_write_queue;
-
     ThreadSafeQueue<M> m_read_message_queue;
     ThreadSafeQueue<M> m_write_message_queue;
 
-    int AllocateBuffer(std::shared_ptr<T> &buffer, size_t count)
+    int ReuseOrAllocateBuffer(std::shared_ptr<T> &buffer, size_t count)
     {
         try
         {
+            /* Always allocate for now. */
             buffer = std::make_shared<T>(count);
+
+            if (PRESERVE)
+            {
+                std::unique_lock<std::mutex> lock{m_mutex};
+                m_preserved_buffers.emplace(buffer.get(), buffer);
+            }
+
+            return SCAPE_EOK;
         }
         catch (const std::bad_alloc &)
         {
             return SCAPE_EINTERNAL;
-        }
-
-        ++m_nof_buffers;
-        return SCAPE_EOK;
-    }
-
-    int ReuseOrAllocateBuffer(std::shared_ptr<T> &buffer, size_t count)
-    {
-        /* We prioritize reusing existing memory over allocating new. */
-        if (m_write_queue.Read(buffer, 0) == SCAPE_EOK)
-        {
-            return SCAPE_EOK;
-        }
-        else
-        {
-            if (m_nof_buffers < m_nof_buffers_max)
-                return AllocateBuffer(buffer, count);
-            else
-                return m_write_queue.Read(buffer, -1);
         }
     }
 

@@ -42,12 +42,12 @@ TEST(SineGenerator, Records)
     LONGS_EQUAL(SCAPE_EOK, generator.PushMessage(500e6));
     LONGS_EQUAL(SCAPE_EOK, generator.Start());
 
-    std::vector<ADQGen4Record *> records;
+    std::vector<std::shared_ptr<ADQGen4Record>> records;
     bool return_records = false;
     int nof_records_received = 0;
     while (nof_records_received != NOF_RECORDS)
     {
-        ADQGen4Record* record = NULL;
+        std::shared_ptr<ADQGen4Record> record;
         int result = generator.WaitForBuffer(record, 1000);
 
         if ((result == SCAPE_EAGAIN) && !return_records)
@@ -95,7 +95,7 @@ TEST(SineGenerator, RepeatedStartStop)
         int nof_records_received = 0;
         while (nof_records_received != NOF_RECORDS)
         {
-            ADQGen4Record *record = NULL;
+            std::shared_ptr<ADQGen4Record> record;
             LONGS_EQUAL(SCAPE_EOK, generator.WaitForBuffer(record, 1000));
             CHECK(record != NULL);
 

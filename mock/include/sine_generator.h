@@ -1,6 +1,6 @@
 #pragma once
 
-#include "buffer_thread.h"
+#include "smart_buffer_thread.h"
 #include "error.h"
 #include "ADQAPI.h"
 
@@ -62,7 +62,8 @@ struct SineGeneratorMessage
 
 /* We don't use the SmartBufferThread here since we'll end up using this to
    emulate data emitted through void pointers by the ADQAPI. */
-class SineGenerator : public BufferThread<SineGenerator, ADQGen4Record, SineGeneratorMessage>
+class SineGenerator
+    : public SmartBufferThread<SineGenerator, ADQGen4Record, SineGeneratorMessage, 0, false, true>
 {
 public:
     SineGenerator();

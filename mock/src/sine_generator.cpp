@@ -65,7 +65,7 @@ void SineGenerator::ProcessMessages()
 
 void SineGenerator::Generate()
 {
-    ADQGen4Record *record = NULL;
+    std::shared_ptr<ADQGen4Record> record;
     int result = ReuseOrAllocateBuffer(record, m_parameters.record_length * sizeof(int16_t));
     if (result != SCAPE_EOK)
     {

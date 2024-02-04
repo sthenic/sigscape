@@ -104,16 +104,24 @@ int64_t MockDigitizer::WaitForRecordBuffer(int *channel, void **buffer, int time
     if (*channel < 0 || static_cast<size_t>(*channel) >= m_generators.size())
         return ADQ_EINVAL;
 
-    ADQGen4Record *lbuffer = NULL;
-    int result = m_generators[*channel].WaitForBuffer(lbuffer, timeout);
-    *buffer = lbuffer;
-
-    /* FIXME: Error code space etc. */
-    /* FIXME: Would be better if the generator return length. */
+    std::shared_ptr<ADQGen4Record> smart_buffer;
+    int result = m_generators[*channel].WaitForBuffer(smart_buffer, timeout);
     if (result < 0)
+    {
+        /* FIXME: Error code space etc. */
         return result;
+    }
     else
-        return lbuffer->header->record_length * sizeof(int16_t);
+    {
+        /* Since our goal is to emulate a C API, we have to extract and pass on
+           the raw pointer. By virtue of the generator being configured in the
+           "preserve" mode, the buffer memory is kept alive until it's returned
+           through `ReturnRecordBuffer`. Otherwise, we'd have a problem. */
+        *buffer = smart_buffer.get();
+
+        /* FIXME: Would be better if the generator returned length. */
+        return smart_buffer->header->record_length * sizeof(int16_t);
+    }
 }
 
 int MockDigitizer::ReturnRecordBuffer(int channel, void *buffer)

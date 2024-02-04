@@ -37,7 +37,7 @@ void FileWatcher::MainLoop()
        doesn't, we emit the `FILE_DOES_NOT_EXIST` message. Message should only
        be emitted once, which is why it sits outside the loop. */
     if (!std::filesystem::exists(m_path))
-        m_read_queue.EmplaceWrite(FileWatcherMessageId::FILE_DOES_NOT_EXIST);
+        _EmplaceMessage(FileWatcherMessageId::FILE_DOES_NOT_EXIST);
 
     for (;;)
     {
@@ -51,7 +51,7 @@ void FileWatcher::MainLoop()
                 m_timestamp = timestamp;
                 std::string contents;
                 ReadContents(contents);
-                m_read_queue.EmplaceWrite(FileWatcherMessageId::FILE_CREATED, std::move(contents));
+                _EmplaceMessage(FileWatcherMessageId::FILE_CREATED, std::move(contents));
             }
             else if (timestamp != m_timestamp)
             {
@@ -59,7 +59,7 @@ void FileWatcher::MainLoop()
                 m_timestamp = timestamp;
                 std::string contents;
                 ReadContents(contents);
-                m_read_queue.EmplaceWrite(FileWatcherMessageId::FILE_UPDATED, std::move(contents));
+                _EmplaceMessage(FileWatcherMessageId::FILE_UPDATED, std::move(contents));
             }
         }
         else if (m_is_watching)
@@ -67,7 +67,7 @@ void FileWatcher::MainLoop()
             /* File was erased, emit a message. */
             m_is_watching = false;
             m_timestamp = std::filesystem::file_time_type();
-            m_read_queue.EmplaceWrite(FileWatcherMessageId::FILE_DELETED);
+            _EmplaceMessage(FileWatcherMessageId::FILE_DELETED);
         }
 
         /* Handle any incoming messages. */
@@ -107,7 +107,7 @@ void FileWatcher::HandleMessages()
 {
     /* Empty the inwards facing message queue. */
     FileWatcherMessage message;
-    while (SCAPE_EOK == m_write_queue.Read(message, 0))
+    while (SCAPE_EOK == _WaitForMessage(message, 0))
     {
         switch (message.id)
         {

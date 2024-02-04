@@ -146,7 +146,7 @@ void Digitizer::MainInitialization()
     InitializeFileWatchers();
 
     /* Send the post-initialization message, triggering the GUI initialization. */
-    m_read_queue.EmplaceWrite(DigitizerMessageId::INITIALIZED, m_constant);
+    _EmplaceMessage(DigitizerMessageId::INITIALIZED, m_constant);
 
     /* Initialize the objects associated with the system manager, like sensors
        and boot status. */
@@ -156,13 +156,13 @@ void Digitizer::MainInitialization()
 void Digitizer::SignalError(const std::string &message)
 {
     Log::log->error(message);
-    m_read_queue.EmplaceWrite(DigitizerMessageId::EVENT_ERROR);
+    _EmplaceMessage(DigitizerMessageId::EVENT_ERROR);
 }
 
 void Digitizer::ProcessMessages()
 {
     DigitizerMessage message;
-    while (SCAPE_EOK == m_write_queue.Read(message, 0))
+    while (SCAPE_EOK == _WaitForMessage(message, 0))
         HandleMessageInState(message);
 }
 
@@ -188,7 +188,7 @@ void Digitizer::ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watch
         case FileWatcherMessageId::FILE_CREATED:
         case FileWatcherMessageId::FILE_UPDATED:
             str = message.contents;
-            m_read_queue.Write(dirty_id);
+            _PushMessage(dirty_id);
             break;
 
         case FileWatcherMessageId::FILE_DOES_NOT_EXIST:
@@ -257,8 +257,8 @@ void Digitizer::InitializeSystemManagerBootStatus()
     if (result != ADQ_EOK)
         ThrowDigitizerException("GET_STATE_INFO, status {}.", result);
 
-    m_read_queue.EmplaceWrite(DigitizerMessageId::BOOT_STATUS, state, state_information.label,
-                              std::move(boot_entries));
+    _EmplaceMessage(
+        DigitizerMessageId::BOOT_STATUS, state, state_information.label, std::move(boot_entries));
 }
 
 void Digitizer::InitializeSystemManagerSensors()
@@ -319,7 +319,7 @@ void Digitizer::InitializeSystemManagerSensors()
         m_sensor_records.emplace_back(information.id, information.group_id, information.unit);
     }
 
-    m_read_queue.EmplaceWrite(DigitizerMessageId::SENSOR_TREE, std::move(sensor_tree));
+    _EmplaceMessage(DigitizerMessageId::SENSOR_TREE, std::move(sensor_tree));
 }
 
 void Digitizer::InitializeSystemManagerObjects()
@@ -396,13 +396,13 @@ void Digitizer::CheckActivity()
 
     if (milliseconds_max > m_no_activity_threshold_ms + ACTIVITY_HYSTERESIS_MS)
     {
-        m_read_queue.EmplaceWrite(DigitizerMessageId::EVENT_NO_ACTIVITY);
+        _EmplaceMessage(DigitizerMessageId::EVENT_NO_ACTIVITY);
         m_no_activity_threshold_ms = milliseconds_max;
         m_notified_no_activity = true;
     }
     else if (m_notified_no_activity && milliseconds_max + ACTIVITY_HYSTERESIS_MS < m_no_activity_threshold_ms)
     {
-        m_read_queue.EmplaceWrite(DigitizerMessageId::EVENT_CLEAR);
+        _EmplaceMessage(DigitizerMessageId::EVENT_CLEAR);
         m_notified_no_activity = false;
     }
 }
@@ -428,7 +428,7 @@ void Digitizer::CheckStatus()
         {
             double fill_percent = static_cast<double>(dram_status.fill) /
                                   static_cast<double>(m_constant.dram_size);
-            m_read_queue.EmplaceWrite(DigitizerMessageId::DRAM_FILL, fill_percent);
+            _EmplaceMessage(DigitizerMessageId::DRAM_FILL, fill_percent);
         }
 
         ADQOverflowStatus overflow_status;
@@ -436,7 +436,7 @@ void Digitizer::CheckStatus()
             ADQ_GetStatus(m_id.handle, m_id.index, ADQ_STATUS_ID_OVERFLOW, &overflow_status))
         {
             if (overflow_status.overflow)
-                m_read_queue.EmplaceWrite(DigitizerMessageId::EVENT_OVERFLOW);
+                _EmplaceMessage(DigitizerMessageId::EVENT_OVERFLOW);
         }
     }
 }
@@ -509,7 +509,7 @@ void Digitizer::StopDataAcquisition()
 void Digitizer::SetState(DigitizerState state)
 {
     m_state = state;
-    m_read_queue.EmplaceWrite(DigitizerMessageId::STATE, state);
+    _EmplaceMessage(DigitizerMessageId::STATE, state);
 }
 
 void Digitizer::HandleMessageInNotInitialized(const DigitizerMessage &message)
@@ -583,7 +583,7 @@ void Digitizer::HandleMessageInIdle(const DigitizerMessage &message)
     case DigitizerMessageId::INITIALIZE_PARAMETERS:
         if (m_parameters.top->size() != 0 || m_parameters.clock_system->size() != 0)
         {
-            m_read_queue.EmplaceWrite(DigitizerMessageId::INITIALIZE_WOULD_OVERWRITE);
+            _EmplaceMessage(DigitizerMessageId::INITIALIZE_WOULD_OVERWRITE);
             break;
         }
         /* FALLTHROUGH */
@@ -606,13 +606,12 @@ void Digitizer::HandleMessageInIdle(const DigitizerMessage &message)
         break;
 
     case DigitizerMessageId::GET_TOP_PARAMETERS_FILENAME:
-        m_read_queue.EmplaceWrite(DigitizerMessageId::PARAMETERS_FILENAME,
-                                  m_watchers.top->GetPath());
+        _EmplaceMessage(DigitizerMessageId::PARAMETERS_FILENAME, m_watchers.top->GetPath());
         break;
 
     case DigitizerMessageId::GET_CLOCK_SYSTEM_PARAMETERS_FILENAME:
-        m_read_queue.EmplaceWrite(DigitizerMessageId::PARAMETERS_FILENAME,
-                                  m_watchers.clock_system->GetPath());
+        _EmplaceMessage(
+            DigitizerMessageId::PARAMETERS_FILENAME, m_watchers.clock_system->GetPath());
         break;
 
     case DigitizerMessageId::CALL_PYTHON:
@@ -708,13 +707,12 @@ void Digitizer::HandleMessageInAcquisition(const DigitizerMessage &message)
         break;
 
     case DigitizerMessageId::GET_TOP_PARAMETERS_FILENAME:
-        m_read_queue.EmplaceWrite(DigitizerMessageId::PARAMETERS_FILENAME,
-                                  m_watchers.top->GetPath());
+        _EmplaceMessage(DigitizerMessageId::PARAMETERS_FILENAME, m_watchers.top->GetPath());
         break;
 
     case DigitizerMessageId::GET_CLOCK_SYSTEM_PARAMETERS_FILENAME:
-        m_read_queue.EmplaceWrite(DigitizerMessageId::PARAMETERS_FILENAME,
-                                  m_watchers.clock_system->GetPath());
+        _EmplaceMessage(
+            DigitizerMessageId::PARAMETERS_FILENAME, m_watchers.clock_system->GetPath());
         break;
 
     case DigitizerMessageId::CALL_PYTHON:
@@ -757,8 +755,8 @@ void Digitizer::HandleMessageInState(const DigitizerMessage &message)
         Log::log->trace(FormatLog("Processed message {}.", message.id));
         auto response = message;
         response.result = SCAPE_EOK;
-        m_read_queue.EmplaceWrite(std::move(response));
-        m_read_queue.EmplaceWrite(DigitizerMessageId::EVENT_CLEAR);
+        _EmplaceMessage(std::move(response));
+        _EmplaceMessage(DigitizerMessageId::EVENT_CLEAR);
     }
     catch (const DigitizerException &)
     {
@@ -767,7 +765,7 @@ void Digitizer::HandleMessageInState(const DigitizerMessage &message)
            error handling from the upper layers. */
         auto response = message;
         response.result = SCAPE_EINTERNAL;
-        m_read_queue.EmplaceWrite(std::move(response));
+        _EmplaceMessage(std::move(response));
         throw;
     }
 }
@@ -967,7 +965,7 @@ void Digitizer::ForceAcquisition()
 
 void Digitizer::SetParameters(const std::shared_ptr<std::string> &str)
 {
-    m_read_queue.EmplaceWrite(DigitizerMessageId::EVENT_CONFIGURATION);
+    _EmplaceMessage(DigitizerMessageId::EVENT_CONFIGURATION);
     int result = ADQ_SetParametersString(m_id.handle, m_id.index, str->c_str(), str->size());
     if (result <= 0)
         ThrowDigitizerException("ADQ_SetParametersString() failed, result {}.", result);
@@ -1016,7 +1014,7 @@ void Digitizer::EmitConstantParameters()
     if (result != sizeof(m_constant))
         ThrowDigitizerException("Failed to get constant parameters, result {}.", result);
 
-    m_read_queue.EmplaceWrite(DigitizerMessageId::CONSTANT_PARAMETERS, m_constant);
+    _EmplaceMessage(DigitizerMessageId::CONSTANT_PARAMETERS, m_constant);
 }
 
 void Digitizer::InitializeFileWatchers()

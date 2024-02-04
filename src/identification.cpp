@@ -89,6 +89,6 @@ void Identification::MainLoop()
     }
 
     /* Forward the control unit handle along with digitizer objects. */
-    m_read_queue.Write({handle, digitizers});
+    _PushMessage({handle, digitizers});
     m_thread_exit_code = SCAPE_EOK;
 }

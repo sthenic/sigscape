@@ -3,12 +3,13 @@
 #pragma once
 
 #include "thread_safe_queue.h"
+#include "message_channels.h"
 
 #include <thread>
 #include <future>
 
 template<class C, typename T>
-class MessageThread
+class MessageThread : public MessageChannels<T>
 {
 public:
     MessageThread()
@@ -17,8 +18,6 @@ public:
         , m_should_stop()
         , m_is_running(false)
         , m_thread_exit_code(SCAPE_EINTERRUPTED)
-        , m_read_queue()
-        , m_write_queue()
     {};
 
     virtual ~MessageThread()
@@ -36,8 +35,6 @@ public:
         if (m_is_running)
             return SCAPE_ENOTREADY;
 
-        m_write_queue.Start();
-        m_read_queue.Start();
         m_signal_stop = std::promise<void>();
         m_should_stop = m_signal_stop.get_future();
         m_thread = std::thread([this]{ static_cast<C*>(this)->MainLoop(); });
@@ -51,30 +48,18 @@ public:
         if (!m_is_running)
             return SCAPE_ENOTREADY;
 
-        m_write_queue.Stop();
-        m_read_queue.Stop();
+        /* We have to stop the message channels to be sure that we can join the
+           thread. However, once the thread has finished, we want to restart the
+           channels since we'd like to be able to queue up messages to the
+           thread while it's not running. */
+        this->StopMessageChannels();
         m_signal_stop.set_value();
+
         m_thread.join();
         m_is_running = false;
+
+        this->StartMessageChannels();
         return m_thread_exit_code;
-    }
-
-    /* Wait for a message from the thread. */
-    int WaitForMessage(T &message, int timeout)
-    {
-        return m_read_queue.Read(message, timeout);
-    }
-
-    /* Push a message to the thread. */
-    int PushMessage(const T &message)
-    {
-        return m_write_queue.Write(message);
-    }
-
-    template<class... Args>
-    int EmplaceMessage(Args &&... args)
-    {
-        return PushMessage(T(std::forward<Args>(args)...));
     }
 
 protected:
@@ -84,8 +69,6 @@ protected:
     bool m_is_running;
     int m_thread_exit_code;
 
-    ThreadSafeQueue<T> m_read_queue;
-    ThreadSafeQueue<T> m_write_queue;
-
+    /* The thread's main loop. This function must be implemented by the derived class. */
     virtual void MainLoop() = 0;
 };

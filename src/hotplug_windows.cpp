@@ -61,9 +61,9 @@ void HotplugWindows::CheckForEvents()
 
     auto devices = std::move(SplitDeviceList(list));
     if (devices.size() > m_nof_devices)
-        m_read_queue.EmplaceWrite(HotplugEvent::CONNECT);
+        _EmplaceMessage(HotplugEvent::CONNECT);
     else if (devices.size() < m_nof_devices)
-        m_read_queue.EmplaceWrite(HotplugEvent::DISCONNECT);
+        _EmplaceMessage(HotplugEvent::DISCONNECT);
 
     m_nof_devices = devices.size();
 }

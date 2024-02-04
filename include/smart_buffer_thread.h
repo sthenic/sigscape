@@ -3,14 +3,14 @@
 #pragma once
 
 #include "thread_safe_queue.h"
-#include "error.h"
+#include "message_channels.h"
 
 #include <thread>
 #include <future>
 #include <map>
 
 template <class C, typename T, typename M,  size_t CAPACITY = 0, bool PERSISTENT = false, bool PRESERVE = false>
-class SmartBufferThread
+class SmartBufferThread : public MessageChannels<M>
 {
 public:
     SmartBufferThread()
@@ -22,17 +22,10 @@ public:
         , m_mutex{}
         , m_preserved_buffers{}
         , m_read_queue(CAPACITY, PERSISTENT)
-        , m_read_message_queue()
-        , m_write_message_queue()
-    {
-        m_read_message_queue.Start();
-        m_write_message_queue.Start();
-    };
+    {};
 
     virtual ~SmartBufferThread()
     {
-        m_read_message_queue.Stop();
-        m_write_message_queue.Stop();
         Stop();
     }
 
@@ -102,37 +95,15 @@ public:
         return m_read_queue.GetTimeSinceLastActivity(milliseconds);
     }
 
-    /* Wait for a message from the thread. */
-    int WaitForMessage(M &message, int timeout)
-    {
-        return m_read_message_queue.Read(message, timeout);
-    }
-
-    /* Push a message to the thread. */
-    int PushMessage(const M &message)
-    {
-        return m_write_message_queue.Write(message);
-    }
-
-    template<class... Args>
-    int EmplaceMessage(Args &&... args)
-    {
-        return PushMessage(M(std::forward<Args>(args)...));
-    }
-
 protected:
     std::thread m_thread;
     std::promise<void> m_signal_stop;
     std::future<void> m_should_stop;
     bool m_is_running;
     int m_thread_exit_code;
-
     std::mutex m_mutex;
     std::map<const T *, std::shared_ptr<T>> m_preserved_buffers;
-
     ThreadSafeQueue<std::shared_ptr<T>> m_read_queue;
-    ThreadSafeQueue<M> m_read_message_queue;
-    ThreadSafeQueue<M> m_write_message_queue;
 
     int ReuseOrAllocateBuffer(std::shared_ptr<T> &buffer, size_t count)
     {

@@ -45,9 +45,9 @@ void HotplugLinux::CheckForEvents()
             nof_devices++;
 
         if (nof_devices > m_nof_devices)
-            m_read_queue.EmplaceWrite(HotplugEvent::CONNECT);
+            _EmplaceMessage(HotplugEvent::CONNECT);
         else if (nof_devices < m_nof_devices)
-            m_read_queue.EmplaceWrite(HotplugEvent::DISCONNECT);
+            _EmplaceMessage(HotplugEvent::DISCONNECT);
 
         m_nof_devices = nof_devices;
         udev_enumerate_unref(enumerator);

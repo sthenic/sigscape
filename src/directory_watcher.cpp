@@ -57,16 +57,14 @@ void DirectoryWatcher::MainLoop()
                     {
                         /* This is a new file. */
                         m_files.emplace(entry.path(), FileState{false, entry.path(), timestamp});
-                        m_read_queue.EmplaceWrite(
-                            DirectoryWatcherMessageId::FILE_CREATED, entry.path());
+                        _EmplaceMessage(DirectoryWatcherMessageId::FILE_CREATED, entry.path());
                     }
                     else if (timestamp != match->second.timestamp)
                     {
                         /* The file has been updated. */
                         match->second.timestamp = timestamp;
                         match->second.should_remove = false;
-                        m_read_queue.EmplaceWrite(DirectoryWatcherMessageId::FILE_UPDATED,
-                                                  entry.path());
+                        _EmplaceMessage(DirectoryWatcherMessageId::FILE_UPDATED, entry.path());
                     }
                     else
                     {
@@ -78,8 +76,7 @@ void DirectoryWatcher::MainLoop()
                 {
                     if (it->second.should_remove)
                     {
-                        m_read_queue.EmplaceWrite(DirectoryWatcherMessageId::FILE_DELETED,
-                                                  it->second.path);
+                        _EmplaceMessage(DirectoryWatcherMessageId::FILE_DELETED, it->second.path);
                         it = m_files.erase(it);
                     }
                     else
@@ -93,7 +90,7 @@ void DirectoryWatcher::MainLoop()
         {
             /* Directory doesn't exists. If we were tracking files, it was just erased. */
             for (const auto &[path, state] : m_files)
-                m_read_queue.EmplaceWrite(DirectoryWatcherMessageId::FILE_DELETED, path);
+                _EmplaceMessage(DirectoryWatcherMessageId::FILE_DELETED, path);
 
             m_files.clear();
         }

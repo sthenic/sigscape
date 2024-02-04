@@ -46,7 +46,7 @@ public:
         start_msg.code = m_start_code;
         start_msg.data = NULL;
 
-        int result = m_read_queue.Write(start_msg);
+        int result = _PushMessage(start_msg);
         if (result != SCAPE_EOK)
         {
             printf("Failed to write the start message, result %d.\n", result);
@@ -61,7 +61,7 @@ public:
         {
             /* Continue on 'ok' and 'timeout'. */
             struct Message read_msg;
-            result = m_write_queue.Read(read_msg, 10);
+            result = _WaitForMessage(read_msg, 10);
             if ((result != SCAPE_EOK) && (result != SCAPE_EAGAIN))
             {
                 m_thread_exit_code = result;
@@ -92,7 +92,7 @@ public:
                 write_msg.code = 0;
                 write_msg.data = data;
 
-                result = m_read_queue.Write(write_msg);
+                result = _PushMessage(write_msg);
                 if (result != SCAPE_EOK)
                 {
                     printf("Failed to write new data message, result %d.\n", result);

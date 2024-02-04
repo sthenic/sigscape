@@ -131,7 +131,7 @@ void MockSystemManager::MainLoop()
     for (;;)
     {
         /* Handle any incoming messages. This function blocks until there's a
-           message, or the process is stopped.*/
+           message, or the process is stopped. */
         int result = HandleMessage();
         if (result != SCAPE_EOK)
             return;
@@ -142,7 +142,7 @@ int MockSystemManager::HandleMessage()
 {
     /* Wait (indefinitely) for a new message. */
     SystemManagerMessage message;
-    int result = m_write_queue.Read(message, -1);
+    int result = _WaitForMessage(message, -1);
     if (result != SCAPE_EOK)
         return result;
 
@@ -152,14 +152,13 @@ int MockSystemManager::HandleMessage()
     {
         /* -1 for the EOM */
         auto nof_sensors = static_cast<uint32_t>(m_sensor_map.size() - 1);
-        m_read_queue.EmplaceWrite(&nof_sensors, sizeof(nof_sensors));
+        _EmplaceMessage(&nof_sensors, sizeof(nof_sensors));
         break;
     }
 
     case SystemManagerCommand::SENSOR_GET_MAP:
     {
-        m_read_queue.EmplaceWrite(m_sensor_map.data(),
-                                  sizeof(m_sensor_map[0]) * m_sensor_map.size());
+        _EmplaceMessage(m_sensor_map.data(), sizeof(m_sensor_map[0]) * m_sensor_map.size());
         break;
     }
 
@@ -169,14 +168,14 @@ int MockSystemManager::HandleMessage()
         {
             fprintf(stderr, "Invalid argument length for SENSOR_GET_VALUE: %zu != %zu.\n",
                     message.data.size(), sizeof(ArgSensorGetValue));
-            m_read_queue.EmplaceWrite(-1);
+            _EmplaceMessage(-1);
         }
 
         /* Intentionally return an error for one of the sensors. */
         auto arg = reinterpret_cast<ArgSensorGetValue *>(message.data.data());
         if (arg->id == SENSOR_ID_TEMPERATURE_ERROR)
         {
-            m_read_queue.EmplaceWrite(-271);
+            _EmplaceMessage(-271);
             break;
         }
 
@@ -185,18 +184,18 @@ int MockSystemManager::HandleMessage()
             if (arg->format == SENSOR_FORMAT_FLOAT)
             {
                 float value = m_sensors.at(arg->id)(m_random_generator);
-                m_read_queue.EmplaceWrite(&value, sizeof(value));
+                _EmplaceMessage(&value, sizeof(value));
             }
             else
             {
                 fprintf(stderr, "Unsupported sensor format %" PRIu32 ".\n", arg->format);
-                m_read_queue.EmplaceWrite(-1);
+                _EmplaceMessage(-1);
             }
         }
         else
         {
             fprintf(stderr, "Unknown sensor id %" PRIu32 ".\n", arg->id);
-            m_read_queue.EmplaceWrite(-1);
+            _EmplaceMessage(-1);
         }
         break;
     }
@@ -207,19 +206,19 @@ int MockSystemManager::HandleMessage()
         {
             fprintf(stderr, "Invalid argument length for SENSOR_GET_INFO: %zu != %zu.\n",
                     message.data.size(), sizeof(uint32_t));
-            m_read_queue.EmplaceWrite(-1);
+            _EmplaceMessage(-1);
         }
 
         auto id = reinterpret_cast<const uint32_t *>(message.data.data());
         if (m_sensor_information.count(*id) > 0)
         {
             const auto &information = m_sensor_information.at(*id);
-            m_read_queue.EmplaceWrite(&information, sizeof(information));
+            _EmplaceMessage(&information, sizeof(information));
         }
         else
         {
             fprintf(stderr, "Unknown sensor id %" PRIu32 ".\n", *id);
-            m_read_queue.EmplaceWrite(-1);
+            _EmplaceMessage(-1);
         }
         break;
     }
@@ -230,19 +229,19 @@ int MockSystemManager::HandleMessage()
         {
             fprintf(stderr, "Invalid argument length for SENSOR_GET_GROUP_INFO: %zu != %zu.\n",
                     message.data.size(), sizeof(uint32_t));
-            m_read_queue.EmplaceWrite(-1);
+            _EmplaceMessage(-1);
         }
 
         auto id = *reinterpret_cast<const uint32_t *>(message.data.data());
         if (m_sensor_group_information.count(id) > 0)
         {
             const auto &information = m_sensor_group_information.at(id);
-            m_read_queue.EmplaceWrite(&information, sizeof(information));
+            _EmplaceMessage(&information, sizeof(information));
         }
         else
         {
             fprintf(stderr, "Unknown sensor id %" PRIu32 ".\n", id);
-            m_read_queue.EmplaceWrite(-1);
+            _EmplaceMessage(-1);
         }
         break;
     }
@@ -251,13 +250,13 @@ int MockSystemManager::HandleMessage()
     {
         /* -1 for the EOM */
         auto nof_entries = static_cast<uint32_t>(m_boot_map.size() - 1);
-        m_read_queue.EmplaceWrite(&nof_entries, sizeof(nof_entries));
+        _EmplaceMessage(&nof_entries, sizeof(nof_entries));
         break;
     }
 
     case SystemManagerCommand::BOOT_GET_MAP:
     {
-        m_read_queue.EmplaceWrite(m_boot_map.data(), sizeof(m_boot_map[0]) * m_boot_map.size());
+        _EmplaceMessage(m_boot_map.data(), sizeof(m_boot_map[0]) * m_boot_map.size());
         break;
     }
 
@@ -267,19 +266,19 @@ int MockSystemManager::HandleMessage()
         {
             fprintf(stderr, "Invalid argument length for BOOT_GET_INFO: %zu != %zu.\n",
                     message.data.size(), sizeof(uint32_t));
-            m_read_queue.EmplaceWrite(-1);
+            _EmplaceMessage(-1);
         }
 
         auto id = *reinterpret_cast<const uint32_t *>(message.data.data());
         if (m_boot_information.count(id) > 0)
         {
             const auto &information = m_boot_information.at(id);
-            m_read_queue.EmplaceWrite(&information, sizeof(information));
+            _EmplaceMessage(&information, sizeof(information));
         }
         else
         {
             fprintf(stderr, "Unknown boot id %" PRIu32 ".\n", id);
-            m_read_queue.EmplaceWrite(-1);
+            _EmplaceMessage(-1);
         }
         break;
     }
@@ -287,21 +286,21 @@ int MockSystemManager::HandleMessage()
     case SystemManagerCommand::GET_STATE:
     {
         int32_t state = 10;
-        m_read_queue.EmplaceWrite(&state, sizeof(state));
+        _EmplaceMessage(&state, sizeof(state));
         break;
     }
 
     case SystemManagerCommand::GET_STATE_INFO:
     {
         struct SystemManagerStateInformation information = {10, "Done"};
-        m_read_queue.EmplaceWrite(&information, sizeof(information));
+        _EmplaceMessage(&information, sizeof(information));
         break;
     }
 
     default:
     {
         fprintf(stderr, "Unsupported system manager command 0x%04X.\n", static_cast<int>(message.cmd));
-        m_read_queue.EmplaceWrite(-1);
+        _EmplaceMessage(-1);
         break;
     }
     }

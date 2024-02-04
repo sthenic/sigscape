@@ -720,7 +720,7 @@ void DataProcessing::AnalyzeTimeDomain(TimeDomainRecord &record)
 void DataProcessing::ProcessMessages()
 {
     DataProcessingMessage message;
-    while (SCAPE_EOK == m_write_message_queue.Read(message, 0))
+    while (SCAPE_EOK == _WaitForMessage(message, 0))
     {
         switch (message.id)
         {

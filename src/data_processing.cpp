@@ -77,7 +77,7 @@ std::string DataProcessing::Tone::Stringify() const
 
 DataProcessing::DataProcessing(void *handle, int index, int channel, const std::string &label,
                                const ADQConstantParameters &constant)
-    : SmartBufferThread<ProcessedRecord, DataProcessingMessage>{100, false}
+    : SmartBufferThread<ProcessedRecord, DataProcessingMessage>{1, 100, false}
     , m_handle{handle}
     , m_index{index}
     , m_channel{channel}
@@ -143,13 +143,13 @@ void DataProcessing::MainLoop()
 
         /* We only allocate memory and process the record if we know that we're
            going to show it, i.e. if the outbound queue has space available. */
-        if (!m_read_queue.IsFull())
+        if (!IsFull())
         {
             auto processed_record = std::make_shared<ProcessedRecord>(
                 m_label, estimated_trigger_frequency, estimated_throughput);
 
             if (SCAPE_EOK == ProcessRecord(time_domain, *processed_record))
-                m_read_queue.Write(processed_record);
+                EjectBuffer(processed_record);
         }
         else
         {

@@ -10,8 +10,7 @@ SineGenerator::SineGenerator()
     , m_distribution{0, 0.1}
     , m_record_number{0}
     , m_parameters{}
-{
-}
+{}
 
 void SineGenerator::MainLoop()
 {
@@ -100,7 +99,7 @@ void SineGenerator::Generate()
     record->header->timestamp_synchronization_counter = static_cast<uint16_t>(m_record_number / 100);
 
     /* Add to the outgoing queue. */
-    m_read_queue.Write(record);
+    EjectBuffer(record);
 
     /* Update bookkeeping variables. */
     m_record_number++;

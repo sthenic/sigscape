@@ -2,6 +2,7 @@
 
 #include "message_thread.h"
 #include <map>
+#include <deque>
 
 /* This class extends the `MessageThread` class with dynamic memory management
    for objects of type `T` and channel-like interface to receive and return
@@ -14,11 +15,14 @@ class SmartBufferThread
     : public MessageThread<SmartBufferThread<T, M, PRESERVE>, M>
 {
 public:
-    SmartBufferThread(size_t capacity = 0, bool persistent = false)
-        : m_mutex{}
+    SmartBufferThread(size_t nof_channels = 1, size_t capacity = 0, bool persistent = false)
+        : m_read_queues{}
         , m_preserved_buffers{}
-        , m_read_queue{capacity, persistent}
-    {};
+        , m_mutex{}
+    {
+        for (size_t i = 0; i < nof_channels; ++i)
+            m_read_queues.emplace_back(capacity, persistent);
+    };
 
     virtual ~SmartBufferThread()
     {
@@ -32,22 +36,26 @@ public:
     /* We provide a default implementation of the outward facing interface. */
     virtual int Start() override
     {
-        m_read_queue.Start();
+        for (auto &q : m_read_queues)
+            q.Start();
+
         return MessageThread<SmartBufferThread<T, M, PRESERVE>, M>::Start();
     }
 
     virtual int Stop() override
     {
-        m_read_queue.Stop();
-        int result =
-            MessageThread<SmartBufferThread<T, M, PRESERVE>, M>::Stop();
+        for (auto &q : m_read_queues)
+            q.Stop();
+
+        int result = MessageThread<SmartBufferThread<T, M, PRESERVE>, M>::Stop();
+
         m_preserved_buffers.clear();
         return result;
     }
 
-    virtual int WaitForBuffer(std::shared_ptr<T> &buffer, int timeout)
+    virtual int WaitForBuffer(std::shared_ptr<T> &buffer, int timeout, int channel = 0)
     {
-        return m_read_queue.Read(buffer, timeout);
+        return m_read_queues.at(channel).Read(buffer, timeout);
     }
 
     virtual int ReturnBuffer(const T *buffer)
@@ -75,16 +83,12 @@ public:
         return ReturnBuffer(buffer.get());
     }
 
-    int GetTimeSinceLastActivity(int &milliseconds)
+    int GetTimeSinceLastActivity(int &milliseconds, int channel = 0)
     {
-        return m_read_queue.GetTimeSinceLastActivity(milliseconds);
+        return m_read_queues.at(channel).GetTimeSinceLastActivity(milliseconds);
     }
 
 protected:
-    std::mutex m_mutex;
-    std::map<const T *, std::shared_ptr<T>> m_preserved_buffers;
-    ThreadSafeQueue<std::shared_ptr<T>> m_read_queue;
-
     int ReuseOrAllocateBuffer(std::shared_ptr<T> &buffer, size_t count)
     {
         try
@@ -105,4 +109,22 @@ protected:
             return SCAPE_EINTERNAL;
         }
     }
+
+    bool IsFull(int channel = 0)
+    {
+        return m_read_queues.at(channel).IsFull();
+    }
+
+    int EjectBuffer(const std::shared_ptr<T> &buffer, int channel = 0)
+    {
+        return m_read_queues.at(channel).Write(buffer);
+    }
+
+private:
+    /* We need a `std::deque` (and not `std::vector`) because the
+       `ThreadSafeQueue` cannot be moved or copied, which are requirements for
+       `std::vector`. */
+    std::deque<ThreadSafeQueue<std::shared_ptr<T>>> m_read_queues;
+    std::map<const T *, std::shared_ptr<T>> m_preserved_buffers;
+    std::mutex m_mutex;
 };

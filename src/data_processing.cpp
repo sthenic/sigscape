@@ -123,7 +123,7 @@ void DataProcessing::MainLoop()
                                                          (void **)&time_domain, 100, NULL);
 
         /* Continue on timeout. */
-        if ((bytes_received == ADQ_EAGAIN) || (bytes_received == ADQ_ENOTREADY) || (bytes_received == ADQ_EINTERRUPTED))
+        if (bytes_received == ADQ_EAGAIN || bytes_received == ADQ_ENOTREADY || bytes_received == ADQ_EINTERRUPTED)
         {
             continue;
         }
@@ -253,7 +253,6 @@ int DataProcessing::ProcessRecord(const ADQGen4Record *raw_time_domain,
         Log::log->error(FormatLog(e.what()));
         return SCAPE_EINTERNAL;
     }
-
 
     /* Calculate the FFT and assign parameters we know at this stage. */
     const size_t FFT_LENGTH = PreviousPowerOfTwo(raw_time_domain->header->record_length);

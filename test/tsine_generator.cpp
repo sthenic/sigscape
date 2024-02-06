@@ -10,6 +10,7 @@ TEST_GROUP(SineGenerator)
 
     void setup()
     {
+        generator.Start();
     }
 
     void teardown()
@@ -18,14 +19,17 @@ TEST_GROUP(SineGenerator)
     }
 };
 
-TEST(SineGenerator, Test0)
+TEST(SineGenerator, TestSetParameters)
 {
-    LONGS_EQUAL(SCAPE_EOK, generator.PushMessage(SineGeneratorParameters{}));
-    LONGS_EQUAL(SCAPE_EOK, generator.PushMessage(500e6));
-    LONGS_EQUAL(SCAPE_ENOTREADY, generator.Stop());
-    LONGS_EQUAL(SCAPE_EOK, generator.Start());
-    LONGS_EQUAL(SCAPE_ENOTREADY, generator.Start());
-    LONGS_EQUAL(SCAPE_EOK, generator.Stop());
+    const GeneratorMessage top{
+        GeneratorMessageId::SET_TOP_PARAMETERS, SineGeneratorTopParameters{}};
+
+    LONGS_EQUAL(SCAPE_EOK, generator.PushMessage(top, -1));
+
+    const GeneratorMessage clock_system{
+        GeneratorMessageId::SET_CLOCK_SYSTEM_PARAMETERS, SineGeneratorClockSystemParameters{}};
+
+    LONGS_EQUAL(SCAPE_EOK, generator.PushMessage(clock_system, -1));
 }
 
 TEST(SineGenerator, Records)
@@ -34,13 +38,16 @@ TEST(SineGenerator, Records)
     constexpr double TRIGGER_FREQUENCY = 30.0;
     constexpr int NOF_RECORDS = 60;
 
-    SineGeneratorParameters parameters{};
-    parameters.record_length = RECORD_LENGTH;
-    parameters.trigger_frequency = TRIGGER_FREQUENCY;
+    SineGeneratorTopParameters top{};
+    top.record_length = RECORD_LENGTH;
+    top.trigger_frequency = TRIGGER_FREQUENCY;
 
-    LONGS_EQUAL(SCAPE_EOK, generator.PushMessage(parameters));
-    LONGS_EQUAL(SCAPE_EOK, generator.PushMessage(500e6));
-    LONGS_EQUAL(SCAPE_EOK, generator.Start());
+    SineGeneratorClockSystemParameters clock_system{};
+    clock_system.sampling_frequency = 500e6;
+
+    LONGS_EQUAL(SCAPE_EOK, generator.PushMessage({GeneratorMessageId::SET_TOP_PARAMETERS, top}));
+    LONGS_EQUAL(SCAPE_EOK, generator.PushMessage({GeneratorMessageId::SET_CLOCK_SYSTEM_PARAMETERS, clock_system}));
+    LONGS_EQUAL(SCAPE_EOK, generator.PushMessage({GeneratorMessageId::ENABLE}));
 
     std::vector<std::shared_ptr<ADQGen4Record>> records;
     bool return_records = false;
@@ -72,25 +79,29 @@ TEST(SineGenerator, Records)
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    LONGS_EQUAL(SCAPE_EOK, generator.Stop());
+    LONGS_EQUAL(SCAPE_EOK, generator.PushMessage({GeneratorMessageId::DISABLE}));
 }
 
 TEST(SineGenerator, RepeatedStartStop)
 {
     constexpr size_t RECORD_LENGTH = 8192;
-    constexpr double TRIGGER_FREQUENCY = 1.0;
+    constexpr double TRIGGER_FREQUENCY = 2.0;
     constexpr int NOF_RECORDS = 2;
     constexpr int NOF_LOOPS = 5;
 
-    SineGeneratorParameters parameters;
-    parameters.record_length = RECORD_LENGTH;
-    parameters.trigger_frequency = TRIGGER_FREQUENCY;
+    SineGeneratorTopParameters top{};
+    top.record_length = RECORD_LENGTH;
+    top.trigger_frequency = TRIGGER_FREQUENCY;
+
+    SineGeneratorClockSystemParameters clock_system{};
+    clock_system.sampling_frequency = 500e6;
+
+    LONGS_EQUAL(SCAPE_EOK, generator.PushMessage({GeneratorMessageId::SET_TOP_PARAMETERS, top}));
+    LONGS_EQUAL(SCAPE_EOK, generator.PushMessage({GeneratorMessageId::SET_CLOCK_SYSTEM_PARAMETERS, clock_system}));
 
     for (int i = 0; i < NOF_LOOPS; ++i)
     {
-        LONGS_EQUAL(SCAPE_EOK, generator.PushMessage(parameters));
-        LONGS_EQUAL(SCAPE_EOK, generator.PushMessage(500e6));
-        LONGS_EQUAL(SCAPE_EOK, generator.Start());
+        LONGS_EQUAL(SCAPE_EOK, generator.PushMessage({GeneratorMessageId::ENABLE}));
 
         int nof_records_received = 0;
         while (nof_records_received != NOF_RECORDS)
@@ -105,6 +116,6 @@ TEST(SineGenerator, RepeatedStartStop)
             LONGS_EQUAL(SCAPE_EOK, generator.ReturnBuffer(record));
         }
 
-        LONGS_EQUAL(SCAPE_EOK, generator.Stop());
+        LONGS_EQUAL(SCAPE_EOK, generator.PushMessage({GeneratorMessageId::DISABLE}));
     }
 }

@@ -1,35 +1,24 @@
 #pragma once
 
-#include "smart_buffer_thread.h"
-#include "error.h"
-#include "ADQAPI.h"
+#include "generator.h"
+#include "nlohmann/json.hpp"
 
-#include <random>
-
-enum class SineGeneratorMessageId
+struct SineGeneratorTopParameters
 {
-    SET_PARAMETERS,
-    SET_SAMPLING_FREQUENCY,
-};
-
-struct SineGeneratorParameters
-{
-    SineGeneratorParameters()
-        : record_length{1024}
-        , trigger_frequency{30}
-        , sampling_frequency{500e6}
+    SineGeneratorTopParameters()
+        : record_length{18000}
+        , trigger_frequency{5.0}
         , amplitude{0.8}
         , offset{0.0}
         , frequency{13.12e6}
         , phase{0.0}
         , noise{0.1}
-        , harmonic_distortion{true}
-        , interleaving_distortion{true}
+        , harmonic_distortion{false}
+        , interleaving_distortion{false}
     {}
 
     size_t record_length;
     double trigger_frequency;
-    double sampling_frequency;
     double amplitude;
     double offset;
     double frequency;
@@ -39,46 +28,48 @@ struct SineGeneratorParameters
     bool interleaving_distortion;
 };
 
-struct SineGeneratorMessage
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
+    SineGeneratorTopParameters,
+    record_length,
+    trigger_frequency,
+    amplitude,
+    offset,
+    frequency,
+    phase,
+    noise,
+    harmonic_distortion,
+    interleaving_distortion
+);
+
+struct SineGeneratorClockSystemParameters
 {
-    SineGeneratorMessage() = default;
+    SineGeneratorClockSystemParameters()
+        : sampling_frequency{500e6}
+    {}
 
-    SineGeneratorMessage(const SineGeneratorParameters &parameters)
-        : id{SineGeneratorMessageId::SET_PARAMETERS}
-        , parameters{parameters}
-        , sampling_frequency{}
-    {};
-
-    SineGeneratorMessage(double sampling_frequency)
-        : id{SineGeneratorMessageId::SET_SAMPLING_FREQUENCY}
-        , parameters{}
-        , sampling_frequency{sampling_frequency}
-    {};
-
-    SineGeneratorMessageId id;
-    SineGeneratorParameters parameters;
     double sampling_frequency;
 };
 
-/* We don't use the SmartBufferThread here since we'll end up using this to
-   emulate data emitted through void pointers by the ADQAPI. */
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
+    SineGeneratorClockSystemParameters,
+    sampling_frequency
+);
+
 class SineGenerator
-    : public SmartBufferThread<ADQGen4Record, SineGeneratorMessage, true>
+    : public Generator<SineGeneratorTopParameters, SineGeneratorClockSystemParameters>
 {
 public:
-    SineGenerator();
+    SineGenerator(size_t nof_channels = 1)
+        : Generator<SineGeneratorTopParameters, SineGeneratorClockSystemParameters>(nof_channels)
+    {}
+
     ~SineGenerator() = default;
 
-    void MainLoop() override;
+protected:
+    void Generate() override;
+    int SetParameters(GeneratorMessageId id, const nlohmann::json &json) override;
+    int GetParameters(GeneratorMessageId id, nlohmann::json &json) override;
 
 private:
-    std::default_random_engine m_random_generator;
-    std::normal_distribution<double> m_distribution;
-    uint32_t m_record_number;
-    uint32_t m_timestamp;
-    SineGeneratorParameters m_parameters;
-
-    void ProcessMessages();
-    void Generate();
     void Sine(int16_t *const data, size_t count, bool &overrange);
 };

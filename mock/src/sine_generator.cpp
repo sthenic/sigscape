@@ -2,70 +2,11 @@
 
 #include <cmath>
 #include <limits>
-#include <chrono>
-
-SineGenerator::SineGenerator()
-    : m_random_generator{
-          static_cast<uint32_t>(std::chrono::steady_clock::now().time_since_epoch().count())}
-    , m_distribution{0, 0.1}
-    , m_record_number{0}
-    , m_parameters{}
-{}
-
-void SineGenerator::MainLoop()
-{
-    m_thread_exit_code = SCAPE_EOK;
-    m_timestamp = 0;
-    m_record_number = 0;
-
-    for (;;)
-    {
-        const auto start = std::chrono::high_resolution_clock::now();
-        ProcessMessages();
-        Generate();
-
-        const auto delta = (std::chrono::high_resolution_clock::now() - start).count();
-        const int wait_us = static_cast<int>(1000000.0 / m_parameters.trigger_frequency);
-        const int remainder_us = std::max(wait_us - static_cast<int>(delta / 1e3), 0);
-
-        /* We implement the sleep using the stop event to be able to immediately
-           react to the event being set. */
-        if (m_should_stop.wait_for(std::chrono::microseconds(remainder_us)) == std::future_status::ready)
-            break;
-    }
-}
-
-void SineGenerator::ProcessMessages()
-{
-    SineGeneratorMessage message{};
-    while (SCAPE_EOK == _WaitForMessage(message, 0))
-    {
-        switch (message.id)
-        {
-        case SineGeneratorMessageId::SET_PARAMETERS:
-        {
-            auto sampling_frequency = m_parameters.sampling_frequency;
-            m_parameters = message.parameters;
-            m_parameters.sampling_frequency = sampling_frequency;
-            m_distribution = std::normal_distribution<double>(0, m_parameters.noise);
-            break;
-        }
-
-        case SineGeneratorMessageId::SET_SAMPLING_FREQUENCY:
-            m_parameters.sampling_frequency = message.sampling_frequency;
-            break;
-
-        default:
-            fprintf(stderr, "SineGenerator: Unknown message id %d.\n", static_cast<int>(message.id));
-            break;
-        }
-    }
-}
 
 void SineGenerator::Generate()
 {
     std::shared_ptr<ADQGen4Record> record;
-    int result = ReuseOrAllocateBuffer(record, m_parameters.record_length * sizeof(int16_t));
+    int result = ReuseOrAllocateBuffer(record, m_top_parameters.record_length * sizeof(int16_t));
     if (result != SCAPE_EOK)
     {
         if (result == SCAPE_EINTERRUPTED) /* Convert forced queue stop into an ok. */
@@ -78,16 +19,16 @@ void SineGenerator::Generate()
     /* Fill in a few header fields. */
     *record->header = {};
     record->header->data_format = ADQ_DATA_FORMAT_INT16;
-    record->header->record_length = static_cast<uint32_t>(m_parameters.record_length);
+    record->header->record_length = static_cast<uint32_t>(m_top_parameters.record_length);
     record->header->record_number = m_record_number;
     record->header->record_start = static_cast<int64_t>(m_distribution(m_random_generator) * 1000);
     record->header->time_unit = 25e-12f; /* TODO: 25ps steps for now */
     record->header->timestamp = m_timestamp;
     record->header->sampling_period = static_cast<uint64_t>(
-        1.0 / (record->header->time_unit * m_parameters.sampling_frequency) + 0.5);
+        1.0 / (record->header->time_unit * m_clock_system_parameters.sampling_frequency) + 0.5);
 
     bool overrange;
-    Sine(static_cast<int16_t *>(record->data), m_parameters.record_length, overrange);
+    Sine(static_cast<int16_t *>(record->data), m_top_parameters.record_length, overrange);
 
     if (overrange)
         record->header->record_status |= ADQ_RECORD_STATUS_OVERRANGE;
@@ -105,7 +46,53 @@ void SineGenerator::Generate()
     m_record_number++;
 
     m_timestamp += static_cast<uint64_t>(
-        std::round(1.0 / (m_parameters.trigger_frequency * record->header->time_unit)));
+        std::round(1.0 / (m_top_parameters.trigger_frequency * record->header->time_unit)));
+}
+
+int SineGenerator::SetParameters(GeneratorMessageId id, const nlohmann::json &json)
+{
+    try
+    {
+        switch (id)
+        {
+        case GeneratorMessageId::SET_TOP_PARAMETERS:
+            m_top_parameters = json.get<SineGeneratorTopParameters>();
+            return SCAPE_EOK;
+
+        case GeneratorMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
+            m_clock_system_parameters = json.get<SineGeneratorClockSystemParameters>();
+            return SCAPE_EOK;
+
+        default:
+            fprintf(stderr, "Unrecognized parameter set.\n");
+            return SCAPE_EINVAL;
+        }
+    }
+    catch (const nlohmann::json::exception &e)
+    {
+        fprintf(stderr, "Failed to parse the parameter set %s.\n", e.what());
+        return SCAPE_EINVAL;
+    }
+}
+
+int SineGenerator::GetParameters(GeneratorMessageId id, nlohmann::json &json)
+{
+    switch (id)
+    {
+    case GeneratorMessageId::GET_TOP_PARAMETERS:
+        json = SineGeneratorTopParameters{};
+        break;
+
+    case GeneratorMessageId::GET_CLOCK_SYSTEM_PARAMETERS:
+        json = SineGeneratorClockSystemParameters{};
+        break;
+
+    default:
+        fprintf(stderr, "Unexpected message id %d.\n", static_cast<int>(id));
+        return SCAPE_EINVAL;
+    }
+
+    return SCAPE_EOK;
 }
 
 void SineGenerator::Sine(int16_t *const data, size_t count, bool &overrange)
@@ -113,10 +100,11 @@ void SineGenerator::Sine(int16_t *const data, size_t count, bool &overrange)
     /* Generate a noisy sine wave of the input length. */
     /* TODO: Only 16-bit datatype for now. */
     overrange = false;
-    const SineGeneratorParameters &p = m_parameters;
+    const auto &p = m_top_parameters;
+    const auto &sampling_frequency = m_clock_system_parameters.sampling_frequency;
     for (size_t i = 0; i < count; ++i)
     {
-        double x = static_cast<double>(i) / static_cast<double>(p.sampling_frequency);
+        double x = static_cast<double>(i) / static_cast<double>(sampling_frequency);
         double y = (p.amplitude * std::sin(2 * M_PI * p.frequency * x + p.phase) +
                     m_distribution(m_random_generator) + p.offset);
 

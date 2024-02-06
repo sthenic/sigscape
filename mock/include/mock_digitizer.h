@@ -9,6 +9,7 @@ class MockDigitizer
 {
 public:
     MockDigitizer(const ADQConstantParameters &constant);
+    ~MockDigitizer() = default;
 
     /* Mocked functions. */
     int SetupDevice();

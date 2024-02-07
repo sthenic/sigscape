@@ -37,11 +37,19 @@ public:
         return m_write_message_queue.Write(message);
     }
 
-    /* Push a message and wait for a response as a single action. */
+    /* Push a message then wait for a response as a single action. */
     int PushMessage(const T &in, T &out, int timeout)
     {
         RETURN_CALL(PushMessage(in));
         RETURN_CALL(WaitForMessage(out, timeout));
+        return SCAPE_EOK;
+    }
+
+    /* Push a message then wait for and _discard_ the response as a single action. */
+    int PushMessage(const T &in, int timeout)
+    {
+        T response;
+        RETURN_CALL(PushMessage(in, response, timeout));
         return SCAPE_EOK;
     }
 

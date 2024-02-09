@@ -28,7 +28,7 @@ public:
         , m_nof_messages_to_generate(10)
     {}
 
-    ~TestMessageThread()
+    ~TestMessageThread() override
     {
         FreeGeneratedData();
     }

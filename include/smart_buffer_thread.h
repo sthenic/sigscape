@@ -24,7 +24,7 @@ public:
             m_read_queues.emplace_back(capacity, persistent);
     };
 
-    virtual ~SmartBufferThread()
+    virtual ~SmartBufferThread() override
     {
         Stop();
     }

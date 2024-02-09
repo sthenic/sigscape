@@ -40,6 +40,7 @@ class FileWatcher : public MessageThread<FileWatcher, FileWatcherMessage>
 {
 public:
     FileWatcher(const std::string &path);
+    ~FileWatcher() override = default;
     const std::string &GetPath();
 
     void MainLoop() override;

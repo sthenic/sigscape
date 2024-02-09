@@ -12,7 +12,7 @@ class HotplugWindows : public Hotplug
 {
 public:
     HotplugWindows();
-    ~HotplugWindows() = default;
+    ~HotplugWindows() override = default;
 
     void MainLoop() override;
 

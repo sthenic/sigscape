@@ -8,7 +8,7 @@ class HotplugLinux : public Hotplug
 {
 public:
     HotplugLinux();
-    ~HotplugLinux();
+    ~HotplugLinux() override;
 
     void MainLoop() override;
     int Stop() override;

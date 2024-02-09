@@ -20,7 +20,7 @@ public:
         , m_thread_exit_code(SCAPE_EINTERRUPTED)
     {};
 
-    virtual ~MessageThread()
+    virtual ~MessageThread() override
     {
         Stop();
     };

@@ -22,10 +22,10 @@ void SineGenerator::Generate()
     record->header->record_length = static_cast<uint32_t>(m_top_parameters.record_length);
     record->header->record_number = m_record_number;
     record->header->record_start = static_cast<int64_t>(m_distribution(m_random_generator) * 1000);
-    record->header->time_unit = 25e-12f; /* TODO: 25ps steps for now */
+    record->header->time_unit = TIME_UNIT;
     record->header->timestamp = m_timestamp;
     record->header->sampling_period = static_cast<uint64_t>(
-        1.0 / (record->header->time_unit * m_clock_system_parameters.sampling_frequency) + 0.5);
+        1.0 / (TIME_UNIT * m_clock_system_parameters.sampling_frequency) + 0.5);
 
     bool overrange;
     Sine(static_cast<int16_t *>(record->data), m_top_parameters.record_length, overrange);
@@ -41,12 +41,6 @@ void SineGenerator::Generate()
 
     /* Add to the outgoing queue. */
     EjectBuffer(record);
-
-    /* Update bookkeeping variables. */
-    m_record_number++;
-
-    m_timestamp += static_cast<uint64_t>(
-        std::round(1.0 / (m_top_parameters.trigger_frequency * record->header->time_unit)));
 }
 
 void SineGenerator::Sine(int16_t *const data, size_t count, bool &overrange)

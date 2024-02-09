@@ -56,9 +56,9 @@ public:
         , m_distribution{0, 0.1}
         , m_record_number{0}
         , m_timestamp{0}
+        , m_enabled{false}
         , m_top_parameters{}
         , m_clock_system_parameters{}
-        , m_enabled{false}
     {}
 
     ~Generator() override = default;
@@ -73,7 +73,15 @@ public:
             ProcessMessages();
 
             if (m_enabled)
+            {
+                /* Run the generator. */
                 Generate();
+
+                /* Update bookkeeping variables owned by this class. */
+                m_record_number++;
+                m_timestamp += static_cast<uint64_t>(
+                    std::round(1.0 / (TIME_UNIT * m_top_parameters.trigger_frequency)));
+            }
 
             /* If the generator is not enabled, we sleep for 100 ms to still be
                able to process messages. Otherwise, we sleep for a the rest of
@@ -92,17 +100,20 @@ public:
     }
 
 protected:
+    /* TODO: 25ps steps for now. */
+    static constexpr double TIME_UNIT = 25e-12;
+
     std::default_random_engine m_random_generator;
     std::normal_distribution<double> m_distribution;
     uint32_t m_record_number;
     uint32_t m_timestamp;
+    bool m_enabled;
     T m_top_parameters;
     C m_clock_system_parameters;
 
-    virtual void Generate() = 0;
-
 private:
-    bool m_enabled;
+    /* A generator must override the `Generate()` method. */
+    virtual void Generate() = 0;
 
     int SetParameters(GeneratorMessageId id, const nlohmann::json &json)
     {

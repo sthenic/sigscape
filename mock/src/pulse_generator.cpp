@@ -12,13 +12,6 @@ void PulseGenerator::Generate()
 
     /* Add to the outgoing queue. */
     EjectBuffer(pulse);
-
-    /* Update bookkeeping variables. */
-    /* FIXME: Move these to generator.h? */
-    m_record_number++;
-
-    m_timestamp += static_cast<uint64_t>(
-        std::round(1.0 / (m_top_parameters.trigger_frequency * pulse->header->time_unit)));
 }
 
 std::shared_ptr<ADQGen4Record> PulseGenerator::Pulse()
@@ -41,10 +34,10 @@ std::shared_ptr<ADQGen4Record> PulseGenerator::Pulse()
     record->header->record_length = static_cast<uint32_t>(m_top_parameters.record_length);
     record->header->record_number = m_record_number;
     record->header->record_start = static_cast<int64_t>(m_distribution(m_random_generator) * 1000);
-    record->header->time_unit = 25e-12f; /* TODO: 25ps steps for now */
+    record->header->time_unit = TIME_UNIT;
     record->header->timestamp = m_timestamp;
     record->header->sampling_period = static_cast<uint64_t>(
-        1.0 / (record->header->time_unit * m_clock_system_parameters.sampling_frequency) + 0.5);
+        1.0 / (TIME_UNIT * m_clock_system_parameters.sampling_frequency) + 0.5);
 
     /* Generate one period of a pulse that we'll repeatedly insert into the buffer. */
     std::vector<double> pulse(m_top_parameters.period);

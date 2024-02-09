@@ -241,6 +241,7 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
                     m_generators[i].PushMessage(
                         {GeneratorMessageId::SET_TOP_PARAMETERS, object}, -1);
                 }
+                ++i;
             }
 
             /* Emulate reconfiguration time. */

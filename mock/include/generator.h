@@ -61,7 +61,7 @@ public:
         , m_enabled{false}
     {}
 
-    ~Generator() = default;
+    ~Generator() override = default;
 
     void MainLoop() override
     {
@@ -100,11 +100,53 @@ protected:
     C m_clock_system_parameters;
 
     virtual void Generate() = 0;
-    virtual int SetParameters(GeneratorMessageId id, const nlohmann::json &json) = 0;
-    virtual int GetParameters(GeneratorMessageId id, nlohmann::json &json) = 0;
 
 private:
     bool m_enabled;
+
+    int SetParameters(GeneratorMessageId id, const nlohmann::json &json)
+    {
+        try
+        {
+            switch (id)
+            {
+            case GeneratorMessageId::SET_TOP_PARAMETERS:
+                m_top_parameters = json.get<T>();
+                return SCAPE_EOK;
+
+            case GeneratorMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
+                m_clock_system_parameters = json.get<C>();
+                return SCAPE_EOK;
+
+            default:
+                fprintf(stderr, "Unexpected message id %d.\n", static_cast<int>(id));
+                return SCAPE_EINVAL;
+            }
+        }
+        catch (const nlohmann::json::exception &e)
+        {
+            fprintf(stderr, "Failed to parse the parameter set %s.\n", e.what());
+            return SCAPE_EINVAL;
+        }
+    }
+
+    int GetParameters(GeneratorMessageId id, nlohmann::json &json)
+    {
+        switch (id)
+        {
+        case GeneratorMessageId::GET_TOP_PARAMETERS:
+            json = T{};
+            return SCAPE_EOK;
+
+        case GeneratorMessageId::GET_CLOCK_SYSTEM_PARAMETERS:
+            json = C{};
+            return SCAPE_EOK;
+
+        default:
+            fprintf(stderr, "Unexpected message id %d.\n", static_cast<int>(id));
+            return SCAPE_EINVAL;
+        }
+    }
 
     void ProcessMessages()
     {

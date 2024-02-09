@@ -65,13 +65,9 @@ public:
         : Generator<SineGeneratorTopParameters, SineGeneratorClockSystemParameters>(nof_channels)
     {}
 
-    ~SineGenerator() = default;
-
-protected:
-    void Generate() override;
-    int SetParameters(GeneratorMessageId id, const nlohmann::json &json) override;
-    int GetParameters(GeneratorMessageId id, nlohmann::json &json) override;
+    ~SineGenerator() override = default;
 
 private:
+    void Generate() override;
     void Sine(int16_t *const data, size_t count, bool &overrange);
 };

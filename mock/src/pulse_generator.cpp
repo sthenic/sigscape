@@ -21,54 +21,6 @@ void PulseGenerator::Generate()
         std::round(1.0 / (m_top_parameters.trigger_frequency * pulse->header->time_unit)));
 }
 
-int PulseGenerator::SetParameters(GeneratorMessageId id, const nlohmann::json &json)
-{
-    /* FIXME: Obviously move to generator.h */
-    try
-    {
-        switch (id)
-        {
-        case GeneratorMessageId::SET_TOP_PARAMETERS:
-            m_top_parameters = json.get<PulseGeneratorTopParameters>();
-            return SCAPE_EOK;
-
-        case GeneratorMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
-            m_clock_system_parameters = json.get<PulseGeneratorClockSystemParameters>();
-            return SCAPE_EOK;
-
-        default:
-            fprintf(stderr, "Unrecognized parameter set.\n");
-            return SCAPE_EINVAL;
-        }
-    }
-    catch (const nlohmann::json::exception &e)
-    {
-        fprintf(stderr, "Failed to parse the parameter set %s.\n", e.what());
-        return SCAPE_EINVAL;
-    }
-}
-
-int PulseGenerator::GetParameters(GeneratorMessageId id, nlohmann::json &json)
-{
-    /* FIXME: Obviously move to generator.h */
-    switch (id)
-    {
-    case GeneratorMessageId::GET_TOP_PARAMETERS:
-        json = PulseGeneratorTopParameters{};
-        break;
-
-    case GeneratorMessageId::GET_CLOCK_SYSTEM_PARAMETERS:
-        json = PulseGeneratorClockSystemParameters{};
-        break;
-
-    default:
-        fprintf(stderr, "Unexpected message id %d.\n", static_cast<int>(id));
-        return SCAPE_EINVAL;
-    }
-
-    return SCAPE_EOK;
-}
-
 std::shared_ptr<ADQGen4Record> PulseGenerator::Pulse()
 {
     std::shared_ptr<ADQGen4Record> record;

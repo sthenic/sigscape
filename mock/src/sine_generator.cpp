@@ -49,52 +49,6 @@ void SineGenerator::Generate()
         std::round(1.0 / (m_top_parameters.trigger_frequency * record->header->time_unit)));
 }
 
-int SineGenerator::SetParameters(GeneratorMessageId id, const nlohmann::json &json)
-{
-    try
-    {
-        switch (id)
-        {
-        case GeneratorMessageId::SET_TOP_PARAMETERS:
-            m_top_parameters = json.get<SineGeneratorTopParameters>();
-            return SCAPE_EOK;
-
-        case GeneratorMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
-            m_clock_system_parameters = json.get<SineGeneratorClockSystemParameters>();
-            return SCAPE_EOK;
-
-        default:
-            fprintf(stderr, "Unrecognized parameter set.\n");
-            return SCAPE_EINVAL;
-        }
-    }
-    catch (const nlohmann::json::exception &e)
-    {
-        fprintf(stderr, "Failed to parse the parameter set %s.\n", e.what());
-        return SCAPE_EINVAL;
-    }
-}
-
-int SineGenerator::GetParameters(GeneratorMessageId id, nlohmann::json &json)
-{
-    switch (id)
-    {
-    case GeneratorMessageId::GET_TOP_PARAMETERS:
-        json = SineGeneratorTopParameters{};
-        break;
-
-    case GeneratorMessageId::GET_CLOCK_SYSTEM_PARAMETERS:
-        json = SineGeneratorClockSystemParameters{};
-        break;
-
-    default:
-        fprintf(stderr, "Unexpected message id %d.\n", static_cast<int>(id));
-        return SCAPE_EINVAL;
-    }
-
-    return SCAPE_EOK;
-}
-
 void SineGenerator::Sine(int16_t *const data, size_t count, bool &overrange)
 {
     /* Generate a noisy sine wave of the input length. */

@@ -68,14 +68,10 @@ public:
         : Generator<PulseGeneratorTopParameters, PulseGeneratorClockSystemParameters>(nof_channels)
     {}
 
-    ~PulseGenerator() = default;
-
-protected:
-    void Generate() override;
-    int SetParameters(GeneratorMessageId id, const nlohmann::json &json) override;
-    int GetParameters(GeneratorMessageId id, nlohmann::json &json) override;
+    ~PulseGenerator() override = default;
 
 private:
+    void Generate() override;
     std::shared_ptr<ADQGen4Record> Pulse();
     std::shared_ptr<ADQGen4Record> Attributes();
 };

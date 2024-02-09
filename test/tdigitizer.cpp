@@ -80,7 +80,7 @@ TEST(Digitizer, Initialize)
     LONGS_EQUAL(SCAPE_EOK, digitizer->WaitForMessage(msg, 2000));
     LONGS_EQUAL(DigitizerMessageId::CHANGED_TOP_PARAMETERS, msg.id);
 
-    LONGS_EQUAL(SCAPE_EOK, digitizer->WaitForMessage(msg, TIMEOUT_MS));
+    LONGS_EQUAL(SCAPE_EOK, digitizer->WaitForMessage(msg, 2000));
     LONGS_EQUAL(DigitizerMessageId::CHANGED_CLOCK_SYSTEM_PARAMETERS, msg.id);
 
     /* No more messages */

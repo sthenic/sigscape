@@ -28,16 +28,8 @@ std::shared_ptr<ADQGen4Record> PulseGenerator::Pulse()
         return NULL;
     }
 
-    /* Fill in a few header fields. */
-    *record->header = {};
-    record->header->data_format = ADQ_DATA_FORMAT_INT16;
-    record->header->record_length = static_cast<uint32_t>(m_top_parameters.record_length);
-    record->header->record_number = m_record_number;
-    record->header->record_start = static_cast<int64_t>(m_distribution(m_random_generator) * 1000);
-    record->header->time_unit = TIME_UNIT;
-    record->header->timestamp = m_timestamp;
-    record->header->sampling_period = static_cast<uint64_t>(
-        1.0 / (TIME_UNIT * m_clock_system_parameters.sampling_frequency) + 0.5);
+    /* Default header fields. */
+    SeedHeader(record->header);
 
     /* Generate one period of a pulse that we'll repeatedly insert into the buffer. */
     std::vector<double> pulse(m_top_parameters.period);
@@ -84,12 +76,6 @@ std::shared_ptr<ADQGen4Record> PulseGenerator::Pulse()
             data[i] = static_cast<int16_t>(std::max(32768.0 * y, -32768.0));
     }
 
-    if (!(m_record_number % 50))
-        record->header->misc |= 0x1u;
-    if (!(m_record_number % 30))
-        record->header->misc |= 0x2u;
-
-    record->header->timestamp_synchronization_counter = static_cast<uint16_t>(m_record_number / 100);
     return record;
 }
 

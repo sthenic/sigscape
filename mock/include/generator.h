@@ -111,6 +111,27 @@ protected:
     T m_top_parameters;
     C m_clock_system_parameters;
 
+    /* Provide a default implementation of header generator. */
+    virtual void SeedHeader(ADQGen4RecordHeader *header)
+    {
+        *header = {};
+        header->data_format = ADQ_DATA_FORMAT_INT16;
+        header->record_length = static_cast<uint32_t>(m_top_parameters.record_length);
+        header->record_number = m_record_number;
+        header->record_start = static_cast<int64_t>(m_distribution(m_random_generator) * 1000);
+        header->time_unit = TIME_UNIT;
+        header->timestamp = m_timestamp;
+        header->sampling_period = static_cast<uint64_t>(
+            std::round(1.0 / (TIME_UNIT * m_clock_system_parameters.sampling_frequency)));
+
+        if (!(m_record_number % 50))
+            header->misc |= 0x1u;
+        if (!(m_record_number % 30))
+            header->misc |= 0x2u;
+
+        header->timestamp_synchronization_counter = static_cast<uint16_t>(m_record_number / 100);
+    }
+
 private:
     /* A generator must override the `Generate()` method. */
     virtual void Generate() = 0;

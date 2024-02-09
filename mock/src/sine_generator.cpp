@@ -16,28 +16,14 @@ void SineGenerator::Generate()
         return;
     }
 
-    /* Fill in a few header fields. */
-    *record->header = {};
-    record->header->data_format = ADQ_DATA_FORMAT_INT16;
-    record->header->record_length = static_cast<uint32_t>(m_top_parameters.record_length);
-    record->header->record_number = m_record_number;
-    record->header->record_start = static_cast<int64_t>(m_distribution(m_random_generator) * 1000);
-    record->header->time_unit = TIME_UNIT;
-    record->header->timestamp = m_timestamp;
-    record->header->sampling_period = static_cast<uint64_t>(
-        1.0 / (TIME_UNIT * m_clock_system_parameters.sampling_frequency) + 0.5);
+    /* Default header fields. */
+    SeedHeader(record->header);
 
     bool overrange;
     Sine(static_cast<int16_t *>(record->data), m_top_parameters.record_length, overrange);
 
     if (overrange)
         record->header->record_status |= ADQ_RECORD_STATUS_OVERRANGE;
-    if (!(m_record_number % 50))
-        record->header->misc |= 0x1u;
-    if (!(m_record_number % 30))
-        record->header->misc |= 0x2u;
-
-    record->header->timestamp_synchronization_counter = static_cast<uint16_t>(m_record_number / 100);
 
     /* Add to the outgoing queue. */
     EjectBuffer(record);

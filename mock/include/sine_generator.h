@@ -69,5 +69,5 @@ public:
 
 private:
     void Generate() override;
-    void Sine(int16_t *const data, size_t count, bool &overrange);
+    std::shared_ptr<ADQGen4Record> Sine();
 };

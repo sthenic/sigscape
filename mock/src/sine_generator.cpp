@@ -5,6 +5,16 @@
 
 void SineGenerator::Generate()
 {
+    auto sine = Sine();
+    if (sine == NULL)
+        return;
+
+    /* Add to the outgoing queue. */
+    EjectBuffer(sine);
+}
+
+std::shared_ptr<ADQGen4Record> SineGenerator::Sine()
+{
     std::shared_ptr<ADQGen4Record> record;
     int result = ReuseOrAllocateBuffer(record, m_top_parameters.record_length * sizeof(int16_t));
     if (result != SCAPE_EOK)
@@ -13,30 +23,18 @@ void SineGenerator::Generate()
             m_thread_exit_code = SCAPE_EOK;
         else
             m_thread_exit_code = result;
-        return;
+
+        return NULL;
     }
 
     /* Default header fields. */
     SeedHeader(record->header);
 
-    bool overrange;
-    Sine(static_cast<int16_t *>(record->data), m_top_parameters.record_length, overrange);
-
-    if (overrange)
-        record->header->record_status |= ADQ_RECORD_STATUS_OVERRANGE;
-
-    /* Add to the outgoing queue. */
-    EjectBuffer(record);
-}
-
-void SineGenerator::Sine(int16_t *const data, size_t count, bool &overrange)
-{
-    /* Generate a noisy sine wave of the input length. */
-    /* TODO: Only 16-bit datatype for now. */
-    overrange = false;
     const auto &p = m_top_parameters;
     const auto &sampling_frequency = m_clock_system_parameters.sampling_frequency;
-    for (size_t i = 0; i < count; ++i)
+    auto data = static_cast<int16_t *>(record->data);
+
+    for (size_t i = 0; i < m_top_parameters.record_length; ++i)
     {
         double x = static_cast<double>(i) / static_cast<double>(sampling_frequency);
         double y = (p.amplitude * std::sin(2 * M_PI * p.frequency * x + p.phase) +
@@ -56,11 +54,13 @@ void SineGenerator::Sine(int16_t *const data, size_t count, bool &overrange)
         }
 
         if (y > 1.0 || y < -1.0)
-            overrange = true;
+            record->header->record_status |= ADQ_RECORD_STATUS_OVERRANGE;
 
         if (y > 0)
             data[i] = static_cast<int16_t>(std::min(32768.0 * y, 32767.0));
         else
             data[i] = static_cast<int16_t>(std::max(32768.0 * y, -32768.0));
     }
+
+    return record;
 }

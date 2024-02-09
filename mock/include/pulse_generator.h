@@ -73,5 +73,5 @@ public:
 private:
     void Generate() override;
     std::shared_ptr<ADQGen4Record> Pulse();
-    std::shared_ptr<ADQGen4Record> Attributes();
+    std::shared_ptr<ADQGen4Record> Attributes(const ADQGen4Record *source);
 };

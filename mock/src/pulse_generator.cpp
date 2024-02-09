@@ -6,9 +6,9 @@ void PulseGenerator::Generate()
     if (pulse == NULL)
         return;
 
-    // auto attributes = Attributes(pulse);
-    // if (attributes == NULL)
-    //     return;
+    auto attributes = Attributes(pulse.get());
+    if (attributes == NULL)
+        return;
 
     /* Add to the outgoing queue. */
     EjectBuffer(pulse);
@@ -79,7 +79,7 @@ std::shared_ptr<ADQGen4Record> PulseGenerator::Pulse()
     return record;
 }
 
-std::shared_ptr<ADQGen4Record> PulseGenerator::Attributes()
+std::shared_ptr<ADQGen4Record> PulseGenerator::Attributes(const ADQGen4Record */* source */)
 {
     /* FIXME: Implement */
     return NULL;

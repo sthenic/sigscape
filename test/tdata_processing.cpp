@@ -35,6 +35,8 @@ TEST_GROUP(DataProcessing)
                                                        {"A", 2, {2500.0}, 65536},
                                                    }});
 
+        LONGS_EQUAL(1, mock_control_unit.SetupDevice(0));
+
         ADQConstantParameters constant;
         mock_control_unit.GetParameters(index, ADQ_PARAMETER_ID_CONSTANT, &constant);
         processing = std::make_unique<DataProcessing>(
@@ -64,13 +66,15 @@ TEST(DataProcessing, Records)
             "top",
             {
                 {
+                    {"amplitude", 1.0},
+                    {"frequency", 1e6},
+                    {"harmonic_distortion", true},
+                    {"interleaving_distortion", true},
+                    {"noise", 0.1},
+                    {"offset", 0.0},
+                    {"phase", 0.0},
                     {"record_length", RECORD_LENGTH},
                     {"trigger_frequency", TRIGGER_FREQUENCY},
-                    {"frequency", 1e6},
-                    {"amplitude", 1.0},
-                    {"noise", 0.1},
-                    {"harmonic_distortion", false},
-                    {"interleaving_distortion", false},
                 },
             },
         },
@@ -99,13 +103,15 @@ TEST(DataProcessing, RepeatedStartStop)
             "top",
             {
                 {
+                    {"amplitude", 1.0},
+                    {"frequency", 1e6},
+                    {"harmonic_distortion", true},
+                    {"interleaving_distortion", true},
+                    {"noise", 0.1},
+                    {"offset", 0.0},
+                    {"phase", 0.0},
                     {"record_length", RECORD_LENGTH},
                     {"trigger_frequency", TRIGGER_FREQUENCY},
-                    {"frequency", 1e6},
-                    {"amplitude", 1.0},
-                    {"noise", 0.1},
-                    {"harmonic_distortion", false},
-                    {"interleaving_distortion", false},
                 },
             },
         },

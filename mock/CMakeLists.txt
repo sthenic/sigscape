@@ -18,6 +18,7 @@ FetchContent_MakeAvailable(json)
 
 target_sources(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/sine_generator.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/pulse_generator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/mock_control_unit.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/mock_digitizer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/mock_system_manager.cpp)

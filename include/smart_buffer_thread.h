@@ -88,6 +88,11 @@ public:
         return m_read_queues.at(channel).GetTimeSinceLastActivity(milliseconds);
     }
 
+    size_t GetNofChannels() const
+    {
+        return m_read_queues.size();
+    }
+
 protected:
     int ReuseOrAllocateBuffer(std::shared_ptr<T> &buffer, size_t count)
     {

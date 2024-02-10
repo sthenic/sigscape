@@ -61,8 +61,8 @@ class SineGenerator
     : public Generator<SineGeneratorTopParameters, SineGeneratorClockSystemParameters>
 {
 public:
-    SineGenerator(size_t nof_channels = 1)
-        : Generator<SineGeneratorTopParameters, SineGeneratorClockSystemParameters>(nof_channels)
+    SineGenerator()
+        : Generator<SineGeneratorTopParameters, SineGeneratorClockSystemParameters>(1)
     {}
 
     ~SineGenerator() override = default;

@@ -6,12 +6,13 @@ void PulseGenerator::Generate()
     if (pulse == NULL)
         return;
 
-    auto attributes = Attributes(pulse.get());
-    if (attributes == NULL)
-        return;
+    // auto attributes = Attributes(pulse.get());
+    // if (attributes == NULL)
+    //     return;
 
-    /* Add to the outgoing queue. */
-    EjectBuffer(pulse);
+    /* Add to the outgoing queues. */
+    EjectBuffer(pulse, 0);
+    // EjectBuffer(attributes, 1);
 }
 
 std::shared_ptr<ADQGen4Record> PulseGenerator::Pulse()
@@ -79,8 +80,30 @@ std::shared_ptr<ADQGen4Record> PulseGenerator::Pulse()
     return record;
 }
 
-std::shared_ptr<ADQGen4Record> PulseGenerator::Attributes(const ADQGen4Record */* source */)
+std::shared_ptr<ADQGen4Record> PulseGenerator::Attributes(const ADQGen4Record *source)
 {
-    /* FIXME: Implement */
-    return NULL;
+    std::vector<ADQPulseAttributes> attributes = {
+        {65433, 100, 3544, 64, ADQ_PULSE_ATTRIBUTES_STATUS_VALID, {}},
+        {71722, 200, 7283, 63, ADQ_PULSE_ATTRIBUTES_STATUS_VALID, {}},
+        {59091, 300, 2211, 82, ADQ_PULSE_ATTRIBUTES_STATUS_VALID, {}},
+    };
+
+    std::shared_ptr<ADQGen4Record> record;
+    int result = ReuseOrAllocateBuffer(record, attributes.size() * sizeof(ADQPulseAttributes));
+    if (result != SCAPE_EOK)
+    {
+        if (result == SCAPE_EINTERRUPTED) /* Convert forced queue stop into an ok. */
+            m_thread_exit_code = SCAPE_EOK;
+        else
+            m_thread_exit_code = result;
+
+        return NULL;
+    }
+
+    *record->header = *source->header;
+    record->header->data_format = ADQ_DATA_FORMAT_PULSE_ATTRIBUTES;
+    record->header->record_length = 3;
+    std::memcpy(record->data, attributes.data(), attributes.size() * sizeof(ADQPulseAttributes));
+
+    return record;
 }

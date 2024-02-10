@@ -64,8 +64,8 @@ class PulseGenerator
     : public Generator<PulseGeneratorTopParameters, PulseGeneratorClockSystemParameters>
 {
 public:
-    PulseGenerator(size_t nof_channels = 1)
-        : Generator<PulseGeneratorTopParameters, PulseGeneratorClockSystemParameters>(nof_channels)
+    PulseGenerator()
+        : Generator<PulseGeneratorTopParameters, PulseGeneratorClockSystemParameters>(2)
     {}
 
     ~PulseGenerator() override = default;

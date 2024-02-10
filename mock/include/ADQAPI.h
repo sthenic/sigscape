@@ -45,6 +45,9 @@ struct ADQInfoListEntry
 
 #define ADQ_DATA_FORMAT_INT16 (0)
 #define ADQ_DATA_FORMAT_INT32 (1)
+#define ADQ_DATA_FORMAT_PULSE_ATTRIBUTES (2)
+
+#define ADQ_PULSE_ATTRIBUTES_STATUS_VALID (1u << 0)
 
 struct ADQGen4RecordHeader
 {
@@ -66,6 +69,16 @@ struct ADQGen4RecordHeader
     uint64_t sampling_period;
     float time_unit;
     uint32_t firmware_specific;
+};
+
+struct ADQPulseAttributes
+{
+    int32_t area;
+    uint32_t peak_position;
+    uint16_t peak;
+    uint16_t fwhm;
+    uint8_t status;
+    uint8_t reserved[3];
 };
 
 struct ADQGen4Record

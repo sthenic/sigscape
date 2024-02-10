@@ -46,7 +46,8 @@ struct GeneratorMessage
 };
 
 template<typename T, typename C>
-class Generator : public SmartBufferThread<ADQGen4Record, GeneratorMessage, true>
+class Generator
+    : public SmartBufferThread<ADQGen4Record, GeneratorMessage, true>
 {
 public:
     Generator(size_t nof_channels)
@@ -62,42 +63,6 @@ public:
     {}
 
     ~Generator() override = default;
-
-    void MainLoop() override
-    {
-        m_thread_exit_code = SCAPE_EOK;
-
-        for (;;)
-        {
-            const auto start = std::chrono::high_resolution_clock::now();
-            ProcessMessages();
-
-            if (m_enabled)
-            {
-                /* Run the generator. */
-                Generate();
-
-                /* Update bookkeeping variables owned by this class. */
-                m_record_number++;
-                m_timestamp += static_cast<uint64_t>(
-                    std::round(1.0 / (TIME_UNIT * m_top_parameters.trigger_frequency)));
-            }
-
-            /* If the generator is not enabled, we sleep for 100 ms to still be
-               able to process messages. Otherwise, we sleep for a the rest of
-               the trigger period. */
-            const auto delta = (std::chrono::high_resolution_clock::now() - start).count();
-            const int wait_us = static_cast<int>(1000000.0 / std::max(0.5, m_top_parameters.trigger_frequency));
-            const int remainder_us = m_enabled
-                                         ? std::max(wait_us - static_cast<int>(delta / 1e3), 0)
-                                         : 100000;
-
-            /* We implement the sleep using the stop event to be able to
-               immediately react to the event being set. */
-            if (m_should_stop.wait_for(std::chrono::microseconds(remainder_us)) == std::future_status::ready)
-                break;
-        }
-    }
 
 protected:
     /* TODO: 25ps steps for now. */
@@ -135,6 +100,42 @@ protected:
 private:
     /* A generator must override the `Generate()` method. */
     virtual void Generate() = 0;
+
+    void MainLoop() override
+    {
+        m_thread_exit_code = SCAPE_EOK;
+
+        for (;;)
+        {
+            const auto start = std::chrono::high_resolution_clock::now();
+            ProcessMessages();
+
+            if (m_enabled)
+            {
+                /* Run the generator. */
+                Generate();
+
+                /* Update bookkeeping variables owned by this class. */
+                m_record_number++;
+                m_timestamp += static_cast<uint64_t>(
+                    std::round(1.0 / (TIME_UNIT * m_top_parameters.trigger_frequency)));
+            }
+
+            /* If the generator is not enabled, we sleep for 100 ms to still be
+               able to process messages. Otherwise, we sleep for a the rest of
+               the trigger period. */
+            const auto delta = (std::chrono::high_resolution_clock::now() - start).count();
+            const int wait_us = static_cast<int>(1000000.0 / std::max(0.5, m_top_parameters.trigger_frequency));
+            const int remainder_us = m_enabled
+                                         ? std::max(wait_us - static_cast<int>(delta / 1e3), 0)
+                                         : 100000;
+
+            /* We implement the sleep using the stop event to be able to
+               immediately react to the event being set. */
+            if (m_should_stop.wait_for(std::chrono::microseconds(remainder_us)) == std::future_status::ready)
+                break;
+        }
+    }
 
     int SetParameters(GeneratorMessageId id, const nlohmann::json &json)
     {

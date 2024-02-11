@@ -11,7 +11,7 @@ struct PulseGeneratorTopParameters
         , amplitude{0.8}
         , baseline{0.0}
         , level{0.4}
-        , noise{0.1}
+        , noise{0.01}
         , width{32}
         , period{256}
         , offset{0}
@@ -60,18 +60,29 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
     sampling_frequency
 )
 
-class PulseGenerator
-    : public Generator<PulseGeneratorTopParameters, PulseGeneratorClockSystemParameters>
+class PulseGenerator : public Generator
 {
 public:
     PulseGenerator()
-        : Generator<PulseGeneratorTopParameters, PulseGeneratorClockSystemParameters>(2)
+        : Generator(2)
+        , m_top_parameters{}
+        , m_clock_system_parameters{}
     {}
 
     ~PulseGenerator() override = default;
 
 private:
+    PulseGeneratorTopParameters m_top_parameters;
+    PulseGeneratorClockSystemParameters m_clock_system_parameters;
+
     void Generate() override;
+    double GetTriggerFrequency() override;
+    double GetSamplingFrequency() override;
+    double GetNoise() override;
+    int GetParameters(GeneratorMessageId id, nlohmann::json &json) override;
+    int SetParameters(GeneratorMessageId id, const nlohmann::json &json) override;
+
+    void SeedHeader(ADQGen4RecordHeader *header) override;
     std::shared_ptr<ADQGen4Record> Pulse();
     std::shared_ptr<ADQGen4Record> Attributes(const ADQGen4Record *source);
 };

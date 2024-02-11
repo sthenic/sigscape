@@ -35,6 +35,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/data_types.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/embedded_python.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/log.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mock/src/pulse_generator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../mock/src/sine_generator.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../mock/src/mock_control_unit.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../mock/src/mock_digitizer.cpp

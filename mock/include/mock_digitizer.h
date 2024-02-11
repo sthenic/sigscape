@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ADQAPI.h"
-#include "sine_generator.h"
+#include "generator.h"
 #include "mock_system_manager.h"
 #include <vector>
 
@@ -38,7 +38,7 @@ private:
     ADQDataTransferParameters m_transfer;
     ADQDramStatus m_dram_status;
     ADQOverflowStatus m_overflow_status;
-    std::vector<SineGenerator> m_generators;
+    std::vector<std::unique_ptr<Generator>> m_generators;
     MockSystemManager m_sysman;
     std::string m_top_parameters;
     std::string m_clock_system_parameters;

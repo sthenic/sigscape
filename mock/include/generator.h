@@ -11,8 +11,7 @@
    implement the basic properties of a generator. Classes inheriting from this
    one must implement a `Generate` method to create ADQGen4Records that go into
    one or more output channels. This method gets called with a rate specified by
-   `m_parameters.trigger_frequency`. Thus, the parameter struct `T` must at the
-   very least contain this member. */
+   the return value of `GetTriggerFrequency`. */
 
 enum class GeneratorMessageId
 {
@@ -45,7 +44,6 @@ struct GeneratorMessage
     int result;
 };
 
-template<typename T, typename C>
 class Generator
     : public SmartBufferThread<ADQGen4Record, GeneratorMessage, true>
 {
@@ -58,8 +56,6 @@ public:
         , m_record_number{0}
         , m_timestamp{0}
         , m_enabled{false}
-        , m_top_parameters{}
-        , m_clock_system_parameters{}
     {}
 
     ~Generator() override = default;
@@ -71,23 +67,20 @@ protected:
     std::default_random_engine m_random_generator;
     std::normal_distribution<double> m_distribution;
     uint32_t m_record_number;
-    uint32_t m_timestamp;
+    uint64_t m_timestamp;
     bool m_enabled;
-    T m_top_parameters;
-    C m_clock_system_parameters;
 
-    /* Provide a default implementation of header generator. */
+    /* Provide a default implementation of header generation. We only set the
+       members we have information about on this level. */
     virtual void SeedHeader(ADQGen4RecordHeader *header)
     {
         *header = {};
-        header->data_format = ADQ_DATA_FORMAT_INT16;
-        header->record_length = static_cast<uint32_t>(m_top_parameters.record_length);
         header->record_number = m_record_number;
         header->record_start = static_cast<int64_t>(m_distribution(m_random_generator) * 1000);
         header->time_unit = TIME_UNIT;
         header->timestamp = m_timestamp;
         header->sampling_period = static_cast<uint64_t>(
-            std::round(1.0 / (TIME_UNIT * m_clock_system_parameters.sampling_frequency)));
+            std::round(1.0 / (TIME_UNIT * GetSamplingFrequency())));
 
         if (!(m_record_number % 50))
             header->misc |= 0x1u;
@@ -98,8 +91,13 @@ protected:
     }
 
 private:
-    /* A generator must override the `Generate()` method. */
+    /* Required overrides of a derived class. */
     virtual void Generate() = 0;
+    virtual double GetTriggerFrequency() = 0;
+    virtual double GetSamplingFrequency() = 0;
+    virtual double GetNoise() = 0;
+    virtual int GetParameters(GeneratorMessageId id, nlohmann::json &json) = 0;
+    virtual int SetParameters(GeneratorMessageId id, const nlohmann::json &json) = 0;
 
     void MainLoop() override
     {
@@ -118,14 +116,14 @@ private:
                 /* Update bookkeeping variables owned by this class. */
                 m_record_number++;
                 m_timestamp += static_cast<uint64_t>(
-                    std::round(1.0 / (TIME_UNIT * m_top_parameters.trigger_frequency)));
+                    std::round(1.0 / (TIME_UNIT * GetTriggerFrequency())));
             }
 
             /* If the generator is not enabled, we sleep for 100 ms to still be
                able to process messages. Otherwise, we sleep for a the rest of
                the trigger period. */
             const auto delta = (std::chrono::high_resolution_clock::now() - start).count();
-            const int wait_us = static_cast<int>(1000000.0 / std::max(0.5, m_top_parameters.trigger_frequency));
+            const int wait_us = static_cast<int>(1000000.0 / std::max(0.5, GetTriggerFrequency()));
             const int remainder_us = m_enabled
                                          ? std::max(wait_us - static_cast<int>(delta / 1e3), 0)
                                          : 100000;
@@ -134,50 +132,6 @@ private:
                immediately react to the event being set. */
             if (m_should_stop.wait_for(std::chrono::microseconds(remainder_us)) == std::future_status::ready)
                 break;
-        }
-    }
-
-    int SetParameters(GeneratorMessageId id, const nlohmann::json &json)
-    {
-        try
-        {
-            switch (id)
-            {
-            case GeneratorMessageId::SET_TOP_PARAMETERS:
-                m_top_parameters = json.get<T>();
-                return SCAPE_EOK;
-
-            case GeneratorMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
-                m_clock_system_parameters = json.get<C>();
-                return SCAPE_EOK;
-
-            default:
-                fprintf(stderr, "Unexpected message id %d.\n", static_cast<int>(id));
-                return SCAPE_EINVAL;
-            }
-        }
-        catch (const nlohmann::json::exception &e)
-        {
-            fprintf(stderr, "Failed to parse the parameter set %s.\n", e.what());
-            return SCAPE_EINVAL;
-        }
-    }
-
-    int GetParameters(GeneratorMessageId id, nlohmann::json &json)
-    {
-        switch (id)
-        {
-        case GeneratorMessageId::GET_TOP_PARAMETERS:
-            json = T{};
-            return SCAPE_EOK;
-
-        case GeneratorMessageId::GET_CLOCK_SYSTEM_PARAMETERS:
-            json = C{};
-            return SCAPE_EOK;
-
-        default:
-            fprintf(stderr, "Unexpected message id %d.\n", static_cast<int>(id));
-            return SCAPE_EINVAL;
         }
     }
 
@@ -194,7 +148,7 @@ private:
                 /* Reset the random distribution when parameters are applied successfully. */
                 message.result = SetParameters(message.id, message.json);
                 if (message.result == SCAPE_EOK)
-                    m_distribution = std::normal_distribution<double>(0, m_top_parameters.noise);
+                    m_distribution = std::normal_distribution<double>(0, GetNoise());
                 break;
             }
 

@@ -164,8 +164,8 @@ void *CreateADQControlUnit()
                                                    "ADQ32",
                                                    "-SG2G5-BW1G0",
                                                    {
-                                                       ADQ_FIRMWARE_TYPE_FWDAQ,
-                                                       "1CH-FWDAQ",
+                                                       ADQ_FIRMWARE_TYPE_FWPD,
+                                                       "1CH-FWPD",
                                                        "2023.1.3",
                                                        "STANDARD",
                                                        "400-000-XYZ",

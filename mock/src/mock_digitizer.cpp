@@ -1,4 +1,6 @@
 #include "mock_digitizer.h"
+#include "pulse_generator.h"
+#include "sine_generator.h"
 #include "nlohmann/json.hpp"
 
 #include <cstring>
@@ -11,7 +13,7 @@ MockDigitizer::MockDigitizer(const ADQConstantParameters &constant)
     , m_transfer{}
     , m_dram_status{}
     , m_overflow_status{}
-    , m_generators(constant.nof_acquisition_channels)
+    , m_generators{}
     , m_sysman{}
 {
     m_afe.id = ADQ_PARAMETER_ID_ANALOG_FRONTEND;
@@ -30,6 +32,11 @@ MockDigitizer::MockDigitizer(const ADQConstantParameters &constant)
         /* 'Activate' the first input range entry. */
         m_afe.channel[ch].input_range = constant.channel[ch].input_range[0];
         m_afe.channel[ch].dc_offset = 0;
+
+        if (constant.firmware.type == ADQ_FIRMWARE_TYPE_FWPD)
+            m_generators.emplace_back(std::make_unique<PulseGenerator>());
+        else
+            m_generators.emplace_back(std::make_unique<SineGenerator>());
     }
 
     for (int ch = 0; ch < constant.nof_transfer_channels; ++ch)
@@ -41,7 +48,7 @@ int MockDigitizer::SetupDevice()
     /* Start the system manager and emulate the rest as a delay. */
     m_sysman.Start();
     for (auto &generator : m_generators)
-        generator.Start();
+        generator->Start();
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     return 1;
 }
@@ -52,7 +59,7 @@ int MockDigitizer::StartDataAcquisition()
     m_overflow_status = {};
 
     for (auto &generator : m_generators)
-        generator.PushMessage({GeneratorMessageId::ENABLE}, -1);
+        generator->PushMessage({GeneratorMessageId::ENABLE}, -1);
 
     return ADQ_EOK;
 }
@@ -60,7 +67,7 @@ int MockDigitizer::StartDataAcquisition()
 int MockDigitizer::StopDataAcquisition()
 {
     for (auto &generator : m_generators)
-        generator.PushMessage({GeneratorMessageId::DISABLE}, -1);
+        generator->PushMessage({GeneratorMessageId::DISABLE}, -1);
 
     return ADQ_EOK;
 }
@@ -78,7 +85,7 @@ int64_t MockDigitizer::WaitForRecordBuffer(int *channel, void **buffer, int time
         return ADQ_EINVAL;
 
     std::shared_ptr<ADQGen4Record> smart_buffer;
-    int result = m_generators[*channel].WaitForBuffer(smart_buffer, timeout);
+    int result = m_generators[*channel]->WaitForBuffer(smart_buffer, timeout);
     if (result < 0)
     {
         /* FIXME: Error code space etc. */
@@ -107,7 +114,7 @@ int MockDigitizer::ReturnRecordBuffer(int channel, void *buffer)
         return ADQ_EINVAL;
 
     /* FIXME: Error space */
-    return m_generators[channel].ReturnBuffer(static_cast<ADQGen4Record *>(buffer));
+    return m_generators[channel]->ReturnBuffer(static_cast<ADQGen4Record *>(buffer));
 }
 
 int MockDigitizer::GetParameters(enum ADQParameterId id, void *const parameters)
@@ -187,7 +194,7 @@ int MockDigitizer::InitializeParametersString(
             {
                 GeneratorMessage response;
                 GeneratorMessage message{GeneratorMessageId::GET_TOP_PARAMETERS};
-                if (SCAPE_EOK != generator.PushMessage(message, response, -1))
+                if (SCAPE_EOK != generator->PushMessage(message, response, -1))
                     return ADQ_EINVAL;
                 json["top"].emplace_back(response.json);
             }
@@ -202,7 +209,7 @@ int MockDigitizer::InitializeParametersString(
                we only retrieve it for the first one. */
             GeneratorMessage response;
             GeneratorMessage message{GeneratorMessageId::GET_CLOCK_SYSTEM_PARAMETERS};
-            if (SCAPE_EOK != m_generators.front().PushMessage(message, response, -1))
+            if (SCAPE_EOK != m_generators.front()->PushMessage(message, response, -1))
                 return ADQ_EINVAL;
 
             nlohmann::json json{
@@ -238,7 +245,7 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
             {
                 if (i < m_generators.size())
                 {
-                    m_generators[i].PushMessage(
+                    m_generators[i]->PushMessage(
                         {GeneratorMessageId::SET_TOP_PARAMETERS, object}, -1);
                 }
                 ++i;
@@ -251,7 +258,7 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
         {
             for (auto &generator: m_generators)
             {
-                generator.PushMessage(
+                generator->PushMessage(
                     {GeneratorMessageId::SET_CLOCK_SYSTEM_PARAMETERS, json["clock_system"]}, -1);
             }
 

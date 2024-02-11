@@ -12,7 +12,7 @@ struct SineGeneratorTopParameters
         , offset{0.0}
         , frequency{13.12e6}
         , phase{0.0}
-        , noise{0.1}
+        , noise{0.01}
         , harmonic_distortion{false}
         , interleaving_distortion{false}
     {}
@@ -57,17 +57,28 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
     sampling_frequency
 );
 
-class SineGenerator
-    : public Generator<SineGeneratorTopParameters, SineGeneratorClockSystemParameters>
+class SineGenerator : public Generator
 {
 public:
     SineGenerator()
-        : Generator<SineGeneratorTopParameters, SineGeneratorClockSystemParameters>(1)
+        : Generator(1)
+        , m_top_parameters{}
+        , m_clock_system_parameters{}
     {}
 
     ~SineGenerator() override = default;
 
 private:
+    SineGeneratorTopParameters m_top_parameters;
+    SineGeneratorClockSystemParameters m_clock_system_parameters;
+
     void Generate() override;
+    double GetTriggerFrequency() override;
+    double GetSamplingFrequency() override;
+    double GetNoise() override;
+    int GetParameters(GeneratorMessageId id, nlohmann::json &json) override;
+    int SetParameters(GeneratorMessageId id, const nlohmann::json &json) override;
+
+    void SeedHeader(ADQGen4RecordHeader *header) override;
     std::shared_ptr<ADQGen4Record> Sine();
 };

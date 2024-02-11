@@ -13,6 +13,72 @@ void SineGenerator::Generate()
     EjectBuffer(sine);
 }
 
+double SineGenerator::GetTriggerFrequency()
+{
+    return m_top_parameters.trigger_frequency;
+}
+
+double SineGenerator::GetSamplingFrequency()
+{
+    return m_clock_system_parameters.sampling_frequency;
+}
+
+double SineGenerator::GetNoise()
+{
+    return m_top_parameters.noise;
+}
+
+int SineGenerator::GetParameters(GeneratorMessageId id, nlohmann::json &json)
+{
+    switch (id)
+    {
+    case GeneratorMessageId::GET_TOP_PARAMETERS:
+        json = SineGeneratorTopParameters{};
+        return SCAPE_EOK;
+
+    case GeneratorMessageId::GET_CLOCK_SYSTEM_PARAMETERS:
+        json = SineGeneratorClockSystemParameters{};
+        return SCAPE_EOK;
+
+    default:
+        fprintf(stderr, "Unexpected message id %d.\n", static_cast<int>(id));
+        return SCAPE_EINVAL;
+    }
+}
+
+int SineGenerator::SetParameters(GeneratorMessageId id, const nlohmann::json &json)
+{
+    try
+    {
+        switch (id)
+        {
+        case GeneratorMessageId::SET_TOP_PARAMETERS:
+            m_top_parameters = json.get<SineGeneratorTopParameters>();
+            return SCAPE_EOK;
+
+        case GeneratorMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
+            m_clock_system_parameters = json.get<SineGeneratorClockSystemParameters>();
+            return SCAPE_EOK;
+
+        default:
+            fprintf(stderr, "Unexpected message id %d.\n", static_cast<int>(id));
+            return SCAPE_EINVAL;
+        }
+    }
+    catch (const nlohmann::json::exception &e)
+    {
+        fprintf(stderr, "Failed to parse the parameter set %s.\n", e.what());
+        return SCAPE_EINVAL;
+    }
+}
+
+void SineGenerator::SeedHeader(ADQGen4RecordHeader *header)
+{
+    Generator::SeedHeader(header);
+    header->data_format = ADQ_DATA_FORMAT_INT16;
+    header->record_length = m_top_parameters.record_length;
+}
+
 std::shared_ptr<ADQGen4Record> SineGenerator::Sine()
 {
     std::shared_ptr<ADQGen4Record> record;

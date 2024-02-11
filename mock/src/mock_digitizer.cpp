@@ -16,6 +16,9 @@ MockDigitizer::MockDigitizer(const ADQConstantParameters &constant)
     , m_generators{}
     , m_sysman{}
 {
+    if (constant.nof_channels <= 0)
+        throw std::runtime_error("Invalid nof_channels");
+
     m_afe.id = ADQ_PARAMETER_ID_ANALOG_FRONTEND;
     m_afe.magic = ADQ_PARAMETERS_MAGIC;
 
@@ -38,6 +41,10 @@ MockDigitizer::MockDigitizer(const ADQConstantParameters &constant)
         else
             m_generators.emplace_back(std::make_unique<SineGenerator>());
     }
+
+    /* Check that the channel configuration makes sense for the generators we just added. */
+    if (constant.nof_transfer_channels != GetNofTransferChannels())
+        throw std::runtime_error("Invalid nof_transfer_channels for generator configuration.");
 
     for (int ch = 0; ch < constant.nof_transfer_channels; ++ch)
         m_transfer.channel[ch].nof_buffers = 2;
@@ -73,19 +80,18 @@ int MockDigitizer::StopDataAcquisition()
 }
 
 int64_t MockDigitizer::WaitForRecordBuffer(int *channel, void **buffer, int timeout,
-                                           ADQDataReadoutStatus *status)
+                                           ADQDataReadoutStatus */* status */)
 {
-    (void)status;
-
-    if (buffer == NULL)
+    if (buffer == NULL || channel == NULL)
         return ADQ_EINVAL;
     if (*channel == -1)
         return ADQ_EUNSUPPORTED;
-    if (*channel < 0 || static_cast<size_t>(*channel) >= m_generators.size())
+    if (*channel < 0 || *channel >= m_constant.nof_transfer_channels)
         return ADQ_EINVAL;
 
     std::shared_ptr<ADQGen4Record> smart_buffer;
-    int result = m_generators[*channel]->WaitForBuffer(smart_buffer, timeout);
+    const auto [gidx, cidx] = MapChannelIndex(*channel);
+    int result = m_generators[gidx]->WaitForBuffer(smart_buffer, timeout, cidx);
     if (result < 0)
     {
         /* FIXME: Error code space etc. */
@@ -110,11 +116,12 @@ int MockDigitizer::ReturnRecordBuffer(int channel, void *buffer)
         return ADQ_EINVAL;
     if (channel == -1)
         return ADQ_EUNSUPPORTED;
-    if (channel < 0 || static_cast<size_t>(channel) >= m_generators.size())
+    if (channel < 0 || channel >= m_constant.nof_transfer_channels)
         return ADQ_EINVAL;
 
     /* FIXME: Error space */
-    return m_generators[channel]->ReturnBuffer(static_cast<ADQGen4Record *>(buffer));
+    const auto [gidx, _] = MapChannelIndex(channel);
+    return m_generators[gidx]->ReturnBuffer(static_cast<ADQGen4Record *>(buffer));
 }
 
 int MockDigitizer::GetParameters(enum ADQParameterId id, void *const parameters)
@@ -337,4 +344,25 @@ int MockDigitizer::SmTransactionImmediate(uint16_t cmd, void *wr_buf, size_t wr_
 {
     /* Exactly the same implementation since everything is emulated in software. */
     return SmTransaction(cmd, wr_buf, wr_buf_len, rd_buf, rd_buf_len);
+}
+
+int MockDigitizer::GetNofTransferChannels() const
+{
+    /* The number of transfer channels is equal to the sum of the output
+       channels for the generators. */
+    size_t result = 0;
+    for (const auto &generator : m_generators)
+        result += generator->GetNofChannels();
+    return static_cast<int>(result);
+}
+
+std::tuple<size_t, size_t> MockDigitizer::MapChannelIndex(int index) const
+{
+    /* TODO: For now, we assume that a generator may only have two channels, and
+       that the generator channels are grouped together. So that index wise, the
+       first channel of all the generators come before the second channel. */
+    if (index < m_constant.nof_acquisition_channels)
+        return {index, 0};
+    else
+        return {index % m_constant.nof_acquisition_channels, 1};
 }

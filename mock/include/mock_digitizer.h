@@ -42,4 +42,7 @@ private:
     MockSystemManager m_sysman;
     std::string m_top_parameters;
     std::string m_clock_system_parameters;
+
+    int GetNofTransferChannels() const;
+    std::tuple<size_t, size_t> MapChannelIndex(int index) const;
 };

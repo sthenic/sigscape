@@ -177,6 +177,9 @@ void *CreateADQControlUnit()
                                                    },
                                                    {
                                                        {"A", 2, {2500.0}, 65536},
+                                                   },
+                                                   {
+                                                       {"Attr. A", 2, {2500.0}, 65536},
                                                    }});
 
         mock_control_unit.AddDigitizer(PID_ADQ36, {"SPD-SIM02",

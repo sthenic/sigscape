@@ -8,6 +8,7 @@
 #include <cstring>
 #include <vector>
 #include <algorithm>
+#include <stdexcept>
 #endif
 
 #define ADQAPI_VERSION_MAJOR 1
@@ -256,11 +257,12 @@ struct ADQConstantParameters
                           const std::string &product_options,
                           const ADQConstantParametersFirmware &firmware,
                           const ADQConstantParametersCommunicationInterface &interface,
-                          const std::vector<ADQConstantParametersChannel> &channel)
+                          const std::vector<ADQConstantParametersChannel> &channels,
+                          const std::vector<ADQConstantParametersChannel> &extra_channels = {})
         : id(ADQ_PARAMETER_ID_CONSTANT)
-        , nof_channels(static_cast<int32_t>(channel.size()))
-        , nof_acquisition_channels(static_cast<int32_t>(channel.size()))
-        , nof_transfer_channels(static_cast<int32_t>(channel.size()))
+        , nof_channels{}
+        , nof_acquisition_channels{}
+        , nof_transfer_channels{}
         , serial_number{}
         , product_name{}
         , product_options{}
@@ -281,8 +283,19 @@ struct ADQConstantParameters
         std::memcpy(this->product_options, product_options.c_str(),
                     std::min(sizeof(this->product_options) - 1, product_options.size() + 1));
 
-        for (size_t i = 0; i < channel.size() && i < ADQ_MAX_NOF_CHANNELS; ++i)
-            this->channel[i] = channel[i];
+        nof_channels = static_cast<int32_t>(channels.size());
+        nof_acquisition_channels = static_cast<int32_t>(channels.size());
+        nof_transfer_channels = static_cast<int32_t>(channels.size() + extra_channels.size());
+
+        if (nof_transfer_channels > ADQ_MAX_NOF_CHANNELS)
+            throw std::runtime_error("Invalid nof_transfer_channels > ADQ_MAX_NOF_CHANNELS");
+
+        size_t i = 0;
+        for (const auto &c : channels)
+            channel[i++] = c;
+
+        for (const auto &c : extra_channels)
+            channel[i++] = c;
     };
 #endif
 

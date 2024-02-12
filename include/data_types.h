@@ -484,6 +484,33 @@ struct Waterfall
     size_t columns;
 };
 
+struct PulseAttributes
+{
+    /* FIXME: Check correct data format and such? */
+    PulseAttributes(const ADQGen4Record *raw)
+        : header{*raw->header}
+        , attributes(
+              static_cast<ADQPulseAttributes *>(raw->data),
+              static_cast<ADQPulseAttributes *>(raw->data) + raw->header->record_length)
+    {}
+
+    /* Delete copy constructors until we need them. */
+    PulseAttributes(const PulseAttributes &other) = delete;
+    PulseAttributes &operator=(const PulseAttributes &other) = delete;
+
+    std::vector<std::vector<std::string>> FormatMetrics() const
+    {
+        return {
+            {"Record number", fmt::format("{: >8d}", header.record_number)},
+            {"Number of pulses", fmt::format("{: >8d}", attributes.size())},
+        };
+    }
+
+    /* FIXME: Keep our own copy of the header for now. */
+    ADQGen4RecordHeader header;
+    std::vector<ADQPulseAttributes> attributes;
+};
+
 struct ProcessedRecord
 {
     inline static const std::string PRECISION = "8.2";
@@ -492,6 +519,7 @@ struct ProcessedRecord
         : time_domain(NULL)
         , frequency_domain(NULL)
         , waterfall(NULL)
+        , attributes(NULL)
         , label(label)
         , trigger_frequency(trigger_frequency, {"Hz", PRECISION, 1e6})
         , throughput(throughput, {"B/s", PRECISION, 1e6})
@@ -512,6 +540,7 @@ struct ProcessedRecord
     std::shared_ptr<TimeDomainRecord> time_domain;
     std::shared_ptr<FrequencyDomainRecord> frequency_domain;
     std::shared_ptr<Waterfall> waterfall;
+    std::shared_ptr<PulseAttributes> attributes;
 
     std::string label;
     Value trigger_frequency;

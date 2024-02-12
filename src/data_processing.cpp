@@ -240,6 +240,13 @@ int DataProcessing::ProcessRecord(const ADQGen4Record *raw_time_domain,
         }
     }
 
+    if (raw_time_domain->header->data_format == ADQ_DATA_FORMAT_PULSE_ATTRIBUTES)
+    {
+        /* TODO: What to do actually? Copy to some attribute record? */
+        processed_record.attributes = std::make_shared<PulseAttributes>(raw_time_domain);
+        return SCAPE_EOK;
+    }
+
     try
     {
         /* Processing the raw time domain data can throw if the data format is unsupported. */

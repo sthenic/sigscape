@@ -6,13 +6,13 @@ void PulseGenerator::Generate()
     if (pulse == NULL)
         return;
 
-    // auto attributes = Attributes(pulse.get());
-    // if (attributes == NULL)
-    //     return;
+    auto attributes = Attributes(pulse.get());
+    if (attributes == NULL)
+        return;
 
     /* Add to the outgoing queues. */
     EjectBuffer(pulse, 0);
-    // EjectBuffer(attributes, 1);
+    EjectBuffer(attributes, 1);
 }
 
 double PulseGenerator::GetTriggerFrequency()

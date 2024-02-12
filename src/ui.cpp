@@ -2458,7 +2458,7 @@ std::vector<std::tuple<size_t, size_t, Ui::ChannelUiState *>> Ui::FilterUiStates
         for (size_t ch = 0; ch < m_digitizers[i].ui.channels.size(); ++ch)
         {
             auto &ui = m_digitizers[i].ui.channels[ch];
-            if (ui.record == NULL)
+            if (ui.record == NULL || ui.record->time_domain == NULL || ui.record->frequency_domain == NULL)
                 continue;
 
             if (ui.is_solo)
@@ -2555,6 +2555,9 @@ void Ui::PlotTimeDomainSelected()
 
     for (auto &[i, ch, ui] : FilterUiStates())
     {
+        if (!ui->record->time_domain)
+            continue;
+
         /* One-shot configuration to sample units (assuming to be equal for all
            records in this domain) and to set up the plot axes. */
         if (first)
@@ -2956,6 +2959,9 @@ void Ui::PlotFourierTransformSelected()
 
     for (auto &[i, ch, ui] : FilterUiStates())
     {
+        if (!ui->record->frequency_domain)
+            continue;
+
         /* One-shot configuration to sample units (assuming to be equal for all
            records in this domain) and to set up the plot axes. */
         if (first)
@@ -3125,7 +3131,6 @@ void Ui::PlotWaterfallSelected(double &scale_min, double &scale_max)
                             static_cast<int>(ui->record->waterfall->columns),
                             scale_min, scale_max, NULL,
                             ImPlotPoint(0, 0), ImPlotPoint(TOP_RIGHT, 1));
-        return;
     }
 }
 
@@ -3337,7 +3342,16 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                 ImGui::EndPopup();
             }
 
-            if (ui.record->time_domain->header.record_status & ADQ_RECORD_STATUS_OVERRANGE)
+            // if (ui.record->attributes != NULL)
+            // {
+            //     Log::log->info(
+            //         "Want to render {} record {} w/ {} entries.", ui.record->label.c_str(),
+            //         ui.record->attributes->header.record_number,
+            //         ui.record->attributes->header.record_length);
+            //     continue;
+            // }
+
+            if (ui.record->time_domain != NULL && (ui.record->time_domain->header.record_status & ADQ_RECORD_STATUS_OVERRANGE))
             {
                 ImGui::SameLine();
                 ImGui::PushStyleColor(ImGuiCol_Button, COLOR_RED);
@@ -3375,7 +3389,10 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                     ImGui::TableSetupColumn("Extra0", ImGuiTableColumnFlags_WidthFixed);
                     ImGui::TableSetupColumn("Extra1", ImGuiTableColumnFlags_WidthFixed);
 
-                    ImGui::RenderTableContents(ui.record->time_domain->FormatMetrics());
+                    if (ui.record->time_domain != NULL)
+                        ImGui::RenderTableContents(ui.record->time_domain->FormatMetrics());
+                    else if (ui.record->attributes != NULL)
+                        ImGui::RenderTableContents(ui.record->attributes->FormatMetrics());
                     ImGui::RenderTableContents(ui.record->FormatMetrics());
 
                     ImGui::EndTable();
@@ -3410,7 +3427,7 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
 
         for (auto &ui : digitizer.ui.channels)
         {
-            if (ui.record == NULL)
+            if (ui.record == NULL || ui.record->frequency_domain == NULL)
                 continue;
 
             if (has_contents)

@@ -35,7 +35,7 @@ class DirectoryWatcher : public MessageThread<DirectoryWatcher, DirectoryWatcher
 {
 public:
     DirectoryWatcher(const std::string &path, const std::string &extension_filter = "");
-    ~DirectoryWatcher() override = default;
+    ~DirectoryWatcher() override;
     const std::string &GetPath();
 
     void MainLoop() override;

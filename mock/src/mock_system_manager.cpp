@@ -125,6 +125,11 @@ MockSystemManager::MockSystemManager() :
 {
 }
 
+MockSystemManager::~MockSystemManager()
+{
+    Stop();
+}
+
 void MockSystemManager::MainLoop()
 {
     m_thread_exit_code = SCAPE_EOK;

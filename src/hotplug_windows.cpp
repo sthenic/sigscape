@@ -7,6 +7,11 @@ HotplugWindows::HotplugWindows()
     : m_nof_devices(0)
 {}
 
+HotplugWindows::~HotplugWindows()
+{
+    Stop();
+}
+
 std::vector<std::string> HotplugWindows::SplitDeviceList(const std::string &list)
 {
     std::vector<std::string> result{};

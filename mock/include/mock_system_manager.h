@@ -50,7 +50,7 @@ class MockSystemManager : public MessageThread<MockSystemManager, SystemManagerM
 {
 public:
     MockSystemManager();
-    ~MockSystemManager() override = default;
+    ~MockSystemManager() override;
 
     /* Making copies of an object of this type is not allowed. */
     MockSystemManager(const MockSystemManager &other) = delete;

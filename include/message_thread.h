@@ -20,8 +20,12 @@ public:
         , m_thread_exit_code(SCAPE_EINTERRUPTED)
     {};
 
-    virtual ~MessageThread() override
+    virtual ~MessageThread()
     {
+        /* Any derived class must implement its own destructor calling `Stop()`.
+           Otherwise, we can end up in a situation where its `MainLoop()`
+           outlives the object itself since destructors are called in the in the
+           order from derived to base. */
         Stop();
     };
 

@@ -14,6 +14,11 @@ DirectoryWatcher::DirectoryWatcher(const std::string &path, const std::string &e
 #endif
 }
 
+DirectoryWatcher::~DirectoryWatcher()
+{
+    Stop();
+}
+
 const std::string &DirectoryWatcher::GetPath()
 {
     return m_path;

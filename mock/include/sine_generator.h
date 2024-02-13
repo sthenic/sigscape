@@ -66,7 +66,10 @@ public:
         , m_clock_system_parameters{}
     {}
 
-    ~SineGenerator() override = default;
+    ~SineGenerator() override
+    {
+        Stop();
+    }
 
 private:
     SineGeneratorTopParameters m_top_parameters;

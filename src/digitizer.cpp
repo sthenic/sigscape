@@ -49,6 +49,11 @@ Digitizer::Digitizer(void *handle, int init_index, int index,
     m_sensor_record_queue.Start();
 }
 
+Digitizer::~Digitizer()
+{
+    Stop();
+}
+
 /* Interface to the digitizer's data processing threads, one per channel. */
 int Digitizer::WaitForProcessedRecord(int channel, std::shared_ptr<ProcessedRecord> &record)
 {

@@ -58,8 +58,6 @@ public:
         , m_enabled{false}
     {}
 
-    ~Generator() override = default;
-
 protected:
     /* TODO: 25ps steps for now. */
     static constexpr double TIME_UNIT = 25e-12;

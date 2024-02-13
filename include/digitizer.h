@@ -186,7 +186,7 @@ class Digitizer : public MessageThread<Digitizer, DigitizerMessage>
 {
 public:
     Digitizer(void *handle, int init_index, int index, const std::string &configuration_directory);
-    ~Digitizer() override = default;
+    ~Digitizer() override;
 
     /* Making copies of an object of this type is not allowed. */
     Digitizer(const Digitizer &other) = delete;

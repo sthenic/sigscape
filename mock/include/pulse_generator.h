@@ -69,7 +69,10 @@ public:
         , m_clock_system_parameters{}
     {}
 
-    ~PulseGenerator() override = default;
+    ~PulseGenerator() override
+    {
+        Stop();
+    }
 
 private:
     PulseGeneratorTopParameters m_top_parameters;

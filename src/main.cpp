@@ -1,5 +1,6 @@
 #include "ui.h"
 #include "log.h"
+#include "persistent_directories.h"
 
 #include "GL/gl3w.h"
 #include <GLFW/glfw3.h>
@@ -88,6 +89,13 @@ static void SetWindowIcon(GLFWwindow *window)
 int main(int, char **)
 {
     signal(SIGINT, signal_handler);
+
+    /* Set up the logger's file sink once we can determine the persistent
+       directories. Pushing back another sink is not thread safe, but at this
+       point were running in a single thread. */
+    auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
+        PersistentDirectories().GetLogDirectory() + "/sigscape.log", true);
+    Log::log->sinks().push_back(file_sink);
 
     glfwSetErrorCallback(GlfwErrorCallback);
     if (!glfwInit())

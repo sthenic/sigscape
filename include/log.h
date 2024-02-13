@@ -3,6 +3,7 @@
 #define SPDLOG_FMT_EXTERNAL
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/ringbuffer_sink.h"
+#include "spdlog/sinks/basic_file_sink.h"
 
 #include <memory>
 

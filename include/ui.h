@@ -293,6 +293,7 @@ private:
     void CopyFreqencyDomainMetricsToClipboard(const ProcessedRecord *processed_record);
     void SaveSensorsToFile(const std::filesystem::path &path);
 
+    void RenderPulseAttributes(const ImVec2 &position, const ImVec2 &size);
     void RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size);
     void RenderApplicationMetrics(const ImVec2 &position, const ImVec2 &size);

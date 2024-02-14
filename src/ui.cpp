@@ -810,8 +810,9 @@ void Ui::RenderRight(float width, float height)
         FREQUENCY_DOMAIN_POSITION = ImVec2{POSITION_X, 2 * FRAME_HEIGHT};
 
     /* In the right column we show various metrics. */
-    RenderTimeDomainMetrics(TIME_DOMAIN_POSITION, TIME_DOMAIN_SIZE);
-    RenderFrequencyDomainMetrics(FREQUENCY_DOMAIN_POSITION, FREQUENCY_DOMAIN_SIZE);
+    RenderPulseAttributes(TIME_DOMAIN_POSITION, TIME_DOMAIN_SIZE);
+    // RenderTimeDomainMetrics(TIME_DOMAIN_POSITION, TIME_DOMAIN_SIZE);
+    // RenderFrequencyDomainMetrics(FREQUENCY_DOMAIN_POSITION, FREQUENCY_DOMAIN_SIZE);
 }
 
 void Ui::RenderCenter(float width, float height)
@@ -2555,9 +2556,6 @@ void Ui::PlotTimeDomainSelected()
 
     for (auto &[i, ch, ui] : FilterUiStates())
     {
-        if (!ui->record->time_domain)
-            continue;
-
         /* One-shot configuration to sample units (assuming to be equal for all
            records in this domain) and to set up the plot axes. */
         if (first)
@@ -2959,9 +2957,6 @@ void Ui::PlotFourierTransformSelected()
 
     for (auto &[i, ch, ui] : FilterUiStates())
     {
-        if (!ui->record->frequency_domain)
-            continue;
-
         /* One-shot configuration to sample units (assuming to be equal for all
            records in this domain) and to set up the plot axes. */
         if (first)
@@ -3131,6 +3126,7 @@ void Ui::PlotWaterfallSelected(double &scale_min, double &scale_max)
                             static_cast<int>(ui->record->waterfall->columns),
                             scale_min, scale_max, NULL,
                             ImPlotPoint(0, 0), ImPlotPoint(TOP_RIGHT, 1));
+        return;
     }
 }
 
@@ -3280,6 +3276,112 @@ void Ui::SaveSensorsToFile(const std::filesystem::path &path)
     Log::log->info("Saved file '{}'.", lpath.string());
 }
 
+void Ui::RenderPulseAttributes(const ImVec2 &position, const ImVec2 &size)
+{
+    /* FIXME: Hack */
+    ImGui::SetNextWindowPos(position);
+    ImGui::SetNextWindowSize(size);
+    ImGui::Begin("Pulse Attributes", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+    m_collapsed.time_domain_metrics = ImGui::IsWindowCollapsed();
+
+    for (auto &digitizer : m_digitizers)
+    {
+        for (auto &ui : digitizer.ui.channels)
+        {
+            if (ui.record == NULL)
+                continue;
+
+            if (ui.record->attributes != NULL)
+            {
+                RenderHeaderButtons(ui);
+
+                int flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnDoubleClick |
+                            ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+                if (ui.is_selected)
+                    flags |= ImGuiTreeNodeFlags_Selected;
+
+                ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
+                bool node_open = ImGui::TreeNodeEx(ui.record->label.c_str(), flags);
+
+                if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
+                {
+                    ClearChannelSelection();
+                    ui.is_selected = !ui.is_selected;
+                }
+
+                if (node_open)
+                {
+                    if ((ui.is_muted || IsAnySolo()) && !ui.is_solo)
+                        ImGui::BeginDisabled();
+
+                    if (ui.frame.GetParameters().trigger != RecordFrame::Trigger::DISABLED)
+                    {
+                        const auto &[fraction, label] = ui.frame.Fill();
+                        ImGui::AlignTextToFramePadding();
+                        ImGui::Text("Frame");
+                        ImGui::SameLine();
+                        ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ui.color);
+                        ImGui::ProgressBar(fraction, ImVec2{-1.0, 0.0}, label.c_str());
+                        ImGui::PopStyleColor();
+                    }
+
+                    flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoSavedSettings |
+                            ImGuiTableFlags_BordersInnerV;
+
+                    /* Increase the horizontal cell padding. */
+                    ImGui::PushStyleVar(ImGuiStyleVar_CellPadding,
+                                        ImGui::GetStyle().CellPadding + ImVec2(3.0, 0.0));
+
+                    // if (ImGui::BeginTable("Metrics", 4, flags))
+                    // {
+                    //     ImGui::TableSetupColumn("Metric", ImGuiTableColumnFlags_WidthFixed);
+                    //     ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
+                    //     ImGui::TableSetupColumn("Extra0", ImGuiTableColumnFlags_WidthFixed);
+                    //     ImGui::TableSetupColumn("Extra1", ImGuiTableColumnFlags_WidthFixed);
+
+                    //     ImGui::RenderTableContents(ui.record->FormatMetrics());
+
+                    //     ImGui::EndTable();
+                    // }
+
+                    if (ImGui::BeginTable("Pulses", 2, flags))
+                    {
+                        ImGui::TableSetupColumn("Metric", ImGuiTableColumnFlags_WidthFixed);
+                        ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
+
+                        std::vector<std::vector<std::string>> contents{};
+
+                        int i = 0;
+                        for (const auto &attribute : ui.record->attributes->attributes)
+                        {
+                            contents.push_back({"Pulse", fmt::format("{}", i)});
+                            contents.push_back({"Area", fmt::format("{}", attribute.area)});
+                            contents.push_back({"Peak position", fmt::format("{}", attribute.peak_position)});
+                            contents.push_back({"Peak", fmt::format("{}", attribute.peak)});
+                            contents.push_back({"FWHM", fmt::format("{}", attribute.fwhm)});
+                            i++;
+                        }
+
+                        ImGui::RenderTableContents(contents);
+                        ImGui::EndTable();
+                    }
+
+
+                    ImGui::PopStyleVar();
+
+                    if ((ui.is_muted || IsAnySolo()) && !ui.is_solo)
+                        ImGui::EndDisabled();
+
+                    ImGui::TreePop();
+                }
+                ImGui::PopStyleVar();
+            }
+        }
+    }
+
+    ImGui::End();
+}
+
 void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
 {
     /* FIXME: Move into functions? */
@@ -3342,16 +3444,7 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                 ImGui::EndPopup();
             }
 
-            // if (ui.record->attributes != NULL)
-            // {
-            //     Log::log->info(
-            //         "Want to render {} record {} w/ {} entries.", ui.record->label.c_str(),
-            //         ui.record->attributes->header.record_number,
-            //         ui.record->attributes->header.record_length);
-            //     continue;
-            // }
-
-            if (ui.record->time_domain != NULL && (ui.record->time_domain->header.record_status & ADQ_RECORD_STATUS_OVERRANGE))
+            if (ui.record->time_domain->header.record_status & ADQ_RECORD_STATUS_OVERRANGE)
             {
                 ImGui::SameLine();
                 ImGui::PushStyleColor(ImGuiCol_Button, COLOR_RED);
@@ -3389,10 +3482,7 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                     ImGui::TableSetupColumn("Extra0", ImGuiTableColumnFlags_WidthFixed);
                     ImGui::TableSetupColumn("Extra1", ImGuiTableColumnFlags_WidthFixed);
 
-                    if (ui.record->time_domain != NULL)
-                        ImGui::RenderTableContents(ui.record->time_domain->FormatMetrics());
-                    else if (ui.record->attributes != NULL)
-                        ImGui::RenderTableContents(ui.record->attributes->FormatMetrics());
+                    ImGui::RenderTableContents(ui.record->time_domain->FormatMetrics());
                     ImGui::RenderTableContents(ui.record->FormatMetrics());
 
                     ImGui::EndTable();
@@ -3427,7 +3517,7 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
 
         for (auto &ui : digitizer.ui.channels)
         {
-            if (ui.record == NULL || ui.record->frequency_domain == NULL)
+            if (ui.record == NULL)
                 continue;
 
             if (has_contents)

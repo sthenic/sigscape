@@ -1,5 +1,7 @@
 #include "pulse_generator.h"
 
+#include <algorithm>
+
 void PulseGenerator::Generate()
 {
     auto pulse = Pulse();
@@ -148,11 +150,63 @@ std::shared_ptr<ADQGen4Record> PulseGenerator::Pulse()
 
 std::shared_ptr<ADQGen4Record> PulseGenerator::Attributes(const ADQGen4Record *source)
 {
-    std::vector<ADQPulseAttributes> attributes = {
-        {65433, 100, 3544, 64, ADQ_PULSE_ATTRIBUTES_STATUS_VALID, {}},
-        {71722, 200, 7283, 63, ADQ_PULSE_ATTRIBUTES_STATUS_VALID, {}},
-        {59091, 300, 2211, 82, ADQ_PULSE_ATTRIBUTES_STATUS_VALID, {}},
-    };
+    /* TODO: Only positive pulses for now. */
+
+    std::vector<ADQPulseAttributes> attributes{};
+
+    auto level = static_cast<int16_t>(
+        std::clamp(m_top_parameters.level * 32768.0, -32767.0, 32768.0));
+
+    /* FIXME: Respect baseline */
+    // auto baseline = static_cast<int16_t>(
+    //     std::clamp(m_top_parameters.baseline * 32768.0, -32767.0, 32768.0));
+
+    auto data = static_cast<int16_t *>(source->data);
+    ADQPulseAttributes pulse{};
+    size_t pulse_start = 0;
+    bool in_pulse = false;
+
+    for (uint32_t i = 0; i < source->header->record_length; ++i)
+    {
+        if (!in_pulse && i > 0 && data[i] >= level && data[i-1] < level)
+        {
+            /* Pulse beginning */
+            pulse = ADQPulseAttributes{};
+            pulse.peak = static_cast<uint16_t>(data[i]);
+            pulse.peak_position = i;
+            pulse.area += data[i];
+            in_pulse = true;
+            pulse_start = i;
+        }
+        else if (in_pulse && data[i] < level)
+        {
+            /* Pulse ending */
+            pulse.area += data[i];
+
+            int16_t half_max = static_cast<int16_t>(pulse.peak / 2);
+            for (uint32_t j = pulse_start; j <= i; ++j)
+                pulse.fwhm += data[j] >= half_max;
+
+            pulse.status = ADQ_PULSE_ATTRIBUTES_STATUS_VALID;
+            attributes.push_back(pulse);
+            in_pulse = false;
+        }
+        else if (in_pulse)
+        {
+            /* Inside */
+            if (data[i] > pulse.peak)
+            {
+                pulse.peak = data[i];
+                pulse.peak_position = i;
+            }
+
+            pulse.area += data[i];
+        }
+    }
+
+    /* Add potentially invalid pulse. */
+    if (in_pulse)
+        attributes.push_back(pulse);
 
     std::shared_ptr<ADQGen4Record> record;
     int result = ReuseOrAllocateBuffer(record, attributes.size() * sizeof(ADQPulseAttributes));
@@ -168,7 +222,7 @@ std::shared_ptr<ADQGen4Record> PulseGenerator::Attributes(const ADQGen4Record *s
 
     *record->header = *source->header;
     record->header->data_format = ADQ_DATA_FORMAT_PULSE_ATTRIBUTES;
-    record->header->record_length = 3;
+    record->header->record_length = static_cast<uint32_t>(attributes.size());
     std::memcpy(record->data, attributes.data(), attributes.size() * sizeof(ADQPulseAttributes));
 
     return record;

@@ -170,6 +170,7 @@ private:
 
     Markers m_time_domain_markers;
     Markers m_frequency_domain_markers;
+    Markers m_attribute_markers;
 
     struct UnitsPerDivision
     {
@@ -258,6 +259,7 @@ private:
     static void RenderUnitsPerDivision(const std::string &str);
 
     void PlotTimeDomainSelected();
+    void PlotTimeDomainPulseAttributesSelected();
 
     void DrawMarkerX(int id, double *x, const ImVec4 &color, float thickness,
                      const std::string &format, ImPlotDragToolFlags flags = 0);

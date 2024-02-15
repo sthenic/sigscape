@@ -157,6 +157,12 @@ std::shared_ptr<ADQGen4Record> PulseGenerator::Attributes(const ADQGen4Record *s
     auto level = static_cast<int16_t>(
         std::clamp(m_top_parameters.level * 32768.0, -32767.0, 32768.0));
 
+    auto arm_level_primary = static_cast<int16_t>(
+        std::clamp((m_top_parameters.level - 0.1) * 32768.0, -32767.0, 32768.0));
+
+    auto arm_level_secondary = static_cast<int16_t>(
+        std::clamp((m_top_parameters.level + 0.1) * 32768.0, -32767.0, 32768.0));
+
     /* FIXME: Respect baseline */
     // auto baseline = static_cast<int16_t>(
     //     std::clamp(m_top_parameters.baseline * 32768.0, -32767.0, 32768.0));
@@ -165,10 +171,12 @@ std::shared_ptr<ADQGen4Record> PulseGenerator::Attributes(const ADQGen4Record *s
     ADQPulseAttributes pulse{};
     size_t pulse_start = 0;
     bool in_pulse = false;
+    bool arm_primary = true;
+    bool arm_secondary = false;
 
     for (uint32_t i = 0; i < source->header->record_length; ++i)
     {
-        if (!in_pulse && i > 0 && data[i] >= level && data[i-1] < level)
+        if (arm_primary && !in_pulse && i > 0 && data[i] >= level && data[i-1] < level)
         {
             /* Pulse beginning */
             pulse = ADQPulseAttributes{};
@@ -177,8 +185,9 @@ std::shared_ptr<ADQGen4Record> PulseGenerator::Attributes(const ADQGen4Record *s
             pulse.area += data[i];
             in_pulse = true;
             pulse_start = i;
+            arm_primary = false;
         }
-        else if (in_pulse && data[i] < level)
+        else if (arm_secondary && in_pulse && data[i] < level)
         {
             /* Pulse ending */
             pulse.area += data[i];
@@ -190,9 +199,13 @@ std::shared_ptr<ADQGen4Record> PulseGenerator::Attributes(const ADQGen4Record *s
             pulse.status = ADQ_PULSE_ATTRIBUTES_STATUS_VALID;
             attributes.push_back(pulse);
             in_pulse = false;
+            arm_secondary = false;
         }
         else if (in_pulse)
         {
+            if (data[i] >= arm_level_secondary)
+                arm_secondary = true;
+
             /* Inside */
             if (data[i] > pulse.peak)
             {
@@ -201,6 +214,10 @@ std::shared_ptr<ADQGen4Record> PulseGenerator::Attributes(const ADQGen4Record *s
             }
 
             pulse.area += data[i];
+        }
+        else if (data[i] <= arm_level_primary)
+        {
+            arm_primary = true;
         }
     }
 

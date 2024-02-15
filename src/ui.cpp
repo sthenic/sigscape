@@ -211,6 +211,7 @@ Ui::Ui()
     , m_digitizers()
     , m_time_domain_markers("Time Domain", "T")
     , m_frequency_domain_markers("Frequency Domain", "F")
+    , m_attribute_markers("Attributes", "A")
     , m_time_domain_units_per_division()
     , m_frequency_domain_units_per_division()
     , m_sensor_units_per_division{0.0, 0.0, "s", "?"}
@@ -531,6 +532,7 @@ void Ui::HandleMessage(const IdentificationMessage &message)
     m_nof_channels_total = 0;
     m_time_domain_markers.clear();
     m_frequency_domain_markers.clear();
+    m_attribute_markers.clear();
 
     for (auto interface : message.digitizers)
         m_digitizers.emplace_back(interface);
@@ -810,8 +812,8 @@ void Ui::RenderRight(float width, float height)
         FREQUENCY_DOMAIN_POSITION = ImVec2{POSITION_X, 2 * FRAME_HEIGHT};
 
     /* In the right column we show various metrics. */
-    RenderPulseAttributes(TIME_DOMAIN_POSITION, TIME_DOMAIN_SIZE);
-    // RenderTimeDomainMetrics(TIME_DOMAIN_POSITION, TIME_DOMAIN_SIZE);
+    RenderTimeDomainMetrics(TIME_DOMAIN_POSITION, TIME_DOMAIN_SIZE);
+    RenderPulseAttributes(FREQUENCY_DOMAIN_POSITION, FREQUENCY_DOMAIN_SIZE);
     // RenderFrequencyDomainMetrics(FREQUENCY_DOMAIN_POSITION, FREQUENCY_DOMAIN_SIZE);
 }
 
@@ -1584,7 +1586,7 @@ void Ui::MarkerTree(Markers &markers, bool inverse_delta)
 
 void Ui::RenderMarkers()
 {
-    if (m_time_domain_markers.empty() && m_frequency_domain_markers.empty())
+    if (m_time_domain_markers.empty() && m_frequency_domain_markers.empty() && m_attribute_markers.empty())
     {
         ImGui::Text("No markers to show.");
         return;
@@ -1594,10 +1596,12 @@ void Ui::RenderMarkers()
     {
         m_time_domain_markers.clear();
         m_frequency_domain_markers.clear();
+        m_attribute_markers.clear();
     }
 
     MarkerTree(m_time_domain_markers, true);
     MarkerTree(m_frequency_domain_markers, false);
+    MarkerTree(m_attribute_markers, true);
 }
 
 void Ui::RenderMemory()
@@ -2192,12 +2196,14 @@ void Ui::RenderProcessingOptions(const ImVec2 &position, const ImVec2 &size)
     if (ImGui::Checkbox("Convert samples to time", &m_processing_parameters.convert_horizontal))
     {
         m_time_domain_markers.clear();
+        m_attribute_markers.clear();
         push_parameters = true;
     }
 
     if (ImGui::Checkbox("Convert codes to volts", &m_processing_parameters.convert_vertical))
     {
         m_time_domain_markers.clear();
+        m_attribute_markers.clear();
         push_parameters = true;
     }
 
@@ -2365,12 +2371,41 @@ void Ui::SnapX(double x, const BaseRecord *record, double &snap_x, double &snap_
     }
     else
     {
-        /* Get the distance to the first sample, which we now know is a positive
-           value in the range spanned by the x-vector. */
-        double distance = x - record->x.front();
-        size_t index = static_cast<size_t>(std::round(distance / record->step));
-        snap_x = record->x[index];
-        snap_y = record->y[index];
+        if (record->step < 0)
+        {
+            /* A negative step size signals that samples are not equidistant so
+               we have to loop through them. */
+            for (size_t i = 1; i < record->x.size(); ++i)
+            {
+                double delta_low = record->x[i-1] - x;
+                double delta_high = record->x[i] - x;
+                if (delta_low <= 0 && delta_high > 0)
+                {
+                    /* If different sign */
+                    if (-delta_low < delta_high)
+                    {
+                        snap_x = record->x[i-1];
+                        snap_y = record->y[i-1];
+                    }
+                    else
+                    {
+                        snap_x = record->x[i];
+                        snap_y = record->y[i];
+                    }
+
+                    return;
+                }
+            }
+        }
+        else
+        {
+            /* Get the distance to the first sample, which we now know is a
+               positive value in the range spanned by the x-vector. */
+            double distance = x - record->x.front();
+            size_t index = static_cast<size_t>(std::round(distance / record->step));
+            snap_x = record->x[index];
+            snap_y = record->y[index];
+        }
     }
 }
 
@@ -2657,6 +2692,87 @@ void Ui::PlotTimeDomainSelected()
     }
 }
 
+void Ui::PlotTimeDomainPulseAttributesSelected()
+{
+    int marker_id = 100;
+
+    for (size_t i = 0; i < m_digitizers.size(); ++i)
+    {
+        if (!m_digitizers[i].ui.is_selected)
+            continue;
+
+        size_t ch = 0;
+        for (auto &ui : m_digitizers[i].ui.channels)
+        {
+            if (ui.record == NULL || ui.record->attributes == NULL)
+            {
+                ch++;
+                continue;
+            }
+
+            ImPlot::PushStyleColor(ImPlotCol_Line, ui.color);
+
+            for (size_t i = 0; i < ui.record->attributes->attributes.size(); ++i)
+            {
+                /* FIXME: Units etc. */
+                auto height = ui.record->attributes->y[i];
+                auto width = static_cast<double>(ui.record->attributes->attributes[i].area) / height;
+
+                ImPlotPoint rect_min{ui.record->attributes->x[i] - width / 2, 0.0};
+                ImPlotPoint rect_max{ui.record->attributes->x[i] + width / 2, height};
+
+                ImVec2 pix_min = ImPlot::PlotToPixels(rect_min);
+                ImVec2 pix_max = ImPlot::PlotToPixels(rect_max);
+
+                auto col = ui.color;
+                col.w = 0.5;
+
+                ImPlot::GetPlotDrawList()->AddRectFilled(
+                    pix_min, pix_max, ImGui::ColorConvertFloat4ToU32(col)
+                );
+            }
+
+            // ImPlot::PlotBars(
+            //     "##bars", ui.record->attributes->x.data(), ui.record->attributes->y.data(),
+            //     static_cast<int>(ui.record->attributes->x.size()), 1.0);
+
+            ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
+            ImPlot::PlotStems(
+                ui.record->label.c_str(), ui.record->attributes->x.data(),
+                ui.record->attributes->y.data(),
+                static_cast<int>(ui.record->attributes->x.size()));
+
+            ImPlot::PopStyleColor();
+
+            if (ui.is_time_domain_visible)
+            {
+                for (auto &[id, marker] : m_attribute_markers)
+                {
+                    if (marker.digitizer != i || marker.channel != ch)
+                        continue;
+
+                    SnapX(marker.x.value, ui.record->attributes.get(), marker.x.value, marker.y.value);
+
+                    ImPlot::DragPoint(0, &marker.x.value, &marker.y.value, marker.color,
+                                      3.0f + marker.thickness, ImPlotDragToolFlags_NoInputs);
+                    DrawMarkerX(marker_id++, &marker.x.value, marker.color, marker.thickness,
+                                marker.x.Format(".2"));
+                    DrawMarkerY(marker_id++, &marker.y.value, marker.color, marker.thickness,
+                                marker.y.Format(), ImPlotDragToolFlags_NoInputs);
+
+                    ImPlot::Annotation(marker.x.value, ImPlot::GetPlotLimits().Y.Max,
+                                       ImVec4(0, 0, 0, 0), ImVec2(10, 10), false, "A%zu", id);
+                }
+            }
+
+            if (ui.is_selected)
+                MaybeAddMarker(i, ch, ui.record->attributes.get(), m_attribute_markers);
+
+            ch++;
+        }
+    }
+}
+
 void Ui::DrawMarkerX(int id, double *x, const ImVec4 &color, float thickness,
                      const std::string &tag, ImPlotDragToolFlags flags)
 {
@@ -2763,6 +2879,7 @@ void Ui::RenderChannelPlot()
     {
         ImPlot::SetupLegend(ImPlotLocation_NorthEast, ImPlotLegendFlags_Sort);
         PlotTimeDomainSelected();
+        PlotTimeDomainPulseAttributesSelected();
         RemoveDoubleClickedMarkers(m_time_domain_markers);
         RenderUnitsPerDivision(m_time_domain_units_per_division.Format());
 
@@ -3332,22 +3449,13 @@ void Ui::RenderPulseAttributes(const ImVec2 &position, const ImVec2 &size)
                     ImGui::PushStyleVar(ImGuiStyleVar_CellPadding,
                                         ImGui::GetStyle().CellPadding + ImVec2(3.0, 0.0));
 
-                    // if (ImGui::BeginTable("Metrics", 4, flags))
-                    // {
-                    //     ImGui::TableSetupColumn("Metric", ImGuiTableColumnFlags_WidthFixed);
-                    //     ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
-                    //     ImGui::TableSetupColumn("Extra0", ImGuiTableColumnFlags_WidthFixed);
-                    //     ImGui::TableSetupColumn("Extra1", ImGuiTableColumnFlags_WidthFixed);
-
-                    //     ImGui::RenderTableContents(ui.record->FormatMetrics());
-
-                    //     ImGui::EndTable();
-                    // }
-
                     if (ImGui::BeginTable("Pulses", 2, flags))
                     {
                         ImGui::TableSetupColumn("Metric", ImGuiTableColumnFlags_WidthFixed);
                         ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
+
+                        ImGui::RenderTableContents(ui.record->FormatMetrics());
+                        ImGui::RenderTableContents(ui.record->attributes->FormatMetrics());
 
                         std::vector<std::vector<std::string>> contents{};
 
@@ -3398,7 +3506,7 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
 
         for (auto &ui : digitizer.ui.channels)
         {
-            if (ui.record == NULL)
+            if (ui.record == NULL || ui.record->time_domain == NULL)
                 continue;
 
             if (has_contents)

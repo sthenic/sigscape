@@ -472,8 +472,12 @@ void Digitizer::StartDataAcquisition()
             if (transfer.channel[i].nof_buffers == 0)
                 continue;
 
+            size_t channel = i;
+            if (m_constant.channel[i].pd.source_channel >= 0)
+                channel = m_constant.channel[i].pd.source_channel;
+
             m_processing_threads[i]->EmplaceMessage(
-                DataProcessingMessageId::SET_AFE_PARAMETERS, afe.channel[i]);
+                DataProcessingMessageId::SET_AFE_PARAMETERS, afe.channel[channel]);
             m_processing_threads[i]->EmplaceMessage(
                 DataProcessingMessageId::SET_CLOCK_SYSTEM_PARAMETERS, clock_system);
 

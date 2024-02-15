@@ -154,6 +154,11 @@ struct ADQClockSystemParameters
     uint64_t magic;
 };
 
+struct ADQConstantParametersPd
+{
+    int32_t source_channel;
+};
+
 struct ADQConstantParametersChannel
 {
 #ifdef ADQAPI_INTERNAL
@@ -162,11 +167,13 @@ struct ADQConstantParametersChannel
     ADQConstantParametersChannel(const std::string &label,
                                  int nof_adc_cores,
                                  const std::vector<double> &input_range,
-                                 int code_normalization)
+                                 int code_normalization,
+                                 const ADQConstantParametersPd &pd = {-1})
         : label{}
         , nof_adc_cores(static_cast<int32_t>(nof_adc_cores))
         , code_normalization(static_cast<int64_t>(code_normalization))
         , input_range{}
+        , pd{pd}
     {
         std::memcpy(this->label, label.c_str(),
                     std::min(sizeof(this->label) - 1, label.size() + 1));
@@ -180,6 +187,7 @@ struct ADQConstantParametersChannel
     int32_t nof_adc_cores;
     int64_t code_normalization;
     double input_range[ADQ_MAX_NOF_INPUT_RANGES];
+    struct ADQConstantParametersPd pd;
 };
 
 enum ADQFirmwareType

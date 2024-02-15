@@ -243,7 +243,10 @@ int DataProcessing::ProcessRecord(const ADQGen4Record *raw_time_domain,
     if (raw_time_domain->header->data_format == ADQ_DATA_FORMAT_PULSE_ATTRIBUTES)
     {
         /* TODO: What to do actually? Copy to some attribute record? */
-        processed_record.attributes = std::make_shared<PulseAttributes>(raw_time_domain);
+        processed_record.attributes = std::make_shared<PulseAttributes>(
+            raw_time_domain, m_afe, m_clock_system, code_normalization,
+            m_parameters.convert_horizontal, m_parameters.convert_vertical
+        );
         return SCAPE_EOK;
     }
 

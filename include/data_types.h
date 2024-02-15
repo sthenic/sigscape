@@ -484,15 +484,58 @@ struct Waterfall
     size_t columns;
 };
 
-struct PulseAttributes
+struct PulseAttributes : public BaseRecord
 {
+    inline static const std::string PRECISION = "8.2";
+    inline static const std::string PRECISION_UNCONVERTED = "8.0";
+
     /* FIXME: Check correct data format and such? */
-    PulseAttributes(const ADQGen4Record *raw)
-        : header{*raw->header}
+    PulseAttributes(const ADQGen4Record *raw,
+                    const ADQAnalogFrontendParametersChannel &afe,
+                    const ADQClockSystemParameters &clock_system,
+                    double code_normalization,
+                    bool convert_horizontal = true, bool convert_vertical = true)
+        : BaseRecord(raw->header->record_length,
+                     convert_horizontal ? Value::Properties{"s", PRECISION, 1e-3, 1e-12, "Hz"}
+                                        : Value::Properties{"S", PRECISION_UNCONVERTED, 1.0, 1.0},
+                     convert_vertical ? Value::Properties{"V", PRECISION, 1e-3, 1e-12}
+                                      : Value::Properties{"", PRECISION_UNCONVERTED, 1.0, 1.0})
+        , header{*raw->header}
         , attributes(
               static_cast<ADQPulseAttributes *>(raw->data),
               static_cast<ADQPulseAttributes *>(raw->data) + raw->header->record_length)
-    {}
+    {
+#ifdef USE_TIME_UNIT_FROM_HEADER
+        (void)clock_system;
+        int time_unit_ps = static_cast<int>(raw->header->time_unit * 1e12);
+        double time_unit = static_cast<double>(time_unit_ps) * 1e-12;
+        double sampling_period = static_cast<double>(raw->header->sampling_period) * time_unit;
+#else
+        double sampling_period = 1.0 / clock_system.sampling_frequency;
+        double time_unit = sampling_period / static_cast<double>(raw->header->sampling_period);
+#endif
+
+        step = -1.0;
+        double record_start = static_cast<double>(raw->header->record_start) * time_unit;
+
+        for (size_t i = 0; i < attributes.size(); ++i)
+        {
+            if (convert_horizontal)
+                x[i] = record_start + static_cast<double>(attributes[i].peak_position) * sampling_period;
+            else
+                x[i] = static_cast<double>(attributes[i].peak_position);
+
+            if (convert_vertical)
+            {
+                y[i] = static_cast<double>(attributes[i].peak) / code_normalization * afe.input_range - afe.dc_offset;
+                y[i] /= 1e3; /* The value is in millivolts before we scale it. */
+            }
+            else
+            {
+                y[i] = static_cast<double>(attributes[i].peak);
+            }
+        }
+    }
 
     /* Delete copy constructors until we need them. */
     PulseAttributes(const PulseAttributes &other) = delete;

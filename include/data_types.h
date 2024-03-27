@@ -133,7 +133,7 @@ struct TimeDomainRecord : public BaseRecord
                      convert_vertical ? Value::Properties{"V", PRECISION, 1e-3, 1e-12}
                                       : Value::Properties{"", PRECISION_UNCONVERTED, 1.0, 1.0})
         , header(*raw->header)
-        , sampling_frequency(0.0, {"Hz", PRECISION, 1e6})
+        , sampling_frequency(0.0, {"Hz", PRECISION, 1e9})
         , sampling_period(0.0, {"s", PRECISION, 1e-3})
         , range_max(ValueY(0.0))
         , range_min(ValueY(0.0))
@@ -251,7 +251,7 @@ struct TimeDomainRecord : public BaseRecord
             },
             {"Mean", mean.Format(), range_mid.Format()},
             {"Standard deviation", sdev.Format()},
-            {"Sampling rate", sampling_frequency.Format()},
+            {"Sampling frequency", sampling_frequency.Format()},
             {"Sampling period", sampling_period.Format()},
         };
     }

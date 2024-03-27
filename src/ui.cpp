@@ -1995,7 +1995,7 @@ void Ui::RenderStaticInformation()
                 ui->constant.clock_system.low_jitter_mode_enabled ? "Enabled" : "Disabled");
 
             Row("Sampling frequency",
-                Format::Metric(ui->constant.clock_system.sampling_frequency, "{:7.2f} {}Hz", 1e6));
+                Format::Metric(ui->constant.clock_system.sampling_frequency, "{:7.2f} {}Hz", 1e9));
 
             Row("Reference frequency",
                 Format::Metric(ui->constant.clock_system.reference_frequency, "{:7.2f} {}Hz", 1e6),

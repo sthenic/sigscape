@@ -354,7 +354,11 @@ void Digitizer::UpdateSystemManagerObjects()
                                               SystemManagerCommand::SENSOR_GET_VALUE,
                                               &arg, sizeof(arg), &value, sizeof(value));
 
-            if (sensor.status != 0)
+            if (sensor.status == ADQ_EINTERNAL)
+            {
+                ThrowDigitizerException("Internal error when reading sensor {}.", sensor.id);
+            }
+            else if (sensor.status != 0)
             {
                 /* FIXME: Error code to text description? */
                 sensor.note = "I'm a descriptive error message!";

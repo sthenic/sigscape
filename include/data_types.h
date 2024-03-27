@@ -623,7 +623,7 @@ public:
     void SetParameters(size_t nof_averages, bool enable_max_hold);
 
     /* This function must be called for each new FFT to prepare the
-       preprocessing pipeline to new data. Specifically, it's needed to
+       preprocessing pipeline for new data. Specifically, it's needed to
        configure the bounds of the moving average. */
     void Prepare(size_t size);
 

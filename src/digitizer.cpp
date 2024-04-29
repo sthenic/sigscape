@@ -878,7 +878,11 @@ void Digitizer::ConfigureDefaultAcquisition()
         transfer.channel[ch].metadata_enabled = 1;
         transfer.channel[ch].metadata_buffer_size = sizeof(ADQGen4RecordHeader);
         transfer.channel[ch].record_size = acquisition.channel[ch].record_length *
-                                            acquisition.channel[ch].bytes_per_sample;
+#if ADQAPI_VERSION_MAJOR >= 10
+                                           m_constant.channel[ch].nof_bytes_per_sample;
+#else
+                                           acquisition.channel[ch].bytes_per_sample;
+#endif
         transfer.channel[ch].record_buffer_size = transfer.channel[ch].record_size;
 
         readout.channel[ch].nof_record_buffers_max = ADQ_INFINITE_NOF_RECORDS;
@@ -952,7 +956,12 @@ void Digitizer::ScaleRecordLength(double factor)
             std::round(factor * static_cast<double>(acquisition.channel[ch].record_length)));
 
         acquisition.channel[ch].record_length = record_length;
-        transfer.channel[ch].record_size = record_length * acquisition.channel[ch].bytes_per_sample;
+        transfer.channel[ch].record_size = record_length *
+#if ADQAPI_VERSION_MAJOR >= 10
+                                           m_constant.channel[ch].nof_bytes_per_sample;
+#else
+                                           acquisition.channel[ch].bytes_per_sample;
+#endif
         transfer.channel[ch].record_buffer_size = transfer.channel[ch].record_size;
     }
 

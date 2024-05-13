@@ -146,29 +146,33 @@ void FftMaximumHold::Clear()
     m_log.clear();
 }
 
-FftPreprocessing::FftPreprocessing()
+FftProcessing::FftProcessing()
     : m_moving_average{}
     , m_maximum_hold{}
 {}
 
-void FftPreprocessing::SetParameters(size_t nof_averages, bool enable_max_hold)
+void FftProcessing::SetParameters(size_t nof_averages, bool enable_max_hold)
 {
     m_moving_average.SetNumberOfAverages(nof_averages);
     m_maximum_hold.Enable(enable_max_hold);
 }
 
-void FftPreprocessing::Prepare(size_t size)
+void FftProcessing::Prepare(size_t size)
 {
     m_moving_average.PrepareNewEntry(size);
 }
 
-double FftPreprocessing::Preprocess(size_t i, double y)
+double FftProcessing::Preprocess(size_t i, double y)
 {
-    double result = m_moving_average.InsertAndAverage(i, y);
-    return m_maximum_hold.Compare(i, result);
+    return m_moving_average.InsertAndAverage(i, y);
 }
 
-void FftPreprocessing::Clear()
+double FftProcessing::Postprocess(size_t i, double y)
+{
+  return m_maximum_hold.Compare(i, y);
+}
+
+void FftProcessing::Clear()
 {
     m_moving_average.Clear();
     m_maximum_hold.Clear();

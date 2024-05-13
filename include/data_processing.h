@@ -95,7 +95,7 @@ private:
     DataProcessingParameters m_parameters;
     std::deque<std::shared_ptr<FrequencyDomainRecord>> m_waterfall;
     std::deque<double> m_noise_moving_average;
-    FftPreprocessing m_fft_preprocessing;
+    FftProcessing m_fft_processing;
 
     template <typename T>
     static size_t NextPowerOfTwo(T i);

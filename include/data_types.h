@@ -610,14 +610,14 @@ private:
     bool m_enable;
 };
 
-class FftPreprocessing
+class FftProcessing
 {
 public:
-    FftPreprocessing();
+    FftProcessing();
 
     /* Delete copy constructors until we need them. */
-    FftPreprocessing(const FftPreprocessing &other) = delete;
-    FftPreprocessing &operator=(const FftPreprocessing &other) = delete;
+    FftProcessing(const FftProcessing &other) = delete;
+    FftProcessing &operator=(const FftProcessing &other) = delete;
 
     /* Set the FFT preprocessing parameters. */
     void SetParameters(size_t nof_averages, bool enable_max_hold);
@@ -627,9 +627,15 @@ public:
        configure the bounds of the moving average. */
     void Prepare(size_t size);
 
-    /* Preprocess the FFT value y[i], potentially running the value through the
-       moving average and the maximum hold, depending on the current configuration. */
+    /* Preprocess the FFT value y[i] (affects the analyzed spectrum),
+       potentially running the value through the moving average function,
+       depending on the current configuration. */
     double Preprocess(size_t i, double y);
+
+    /* Postprocess the FFT value y[i] (affects the plotted spectrum),
+       potentially running the value through the maximum hold function,
+       depending on the current configuration. */
+    double Postprocess(size_t i, double y);
 
     /* Clear the preprocessing pipeline. */
     void Clear();

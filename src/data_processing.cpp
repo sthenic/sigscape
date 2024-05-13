@@ -89,7 +89,7 @@ DataProcessing::DataProcessing(void *handle, int index, int channel, const std::
     , m_parameters{}
     , m_waterfall{}
     , m_noise_moving_average{}
-    , m_fft_preprocessing()
+    , m_fft_processing()
 {
 }
 
@@ -494,7 +494,7 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
     };
 
     /* Prepare the FFT preprocessing object to receive a new entry. */
-    m_fft_preprocessing.Prepare(fft.size());
+    m_fft_processing.Prepare(fft.size());
 
     /* If we're performing the analysis with a fixed fundamental frequency, we
        start off by constructing that `Tone` object. */
@@ -511,7 +511,7 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
                revisit these bins in the loop below and thus recalculate these
                values. This obviously slightly suboptimal, but I think the code
                is clearer and the drawbacks are not that significant. */
-            const double value = m_fft_preprocessing.Preprocess(i, FromComplex(fft[i]));
+            const double value = m_fft_processing.Preprocess(i, FromComplex(fft[i]));
             fundamental.values.push_back(value * energy_factor);
         }
 
@@ -528,7 +528,7 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
         x[i] = static_cast<double>(i) * bin_range;
 
         /* Calculate the unscaled value. */
-        y[i] = m_fft_preprocessing.Preprocess(i, FromComplex(fft[i]));
+        y[i] = m_fft_processing.Preprocess(i, FromComplex(fft[i]));
 
         /* We will always need the energy-accurate bin value for the calculations below. */
         const double y_power = y[i] * energy_factor;
@@ -536,7 +536,7 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
         /* Scale the value stored for plotting with the `scale_factor`, which
            can result in either an amplitude-accurate spectrum or an
            energy-accurate spectrum. Convert to decibels. */
-        y[i] = 10.0 * std::log10(y[i] * scale_factor);
+        y[i] = 10.0 * std::log10(m_fft_processing.Postprocess(i, y[i]) * scale_factor);
 
         /* Add the bin's contribution to the total power. */
         power += y_power;
@@ -734,13 +734,13 @@ void DataProcessing::ProcessMessages()
 
         case DataProcessingMessageId::SET_PROCESSING_PARAMETERS:
             m_parameters = std::move(message.processing);
-            m_fft_preprocessing.SetParameters(m_parameters.nof_fft_averages,
-                                              m_parameters.fft_maximum_hold);
+            m_fft_processing.SetParameters(m_parameters.nof_fft_averages,
+                                           m_parameters.fft_maximum_hold);
             m_noise_moving_average.clear();
             break;
 
         case DataProcessingMessageId::CLEAR_PROCESSING_MEMORY:
-            m_fft_preprocessing.Clear();
+            m_fft_processing.Clear();
             m_noise_moving_average.clear();
             break;
 
@@ -754,7 +754,7 @@ void DataProcessing::Clear()
 {
     m_waterfall.clear();
     m_noise_moving_average.clear();
-    m_fft_preprocessing.Clear();
+    m_fft_processing.Clear();
 }
 
 template <typename... Args>

@@ -72,11 +72,9 @@ FftMovingAverage::FftMovingAverage()
 
 void FftMovingAverage::SetNumberOfAverages(size_t nof_averages)
 {
-    if (nof_averages != m_nof_averages)
-    {
-        m_nof_averages = nof_averages;
-        m_log.clear();
-    }
+    if (nof_averages < m_log.size())
+        m_log.resize(nof_averages);
+    m_nof_averages = nof_averages;
 }
 
 void FftMovingAverage::PrepareNewEntry(size_t size)

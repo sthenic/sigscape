@@ -105,9 +105,6 @@ void DataProcessing::MainLoop()
 
     Log::log->trace(FormatLog("Starting data processing."));
 
-    /* Clear objects with memory. */
-    Clear();
-
     for (;;)
     {
         /* Check if the stop event has been set. */
@@ -742,19 +739,13 @@ void DataProcessing::ProcessMessages()
         case DataProcessingMessageId::CLEAR_PROCESSING_MEMORY:
             m_fft_processing.Clear();
             m_noise_moving_average.clear();
+            m_waterfall.clear();
             break;
 
         default:
             break;
         }
     }
-}
-
-void DataProcessing::Clear()
-{
-    m_waterfall.clear();
-    m_noise_moving_average.clear();
-    m_fft_processing.Clear();
 }
 
 template <typename... Args>

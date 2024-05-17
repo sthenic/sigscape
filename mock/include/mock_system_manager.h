@@ -41,9 +41,9 @@ struct SystemManagerMessage
         }
     }
 
-    SystemManagerCommand cmd;
-    std::vector<uint8_t> data;
-    int result;
+    SystemManagerCommand cmd{};
+    std::vector<uint8_t> data{};
+    int result{};
 };
 
 class MockSystemManager : public MessageThread<MockSystemManager, SystemManagerMessage>

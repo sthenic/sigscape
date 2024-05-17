@@ -4,7 +4,11 @@
    until there's a new value to present. Perhaps a niche feature, but it can be
    used to represent a state in the reading thread that's controlled by the
    writing thread. The queue also has an activity detection mechanism (measuring
-   on the write port) that can be queried in a thread-safe manner. */
+   on the write port) that can be queried in a thread-safe manner.
+
+   Additionally, a predicate can be supplied to `Read` for remove-if-style
+   functionality. This can be used to implement traced queue entries on a higher
+   level. */
 
 #pragma once
 
@@ -14,6 +18,7 @@
 #include <mutex>
 #include <future>
 #include <chrono>
+#include <functional>
 
 template <typename T>
 class ThreadSafeQueue
@@ -73,7 +78,9 @@ public:
         }
     }
 
-    int Read(T &value, int timeout)
+    int Read(
+        T &value, int timeout,
+        std::function<bool(const T &)> predicate = [](const T &) { return true; })
     {
         if (!m_is_started)
             return SCAPE_ENOTREADY;
@@ -84,7 +91,7 @@ public:
             for (;;)
             {
                 std::unique_lock<std::mutex> lock(m_mutex);
-                if (m_queue.size() > 0)
+                if (m_queue.size() > 0 && predicate(m_queue.front()))
                     return Pop(value);
                 lock.unlock();
 
@@ -96,7 +103,7 @@ public:
         {
             /* Immediate */
             std::unique_lock<std::mutex> lock(m_mutex);
-            if (m_queue.size() > 0)
+            if (m_queue.size() > 0 && predicate(m_queue.front()))
                 return Pop(value);
             else
                 return SCAPE_EAGAIN;
@@ -107,7 +114,7 @@ public:
             while (waited_ms < timeout)
             {
                 std::unique_lock<std::mutex> lock(m_mutex);
-                if (m_queue.size() > 0)
+                if (m_queue.size() > 0 && predicate(m_queue.front()))
                     return Pop(value);
                 lock.unlock();
 
@@ -128,7 +135,7 @@ public:
         std::unique_lock<std::mutex> lock(m_mutex);
 
         /* The timeout is only applicable if the queue has a finite capacity. */
-        if ((m_capacity > 0) && (m_queue.size() >= m_capacity))
+        if (m_capacity > 0 && m_queue.size() >= m_capacity)
         {
             lock.unlock();
 
@@ -141,7 +148,7 @@ public:
                     if (m_queue.size() < m_capacity)
                     {
                         m_last_write_timestamp = std::chrono::high_resolution_clock::now();
-                        m_queue.push(value);
+                        m_queue.emplace(value);
                         return SCAPE_EOK;
                     }
                     lock.unlock();
@@ -164,7 +171,7 @@ public:
                     if (m_queue.size() < m_capacity)
                     {
                         m_last_write_timestamp = std::chrono::high_resolution_clock::now();
-                        m_queue.push(value);
+                        m_queue.emplace(value);
                         return SCAPE_EOK;
                     }
                     lock.unlock();
@@ -179,7 +186,7 @@ public:
         }
 
         m_last_write_timestamp = std::chrono::high_resolution_clock::now();
-        m_queue.push(value);
+        m_queue.emplace(value);
         return SCAPE_EOK;
     }
 

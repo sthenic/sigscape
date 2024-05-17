@@ -32,8 +32,8 @@ struct FileWatcherMessage
         , contents(contents)
     {}
 
-    FileWatcherMessageId id;
-    std::shared_ptr<std::string> contents;
+    FileWatcherMessageId id{};
+    std::shared_ptr<std::string> contents{};
 };
 
 class FileWatcher : public MessageThread<FileWatcher, FileWatcherMessage>

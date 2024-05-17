@@ -44,6 +44,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     tdata_processing.cpp
     tthread_safe_queue.cpp
     tmessage_thread.cpp
+    tmessage_channels.cpp
     tfile_watcher.cpp
     tdirectory_watcher.cpp
     tdigitizer.cpp

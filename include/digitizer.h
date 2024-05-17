@@ -170,16 +170,16 @@ struct DigitizerMessage
         , constant_parameters(constant_parameters)
     {}
 
-    DigitizerMessageId id;
-    DigitizerState state;
-    std::string str;
-    int ivalue;
-    int result;
-    double dvalue;
-    DataProcessingParameters processing_parameters;
-    SensorTree sensor_tree;
-    std::vector<BootEntry> boot_entries;
-    ADQConstantParameters constant_parameters;
+    DigitizerMessageId id{};
+    DigitizerState state{};
+    std::string str{};
+    int ivalue{};
+    int result{};
+    double dvalue{};
+    DataProcessingParameters processing_parameters{};
+    SensorTree sensor_tree{};
+    std::vector<BootEntry> boot_entries{};
+    ADQConstantParameters constant_parameters{};
 };
 
 class Digitizer : public MessageThread<Digitizer, DigitizerMessage>

@@ -193,7 +193,7 @@ void Digitizer::ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watch
         case FileWatcherMessageId::FILE_CREATED:
         case FileWatcherMessageId::FILE_UPDATED:
             str = message.contents;
-            _PushMessage(dirty_id);
+            _EmplaceMessage(dirty_id);
             break;
 
         case FileWatcherMessageId::FILE_DOES_NOT_EXIST:

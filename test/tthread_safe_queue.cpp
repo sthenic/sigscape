@@ -178,3 +178,21 @@ TEST(ThreadSafeQueue, PersistentLeaking)
     persistent_queue_heap.Free();
     LONGS_EQUAL(SCAPE_EOK, persistent_queue_heap.Stop());
 }
+
+TEST(ThreadSafeQueue, ReadPredicate)
+{
+    LONGS_EQUAL(SCAPE_EOK, queue.Start());
+
+    LONGS_EQUAL(SCAPE_EOK, queue.EmplaceWrite(101));
+    LONGS_EQUAL(SCAPE_EOK, queue.EmplaceWrite(102));
+
+    int value{};
+    LONGS_EQUAL(SCAPE_EAGAIN, queue.Read(value, 100, [](const auto e){ return e == 102; }));
+    LONGS_EQUAL(SCAPE_EOK, queue.Read(value, 0, [](const auto e){ return e == 101; }));
+    LONGS_EQUAL(101, value);
+
+    LONGS_EQUAL(SCAPE_EOK, queue.Read(value, 0));
+    LONGS_EQUAL(102, value);
+
+    LONGS_EQUAL(SCAPE_EOK, queue.Stop());
+}

@@ -14,6 +14,7 @@
 #include <mutex>
 #include <future>
 #include <chrono>
+#include <functional>
 
 template <typename T>
 class ThreadSafeQueue
@@ -73,7 +74,9 @@ public:
         }
     }
 
-    int Read(T &value, int timeout)
+    int Read(
+        T &value, int timeout,
+        std::function<bool(const T &)> predicate = [](const T &) { return true; })
     {
         if (!m_is_started)
             return SCAPE_ENOTREADY;
@@ -85,7 +88,7 @@ public:
             {
                 std::unique_lock<std::mutex> lock(m_mutex);
                 if (m_queue.size() > 0)
-                    return Pop(value);
+                    return Pop(value, predicate);
                 lock.unlock();
 
                 if (m_should_stop.wait_for(std::chrono::milliseconds(10)) == std::future_status::ready)
@@ -97,7 +100,7 @@ public:
             /* Immediate */
             std::unique_lock<std::mutex> lock(m_mutex);
             if (m_queue.size() > 0)
-                return Pop(value);
+                return Pop(value, predicate);
             else
                 return SCAPE_EAGAIN;
         }
@@ -108,7 +111,7 @@ public:
             {
                 std::unique_lock<std::mutex> lock(m_mutex);
                 if (m_queue.size() > 0)
-                    return Pop(value);
+                    return Pop(value, predicate);
                 lock.unlock();
 
                 ++waited_ms;
@@ -128,7 +131,7 @@ public:
         std::unique_lock<std::mutex> lock(m_mutex);
 
         /* The timeout is only applicable if the queue has a finite capacity. */
-        if ((m_capacity > 0) && (m_queue.size() >= m_capacity))
+        if (m_capacity > 0 && m_queue.size() >= m_capacity)
         {
             lock.unlock();
 
@@ -141,7 +144,7 @@ public:
                     if (m_queue.size() < m_capacity)
                     {
                         m_last_write_timestamp = std::chrono::high_resolution_clock::now();
-                        m_queue.push(value);
+                        m_queue.emplace(value);
                         return SCAPE_EOK;
                     }
                     lock.unlock();
@@ -164,7 +167,7 @@ public:
                     if (m_queue.size() < m_capacity)
                     {
                         m_last_write_timestamp = std::chrono::high_resolution_clock::now();
-                        m_queue.push(value);
+                        m_queue.emplace(value);
                         return SCAPE_EOK;
                     }
                     lock.unlock();
@@ -179,7 +182,7 @@ public:
         }
 
         m_last_write_timestamp = std::chrono::high_resolution_clock::now();
-        m_queue.push(value);
+        m_queue.emplace(value);
         return SCAPE_EOK;
     }
 
@@ -225,8 +228,14 @@ private:
     bool m_is_persistent;
     std::chrono::high_resolution_clock::time_point m_last_write_timestamp;
 
-    int Pop(T &value)
+    int Pop(T &value, std::function<bool(const T &)> predicate)
     {
+        /* We only proceed if the predicate returns true for the front entry.
+           This implements a remove-if style functionality that can be used to
+           implement ticketed/traced queue entries on a higher level. */
+        if (!predicate(m_queue.front()))
+            return SCAPE_EAGAIN;
+
         value = m_queue.front();
 
         /* We only pop the entry if we're not using the persistent mode and if

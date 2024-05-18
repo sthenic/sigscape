@@ -12,13 +12,13 @@ struct SystemManagerMessage
     SystemManagerMessage() = default;
 
     SystemManagerMessage(int result)
-        : cmd()
+        : cmd{}
         , data{}
         , result(result)
     {}
 
     SystemManagerMessage(SystemManagerCommand cmd, const void *buffer, size_t len)
-        : cmd(cmd)
+        : cmd{cmd}
         , data{}
         , result(0)
     {
@@ -30,7 +30,7 @@ struct SystemManagerMessage
     }
 
     SystemManagerMessage(const void *buffer, size_t len, int result = 0)
-        : cmd()
+        : cmd{}
         , data{}
         , result(result)
     {

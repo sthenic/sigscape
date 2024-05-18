@@ -15,7 +15,14 @@ public:
     /* Make public for testing purposes. */
     int _WaitForMessage(TestMessage &message, int timeout, uint32_t &id)
     {
-        return MessageChannels<TestMessage>::_WaitForMessage(message, timeout, id);
+        StampedMessage tmp;
+        int result = MessageChannels<TestMessage>::_WaitForMessage(tmp, timeout);
+        if (result == SCAPE_EOK)
+        {
+            message = std::move(tmp.contents);
+            id = tmp.id;
+        }
+        return result;
     }
 };
 

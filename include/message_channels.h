@@ -6,7 +6,20 @@
 /* A class wrapping two thread safe queue objects. A public interface for
    message passing is automatically provided to a derived class. The derived
    class is expected to interact with the queues using the protected functions
-   prefixed by `_`. These move messages in the opposite direction. */
+   prefixed by `_`. These move messages in the opposite direction.
+
+   The template class works with `StampedMessage` objects in the internal
+   queues. These objects attach a (for practical purposes) unique `id` to a
+   message that's passed with that intent through the public interface. This
+   intent is signaled by the caller asking to receive the `id`, usually
+   expecting a response with a matching `id`. Otherwise, `id` is set to zero,
+   which symbolizes an "untraced" message that simply passes in one direction.
+
+   The protected interface provides functions to read stamped messages
+   (unconditionally), or _untraced_ messages (discarding the `id`). The idea is
+   that the derived class will primarily use one of these functions to receive
+   messages, opting to use the stamped interface if a call/response (or
+   async/await) mechanism is needed. */
 
 /* TODO: Should we attempt to move messages in `PushMessage`? */
 
@@ -45,7 +58,7 @@ public:
         return WaitForMessage(message, timeout, Predicate);
     }
 
-    /* Push a message and receive a unique id. */
+    /* Push a message (traced) and receive a unique id. */
     int PushMessage(const T &message, uint32_t &id)
     {
         /* We get our 'unique' id by an atomic post-increment operation. If the
@@ -57,39 +70,56 @@ public:
         return m_write_message_queue.EmplaceWrite(id, message);
     }
 
-    /* Push a message. */
+    /* Push a message (untraced). */
     int PushMessage(const T &message)
     {
         return m_write_message_queue.EmplaceWrite(message);
     }
 
-    /* Push a message then wait for a response as a single action. */
-    int PushMessage(const T &in, T &out, int timeout)
+    /* Push a message (traced) then wait for a response as a single action. In
+       the event of a timeout when waiting for the response, the `id` is
+       returned to the user. */
+    int PushMessageWaitForResponse(const T &in, T &out, uint32_t &id, int timeout)
     {
-        /* TODO: Make this into id-matched calls. */
-        RETURN_CALL(PushMessage(in));
-        RETURN_CALL(WaitForMessage(out, timeout));
+        RETURN_CALL(PushMessage(in, id));
+        RETURN_CALL(WaitForMessage(out, timeout, id));
         return SCAPE_EOK;
     }
 
-    /* Push a message then wait for and _discard_ the response as a single action. */
-    int PushMessage(const T &in, int timeout)
+    /* Push a message (traced) then wait for a response as a single action. This
+       call blocks until complete. */
+    int PushMessageWaitForResponse(const T &in, T &out)
     {
-        /* TODO: Make this into id-matched calls. */
-        T response;
-        RETURN_CALL(PushMessage(in, response, timeout));
+        uint32_t id{};
+        RETURN_CALL(PushMessageWaitForResponse(in, out, id, -1));
         return SCAPE_EOK;
     }
 
-    /* Push a message that's constructed in place from the input arguments. */
+    /* Push a message (traced) then wait for and _discard_ the response as a single action. */
+    int PushMessageWaitForResponse(const T &in)
+    {
+        T out{};
+        RETURN_CALL(PushMessageWaitForResponse(in, out));
+        return SCAPE_EOK;
+    }
+
+    /* Push a message (untraced) that's constructed in place from the input arguments. */
     template<class... Args>
     int EmplaceMessage(Args &&... args)
     {
+        /* TODO: Move here? */
         return m_write_message_queue.EmplaceWrite(T(std::forward<Args>(args)...));
     }
 
+    /* Push a message (traced) that's constructed in place from the input arguments. */
+    template<class... Args>
+    int EmplaceMessage(uint32_t id, Args &&... args)
+    {
+        /* TODO: Move here? */
+        return m_write_message_queue.EmplaceWrite(id, T(std::forward<Args>(args)...));
+    }
+
 protected:
-    /* The inheriting class gets `StampedMessage` objects, which includes an `id`. */
     struct StampedMessage
     {
         StampedMessage() = default;
@@ -127,11 +157,11 @@ protected:
 
     int _WaitForMessage(T &message, int timeout)
     {
-        /* TODO: For backwards compatibility until we can refactor consumers to
-                 always respect the id? */
         StampedMessage tmp;
-        int result = m_write_message_queue.Read(tmp, timeout);
-        message = tmp.contents;
+        auto Predicate = [&](const StampedMessage &m) { return m.id == 0; };
+        int result = m_write_message_queue.Read(tmp, timeout, Predicate);
+        if (result == SCAPE_EOK)
+            message = std::move(tmp.contents);
         return result;
     }
 
@@ -149,6 +179,12 @@ protected:
     int _EmplaceMessage(Args &&... args)
     {
         return m_read_message_queue.EmplaceWrite(T(std::forward<Args>(args)...));
+    }
+
+    template<class... Args>
+    int _EmplaceMessage(uint32_t id, Args &&... args)
+    {
+        return m_read_message_queue.EmplaceWrite(id, T(std::forward<Args>(args)...));
     }
 
 private:

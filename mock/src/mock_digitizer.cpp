@@ -66,7 +66,7 @@ int MockDigitizer::StartDataAcquisition()
     m_overflow_status = {};
 
     for (auto &generator : m_generators)
-        generator->PushMessage({GeneratorMessageId::ENABLE}, -1);
+        generator->PushMessageWaitForResponse({GeneratorMessageId::ENABLE});
 
     return ADQ_EOK;
 }
@@ -74,7 +74,7 @@ int MockDigitizer::StartDataAcquisition()
 int MockDigitizer::StopDataAcquisition()
 {
     for (auto &generator : m_generators)
-        generator->PushMessage({GeneratorMessageId::DISABLE}, -1);
+        generator->PushMessageWaitForResponse({GeneratorMessageId::DISABLE});
 
     return ADQ_EOK;
 }
@@ -201,7 +201,7 @@ int MockDigitizer::InitializeParametersString(
             {
                 GeneratorMessage response;
                 GeneratorMessage message{GeneratorMessageId::GET_TOP_PARAMETERS};
-                if (SCAPE_EOK != generator->PushMessage(message, response, -1))
+                if (SCAPE_EOK != generator->PushMessageWaitForResponse(message, response))
                     return ADQ_EINVAL;
                 json["top"].emplace_back(response.json);
             }
@@ -216,7 +216,7 @@ int MockDigitizer::InitializeParametersString(
                we only retrieve it for the first one. */
             GeneratorMessage response;
             GeneratorMessage message{GeneratorMessageId::GET_CLOCK_SYSTEM_PARAMETERS};
-            if (SCAPE_EOK != m_generators.front()->PushMessage(message, response, -1))
+            if (SCAPE_EOK != m_generators.front()->PushMessageWaitForResponse(message, response))
                 return ADQ_EINVAL;
 
             nlohmann::json json{
@@ -252,8 +252,8 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
             {
                 if (i < m_generators.size())
                 {
-                    m_generators[i]->PushMessage(
-                        {GeneratorMessageId::SET_TOP_PARAMETERS, object}, -1);
+                    m_generators[i]->PushMessageWaitForResponse(
+                        {GeneratorMessageId::SET_TOP_PARAMETERS, object});
                 }
                 ++i;
             }
@@ -265,8 +265,8 @@ int MockDigitizer::SetParametersString(const char *const string, size_t length)
         {
             for (auto &generator: m_generators)
             {
-                generator->PushMessage(
-                    {GeneratorMessageId::SET_CLOCK_SYSTEM_PARAMETERS, json["clock_system"]}, -1);
+                generator->PushMessageWaitForResponse(
+                    {GeneratorMessageId::SET_CLOCK_SYSTEM_PARAMETERS, json["clock_system"]});
             }
 
             /* Emulate reconfiguration time. */
@@ -308,32 +308,29 @@ int MockDigitizer::SmTransaction(uint16_t cmd, void *wr_buf, size_t wr_buf_len, 
     if (rd_buf_len > 0 && rd_buf == NULL)
         return ADQ_EINVAL;
 
+    /* FIXME: Replace with MessageChannel::PushMessage(in, out) */
     /* Add write message. */
-    int result = m_sysman.EmplaceMessage(static_cast<SystemManagerCommand>(cmd), wr_buf, wr_buf_len);
-    if (result != ADQ_EOK)
-        return result;
-
-    /* Wait for the reply. */
-    SystemManagerMessage reply;
-    result = m_sysman.WaitForMessage(reply, 100);
+    SystemManagerMessage response;
+    int result = m_sysman.PushMessageWaitForResponse(
+        {static_cast<SystemManagerCommand>(cmd), wr_buf, wr_buf_len}, response);
     if (result != ADQ_EOK)
         return result;
 
     /* Early exit if there was an error. */
-    if (reply.result != 0)
-        return reply.result;
+    if (response.result != 0)
+        return response.result;
 
     /* Write the response data to the read buffer. */
     if (rd_buf_len > 0)
     {
-        if (reply.data.size() != rd_buf_len)
+        if (response.data.size() != rd_buf_len)
         {
             fprintf(stderr, "System manager read length mismatch, got %zu, expected %zu.\n",
-                    reply.data.size(), rd_buf_len);
+                    response.data.size(), rd_buf_len);
             return ADQ_EINTERNAL;
         }
 
-        std::memcpy(rd_buf, reply.data.data(), reply.data.size());
+        std::memcpy(rd_buf, response.data.data(), response.data.size());
     }
 
     return 0;

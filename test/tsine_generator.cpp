@@ -24,12 +24,12 @@ TEST(SineGenerator, TestSetParameters)
     const GeneratorMessage top{
         GeneratorMessageId::SET_TOP_PARAMETERS, SineGeneratorTopParameters{}};
 
-    LONGS_EQUAL(SCAPE_EOK, generator.PushMessage(top, -1));
+    LONGS_EQUAL(SCAPE_EOK, generator.PushMessageWaitForResponse(top));
 
     const GeneratorMessage clock_system{
         GeneratorMessageId::SET_CLOCK_SYSTEM_PARAMETERS, SineGeneratorClockSystemParameters{}};
 
-    LONGS_EQUAL(SCAPE_EOK, generator.PushMessage(clock_system, -1));
+    LONGS_EQUAL(SCAPE_EOK, generator.PushMessageWaitForResponse(clock_system));
 }
 
 TEST(SineGenerator, Records)

@@ -135,17 +135,17 @@ private:
 
     void ProcessMessages()
     {
-        GeneratorMessage message;
+        StampedMessage message;
         while (SCAPE_EOK == _WaitForMessage(message, 0))
         {
-            switch (message.id)
+            switch (message.contents.id)
             {
             case GeneratorMessageId::SET_TOP_PARAMETERS:
             case GeneratorMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
             {
                 /* Reset the random distribution when parameters are applied successfully. */
-                message.result = SetParameters(message.id, message.json);
-                if (message.result == SCAPE_EOK)
+                message.contents.result = SetParameters(message.contents.id, message.contents.json);
+                if (message.contents.result == SCAPE_EOK)
                     m_distribution = std::normal_distribution<double>(0, GetNoise());
                 break;
             }
@@ -153,7 +153,7 @@ private:
             case GeneratorMessageId::GET_TOP_PARAMETERS:
             case GeneratorMessageId::GET_CLOCK_SYSTEM_PARAMETERS:
             {
-                message.result = GetParameters(message.id, message.json);
+                message.contents.result = GetParameters(message.contents.id, message.contents.json);
                 break;
             }
 
@@ -162,14 +162,14 @@ private:
                 m_enabled = true;
                 m_timestamp = 0;
                 m_record_number = 0;
-                message.result = SCAPE_EOK;
+                message.contents.result = SCAPE_EOK;
                 break;
             }
 
             case GeneratorMessageId::DISABLE:
             {
                 m_enabled = false;
-                message.result = SCAPE_EOK;
+                message.contents.result = SCAPE_EOK;
                 break;
             }
 
@@ -177,13 +177,13 @@ private:
             {
                 fprintf(
                     stderr, "Generator: Unknown message id '%d'.\n", static_cast<int>(message.id));
-                message.result = SCAPE_EINVAL;
+                message.contents.result = SCAPE_EINVAL;
                 break;
             }
             }
 
             /* Always send a response. */
-            _EmplaceMessage(std::move(message));
+            _PushMessage(std::move(message));
         }
     }
 };

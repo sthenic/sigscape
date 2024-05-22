@@ -132,7 +132,7 @@ std::shared_ptr<ADQGen4Record> PulseGenerator::Pulse()
         else
             y = pulse[(i - m_top_parameters.offset) % pulse.size()];
 
-        y += m_distribution(m_random_generator);
+        y += m_noise_distribution(m_random_generator);
 
         if (y > 1.0 || y < -1.0)
             record->header->record_status |= ADQ_RECORD_STATUS_OVERRANGE;

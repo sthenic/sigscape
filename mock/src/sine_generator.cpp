@@ -100,11 +100,15 @@ std::shared_ptr<ADQGen4Record> SineGenerator::Sine()
     const auto &sampling_frequency = m_clock_system_parameters.sampling_frequency;
     auto data = static_cast<int16_t *>(record->data);
 
+    double frequency = p.frequency;
+    if (p.randomize)
+        frequency = m_uniform_distribution(m_random_generator) * sampling_frequency / 2.0;
+
     for (size_t i = 0; i < m_top_parameters.record_length; ++i)
     {
         double x = static_cast<double>(i) / static_cast<double>(sampling_frequency);
-        double y = (p.amplitude * std::sin(2 * M_PI * p.frequency * x + p.phase) +
-                    m_distribution(m_random_generator) + p.offset);
+        double y = (p.amplitude * std::sin(2 * M_PI * frequency * x + p.phase) +
+                    m_noise_distribution(m_random_generator) + p.offset);
 
         /* Add gain and offset mismatch for every other sample. */
         if (p.interleaving_distortion && i % 2)
@@ -116,7 +120,7 @@ std::shared_ptr<ADQGen4Record> SineGenerator::Sine()
         if (p.harmonic_distortion)
         {
             for (int hd = 2; hd <= 5; ++hd)
-                y += 0.1 / (1 << hd) * std::sin(2 * M_PI * hd * p.frequency * x + p.phase);
+                y += 0.1 / (1 << hd) * std::sin(2 * M_PI * hd * frequency * x + p.phase);
         }
 
         if (y > 1.0 || y < -1.0)

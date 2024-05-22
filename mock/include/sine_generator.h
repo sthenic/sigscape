@@ -15,6 +15,7 @@ struct SineGeneratorTopParameters
         , noise{0.01}
         , harmonic_distortion{false}
         , interleaving_distortion{false}
+        , randomize{false}
     {}
 
     size_t record_length;
@@ -26,6 +27,7 @@ struct SineGeneratorTopParameters
     double noise;
     bool harmonic_distortion;
     bool interleaving_distortion;
+    bool randomize;
 };
 
 /* Define serialization/deserialization for `SineGeneratorTopParameters`. */
@@ -39,7 +41,8 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
     phase,
     noise,
     harmonic_distortion,
-    interleaving_distortion
+    interleaving_distortion,
+    randomize
 );
 
 struct SineGeneratorClockSystemParameters
@@ -64,6 +67,7 @@ public:
         : Generator(1)
         , m_top_parameters{}
         , m_clock_system_parameters{}
+        , m_uniform_distribution{0.0, 1.0}
     {}
 
     ~SineGenerator() override
@@ -74,6 +78,7 @@ public:
 private:
     SineGeneratorTopParameters m_top_parameters;
     SineGeneratorClockSystemParameters m_clock_system_parameters;
+    std::uniform_real_distribution<double> m_uniform_distribution;
 
     void Generate() override;
     double GetTriggerFrequency() override;

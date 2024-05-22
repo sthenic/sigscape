@@ -52,7 +52,7 @@ public:
         : SmartBufferThread(nof_channels)
         , m_random_generator{
             static_cast<uint32_t>(std::chrono::steady_clock::now().time_since_epoch().count())}
-        , m_distribution{0, 0.1}
+        , m_noise_distribution{0, 0.1}
         , m_record_number{0}
         , m_timestamp{0}
         , m_enabled{false}
@@ -63,7 +63,7 @@ protected:
     static constexpr double TIME_UNIT = 25e-12;
 
     std::default_random_engine m_random_generator;
-    std::normal_distribution<double> m_distribution;
+    std::normal_distribution<double> m_noise_distribution;
     uint32_t m_record_number;
     uint64_t m_timestamp;
     bool m_enabled;
@@ -74,7 +74,7 @@ protected:
     {
         *header = {};
         header->record_number = m_record_number;
-        header->record_start = static_cast<int64_t>(m_distribution(m_random_generator) * 1000);
+        header->record_start = static_cast<int64_t>(m_noise_distribution(m_random_generator) * 1000);
         header->time_unit = TIME_UNIT;
         header->timestamp = m_timestamp;
         header->sampling_period = static_cast<uint64_t>(
@@ -146,7 +146,7 @@ private:
                 /* Reset the random distribution when parameters are applied successfully. */
                 message.result = SetParameters(message.id, message.json);
                 if (message.result == SCAPE_EOK)
-                    m_distribution = std::normal_distribution<double>(0, GetNoise());
+                    m_noise_distribution = std::normal_distribution<double>(0, GetNoise());
                 break;
             }
 

@@ -95,7 +95,8 @@ private:
     DataProcessingParameters m_parameters;
     std::deque<std::shared_ptr<FrequencyDomainRecord>> m_waterfall;
     std::deque<double> m_noise_moving_average;
-    FftProcessing m_fft_processing;
+    MovingAverage m_fft_moving_average;
+    MaximumHold m_fft_maximum_hold;
 
     template <typename T>
     static size_t NextPowerOfTwo(T i);
@@ -156,8 +157,8 @@ private:
 
     /* Analyze the fourier transform contained in `fft` of and store the results
        in the processed `record`. */
-    void AnalyzeFourierTransform(const std::vector<std::complex<double>> &fft,
-                                 ProcessedRecord &record);
+    void AnalyzeFrequencyDomain(
+        const std::vector<std::complex<double>> &fft, ProcessedRecord &record);
 
     /* Identify the fundamental tone and the worst spur. The spectrum is
        converted into decibels (in place). */
@@ -187,6 +188,9 @@ private:
 
     /* Analyze the time domain data. */
     void AnalyzeTimeDomain(TimeDomainRecord &record);
+
+    /* Postprocess the time domain and frequency domain data. */
+    void Postprocess(ProcessedRecord &record);
 
     /* Process messages posted to the thread. */
     void ProcessMessages();

@@ -542,14 +542,14 @@ struct SensorRecord : public BaseRecord
     std::string note;
 };
 
-class FftMovingAverage
+class MovingAverage
 {
 public:
-    FftMovingAverage();
+    MovingAverage();
 
     /* Delete copy constructors until we need them. */
-    FftMovingAverage(const FftMovingAverage &other) = delete;
-    FftMovingAverage &operator=(const FftMovingAverage &other) = delete;
+    MovingAverage(const MovingAverage &other) = delete;
+    MovingAverage &operator=(const MovingAverage &other) = delete;
 
     /* Set the number of averages. This operation clears the rolling log if the
        number of averages differs from the current value. */
@@ -584,14 +584,14 @@ private:
     size_t m_nof_averages;
 };
 
-class FftMaximumHold
+class MaximumHold
 {
 public:
-    FftMaximumHold();
+    MaximumHold();
 
     /* Delete copy constructors until we need them. */
-    FftMaximumHold(const FftMaximumHold &other) = delete;
-    FftMaximumHold &operator=(const FftMaximumHold &other) = delete;
+    MaximumHold(const MaximumHold &other) = delete;
+    MaximumHold &operator=(const MaximumHold &other) = delete;
 
     /* Compare y[i] with what's currently in the memory and return the greater
        of the two values. If y[i] is a new maximum, the memory is updated. */
@@ -608,39 +608,4 @@ private:
     /* We keep a log of the maximum values in a vector. */
     std::vector<double> m_log;
     bool m_enable;
-};
-
-class FftProcessing
-{
-public:
-    FftProcessing();
-
-    /* Delete copy constructors until we need them. */
-    FftProcessing(const FftProcessing &other) = delete;
-    FftProcessing &operator=(const FftProcessing &other) = delete;
-
-    /* Set the FFT preprocessing parameters. */
-    void SetParameters(size_t nof_averages, bool enable_max_hold);
-
-    /* This function must be called for each new FFT to prepare the
-       preprocessing pipeline for new data. Specifically, it's needed to
-       configure the bounds of the moving average. */
-    void Prepare(size_t size);
-
-    /* Preprocess the FFT value y[i] (affects the analyzed spectrum),
-       potentially running the value through the moving average function,
-       depending on the current configuration. */
-    double Preprocess(size_t i, double y);
-
-    /* Postprocess the FFT value y[i] (affects the plotted spectrum),
-       potentially running the value through the maximum hold function,
-       depending on the current configuration. */
-    double Postprocess(size_t i, double y);
-
-    /* Clear the preprocessing pipeline. */
-    void Clear();
-
-private:
-    FftMovingAverage m_moving_average;
-    FftMaximumHold m_maximum_hold;
 };

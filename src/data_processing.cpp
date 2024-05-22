@@ -89,7 +89,8 @@ DataProcessing::DataProcessing(void *handle, int index, int channel, const std::
     , m_parameters{}
     , m_waterfall{}
     , m_noise_moving_average{}
-    , m_fft_processing()
+    , m_fft_moving_average{}
+    , m_fft_maximum_hold{}
 {
 }
 
@@ -314,24 +315,31 @@ int DataProcessing::ProcessRecord(const ADQGen4Record *raw_time_domain,
     }
 
     /* Analyze the fourier transform data, scaling the data and extracting key metrics. */
-    AnalyzeFourierTransform(yc, processed_record);
+    AnalyzeFrequencyDomain(yc, processed_record);
 
     /* Analyze the time domain data. */
     AnalyzeTimeDomain(*processed_record.time_domain);
+
+    /* Postprocess the record data. */
+    /* TODO: This makes it so the waterfall always shows postprocessed data
+             since it keeps a log of `std::shared_ptr<FrequencyDomainRecord>`.
+             The only way around that would be to make a deep copy of the
+             records I think? */
+    Postprocess(processed_record);
 
     /* Push the new FFT at the top of the waterfall and construct a row-major
        array for the plotting. We unfortunately cannot do anything about the
        requirement of this linear layout. */
     if (m_waterfall.size() >= WATERFALL_SIZE)
         m_waterfall.pop_back();
-    m_waterfall.push_front(processed_record.frequency_domain);
+    m_waterfall.emplace_front(processed_record.frequency_domain);
     processed_record.waterfall = std::make_shared<Waterfall>(m_waterfall);
 
     return SCAPE_EOK;
 }
 
-void DataProcessing::AnalyzeFourierTransform(const std::vector<std::complex<double>> &fft,
-                                             ProcessedRecord &record)
+void DataProcessing::AnalyzeFrequencyDomain(const std::vector<std::complex<double>> &fft,
+                                            ProcessedRecord &record)
 {
     Tone fundamental{};
     Tone spur{};
@@ -490,8 +498,8 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
         return std::pow(2.0 * std::abs(value) / static_cast<double>(fft.size()), 2.0);
     };
 
-    /* Prepare the FFT preprocessing object to receive a new entry. */
-    m_fft_processing.Prepare(fft.size());
+    /* Prepare the FFT moving average memory to receive a new entry. */
+    m_fft_moving_average.PrepareNewEntry(fft.size());
 
     /* If we're performing the analysis with a fixed fundamental frequency, we
        start off by constructing that `Tone` object. */
@@ -508,7 +516,7 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
                revisit these bins in the loop below and thus recalculate these
                values. This obviously slightly suboptimal, but I think the code
                is clearer and the drawbacks are not that significant. */
-            const double value = m_fft_processing.Preprocess(i, FromComplex(fft[i]));
+            const double value = m_fft_moving_average.InsertAndAverage(i, FromComplex(fft[i]));
             fundamental.values.push_back(value * energy_factor);
         }
 
@@ -525,7 +533,7 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
         x[i] = static_cast<double>(i) * bin_range;
 
         /* Calculate the unscaled value. */
-        y[i] = m_fft_processing.Preprocess(i, FromComplex(fft[i]));
+        y[i] = m_fft_moving_average.InsertAndAverage(i, FromComplex(fft[i]));
 
         /* We will always need the energy-accurate bin value for the calculations below. */
         const double y_power = y[i] * energy_factor;
@@ -533,7 +541,7 @@ void DataProcessing::ProcessAndIdentify(const std::vector<std::complex<double>> 
         /* Scale the value stored for plotting with the `scale_factor`, which
            can result in either an amplitude-accurate spectrum or an
            energy-accurate spectrum. Convert to decibels. */
-        y[i] = 10.0 * std::log10(m_fft_processing.Postprocess(i, y[i]) * scale_factor);
+        y[i] = 10.0 * std::log10(y[i] * scale_factor);
 
         /* Add the bin's contribution to the total power. */
         power += y_power;
@@ -714,6 +722,16 @@ void DataProcessing::AnalyzeTimeDomain(TimeDomainRecord &record)
     record.sdev.value = std::sqrt(record.sdev.value);
 }
 
+void DataProcessing::Postprocess(ProcessedRecord &record)
+{
+    /* This step runs after the analysis has completed and affects the data
+       shown in the plot. Right now, this step only consists of the FFT maximum
+       hold mechanism. */
+    auto &y = record.frequency_domain->y;
+    for (size_t i = 0; i < y.size(); ++i)
+        y[i] = m_fft_maximum_hold.Compare(i, y[i]);
+}
+
 void DataProcessing::ProcessMessages()
 {
     DataProcessingMessage message;
@@ -731,13 +749,14 @@ void DataProcessing::ProcessMessages()
 
         case DataProcessingMessageId::SET_PROCESSING_PARAMETERS:
             m_parameters = std::move(message.processing);
-            m_fft_processing.SetParameters(m_parameters.nof_fft_averages,
-                                           m_parameters.fft_maximum_hold);
+            m_fft_moving_average.SetNumberOfAverages(m_parameters.nof_fft_averages);
+            m_fft_maximum_hold.Enable(m_parameters.fft_maximum_hold);
             m_noise_moving_average.clear();
             break;
 
         case DataProcessingMessageId::CLEAR_PROCESSING_MEMORY:
-            m_fft_processing.Clear();
+            m_fft_maximum_hold.Clear();
+            m_fft_moving_average.Clear();
             m_noise_moving_average.clear();
             m_waterfall.clear();
             break;

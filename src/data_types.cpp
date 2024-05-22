@@ -65,26 +65,26 @@ std::string Value::FormatInverseDelta(double other, const std::string &precision
 BaseRecord::~BaseRecord()
 {}
 
-FftMovingAverage::FftMovingAverage()
+MovingAverage::MovingAverage()
     : m_log{}
     , m_nof_averages(1)
 {}
 
-void FftMovingAverage::SetNumberOfAverages(size_t nof_averages)
+void MovingAverage::SetNumberOfAverages(size_t nof_averages)
 {
     if (nof_averages < m_log.size())
         m_log.resize(nof_averages);
     m_nof_averages = nof_averages;
 }
 
-void FftMovingAverage::PrepareNewEntry(size_t size)
+void MovingAverage::PrepareNewEntry(size_t size)
 {
     if (m_log.size() >= m_nof_averages)
         m_log.pop_back();
     m_log.emplace_front(size);
 }
 
-double FftMovingAverage::InsertAndAverage(size_t i, double y)
+double MovingAverage::InsertAndAverage(size_t i, double y)
 {
     /* Assign y[i] to the foremost log entry. */
     m_log.at(0).at(i) = y;
@@ -108,17 +108,17 @@ double FftMovingAverage::InsertAndAverage(size_t i, double y)
     return result;
 }
 
-void FftMovingAverage::Clear()
+void MovingAverage::Clear()
 {
     m_log.clear();
 }
 
-FftMaximumHold::FftMaximumHold()
+MaximumHold::MaximumHold()
     : m_log{}
     , m_enable(false)
 {}
 
-double FftMaximumHold::Compare(size_t i, double y)
+double MaximumHold::Compare(size_t i, double y)
 {
     if (!m_enable)
         return y;
@@ -132,46 +132,14 @@ double FftMaximumHold::Compare(size_t i, double y)
     return y_log;
 }
 
-void FftMaximumHold::Enable(bool enable)
+void MaximumHold::Enable(bool enable)
 {
     if (!m_enable && enable)
         m_log.clear();
     m_enable = enable;
 }
 
-void FftMaximumHold::Clear()
+void MaximumHold::Clear()
 {
     m_log.clear();
-}
-
-FftProcessing::FftProcessing()
-    : m_moving_average{}
-    , m_maximum_hold{}
-{}
-
-void FftProcessing::SetParameters(size_t nof_averages, bool enable_max_hold)
-{
-    m_moving_average.SetNumberOfAverages(nof_averages);
-    m_maximum_hold.Enable(enable_max_hold);
-}
-
-void FftProcessing::Prepare(size_t size)
-{
-    m_moving_average.PrepareNewEntry(size);
-}
-
-double FftProcessing::Preprocess(size_t i, double y)
-{
-    return m_moving_average.InsertAndAverage(i, y);
-}
-
-double FftProcessing::Postprocess(size_t i, double y)
-{
-  return m_maximum_hold.Compare(i, y);
-}
-
-void FftProcessing::Clear()
-{
-    m_moving_average.Clear();
-    m_maximum_hold.Clear();
 }

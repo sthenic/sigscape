@@ -87,6 +87,7 @@ DataProcessing::DataProcessing(void *handle, int index, int channel, const std::
     , m_clock_system{constant.clock_system}
     , m_window_cache()
     , m_parameters{}
+    , m_time_domain_metrics{}
     , m_waterfall{}
     , m_noise_moving_average{}
     , m_fft_moving_average{}
@@ -699,27 +700,44 @@ void DataProcessing::ResolveOverlap(Tone &tone, const Tone &other)
 
 void DataProcessing::AnalyzeTimeDomain(TimeDomainRecord &record)
 {
-    for (const auto &y : record.y)
-    {
-        if (y > record.max.value)
-            record.max.value = y;
-
-        if (y < record.min.value)
-            record.min.value = y;
-
-        record.mean.value += y;
-    }
-
-    record.mean.value /= static_cast<double>(record.y.size());
+    double max = std::numeric_limits<double>::lowest();
+    double min = std::numeric_limits<double>::max();
+    double mean = 0;
 
     for (const auto &y : record.y)
     {
-        const double diff = (y - record.mean.value);
-        record.sdev.value += diff * diff;
+        if (y > max)
+            max = y;
+
+        if (y < min)
+            min = y;
+
+        mean += y;
     }
 
-    record.sdev.value /= static_cast<double>(record.y.size());
-    record.sdev.value = std::sqrt(record.sdev.value);
+    mean /= static_cast<double>(record.y.size());
+
+    double sdev = 0;
+    for (const auto &y : record.y)
+    {
+        const double diff = y - mean;
+        sdev += diff * diff;
+    }
+
+    sdev /= static_cast<double>(record.y.size());
+    sdev = std::sqrt(sdev);
+
+    /* Push the metrics (assign as current) from this record into the persistent
+       object we keep to calculate statistics, then copy the state of that
+       object into the record. We have to copy the properties of the (empty)
+       metrics object from the record since that contains the correct units etc. */
+    m_time_domain_metrics.max = max;
+    m_time_domain_metrics.min = min;
+    m_time_domain_metrics.mean = mean;
+    m_time_domain_metrics.sdev = sdev;
+    m_time_domain_metrics.CopyProperties(record.metrics);
+
+    record.metrics = m_time_domain_metrics;
 }
 
 void DataProcessing::Postprocess(ProcessedRecord &record)
@@ -748,10 +766,17 @@ void DataProcessing::ProcessMessages()
             break;
 
         case DataProcessingMessageId::SET_PROCESSING_PARAMETERS:
-            m_parameters = std::move(message.processing);
-            m_fft_moving_average.SetNumberOfAverages(m_parameters.nof_fft_averages);
-            m_fft_maximum_hold.Enable(m_parameters.fft_maximum_hold);
+            if (m_parameters.convert_horizontal != message.processing.convert_horizontal
+                || m_parameters.convert_vertical != message.processing.convert_vertical)
+            {
+                /* We clear the metrics we calculate statistics for if the x/y scale changes. */
+                m_time_domain_metrics.Clear();
+            }
+
+            m_fft_moving_average.SetNumberOfAverages(message.processing.nof_fft_averages);
+            m_fft_maximum_hold.Enable(message.processing.fft_maximum_hold);
             m_noise_moving_average.clear();
+            m_parameters = std::move(message.processing);
             break;
 
         case DataProcessingMessageId::CLEAR_PROCESSING_MEMORY:
@@ -759,6 +784,7 @@ void DataProcessing::ProcessMessages()
             m_fft_moving_average.Clear();
             m_noise_moving_average.clear();
             m_waterfall.clear();
+            m_time_domain_metrics.Clear();
             break;
 
         default:

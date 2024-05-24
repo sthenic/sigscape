@@ -53,12 +53,23 @@ struct Value
         double lowest_prefix;
     };
 
-    Value() = default;
-    Value(double value, const Properties &properties, bool valid = true)
-        : value(value)
-        , properties(properties)
-        , valid(valid)
+    Value()
+        : value{0}
+        , properties{}
+        , valid{true}
     {}
+
+    Value(double value, const Properties &properties, bool valid = true)
+        : value{value}
+        , properties{properties}
+        , valid{valid}
+    {}
+
+    Value &operator=(const double &lhs)
+    {
+        value = lhs;
+        return *this;
+    }
 
     /* Formatter returning a string for UI presentation. */
     std::string Format(bool show_sign = false) const;
@@ -82,6 +93,65 @@ struct Value
     double value;
     Properties properties;
     bool valid;
+};
+
+class ValueWithStatistics : public Value
+{
+public:
+    ValueWithStatistics() = default;
+    ValueWithStatistics(const Value::Properties &properties)
+        : Value{0, properties}
+        , min{std::numeric_limits<double>::max()}
+        , max{std::numeric_limits<double>::lowest()}
+        , sum{0}
+        , nof_values{0}
+    {}
+
+    ValueWithStatistics &operator=(const double &lhs)
+    {
+        value = lhs;
+
+        if (lhs < min)
+            min = lhs;
+
+        if (lhs > max)
+            max = lhs;
+
+        sum += lhs;
+        nof_values += 1;
+
+        return *this;
+    }
+
+    void Clear()
+    {
+        value = 0;
+        min = std::numeric_limits<double>::max();
+        max = std::numeric_limits<double>::lowest();
+        sum = 0;
+        nof_values = 0;
+    }
+
+    Value Mean() const
+    {
+        return Value(sum / static_cast<double>(nof_values), properties);
+    }
+
+    Value Max() const
+    {
+        return Value(max, properties);
+    }
+
+    Value Min() const
+    {
+        return Value(min, properties);
+    }
+
+private:
+    double min;
+    double max;
+    double sum;
+    size_t nof_values;
 };
 
 struct BaseRecord
@@ -116,6 +186,38 @@ struct BaseRecord
     double step;
 };
 
+struct TimeDomainMetrics
+{
+    TimeDomainMetrics() = default;
+    TimeDomainMetrics(const Value::Properties &properties)
+        : max{properties}
+        , min{properties}
+        , mean{properties}
+        , sdev{properties}
+    {}
+
+    void CopyProperties(const TimeDomainMetrics &other)
+    {
+        max.properties = other.max.properties;
+        min.properties = other.min.properties;
+        mean.properties = other.mean.properties;
+        sdev.properties = other.sdev.properties;
+    }
+
+    void Clear()
+    {
+        max.Clear();
+        min.Clear();
+        mean.Clear();
+        sdev.Clear();
+    }
+
+    ValueWithStatistics max;
+    ValueWithStatistics min;
+    ValueWithStatistics mean;
+    ValueWithStatistics sdev;
+};
+
 /* A time domain record. */
 struct TimeDomainRecord : public BaseRecord
 {
@@ -133,15 +235,12 @@ struct TimeDomainRecord : public BaseRecord
                      convert_vertical ? Value::Properties{"V", PRECISION, 1e-3, 1e-12}
                                       : Value::Properties{"", PRECISION_UNCONVERTED, 1.0, 1.0})
         , header(*raw->header)
+        , metrics(y_properties)
         , sampling_frequency(0.0, {"Hz", PRECISION, 1e9})
         , sampling_period(0.0, {"s", PRECISION, 1e-3})
         , range_max(ValueY(0.0))
         , range_min(ValueY(0.0))
         , range_mid(ValueY(0.0))
-        , max(ValueY(std::numeric_limits<double>::lowest()))
-        , min(ValueY(std::numeric_limits<double>::max()))
-        , mean(ValueY(0.0))
-        , sdev(ValueY(0.0))
     {
 #ifdef USE_TIME_UNIT_FROM_HEADER
         /* The time unit is specified in picoseconds at most. Given that we're
@@ -236,21 +335,16 @@ struct TimeDomainRecord : public BaseRecord
     /* Convert the metrics into a presentable format suitable for a table. */
     std::vector<std::vector<std::string>> FormatMetrics() const
     {
-        const double peak_to_peak = max.value - min.value; /* FIXME: +1.0 'unit' */
-        const double peak_to_peak_range = range_max.value - range_min.value;
+        const double peak_to_peak = metrics.max.value - metrics.min.value; /* FIXME: +1.0 'unit' */
+        const double peak_to_peak_mean = metrics.max.Mean().value - metrics.min.Mean().value;
 
         return {
             {"Record number", fmt::format("{: >8d}", header.record_number)},
-            {"Maximum", max.Format(), range_max.Format()},
-            {"Minimum", min.Format(), range_min.Format()},
-            {
-                "Peak-to-peak",
-                max.Format(peak_to_peak),
-                range_max.Format(peak_to_peak_range),
-                fmt::format("{:6.2f} %", 100.0 * peak_to_peak / peak_to_peak_range),
-            },
-            {"Mean", mean.Format(), range_mid.Format()},
-            {"Standard deviation", sdev.Format()},
+            {"Maximum", metrics.max.Format(), metrics.max.Mean().Format()},
+            {"Minimum", metrics.min.Format(), metrics.min.Mean().Format()},
+            {"Peak-to-peak", metrics.max.Format(peak_to_peak), range_max.Format(peak_to_peak_mean)},
+            {"Mean", metrics.mean.Format(), metrics.mean.Mean().Format()},
+            {"Standard deviation", metrics.sdev.Format(), metrics.sdev.Mean().Format()},
             {"Sampling frequency", sampling_frequency.Format()},
             {"Sampling period", sampling_period.Format()},
         };
@@ -259,16 +353,15 @@ struct TimeDomainRecord : public BaseRecord
     /* The record header, as given to us by the ADQAPI. */
     ADQGen4RecordHeader header;
 
-    /* Values that can be readily displayed in the UI. */
+    /* The time domain metrics that we keep statistics for. */
+    TimeDomainMetrics metrics;
+
+    /* Somewhat 'static' values that can be readily displayed in the UI. */
     Value sampling_frequency;
     Value sampling_period;
     Value range_max;
     Value range_min;
     Value range_mid;
-    Value max;
-    Value min;
-    Value mean;
-    Value sdev;
 };
 
 

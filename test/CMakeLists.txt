@@ -48,6 +48,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     tdirectory_watcher.cpp
     tdigitizer.cpp
     tpython.cpp
+    tvalue.cpp
     main.cpp)
 
 target_include_directories(${PROJECT_NAME} PRIVATE

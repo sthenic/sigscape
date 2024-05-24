@@ -93,6 +93,7 @@ private:
     ADQClockSystemParameters m_clock_system;
     WindowCache m_window_cache;
     DataProcessingParameters m_parameters;
+    TimeDomainMetrics m_time_domain_metrics;
     std::deque<std::shared_ptr<FrequencyDomainRecord>> m_waterfall;
     std::deque<double> m_noise_moving_average;
     MovingAverage m_fft_moving_average;

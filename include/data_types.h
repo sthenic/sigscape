@@ -2,6 +2,7 @@
 
 #include "fmt/format.h"
 #include "format.h"
+#include "imgui_extensions.h"
 
 #include <cstdint>
 #include <cstddef>
@@ -98,8 +99,7 @@ struct Value
 class ValueWithStatistics : public Value
 {
 public:
-    ValueWithStatistics() = default;
-    ValueWithStatistics(const Value::Properties &properties)
+    ValueWithStatistics(const Value::Properties &properties = {})
         : Value{0, properties}
         , min{std::numeric_limits<double>::max()}
         , max{std::numeric_limits<double>::lowest()}
@@ -333,18 +333,48 @@ struct TimeDomainRecord : public BaseRecord
     TimeDomainRecord &operator=(const TimeDomainRecord &other) = delete;
 
     /* Convert the metrics into a presentable format suitable for a table. */
-    std::vector<std::vector<std::string>> FormatMetrics() const
+    std::vector<std::vector<ImGui::TableCell>> FormatMetrics() const
     {
         const double peak_to_peak = metrics.max.value - metrics.min.value; /* FIXME: +1.0 'unit' */
         const double peak_to_peak_mean = metrics.max.Mean().value - metrics.min.Mean().value;
 
+        const auto PeakToPeakHover = [&](double value)
+        {
+            return fmt::format("{:.2f}%", 100.0 * value / (range_max.value - range_min.value));
+        };
+
+        const auto StatisticalMeasureHover = [&](const ValueWithStatistics &value)
+        {
+            return fmt::format("Max:{}\nMin:{}", value.Max().Format(), value.Min().Format());
+        };
+
         return {
             {"Record number", fmt::format("{: >8d}", header.record_number)},
-            {"Maximum", metrics.max.Format(), metrics.max.Mean().Format()},
-            {"Minimum", metrics.min.Format(), metrics.min.Mean().Format()},
-            {"Peak-to-peak", metrics.max.Format(peak_to_peak), range_max.Format(peak_to_peak_mean)},
-            {"Mean", metrics.mean.Format(), metrics.mean.Mean().Format()},
-            {"Standard deviation", metrics.sdev.Format(), metrics.sdev.Mean().Format()},
+            {
+                "Maximum",
+                metrics.max.Format(),
+                {metrics.max.Mean().Format(), StatisticalMeasureHover(metrics.max)},
+            },
+            {
+                "Minimum",
+                metrics.min.Format(),
+                {metrics.min.Mean().Format(), StatisticalMeasureHover(metrics.min)},
+            },
+            {
+                "Peak-to-peak",
+                {metrics.max.Format(peak_to_peak), PeakToPeakHover(peak_to_peak)},
+                {range_max.Format(peak_to_peak_mean), PeakToPeakHover(peak_to_peak_mean)},
+            },
+            {
+                "Mean",
+                metrics.mean.Format(),
+                {metrics.mean.Mean().Format(), StatisticalMeasureHover(metrics.mean)},
+            },
+            {
+                "Standard deviation",
+                metrics.sdev.Format(),
+                {metrics.sdev.Mean().Format(), StatisticalMeasureHover(metrics.sdev)},
+            },
             {"Sampling frequency", sampling_frequency.Format()},
             {"Sampling period", sampling_period.Format()},
         };
@@ -397,7 +427,7 @@ struct FrequencyDomainRecord : public BaseRecord
     FrequencyDomainRecord &operator=(const FrequencyDomainRecord &other) = delete;
 
     /* Convert the metrics into a presentable format suitable for a table. */
-    std::vector<std::vector<std::string>> FormatMetrics() const
+    std::vector<std::vector<ImGui::TableCell>> FormatMetrics() const
     {
         return {
             {
@@ -594,7 +624,7 @@ struct ProcessedRecord
     ProcessedRecord(const ProcessedRecord &other) = delete;
     ProcessedRecord &operator=(const ProcessedRecord &other) = delete;
 
-    std::vector<std::vector<std::string>> FormatMetrics() const
+    std::vector<std::vector<ImGui::TableCell>> FormatMetrics() const
     {
         return {
             {"Trigger frequency", trigger_frequency.Format()},

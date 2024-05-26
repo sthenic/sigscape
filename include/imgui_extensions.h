@@ -12,7 +12,25 @@ inline void Text(const std::string &str)
     ImGui::Text("%s", str.c_str());
 }
 
-void RenderTableContents(const std::vector<std::vector<std::string>> &rows);
+struct TableCell
+{
+    /* We need this constructor for less verbose list initialization syntax (can
+       skip one pair of braces). */
+    TableCell(const char *contents)
+        : contents{contents}
+        , hover{}
+    {}
+
+    TableCell(const std::string &contents, const std::string &hover = "")
+        : contents{contents}
+        , hover{hover}
+    {}
+
+    std::string contents;
+    std::string hover;
+};
+
+void RenderTableContents(const std::vector<std::vector<TableCell>> &rows);
 
 struct InputDoubleMetric
 {

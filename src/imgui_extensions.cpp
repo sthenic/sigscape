@@ -6,7 +6,7 @@
 
 #include <cmath>
 
-void ImGui::RenderTableContents(const std::vector<std::vector<std::string>> &rows)
+void ImGui::RenderTableContents(const std::vector<std::vector<TableCell>> &rows)
 {
     for (const auto &row : rows)
     {
@@ -14,7 +14,9 @@ void ImGui::RenderTableContents(const std::vector<std::vector<std::string>> &row
         for (const auto &column : row)
         {
             ImGui::TableNextColumn();
-            ImGui::Text(column);
+            ImGui::Text(column.contents);
+            if (!column.hover.empty() && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+                ImGui::SetTooltip("%s", column.hover.c_str());
         }
     }
 }

@@ -55,6 +55,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
     ${CMAKE_CURRENT_SOURCE_DIR}/../mock/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../vendor/simple_fft
+    ${imgui_SOURCE_DIR}
     ${fmt_SOURCE_DIR}/include
     ${spdlog_SOURCE_DIR}/include
     ${json_SOURCE_DIR}/include)

@@ -3199,9 +3199,13 @@ void Ui::RenderHeaderButtons(ChannelUiState &ui)
     };
 
     Button(fmt::format("S##Solo{}", ui.record->label), ui.is_solo);
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+        ImGui::SetTooltip("Solo (show only this channel)");
     ImGui::SameLine();
 
-    Button(fmt::format("M##Muted{}", ui.record->label), ui.is_muted);
+    Button(fmt::format("M##Mute{}", ui.record->label), ui.is_muted);
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+        ImGui::SetTooltip("Mute (hide this channel)");
     ImGui::SameLine();
 }
 

@@ -1203,16 +1203,24 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
 
 void Ui::RenderPythonCommandPalette(bool enable)
 {
+    ImGui::Text("Script Directory");
+    const auto BUTTON_SIZE = ImVec2(ImGui::CalcTextSize("Copy").x + 2 * ImGui::GetStyle().FramePadding.x, 0);
+    if (ImGui::Button("Copy", BUTTON_SIZE))
+    {
+      ImGui::LogToClipboard();
+      ImGui::LogText("%s", m_persistent_directories.GetPythonDirectory().c_str());
+      ImGui::LogFinish();
+    }
+    ImGui::SameLine();
     ImGui::Text(m_persistent_directories.GetPythonDirectory());
 
     if (!enable)
         ImGui::BeginDisabled();
 
     ImGui::Separator();
-    if (ImGui::Button("Add"))
+    ImGui::Text("Scripts");
+    if (ImGui::Button("Add", BUTTON_SIZE))
         m_popup_add_python_script = true;
-
-    ImGui::Separator();
 
     int i = 0;
     for (const auto &path : m_python_files)
@@ -1237,7 +1245,7 @@ void Ui::RenderPythonCommandPalette(bool enable)
         /* Context menu for the button. */
         if (ImGui::BeginPopupContextItem())
         {
-            if (ImGui::MenuItem("Copy filename"))
+            if (ImGui::MenuItem("Copy path"))
             {
                 ImGui::LogToClipboard();
                 ImGui::LogText("%s", path.string().c_str());

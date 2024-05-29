@@ -2915,7 +2915,9 @@ void Ui::RenderLog(const ImVec2 &position, const ImVec2 &size)
     ImGui::SetNextWindowSize(size);
     const int flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
-    ImGui::Begin("Log", NULL, flags);
+
+    ImGui::Begin(fmt::format("Log - {}/sigscape.log",
+                 m_persistent_directories.GetLogDirectory()).c_str(), NULL, flags);
     m_collapsed.log = ImGui::IsWindowCollapsed();
 
     for (const auto &line : Log::buffer->last_formatted())

@@ -96,6 +96,7 @@ int main(int, char **)
     auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
         PersistentDirectories().GetLogDirectory() + "/sigscape.log", true);
     Log::log->sinks().push_back(file_sink);
+    Log::log->flush_on(spdlog::level::info);
 
     glfwSetErrorCallback(GlfwErrorCallback);
     if (!glfwInit())

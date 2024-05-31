@@ -32,6 +32,7 @@ typedef PyObject *(__cdecl *PyImport_ReloadModule_t)(PyObject *);
 typedef int (__cdecl *PyCallable_Check_t)(PyObject *);
 typedef PyObject *(__cdecl *PyLong_FromSize_t_t)(SIZE_T);
 typedef PyObject *(__cdecl *PyLong_FromLong_t)(long);
+typedef long (__cdecl *PyLong_AsLong_t)(PyObject *);
 typedef int (__cdecl *PySys_SetObject_t)(const char *, PyObject *);
 typedef PyObject *(__cdecl *PySys_GetObject_t)(const char *);
 typedef PyObject *(__cdecl *PyObject_CallMethod_t)(PyObject *, const char *, const char*, ...);
@@ -56,6 +57,7 @@ static PyImport_ReloadModule_t PyImport_ReloadModule = NULL;
 static PyCallable_Check_t PyCallable_Check = NULL;
 static PyLong_FromSize_t_t PyLong_FromSize_t = NULL;
 static PyLong_FromLong_t PyLong_FromLong = NULL;
+static PyLong_AsLong_t PyLong_AsLong = NULL;
 static PySys_SetObject_t PySys_SetObject = NULL;
 static PySys_GetObject_t PySys_GetObject = NULL;
 static PyObject_CallMethod_t PyObject_CallMethod = NULL;
@@ -286,6 +288,7 @@ private:
         INITIALIZE_PROC_ADDRESS(PyCallable_Check);
         INITIALIZE_PROC_ADDRESS(PyLong_FromSize_t);
         INITIALIZE_PROC_ADDRESS(PyLong_FromLong);
+        INITIALIZE_PROC_ADDRESS(PyLong_AsLong);
         INITIALIZE_PROC_ADDRESS(PySys_SetObject);
         INITIALIZE_PROC_ADDRESS(PySys_GetObject);
         INITIALIZE_PROC_ADDRESS(PyObject_CallMethod);
@@ -497,4 +500,36 @@ void EmbeddedPython::CallMain(const std::string &module, void *handle, int index
 
     /* Right now, you only get stdout if the script completes successfully. */
     out = GetStringFromStream("stdout");
+}
+
+bool EmbeddedPython::IsPyadqCompatible()
+{
+    if (!IsInitialized())
+        return false;
+
+    const PyLock lock{};
+
+    UniquePyObject pyadq{PyImport_ImportModule("pyadq")};
+    if (pyadq == NULL)
+        throw EmbeddedPythonException();
+
+    UniquePyObject libadq{LibAdqAsCtypesDll()};
+    if (libadq == NULL)
+        throw EmbeddedPythonException();
+
+    /* Load libadq with ctypes and call ADQAPI_ValidateVersion with the version
+       numbers defined by the pyadq library. The `N` format specifier steals a
+       reference which is why we pass unmanaged PyObjects. */
+    UniquePyObject result{PyObject_CallMethod(
+        libadq.get(), "ADQAPI_ValidateVersion", "(N,N)",
+        PyObject_GetAttrString(pyadq.get(), "ADQAPI_VERSION_MAJOR"),
+        PyObject_GetAttrString(pyadq.get(), "ADQAPI_VERSION_MINOR"))};
+
+    if (result == NULL)
+        throw EmbeddedPythonException();
+
+    /* PyLong_AsLong returns -1 if the PyObject cannot be converted. We're only
+       looking for a successful conversion and the value zero so we don't care
+       to disambiguate. */
+    return PyLong_AsLong(result.get()) == 0;
 }

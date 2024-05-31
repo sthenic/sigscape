@@ -204,6 +204,7 @@ private:
         std::string revision;
         bool compatible;
         bool popup;
+        bool pyadq_compatible;
     } m_libadq;
     ImGui::FileBrowser m_file_browser;
 

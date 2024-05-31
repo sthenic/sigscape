@@ -33,5 +33,8 @@ bool HasMain(const std::filesystem::path &path);
    constructed from the `handle` and `index` as the sole argument. An
    `EmbeddedPythonException` is raised on any error. */
 void CallMain(const std::string &module, void *handle, int index, std::string &out);
+
+/* Check if the `pyadq` library is present and compatible. */
+bool IsPyadqCompatible();
 };
 

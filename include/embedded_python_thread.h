@@ -7,6 +7,7 @@
 
 enum class EmbeddedPythonMessageId
 {
+    IS_PYADQ_COMPATIBLE,
     ADD_TO_PATH,
     HAS_MAIN,
     CALL_MAIN,
@@ -48,12 +49,14 @@ public:
     void MainLoop() override;
 
     /* Convenience functions for the calling threads. */
+    bool IsPyadqCompatible();
     int AddToPath(const std::string &directory);
     bool HasMain(const std::filesystem::path &path);
     int CallMain(const std::string &module, void *handle, int index, std::string &out);
 
 private:
     void HandleMessages();
+    void IsPyadqCompatible(const StampedMessage &message);
     void AddToPath(const StampedMessage &message);
     void HasMain(const StampedMessage &message);
     void CallMain(const StampedMessage &message);

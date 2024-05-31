@@ -14,6 +14,18 @@ bool EmbeddedPythonThread::IsInitialized() const
     return EmbeddedPython::IsInitialized();
 }
 
+/* TODO: Centralize into a template function taking a variable number of arguments? */
+bool EmbeddedPythonThread::IsPyadqCompatible()
+{
+    EmbeddedPythonMessage message{EmbeddedPythonMessageId::IS_PYADQ_COMPATIBLE};
+    EmbeddedPythonMessage response{};
+    int result = PushMessageWaitForResponse(message, response);
+    if (result != SCAPE_EOK)
+        return false;
+    else
+        return response.result == SCAPE_EOK;
+}
+
 int EmbeddedPythonThread::AddToPath(const std::string &directory)
 {
     EmbeddedPythonMessage message{EmbeddedPythonMessageId::ADD_TO_PATH, directory};
@@ -83,6 +95,10 @@ void EmbeddedPythonThread::HandleMessages()
         {
             switch (message.contents.id)
             {
+            case EmbeddedPythonMessageId::IS_PYADQ_COMPATIBLE:
+                IsPyadqCompatible(message);
+                break;
+
             case EmbeddedPythonMessageId::ADD_TO_PATH:
                 AddToPath(message);
                 break;
@@ -108,6 +124,14 @@ void EmbeddedPythonThread::HandleMessages()
             _PushMessage(std::move(response));
         }
     }
+}
+
+void EmbeddedPythonThread::IsPyadqCompatible(const StampedMessage &message)
+{
+    /* The caller expects a response w/ a matching id. */
+    StampedMessage response{message.id};
+    response.contents.result = EmbeddedPython::IsPyadqCompatible() ? SCAPE_EOK : SCAPE_EAGAIN;
+    _PushMessage(response);
 }
 
 void EmbeddedPythonThread::AddToPath(const StampedMessage &message)

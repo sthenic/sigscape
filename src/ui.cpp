@@ -345,11 +345,22 @@ void Ui::InitializeEmbeddedPython()
 {
     if (m_python->IsInitialized() && SCAPE_EOK == m_python->Start())
     {
-        Log::log->info("Embedded Python session initialized.");
-        if (SCAPE_EOK == m_python->AddToPath(m_persistent_directories.GetPythonDirectory()))
-            m_python_directory_watcher.Start();
+        Log::log->info("Embedded Python initialized.");
+        if (m_python->IsPyadqCompatible())
+        {
+            m_libadq.pyadq_compatible = true;
+            Log::log->info("Found a compatible pyadq library.");
+            if (SCAPE_EOK == m_python->AddToPath(m_persistent_directories.GetPythonDirectory()))
+                m_python_directory_watcher.Start();
+            else
+                Log::log->error("Failed to append persistent directory to embedded Python session.");
+        }
         else
-            Log::log->error("Failed to append persistent directory to embedded Python session.");
+        {
+            m_libadq.pyadq_compatible = false;
+            Log::log->error("The pyadq library is incompatible or missing.");
+            m_python->Stop();
+        }
     }
     else
     {
@@ -1392,7 +1403,7 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
         /* Disable the Python command palette if the embedded Python session is
            not initialized. Right now, this can only happen on Windows if we
            can't find a Python DLL to use for run-time dynamic linking. */
-        if (!m_python->IsInitialized())
+        if (!m_python->IsInitialized() || !m_libadq.pyadq_compatible)
             ImGui::BeginDisabled();
 
         if (ImGui::BeginTabItem("Python"))
@@ -1401,7 +1412,7 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
             ImGui::EndTabItem();
         }
 
-        if (!m_python->IsInitialized())
+        if (!m_python->IsInitialized() || !m_libadq.pyadq_compatible)
             ImGui::EndDisabled();
 
         ImGui::EndTabBar();
@@ -1844,6 +1855,7 @@ void Ui::RenderStaticInformation()
 
             Row("sigscape", SIGSCAPE_REVISION);
             Row("libadq",  m_libadq.revision + (m_libadq.compatible ? "" : " (incompatible)"));
+            Row("pyadq", m_libadq.pyadq_compatible ? "Compatible" : "Incompatible (or missing)");
             Row("Embedded Python", m_python->IsInitialized() ? "Initialized" : "Not initialized");
 
             ImGui::EndTable();

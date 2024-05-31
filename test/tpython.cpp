@@ -1,4 +1,5 @@
 #include "embedded_python.h"
+#include "embedded_python_thread.h"
 #include "CppUTest/TestHarness.h"
 
 #include <filesystem>
@@ -34,6 +35,8 @@ TEST_GROUP(Python)
     const std::filesystem::path WITH_MAIN_PATH = std::filesystem::current_path() / "with_main.py";
     const std::filesystem::path WITHOUT_MAIN_PATH = std::filesystem::current_path() / "without_main.py";
 
+    EmbeddedPythonThread thread{};
+
     void setup()
     {
         std::ofstream ofs{PYADQ_PATH, std::ios::out};
@@ -47,6 +50,8 @@ TEST_GROUP(Python)
         ofs = std::ofstream{WITHOUT_MAIN_PATH, std::ios::out};
         ofs << WITHOUT_MAIN;
         ofs.close();
+
+        thread.Start();
     }
 
     void teardown()
@@ -59,6 +64,7 @@ TEST_GROUP(Python)
 
 TEST(Python, CheckAndCall)
 {
+    /* First we interact with the static session object directly. */
     LONGS_EQUAL(1, EmbeddedPython::IsInitialized());
 
     /* Throws on error. */
@@ -68,9 +74,28 @@ TEST(Python, CheckAndCall)
     LONGS_EQUAL(1, EmbeddedPython::HasMain("with_main.py"));
 
     /* Throws on error. */
-    int dummy = 1024;
-    std::string out{};
-    EmbeddedPython::CallMain("with_main", &dummy, 10, out);
-    CHECK(out.size() > 0);
-    STRCMP_CONTAINS("Called main() with '<pyadq.ADQ object at", out.c_str());
+    {
+        int dummy = 1024;
+        std::string out{};
+        EmbeddedPython::CallMain("with_main", &dummy, 10, out);
+        CHECK(out.size() > 0);
+        STRCMP_CONTAINS("Called main() with '<pyadq.ADQ object at", out.c_str());
+    }
+
+    /* Now we interact with the managing thread. */
+    LONGS_EQUAL(1, thread.IsInitialized());
+    LONGS_EQUAL(0, thread.HasMain("without_main.py"));
+    LONGS_EQUAL(1, thread.HasMain("with_main.py"));
+
+    /* We do this two times to make sure the embedded Python integration is
+        sound. For example, attempting to reinitialize the session for each
+        call can cause all sorts of issues. */
+    for (int i = 0; i < 2; i ++)
+    {
+        int dummy = 1024;
+        std::string out{};
+        thread.CallMain("with_main", &dummy, 10, out);
+        CHECK(out.size() > 0);
+        STRCMP_CONTAINS("Called main() with '<pyadq.ADQ object at", out.c_str());
+    }
 }

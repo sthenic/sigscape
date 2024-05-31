@@ -3,8 +3,11 @@
 
 #include <utility>
 
-Identification::Identification(const PersistentDirectories &persistent_directories)
+Identification::Identification(
+    const PersistentDirectories &persistent_directories,
+    std::shared_ptr<EmbeddedPythonThread> python)
     : m_persistent_directories(persistent_directories)
+    , m_python{python}
 {}
 
 void Identification::MainLoop()
@@ -84,8 +87,8 @@ void Identification::MainLoop()
     auto digitizers = std::vector<std::shared_ptr<Digitizer>>();
     for (const auto &[init_index, index] : indexes)
     {
-        digitizers.push_back(
-            std::make_shared<Digitizer>(handle, init_index, index, configuration_directory));
+        digitizers.push_back(std::make_shared<Digitizer>(
+            handle, init_index, index, configuration_directory, m_python));
     }
 
     /* Forward the control unit handle along with digitizer objects. */

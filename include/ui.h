@@ -8,6 +8,7 @@
 #include "GL/gl3w.h"
 #include <GLFW/glfw3.h>
 
+#include "embedded_python_thread.h"
 #include "persistent_directories.h"
 #include "directory_watcher.h"
 #include "digitizer.h"
@@ -40,6 +41,7 @@ private:
     bool m_should_screenshot;
     PersistentDirectories m_persistent_directories;
     DirectoryWatcher m_python_directory_watcher;
+    std::shared_ptr<EmbeddedPythonThread> m_python;
     std::set<std::filesystem::path> m_python_files;
     Identification m_identification;
 #if defined(_WIN32)

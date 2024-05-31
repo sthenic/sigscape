@@ -15,7 +15,6 @@
 #include "digitizer.h"
 #include "fmt/core.h"
 #include "fmt/format.h"
-#include "embedded_python.h"
 #include "log.h"
 
 #include <algorithm>
@@ -31,10 +30,12 @@ public:
 };
 
 Digitizer::Digitizer(void *handle, int init_index, int index,
-                     const std::string &configuration_directory)
+                     const std::string &configuration_directory,
+                     std::shared_ptr<EmbeddedPythonThread> python)
     : m_state(DigitizerState::NOT_INITIALIZED)
     , m_id{handle, init_index, index}
     , m_configuration_directory(configuration_directory)
+    , m_python{python}
     , m_constant{}
     , m_watchers{}
     , m_parameters{}
@@ -916,19 +917,17 @@ void Digitizer::ConfigureDefaultAcquisition()
 
 void Digitizer::CallPython(const std::string &module)
 {
-    try
+    std::string out{};
+    int result = m_python->CallMain(module, m_id.handle, m_id.index, out);
+    if (result == SCAPE_EOK)
     {
-        std::string out{};
-        EmbeddedPython::CallMain(module, m_id.handle, m_id.index, out);
         Log::log->info(FormatLog("Successfully called main() in module '{}'.", module));
         if (out.size() > 0)
             Log::log->info(FormatLog("Captured stdout:\n\n{}", out));
     }
-    catch (const EmbeddedPythonException &e)
+    else
     {
-        /* Translate to the local exception type. */
-        ThrowDigitizerException("Error when calling main() in module '{}':\n\n{}", module,
-                                e.what());
+        ThrowDigitizerException("Error when calling main() in module '{}':\n\n{}", module, out);
     }
 }
 

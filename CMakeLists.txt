@@ -140,6 +140,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     src/data_types.cpp
     src/window.cpp
     src/embedded_python.cpp
+    src/embedded_python_thread.cpp
     src/imgui_extensions.cpp
     src/screenshot.cpp
     src/log.cpp

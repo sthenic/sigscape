@@ -1,4 +1,5 @@
 #include "digitizer.h"
+#include "embedded_python_thread.h"
 #include "mock_control_unit.h"
 
 #include <thread>
@@ -9,6 +10,7 @@
 TEST_GROUP(Digitizer)
 {
     std::unique_ptr<Digitizer> digitizer;
+    std::shared_ptr<EmbeddedPythonThread> python{std::make_shared<EmbeddedPythonThread>()};
     MockControlUnit mock_control_unit;
 
     void setup()
@@ -32,7 +34,7 @@ TEST_GROUP(Digitizer)
                                                        {"A", 2, {2500.0}, 65536},
                                                    }});
 
-        digitizer = std::make_unique<Digitizer>(&mock_control_unit, 0, 1, ".");
+        digitizer = std::make_unique<Digitizer>(&mock_control_unit, 0, 1, ".", python);
     }
 
     void teardown()

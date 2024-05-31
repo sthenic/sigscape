@@ -132,6 +132,16 @@ protected:
             : contents{message}
         {}
 
+        StampedMessage(uint32_t id)
+            : id{id}
+        {}
+
+        template<class... Args>
+        StampedMessage(uint32_t id, Args &&... args)
+            : contents(std::forward<Args>(args)...)
+            , id{id}
+        {}
+
         T contents{};
         uint32_t id{0};
     };

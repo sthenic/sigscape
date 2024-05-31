@@ -5,7 +5,6 @@
 #include "log.h"
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
-#include "embedded_python.h"
 #include "screenshot.h"
 #include "commands.h"
 #include <cinttypes>
@@ -199,8 +198,9 @@ Ui::Ui()
     , m_should_screenshot(false)
     , m_persistent_directories()
     , m_python_directory_watcher(m_persistent_directories.GetPythonDirectory(), ".py")
+    , m_python{std::make_shared<EmbeddedPythonThread>()}
     , m_python_files{}
-    , m_identification(m_persistent_directories)
+    , m_identification(m_persistent_directories, m_python)
     , m_hotplug()
     , m_adq_control_unit()
     , m_show_imgui_demo_window(false)
@@ -343,27 +343,17 @@ void Ui::Render(float width, float height)
 
 void Ui::InitializeEmbeddedPython()
 {
-    if (!EmbeddedPython::IsInitialized())
+    if (m_python->IsInitialized() && SCAPE_EOK == m_python->Start())
     {
-        Log::log->warn("Embedded Python session failed to initialize.");
-        return;
+        Log::log->info("Embedded Python session initialized.");
+        if (SCAPE_EOK == m_python->AddToPath(m_persistent_directories.GetPythonDirectory()))
+            m_python_directory_watcher.Start();
+        else
+            Log::log->error("Failed to append persistent directory to embedded Python session.");
     }
     else
     {
-        Log::log->info("Embedded Python session initialized.");
-    }
-
-    /* Set up the path to the persistent directory we use to store Python
-       scripts and start the watcher. */
-    try
-    {
-        EmbeddedPython::AddToPath(m_persistent_directories.GetPythonDirectory());
-        m_python_directory_watcher.Start();
-    }
-    catch (const EmbeddedPythonException &e)
-    {
-        Log::log->error("Failed to append persistent directory to embedded Python session.");
-        Log::log->error(e.what());
+        Log::log->warn("Embedded Python session failed to initialize.");
     }
 }
 
@@ -682,7 +672,7 @@ void Ui::HandleMessage(const DirectoryWatcherMessage &message)
     {
     case DirectoryWatcherMessageId::FILE_CREATED:
     case DirectoryWatcherMessageId::FILE_UPDATED:
-        if (EmbeddedPython::HasMain(message.path))
+        if (m_python->HasMain(message.path))
             m_python_files.insert(message.path);
         else
             m_python_files.erase(message.path);
@@ -1402,7 +1392,7 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
         /* Disable the Python command palette if the embedded Python session is
            not initialized. Right now, this can only happen on Windows if we
            can't find a Python DLL to use for run-time dynamic linking. */
-        if (!EmbeddedPython::IsInitialized())
+        if (!m_python->IsInitialized())
             ImGui::BeginDisabled();
 
         if (ImGui::BeginTabItem("Python"))
@@ -1411,7 +1401,7 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
             ImGui::EndTabItem();
         }
 
-        if (!EmbeddedPython::IsInitialized())
+        if (!m_python->IsInitialized())
             ImGui::EndDisabled();
 
         ImGui::EndTabBar();
@@ -1854,7 +1844,7 @@ void Ui::RenderStaticInformation()
 
             Row("sigscape", SIGSCAPE_REVISION);
             Row("libadq",  m_libadq.revision + (m_libadq.compatible ? "" : " (incompatible)"));
-            Row("Embedded Python", EmbeddedPython::IsInitialized() ? "Initialized" : "Not initialized");
+            Row("Embedded Python", m_python->IsInitialized() ? "Initialized" : "Not initialized");
 
             ImGui::EndTable();
         }

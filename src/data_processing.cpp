@@ -110,7 +110,7 @@ void DataProcessing::MainLoop()
     for (;;)
     {
         /* Check if the stop event has been set. */
-        if (m_should_stop.wait_for(std::chrono::microseconds(0)) == std::future_status::ready)
+        if (m_should_stop.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
             break;
 
         /* Process any messages posted to the thread. */

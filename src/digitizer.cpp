@@ -102,7 +102,7 @@ void Digitizer::MainLoop()
 
         /* We implement the sleep using the stop event to be able to immediately
            react to the event being set. */
-        if (m_should_stop.wait_for(std::chrono::milliseconds(100)) == std::future_status::ready)
+        if (m_should_stop.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
             break;
     }
 
@@ -168,7 +168,7 @@ void Digitizer::SignalError(const std::string &message)
 void Digitizer::ProcessMessages()
 {
     DigitizerMessage message;
-    while (SCAPE_EOK == _WaitForMessage(message, 0))
+    while (SCAPE_EOK == _WaitForMessage(message, 100))
         HandleMessageInState(message);
 }
 

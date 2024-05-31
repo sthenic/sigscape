@@ -80,7 +80,7 @@ void FileWatcher::MainLoop()
 
         /* We implement the sleep using the stop event to be able to immediately
            react to the event being set. */
-        if (m_should_stop.wait_for(std::chrono::milliseconds(250)) == std::future_status::ready)
+        if (m_should_stop.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
             break;
     }
 
@@ -109,7 +109,7 @@ void FileWatcher::HandleMessages()
 {
     /* Empty the inwards facing message queue. */
     FileWatcherMessage message;
-    while (SCAPE_EOK == _WaitForMessage(message, 0))
+    while (SCAPE_EOK == _WaitForMessage(message, 250))
     {
         switch (message.id)
         {

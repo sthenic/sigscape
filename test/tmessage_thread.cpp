@@ -61,7 +61,7 @@ public:
         {
             /* Continue on 'ok' and 'timeout'. */
             struct Message read_msg;
-            result = _WaitForMessage(read_msg, 10);
+            result = _WaitForMessage(read_msg, 100);
             if ((result != SCAPE_EOK) && (result != SCAPE_EAGAIN))
             {
                 m_thread_exit_code = result;
@@ -103,7 +103,7 @@ public:
                 m_nof_messages_to_generate -= 1;
             }
 
-            if (m_should_stop.wait_for(std::chrono::milliseconds(100)) == std::future_status::ready)
+            if (m_should_stop.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
                 break;
         }
     }

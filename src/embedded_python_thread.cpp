@@ -3,6 +3,7 @@
 #include "log.h"
 
 #include <filesystem>
+#include <type_traits>
 
 EmbeddedPythonThread::~EmbeddedPythonThread()
 {
@@ -14,55 +15,32 @@ bool EmbeddedPythonThread::IsInitialized() const
     return EmbeddedPython::IsInitialized();
 }
 
-/* TODO: Centralize into a template function taking a variable number of arguments? */
 bool EmbeddedPythonThread::IsPyadqCompatible()
 {
-    EmbeddedPythonMessage message{EmbeddedPythonMessageId::IS_PYADQ_COMPATIBLE};
-    EmbeddedPythonMessage response{};
-    int result = PushMessageWaitForResponse(message, response);
-    if (result != SCAPE_EOK)
-        return false;
-    else
-        return response.result == SCAPE_EOK;
+    return SCAPE_EOK == PushMessageWaitForResponse(
+        {EmbeddedPythonMessageId::IS_PYADQ_COMPATIBLE}, [](auto &r) { return r.result; });
 }
 
 int EmbeddedPythonThread::AddToPath(const std::string &directory)
 {
-    EmbeddedPythonMessage message{EmbeddedPythonMessageId::ADD_TO_PATH, directory};
-    EmbeddedPythonMessage response{};
-    int result = PushMessageWaitForResponse(message, response);
-    if (result != SCAPE_EOK)
-        return result;
-    else
-        return response.result;
+    return PushMessageWaitForResponse(
+        {EmbeddedPythonMessageId::ADD_TO_PATH, directory}, [](auto &r) { return r.result; });
 }
 
 bool EmbeddedPythonThread::HasMain(const std::filesystem::path &path)
 {
-    EmbeddedPythonMessage message{EmbeddedPythonMessageId::HAS_MAIN, path.string()};
-    EmbeddedPythonMessage response{};
-    int result = PushMessageWaitForResponse(message, response);
-    if (result != SCAPE_EOK)
-        return false;
-    else
-        return response.result == SCAPE_EOK;
+    return SCAPE_EOK == PushMessageWaitForResponse(
+        {EmbeddedPythonMessageId::HAS_MAIN, path.string()}, [](auto &r) { return r.result; });
 }
 
 int EmbeddedPythonThread::CallMain(
     const std::string &module, void *handle, int index, std::string &out)
 {
-    EmbeddedPythonMessage message{EmbeddedPythonMessageId::CALL_MAIN, module, handle, index};
-    EmbeddedPythonMessage response{};
-    int result = PushMessageWaitForResponse(message, response);
-    if (result != SCAPE_EOK)
-    {
-        return result;
-    }
-    else
-    {
-        out = std::move(response.str);
-        return response.result;
-    }
+    return PushMessageWaitForResponse(
+        {EmbeddedPythonMessageId::CALL_MAIN, module, handle, index}, [&](auto &r) {
+            out = std::move(r.str);
+            return r.result;
+        });
 }
 
 void EmbeddedPythonThread::MainLoop()

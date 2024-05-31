@@ -2,6 +2,7 @@
 
 #include "thread_safe_queue.h"
 #include <atomic>
+#include <functional>
 
 /* A class wrapping two thread safe queue objects. A public interface for
    message passing is automatically provided to a derived class. The derived
@@ -95,12 +96,17 @@ public:
         return SCAPE_EOK;
     }
 
-    /* Push a message (traced) then wait for and _discard_ the response as a single action. */
-    int PushMessageWaitForResponse(const T &in)
+    /* Push a message (traced) then wait for a response. An optional lambda
+       expression can be provided that receives the response as a mutable input
+       argument. On a successful message exchange, the return value of this
+       function is the return value of the lambda expression. By default the
+       response is discarded (the lambda is a no-op). */
+    int PushMessageWaitForResponse(
+        const T &in, std::function<int(T &)> lambda = [](T &) { return SCAPE_EOK; })
     {
         T out{};
         RETURN_CALL(PushMessageWaitForResponse(in, out));
-        return SCAPE_EOK;
+        return lambda(out);
     }
 
     /* Push a message (untraced) that's constructed in place from the input arguments. */

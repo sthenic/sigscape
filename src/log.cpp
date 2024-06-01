@@ -1,6 +1,6 @@
 #include "log.h"
 
-/* The ringbyffer sink and the global logging object. */
+/* The ringbuffer sink and the global logging object. */
 static constexpr size_t LOG_SIZE = 1024;
 
 std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt> Log::buffer =

@@ -2931,7 +2931,47 @@ void Ui::RenderLog(const ImVec2 &position, const ImVec2 &size)
     m_collapsed.log = ImGui::IsWindowCollapsed();
 
     for (const auto &line : Log::buffer->last_formatted())
+    {
+        /* Very rudimentary coloring by searching for the [error/warning] tag
+           within the string. However, we do try to be somewhat efficient when
+           we search for it since we know exactly where in the string this tag
+           will be. */
+        const auto IsLevel = [&](const std::string &str)
+        {
+            static constexpr size_t START_POS = 35;
+            if (str.size() + START_POS > line.size())
+                return false;
+
+            for (size_t i = 0; i < str.size(); ++i)
+            {
+                if (line[START_POS + i] != str[i])
+                    return false;
+            }
+
+            return true;
+        };
+
+        bool colored = false;
+        if (IsLevel("[error]"))
+        {
+            auto color = COLOR_RED;
+            color.w = 1.0;
+            ImGui::PushStyleColor(ImGuiCol_Text, color);
+            colored = true;
+        }
+        else if (IsLevel("[warning]"))
+        {
+            auto color = COLOR_YELLOW;
+            color.w = 1.0;
+            ImGui::PushStyleColor(ImGuiCol_Text, color);
+            colored = true;
+        }
+
         ImGui::Text(line);
+
+        if (colored)
+            ImGui::PopStyleColor();
+    }
 
     /* FIXME: Implement correct scrolling behavior. */
     ImGui::SetScrollHereY();

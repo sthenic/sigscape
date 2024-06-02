@@ -183,8 +183,7 @@ void Digitizer::ProcessWatcherMessages()
 
 void Digitizer::ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watcher,
                                        std::shared_ptr<std::string> &str,
-                                       DigitizerMessageId dirty_id,
-                                       enum ADQParameterId parameter_id)
+                                       DigitizerMessageId dirty_id, ADQParameterId parameter_id)
 {
     FileWatcherMessage message;
     while (SCAPE_EOK == watcher->WaitForMessage(message, 0))
@@ -586,8 +585,9 @@ void Digitizer::HandleMessageInIdle(const DigitizerMessage &message)
         break;
 
     case DigitizerMessageId::GET_TOP_PARAMETERS:
-        GetParameters(ADQ_PARAMETER_ID_TOP, m_watchers.top);
-        GetParameters(ADQ_PARAMETER_ID_CLOCK_SYSTEM, m_watchers.clock_system);
+        GetParameters(ADQ_PARAMETER_ID_TOP, m_parameters.top, m_watchers.top);
+        GetParameters(ADQ_PARAMETER_ID_CLOCK_SYSTEM, m_parameters.clock_system,
+                      m_watchers.clock_system);
         break;
 
     case DigitizerMessageId::INITIALIZE_PARAMETERS:
@@ -911,7 +911,7 @@ void Digitizer::ConfigureDefaultAcquisition()
 
     /* Finish up by getting the current parameters to make these settings
        reflect in the configuration file. */
-    GetParameters(ADQ_PARAMETER_ID_TOP, m_watchers.top);
+    GetParameters(ADQ_PARAMETER_ID_TOP, m_parameters.top, m_watchers.top);
 #endif
 }
 
@@ -924,6 +924,12 @@ void Digitizer::CallPython(const std::string &module)
         Log::log->info(FormatLog("Successfully called main() in module '{}'.", module));
         if (out.size() > 0)
             Log::log->info(FormatLog("Captured stdout:\n\n{}", out));
+
+        /* If the call was successful, we synchronize the parameter files
+           because something may have changed. */
+        GetParameters(ADQ_PARAMETER_ID_TOP, m_parameters.top, m_watchers.top);
+        GetParameters(ADQ_PARAMETER_ID_CLOCK_SYSTEM, m_parameters.clock_system,
+                      m_watchers.clock_system);
     }
     else
     {
@@ -988,10 +994,9 @@ void Digitizer::SetParameters(const std::shared_ptr<std::string> &str)
         ThrowDigitizerException("ADQ_SetParametersString() failed, result {}.", result);
 }
 
-void Digitizer::InitializeParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher)
+void Digitizer::InitializeParameters(ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher)
 {
-    auto parameters = std::make_shared<std::string>();
-    parameters->resize(64 * 1024);
+    auto parameters = std::make_shared<std::string>(64 * 1024, '\0');
     int result = ADQ_InitializeParametersString(m_id.handle, m_id.index, id, parameters->data(),
                                                 parameters->size(), 1);
     if (result > 0)
@@ -1006,18 +1011,29 @@ void Digitizer::InitializeParameters(enum ADQParameterId id, const std::unique_p
     }
 }
 
-void Digitizer::GetParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher)
+void Digitizer::GetParameters(
+    ADQParameterId id, std::shared_ptr<std::string> &str,
+    const std::unique_ptr<FileWatcher> &watcher)
 {
-    /* Write directly to a std::string. */
-    auto parameters = std::make_shared<std::string>();
-    parameters->resize(64 * 1024);
-    int result = ADQ_GetParametersString(m_id.handle, m_id.index, id, parameters->data(),
-                                         parameters->size(), 1);
+    /* Write directly to a std::string. We need to use `resize` here instead of
+       reserved to make the string understand its own size after we've written
+       to the underlying memory via the API call. */
+    std::string parameters(64 * 1024, '\0');
+    int result = ADQ_GetParametersString(m_id.handle, m_id.index, id, parameters.data(),
+                                         parameters.size(), 1);
     if (result > 0)
     {
-        /* The return value includes the null terminator so we have to remove it from the string. */
-        parameters->resize(result - 1);
-        watcher->EmplaceMessage(FileWatcherMessageId::UPDATE_FILE, parameters);
+        /* The return value includes the null terminator so we have to remove it
+           from the string. */
+        parameters.resize(result - 1);
+
+        /* We use `UPDATE_FILE_IGNORE` to indicate that the act of changing the
+           file contents should _not_ generate a` `FILE_UPDATED` message in
+           return. The reason is that `GetParameters` gives us the current state
+           of the digitizer, so there's no need to indicate that those
+           parameters need to be reapplied. */
+        str = std::make_shared<std::string>(std::move(parameters));
+        watcher->EmplaceMessage(FileWatcherMessageId::UPDATE_FILE_IGNORE, str);
     }
     else
     {

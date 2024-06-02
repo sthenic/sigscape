@@ -11,7 +11,8 @@ enum class FileWatcherMessageId
     FILE_DELETED,
     FILE_UPDATED,
     FILE_DOES_NOT_EXIST,
-    UPDATE_FILE
+    UPDATE_FILE,
+    UPDATE_FILE_IGNORE,
 };
 
 struct FileWatcherMessage
@@ -49,6 +50,7 @@ private:
     std::string m_path;
     std::filesystem::file_time_type m_timestamp;
     bool m_is_watching;
+    bool m_ignore_next_update;
 
     void ReadContents(std::string &str);
     void WriteContents(const std::string &str);

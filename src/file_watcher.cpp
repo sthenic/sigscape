@@ -8,6 +8,7 @@ FileWatcher::FileWatcher(const std::string &path)
     : m_path(path)
     , m_timestamp()
     , m_is_watching(false)
+    , m_ignore_next_update(false)
 {
 #if defined(_WIN32)
     /* Normalize the path to feature the Windows-preferred path separator. */
@@ -60,11 +61,21 @@ void FileWatcher::MainLoop()
             }
             else if (timestamp != m_timestamp)
             {
-                /* The file has been changed, read the contents in full and emit a message. */
+                /* The file has been changed, we only read the contents and emit
+                   a message unless instructed to ignore the next update
+                   (usually because this application is responsible for the
+                   change so we don't have to synchronize again). */
                 m_timestamp = timestamp;
-                std::string contents;
-                ReadContents(contents);
-                _EmplaceMessage(FileWatcherMessageId::FILE_UPDATED, std::move(contents));
+                if (m_ignore_next_update)
+                {
+                    m_ignore_next_update = false;
+                }
+                else
+                {
+                    std::string contents;
+                    ReadContents(contents);
+                    _EmplaceMessage(FileWatcherMessageId::FILE_UPDATED, std::move(contents));
+                }
             }
         }
         else if (m_is_watching)
@@ -113,6 +124,9 @@ void FileWatcher::HandleMessages()
     {
         switch (message.id)
         {
+        case FileWatcherMessageId::UPDATE_FILE_IGNORE:
+            m_ignore_next_update = true;
+            /* FALLTHROUGH */
         case FileWatcherMessageId::UPDATE_FILE:
             WriteContents(*message.contents);
             break;

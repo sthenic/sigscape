@@ -80,7 +80,7 @@ TEST(FileWatcher, WriteToFile)
 
     static const char CONTENTS0[] = "Initial contents for 'foo.txt'.\n";
     LONGS_EQUAL(SCAPE_EOK, watcher.PushMessage({FileWatcherMessageId::UPDATE_FILE,
-                                               std::make_shared<std::string>(CONTENTS0)}));
+                                                std::make_shared<std::string>(CONTENTS0)}));
 
     LONGS_EQUAL(SCAPE_EOK, watcher.WaitForMessage(message, 600));
     LONGS_EQUAL(FileWatcherMessageId::FILE_CREATED, message.id);
@@ -88,11 +88,17 @@ TEST(FileWatcher, WriteToFile)
 
     static const char CONTENTS1[] = "Replace everything with this!\n";
     LONGS_EQUAL(SCAPE_EOK, watcher.PushMessage({FileWatcherMessageId::UPDATE_FILE,
-                                               std::make_shared<std::string>(CONTENTS1)}));
+                                                std::make_shared<std::string>(CONTENTS1)}));
 
     LONGS_EQUAL(SCAPE_EOK, watcher.WaitForMessage(message, 600));
     LONGS_EQUAL(FileWatcherMessageId::FILE_UPDATED, message.id);
     STRCMP_EQUAL(CONTENTS1, message.contents->c_str());
+
+    /* Check that we can push new contents without triggering `FILE_UPDATED`. */
+    static const char CONTENTS2[] = "Final contents.\n";
+    LONGS_EQUAL(SCAPE_EOK, watcher.PushMessage({FileWatcherMessageId::UPDATE_FILE_IGNORE,
+                                                std::make_shared<std::string>(CONTENTS2)}));
+    LONGS_EQUAL(SCAPE_EAGAIN, watcher.WaitForMessage(message, 600));
 
     LONGS_EQUAL(SCAPE_EOK, watcher.Stop());
 }

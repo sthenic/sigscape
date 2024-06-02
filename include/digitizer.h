@@ -206,7 +206,7 @@ public:
 
 private:
     /* The digitizer's state. */
-    enum DigitizerState m_state;
+    DigitizerState m_state;
 
     /* The digitizer identification information. This consists of a handle and
        two indexes: the `init_index` is _only_ used in the call to
@@ -259,8 +259,8 @@ private:
     void ProcessMessages();
     void ProcessWatcherMessages();
     void ProcessWatcherMessages(const std::unique_ptr<FileWatcher> &watcher,
-                                std::shared_ptr<std::string> &str, DigitizerMessageId dirty_id,
-                                enum ADQParameterId parameter_id);
+                                std::shared_ptr<std::string> &str,
+                                DigitizerMessageId dirty_id, ADQParameterId parameter_id);
 
     void InitializeSystemManagerBootStatus();
     void InitializeSystemManagerSensors();
@@ -288,8 +288,9 @@ private:
     void ScaleRecordLength(double factor);
     void ForceAcquisition();
     void SetParameters(const std::shared_ptr<std::string> &str);
-    void InitializeParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher);
-    void GetParameters(enum ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher);
+    void InitializeParameters(ADQParameterId id, const std::unique_ptr<FileWatcher> &watcher);
+    void GetParameters(ADQParameterId id, std::shared_ptr<std::string> &str,
+                       const std::unique_ptr<FileWatcher> &watcher);
     void EmitConstantParameters();
     void InitializeFileWatchers();
 

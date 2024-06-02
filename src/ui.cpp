@@ -1404,7 +1404,10 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
            not initialized. Right now, this can only happen on Windows if we
            can't find a Python DLL to use for run-time dynamic linking. */
         if (!m_python->IsInitialized() || !m_libadq.pyadq_compatible)
+        {
             ImGui::BeginDisabled();
+            ImGui::PushStyleColor(ImGuiCol_Tab, COLOR_RED);
+        }
 
         if (ImGui::BeginTabItem("Python"))
         {
@@ -1413,7 +1416,10 @@ void Ui::RenderCommandPalette(const ImVec2 &position, const ImVec2 &size)
         }
 
         if (!m_python->IsInitialized() || !m_libadq.pyadq_compatible)
+        {
             ImGui::EndDisabled();
+            ImGui::PopStyleColor();
+        }
 
         ImGui::EndTabBar();
     }

@@ -57,9 +57,6 @@ Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     , record()
     , memory{}
 {
-    if (nof_channels_total == 0)
-        is_selected = true;
-
     color = ImPlot::GetColormapColor(nof_channels_total++);
 }
 
@@ -375,6 +372,33 @@ void Ui::ClearChannelSelection()
         for (auto &chui : digitizer.ui.channels)
             chui.is_selected = false;
     }
+}
+
+void Ui::MaybeResetChannelSelection()
+{
+    /* When the digitizer selection changes, the currently selected channel may
+       be removed from view. If that's the case we reset the selected channel to
+       the first channel from the first selected digitizer we encounter. */
+    DigitizerUiState *ui = NULL;
+    for (auto &digitizer : m_digitizers)
+    {
+        /* Remember the first selected digitizer we encounter. */
+        if (digitizer.ui.is_selected && ui == NULL)
+            ui = &digitizer.ui;
+
+        for (auto &chui : digitizer.ui.channels)
+        {
+            /* Return early if the currently selected channel is still visible. */
+            if (chui.is_selected && digitizer.ui.is_selected)
+                return;
+
+            chui.is_selected = false;
+        }
+    }
+
+    /* If we got this far we need to select a new channel. */
+    if (ui != NULL && ui->channels.size() > 0)
+        ui->channels[0].is_selected = true;
 }
 
 bool Ui::IsAnySolo() const
@@ -1124,8 +1148,10 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
                     ImGui::CalcTextSize(label.c_str()).x);
     if (!m_libadq.compatible)
         ImGui::BeginDisabled();
+
     if (ImGui::Button(label.c_str()))
         IdentifyDigitizers();
+
     if (!m_libadq.compatible)
         ImGui::EndDisabled();
 
@@ -1163,6 +1189,9 @@ void Ui::RenderDigitizerSelection(const ImVec2 &position, const ImVec2 &size)
 
                 /* Toggle the selection state. */
                 digitizer.ui.is_selected ^= true;
+
+                /* Potentially change the currently selected channel. */
+                MaybeResetChannelSelection();
             }
 
             if (digitizer.ui.state.size() > 0)

@@ -211,6 +211,7 @@ private:
     void InitializeEmbeddedPython();
 
     void ClearChannelSelection();
+    void MaybeResetChannelSelection();
     bool IsAnySolo() const;
     bool IsAnySensorError() const;
     bool IsAnyBootError() const;

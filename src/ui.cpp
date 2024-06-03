@@ -615,6 +615,11 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
         digitizer.ui.event_color = COLOR_WOW_PURPLE;
         break;
 
+    case DigitizerMessageId::EVENT_PYTHON:
+        digitizer.ui.event = "PYTHON";
+        digitizer.ui.event_color = COLOR_WOW_TAN;
+        break;
+
     case DigitizerMessageId::STATE:
         switch (message.state)
         {

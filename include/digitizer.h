@@ -29,6 +29,7 @@ enum class DigitizerMessageId
     EVENT_OVERFLOW,
     EVENT_CONFIGURATION,
     EVENT_NO_ACTIVITY,
+    EVENT_PYTHON,
     INITIALIZE_WOULD_OVERWRITE,
     SENSOR_TREE,
     BOOT_STATUS,
@@ -346,6 +347,9 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
             break;
         case DigitizerMessageId::EVENT_NO_ACTIVITY:
             name = "EVENT_NO_ACTIVITY";
+            break;
+        case DigitizerMessageId::EVENT_PYTHON:
+            name = "EVENT_PYTHON";
             break;
         case DigitizerMessageId::INITIALIZE_WOULD_OVERWRITE:
             name = "INITIALIZE_WOULD_OVERWRITE";

@@ -917,6 +917,7 @@ void Digitizer::ConfigureDefaultAcquisition()
 
 void Digitizer::CallPython(const std::string &module)
 {
+    _EmplaceMessage(DigitizerMessageId::EVENT_PYTHON);
     std::string out{};
     int result = m_python->CallMain(module, m_id.handle, m_id.index, out);
     if (result == SCAPE_EOK)

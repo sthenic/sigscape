@@ -126,17 +126,28 @@ void EmbeddedPythonThread::HasMain(const StampedMessage &message)
     /* The caller expects a response w/ a matching id. */
     StampedMessage response{message.id};
     Log::log->trace("Embedded Python checking path '{}'.", message.contents.str);
-    if (EmbeddedPython::HasMain(message.contents.str))
+    try
     {
-        response.contents.result = SCAPE_EOK;
-        Log::log->trace("Found callable main() in '{}'.", message.contents.str);
+      if (EmbeddedPython::HasMain(message.contents.str))
+      {
+          response.contents.result = SCAPE_EOK;
+          Log::log->trace("Found callable main() in '{}'.", message.contents.str);
+      }
+      else
+      {
+          response.contents.result = SCAPE_EAGAIN;
+          Log::log->error(
+              "Embedded Python failed to find callable main() in '{}'.", message.contents.str);
+      }
     }
-    else
+    catch (const EmbeddedPythonException &e)
     {
         response.contents.result = SCAPE_EAGAIN;
         Log::log->error(
-            "Embedded Python failed to find callable main() in '{}'.", message.contents.str);
+            "Embedded Python failed to find callable main() in '{}':\n\n{}", message.contents.str,
+            e.what());
     }
+
     _PushMessage(response);
 }
 

@@ -384,23 +384,17 @@ bool EmbeddedPython::HasMain(const std::filesystem::path &path)
         return false;
 
     const PyLock lock{};
-    try
-    {
-        UniquePyObject module{PyImport_ImportModule(path.stem().string().c_str())};
-        if (module == NULL)
-            throw EmbeddedPythonException();
 
-        module = UniquePyObject{PyImport_ReloadModule(module.get())};
-        if (module == NULL)
-            throw EmbeddedPythonException();
+    UniquePyObject module{PyImport_ImportModule(path.stem().string().c_str())};
+    if (module == NULL)
+        throw EmbeddedPythonException();
 
-        UniquePyObject function{PyObject_GetAttrString(module.get(), "main")};
-        return function != NULL && PyCallable_Check(function.get()) > 0;
-    }
-    catch (const EmbeddedPythonException &)
-    {
-        return false;
-    }
+    module = UniquePyObject{PyImport_ReloadModule(module.get())};
+    if (module == NULL)
+        throw EmbeddedPythonException();
+
+    UniquePyObject function{PyObject_GetAttrString(module.get(), "main")};
+    return function != NULL && PyCallable_Check(function.get()) > 0;
 }
 
 static PyObject *LibAdqAsCtypesDll()
@@ -499,7 +493,7 @@ void EmbeddedPython::CallMain(const std::string &module, void *handle, int index
         throw EmbeddedPythonException();
 
     /* Right now, you only get stdout if the script completes successfully. */
-    out = GetStringFromStream("stdout");
+    out = std::move(GetStringFromStream("stdout"));
 }
 
 bool EmbeddedPython::IsPyadqCompatible()

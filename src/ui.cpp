@@ -3453,7 +3453,7 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                     ImGui::Text("Frame");
                     ImGui::SameLine();
                     ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ui.color);
-                    ImGui::ProgressBar(fraction, ImVec2{-1.0, 0.0}, label.c_str());
+                    ImGui::ProgressBar(static_cast<float>(fraction), ImVec2{-1.0, 0.0}, label.c_str());
                     ImGui::PopStyleColor();
                 }
 

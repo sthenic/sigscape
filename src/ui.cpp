@@ -2623,15 +2623,15 @@ void Ui::PlotTimeDomainSelected()
         ImPlot::PushStyleColor(ImPlotCol_Line, ui->color);
         if (ui->is_plot_frame_enabled)
         {
-            for (size_t i = 0; i < ui->frame.Records().size(); ++i)
+            for (size_t j = 0; j < ui->frame.Records().size(); ++j)
             {
                 /* Skip the record if we're going to plot it as 'the currently
                    selected' record later on. */
-                const auto &record = ui->frame.Records().at(i);
+                const auto &record = ui->frame.Records().at(j);
                 if (record == ui->record)
                     continue;
 
-                const std::string label = fmt::format("##{}{}", record->label.c_str(), i);
+                const std::string label = fmt::format("##{}{}", record->label.c_str(), j);
                 ImPlot::PlotLine(record->label.c_str(), record->time_domain->x.data(),
                                  record->time_domain->y.data(),
                                  static_cast<int>(record->time_domain->x.size()));

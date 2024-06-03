@@ -191,7 +191,7 @@ endif()
 
 if (UNIX)
     target_compile_options(${PROJECT_NAME} PRIVATE
-        -Wall -Wextra -Wswitch -Wunused -Werror=overflow)
+        -Wall -Wextra -Wswitch -Wunused -Wshadow=local -Werror=overflow)
 elseif (WIN32)
     # TODO: Maybe this should be behind elsif(MSCV) instead?
     target_compile_definitions(${PROJECT_NAME} PRIVATE

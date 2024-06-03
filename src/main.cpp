@@ -39,7 +39,7 @@ struct ManagedGlfwImage : public GLFWimage
 
     ManagedGlfwImage(const uint8_t *buffer, size_t len)
     {
-        pixels = stbi_load_from_memory(buffer, len, &width, &height, NULL, 4);
+        pixels = stbi_load_from_memory(buffer, static_cast<int>(len), &width, &height, NULL, 4);
         if (pixels == NULL)
             throw std::runtime_error("Failed to load image from memory.");
     }
@@ -76,7 +76,7 @@ static void SetWindowIcon(GLFWwindow *window)
         images.emplace_back(sigscape16_png, sizeof(sigscape16_png));
         images.emplace_back(sigscape32_png, sizeof(sigscape32_png));
         images.emplace_back(sigscape48_png, sizeof(sigscape48_png));
-        glfwSetWindowIcon(window, images.size(), images.data());
+        glfwSetWindowIcon(window, static_cast<int>(images.size()), images.data());
         Log::log->trace("Initialized window icon.");
     }
     catch (const std::runtime_error &e)

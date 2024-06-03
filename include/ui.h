@@ -292,7 +292,7 @@ private:
     void PlotWaterfallSelected(double &scale_min, double &scale_max);
     void RenderWaterfallPlot();
 
-    static void RenderHeaderButtons(ChannelUiState &ui);
+    void RenderHeaderButtons(ChannelUiState &ui);
 
     void CopyFreqencyDomainMetricsToClipboard(const ProcessedRecord *processed_record);
     void SaveSensorsToFile(const std::filesystem::path &path);

@@ -57,6 +57,9 @@ Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     , record()
     , memory{}
 {
+    if (nof_channels_total == 0)
+        is_selected = true;
+
     color = ImPlot::GetColormapColor(nof_channels_total++);
 }
 
@@ -376,29 +379,58 @@ void Ui::ClearChannelSelection()
 
 void Ui::MaybeResetChannelSelection()
 {
-    /* When the digitizer selection changes, the currently selected channel may
-       be removed from view. If that's the case we reset the selected channel to
-       the first channel from the first selected digitizer we encounter. */
-    DigitizerUiState *ui = NULL;
+    /* When the digitizer selection changes, or a channel is muted, the
+       currently selected channel may be removed from view. If that's the case
+       we reset the selected channel to the first visible channel according to
+       logic below. First, we check if the currently selected channel is still
+       visible. We take the opportunity to clear any existing selection if
+       that's not the case in preparation for the following steps. */
     for (auto &digitizer : m_digitizers)
     {
-        /* Remember the first selected digitizer we encounter. */
-        if (digitizer.ui.is_selected && ui == NULL)
-            ui = &digitizer.ui;
-
         for (auto &chui : digitizer.ui.channels)
         {
             /* Return early if the currently selected channel is still visible. */
-            if (chui.is_selected && digitizer.ui.is_selected)
+            if (chui.is_selected && digitizer.ui.is_selected && (chui.is_solo || !chui.is_muted))
                 return;
 
             chui.is_selected = false;
         }
     }
 
-    /* If we got this far we need to select a new channel. */
-    if (ui != NULL && ui->channels.size() > 0)
-        ui->channels[0].is_selected = true;
+    /* If we got this far we need to select a new channel. Find the first one
+       from the set of visible channels. That means the first channel marked
+       solo... */
+    for (auto &digitizer : m_digitizers)
+    {
+        if (!digitizer.ui.is_selected)
+            continue;
+
+        for (auto &chui : digitizer.ui.channels)
+        {
+            if (chui.is_solo)
+            {
+                chui.is_selected = true;
+                return;
+            }
+        }
+    }
+
+    /* ...or the first unmuted channel from a selected digitizer (which also
+       needs to have a record to be visible). */
+    for (auto &digitizer : m_digitizers)
+    {
+        if (!digitizer.ui.is_selected)
+            continue;
+
+        for (auto &chui : digitizer.ui.channels)
+        {
+            if (chui.record != NULL && !chui.is_muted)
+            {
+                chui.is_selected = true;
+                return;
+            }
+        }
+    }
 }
 
 bool Ui::IsAnySolo() const
@@ -3254,7 +3286,7 @@ void Ui::RenderHeaderButtons(ChannelUiState &ui)
                        ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
     ImGui::SameLine();
 
-    auto Button = [](const std::string &label, bool &state)
+    auto Button = [&](const std::string &label, bool state, std::function<void()> action)
     {
         auto button_color = COLOR_WOW_RED;
         button_color.w = 0.8f;
@@ -3265,8 +3297,7 @@ void Ui::RenderHeaderButtons(ChannelUiState &ui)
         auto active_color = button_color;
         active_color.w = 0.8f;
 
-        bool lstate = state;
-        if (lstate)
+        if (state)
         {
             ImGui::PushStyleColor(ImGuiCol_Button, button_color);
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, hover_color);
@@ -3280,9 +3311,9 @@ void Ui::RenderHeaderButtons(ChannelUiState &ui)
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 1);
 
         if (ImGui::Button(label.c_str(), SIZE))
-            state ^= true;
+            action();
 
-        if (lstate)
+        if (state)
         {
             ImGui::PopStyleColor();
             ImGui::PopStyleColor();
@@ -3290,12 +3321,29 @@ void Ui::RenderHeaderButtons(ChannelUiState &ui)
         }
     };
 
-    Button(fmt::format("S##Solo{}", ui.record->label), ui.is_solo);
+    Button(fmt::format("S##Solo{}", ui.record->label), ui.is_solo, [&]() {
+        if (ui.is_solo)
+        {
+            ui.is_solo = false;
+            MaybeResetChannelSelection();
+        }
+        else
+        {
+            ClearChannelSelection();
+            ui.is_selected = true;
+            ui.is_solo = true;
+        }
+    });
+
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
         ImGui::SetTooltip("Solo (show only this channel)");
     ImGui::SameLine();
 
-    Button(fmt::format("M##Mute{}", ui.record->label), ui.is_muted);
+    Button(fmt::format("M##Mute{}", ui.record->label), ui.is_muted, [&](){
+        ui.is_muted ^= true;
+        MaybeResetChannelSelection();
+    });
+
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
         ImGui::SetTooltip("Mute (hide this channel)");
     ImGui::SameLine();

@@ -49,7 +49,7 @@ class Generator
 {
 public:
     Generator(size_t nof_channels)
-        : SmartBufferThread(nof_channels)
+        : SmartBufferThread(nof_channels, 100, false)
         , m_random_generator{
             static_cast<uint32_t>(std::chrono::steady_clock::now().time_since_epoch().count())}
         , m_noise_distribution{0, 0.1}

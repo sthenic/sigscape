@@ -4,6 +4,7 @@
 #include "generator.h"
 #include "mock_system_manager.h"
 #include <vector>
+#include <string>
 
 class MockDigitizer
 {

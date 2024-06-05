@@ -88,6 +88,16 @@ public:
         return m_read_queues.at(channel).GetTimeSinceLastActivity(milliseconds);
     }
 
+    double GetOccupancy(int channel = 0)
+    {
+        return m_read_queues.at(channel).GetOccupancy();
+    }
+
+    bool IsFull(int channel = 0)
+    {
+        return m_read_queues.at(channel).IsFull();
+    }
+
     size_t GetNofChannels() const
     {
         return m_read_queues.size();
@@ -113,11 +123,6 @@ protected:
         {
             return SCAPE_EINTERNAL;
         }
-    }
-
-    bool IsFull(int channel = 0)
-    {
-        return m_read_queues.at(channel).IsFull();
     }
 
     int EjectBuffer(const std::shared_ptr<T> &buffer, int channel = 0)

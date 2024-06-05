@@ -219,6 +219,15 @@ public:
         return m_queue.empty();
     }
 
+    double GetOccupancy()
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        if (m_capacity > 0)
+            return static_cast<double>(m_queue.size()) / static_cast<double>(m_capacity);
+        else
+            return 0.0;
+    }
+
     int GetTimeSinceLastActivity(int &milliseconds)
     {
         if (!m_is_started)

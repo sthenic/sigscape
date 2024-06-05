@@ -15,6 +15,8 @@ MockDigitizer::MockDigitizer(const ADQConstantParameters &constant)
     , m_overflow_status{}
     , m_generators{}
     , m_sysman{}
+    , m_top_parameters{}
+    , m_clock_system_parameters{}
 {
     if (constant.nof_channels <= 0)
         throw std::runtime_error("Invalid nof_channels");
@@ -165,17 +167,26 @@ int MockDigitizer::GetStatus(enum ADQStatusId id, void *const status)
         return sizeof(m_overflow_status);
 
     case ADQ_STATUS_ID_DRAM:
-        /* TODO: For now, just increase by 512 MiB for each call. */
-        if (m_dram_status.fill < m_constant.dram_size)
-        {
-            m_dram_status.fill += 512 * 1024 * 1024;
+    {
+        /* Read current occupancy from channel 0 and pretend that's how full the
+           DRAM is. */
+        const double occupancy = m_generators.at(0)->GetOccupancy();
+
+        m_dram_status.fill = static_cast<uint64_t>(
+            occupancy * static_cast<double>(m_constant.dram_size));
+
+        if (m_dram_status.fill > m_dram_status.fill_max)
             m_dram_status.fill_max = m_dram_status.fill;
-            if (m_dram_status.fill >= m_constant.dram_size)
-                m_overflow_status.overflow = 1;
-        }
+
+        /* TODO: Could be nicer (more reactive) to update the overflow stats in
+                 `WaitForRecordBuffer`. However, that requires a mutex since
+                 `GetStatus` will be called from another thread. */
+        if (m_dram_status.fill_max >= m_constant.dram_size)
+            m_overflow_status.overflow = 1;
 
         std::memcpy(status, &m_dram_status, sizeof(m_dram_status));
         return sizeof(m_dram_status);
+    }
 
     case ADQ_STATUS_ID_RESERVED:
     case ADQ_STATUS_ID_ACQUISITION:

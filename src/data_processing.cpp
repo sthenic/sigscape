@@ -150,12 +150,6 @@ void DataProcessing::MainLoop()
             if (SCAPE_EOK == ProcessRecord(time_domain, *processed_record))
                 EjectBuffer(processed_record);
         }
-        else
-        {
-            static int nof_discarded = 0;
-            Log::log->info(FormatLog("Skipping (no FFT or allocation) since queue is full ({}).",
-                                     nof_discarded++));
-        }
 
         ADQ_ReturnRecordBuffer(m_handle, m_index, channel, time_domain);
     }

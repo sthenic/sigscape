@@ -201,12 +201,20 @@ public:
 
     bool IsFull()
     {
+        /* If the queue is not started, we report it as full (and empty). */
+        if (!m_is_started)
+            return true;
+
         std::unique_lock<std::mutex> lock(m_mutex);
         return m_capacity > 0 && m_queue.size() >= m_capacity;
     }
 
     bool IsEmpty()
     {
+        /* If the queue is not started, we report it as empty (and full). */
+        if (!m_is_started)
+            return true;
+
         std::unique_lock<std::mutex> lock(m_mutex);
         return m_queue.empty();
     }

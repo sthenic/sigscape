@@ -45,9 +45,9 @@ TEST(SineGenerator, Records)
     SineGeneratorClockSystemParameters clock_system{};
     clock_system.sampling_frequency = 500e6;
 
-    LONGS_EQUAL(SCAPE_EOK, generator.PushMessage({GeneratorMessageId::SET_TOP_PARAMETERS, top}));
-    LONGS_EQUAL(SCAPE_EOK, generator.PushMessage({GeneratorMessageId::SET_CLOCK_SYSTEM_PARAMETERS, clock_system}));
-    LONGS_EQUAL(SCAPE_EOK, generator.PushMessage({GeneratorMessageId::ENABLE}));
+    LONGS_EQUAL(SCAPE_EOK, generator.PushMessageWaitForResponse({GeneratorMessageId::SET_TOP_PARAMETERS, top}));
+    LONGS_EQUAL(SCAPE_EOK, generator.PushMessageWaitForResponse({GeneratorMessageId::SET_CLOCK_SYSTEM_PARAMETERS, clock_system}));
+    LONGS_EQUAL(SCAPE_EOK, generator.PushMessageWaitForResponse({GeneratorMessageId::ENABLE}));
 
     std::vector<std::shared_ptr<ADQGen4Record>> records;
     bool return_records = false;
@@ -79,7 +79,7 @@ TEST(SineGenerator, Records)
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    LONGS_EQUAL(SCAPE_EOK, generator.PushMessage({GeneratorMessageId::DISABLE}));
+    LONGS_EQUAL(SCAPE_EOK, generator.PushMessageWaitForResponse({GeneratorMessageId::DISABLE}));
 }
 
 TEST(SineGenerator, RepeatedStartStop)
@@ -96,12 +96,12 @@ TEST(SineGenerator, RepeatedStartStop)
     SineGeneratorClockSystemParameters clock_system{};
     clock_system.sampling_frequency = 500e6;
 
-    LONGS_EQUAL(SCAPE_EOK, generator.PushMessage({GeneratorMessageId::SET_TOP_PARAMETERS, top}));
-    LONGS_EQUAL(SCAPE_EOK, generator.PushMessage({GeneratorMessageId::SET_CLOCK_SYSTEM_PARAMETERS, clock_system}));
+    LONGS_EQUAL(SCAPE_EOK, generator.PushMessageWaitForResponse({GeneratorMessageId::SET_TOP_PARAMETERS, top}));
+    LONGS_EQUAL(SCAPE_EOK, generator.PushMessageWaitForResponse({GeneratorMessageId::SET_CLOCK_SYSTEM_PARAMETERS, clock_system}));
 
     for (int i = 0; i < NOF_LOOPS; ++i)
     {
-        LONGS_EQUAL(SCAPE_EOK, generator.PushMessage({GeneratorMessageId::ENABLE}));
+        LONGS_EQUAL(SCAPE_EOK, generator.PushMessageWaitForResponse({GeneratorMessageId::ENABLE}));
 
         int nof_records_received = 0;
         while (nof_records_received != NOF_RECORDS)
@@ -116,6 +116,6 @@ TEST(SineGenerator, RepeatedStartStop)
             LONGS_EQUAL(SCAPE_EOK, generator.ReturnBuffer(record));
         }
 
-        LONGS_EQUAL(SCAPE_EOK, generator.PushMessage({GeneratorMessageId::DISABLE}));
+        LONGS_EQUAL(SCAPE_EOK, generator.PushMessageWaitForResponse({GeneratorMessageId::DISABLE}));
     }
 }

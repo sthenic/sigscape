@@ -19,6 +19,7 @@
 #include <future>
 #include <chrono>
 #include <functional>
+#include <atomic>
 
 template <typename T>
 class ThreadSafeQueue
@@ -28,10 +29,10 @@ public:
         : m_signal_stop()
         , m_should_stop()
         , m_is_started(false)
+        , m_is_persistent(is_persistent)
         , m_mutex()
         , m_queue()
         , m_capacity(capacity)
-        , m_is_persistent(is_persistent)
         , m_last_write_timestamp()
     {
     }
@@ -225,11 +226,11 @@ public:
 private:
     std::promise<void> m_signal_stop;
     std::future<void> m_should_stop;
-    bool m_is_started;
+    std::atomic_bool m_is_started;
+    std::atomic_bool m_is_persistent;
     std::mutex m_mutex;
     std::queue<T> m_queue;
     size_t m_capacity;
-    bool m_is_persistent;
     std::chrono::high_resolution_clock::time_point m_last_write_timestamp;
 
     int Pop(T &value)

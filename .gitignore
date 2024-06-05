@@ -8,3 +8,7 @@ imgui.ini
 *.png
 *.bkp
 sigscape128.h
+.cache/
+__pycache__/
+tmp/
+*.bak

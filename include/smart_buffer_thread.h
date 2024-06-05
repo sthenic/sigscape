@@ -125,6 +125,24 @@ protected:
         return m_read_queues.at(channel).Write(buffer);
     }
 
+    int Clear()
+    {
+        /* We clear the queue. It's up to the caller to do this in a way that
+           makes sense while the thread is running. We partially solve that by
+           making the function protected so the call actually has to come from
+           the thread itself. */
+
+        std::unique_lock<std::mutex> lock{m_mutex};
+        for (auto &q : m_read_queues)
+        {
+            q.Stop();
+            q.Start();
+        }
+
+        m_preserved_buffers.clear();
+        return SCAPE_EOK;
+    }
+
 private:
     /* We need a `std::deque` (and not `std::vector`) because the
        `ThreadSafeQueue` cannot be moved or copied, which are requirements for

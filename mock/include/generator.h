@@ -159,6 +159,7 @@ private:
 
             case GeneratorMessageId::ENABLE:
             {
+                Clear(); /* Clear the outbound queues containing data. */
                 m_enabled = true;
                 m_timestamp = 0;
                 m_record_number = 0;

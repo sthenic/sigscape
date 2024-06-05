@@ -7,6 +7,7 @@
 
 #include <thread>
 #include <future>
+#include <atomic>
 
 template<class C, typename T>
 class MessageThread : public MessageChannels<T>
@@ -71,8 +72,8 @@ protected:
     std::thread m_thread;
     std::promise<void> m_signal_stop;
     std::future<void> m_should_stop;
-    bool m_is_running;
-    int m_thread_exit_code;
+    std::atomic_bool m_is_running;
+    std::atomic_int m_thread_exit_code;
 
     /* The thread's main loop. This function must be implemented by the derived class. */
     virtual void MainLoop() = 0;

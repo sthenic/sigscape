@@ -18,13 +18,13 @@ struct DirectoryWatcherMessage
 {
     DirectoryWatcherMessage() = default;
     DirectoryWatcherMessage(DirectoryWatcherMessageId id)
-        : id(id)
-        , path()
+        : id{id}
+        , path{}
     {}
 
     DirectoryWatcherMessage(DirectoryWatcherMessageId id, const std::filesystem::path &path)
-        : id(id)
-        , path(path)
+        : id{id}
+        , path{path}
     {}
 
     DirectoryWatcherMessageId id;
@@ -34,9 +34,9 @@ struct DirectoryWatcherMessage
 class DirectoryWatcher : public MessageThread<DirectoryWatcher, DirectoryWatcherMessage>
 {
 public:
-    DirectoryWatcher(const std::string &path, const std::string &extension_filter = "");
+    DirectoryWatcher(const std::filesystem::path &path, const std::string &extension_filter = "");
     ~DirectoryWatcher() override;
-    const std::string &GetPath();
+    const std::filesystem::path &GetPath();
 
     void MainLoop() override;
 
@@ -48,7 +48,7 @@ private:
         std::filesystem::file_time_type timestamp;
     };
 
-    std::string m_path;
-    std::string m_extension_filter;
+    std::filesystem::path m_path;
+    std::filesystem::path m_extension_filter;
     std::map<std::filesystem::path, FileState> m_files;
 };

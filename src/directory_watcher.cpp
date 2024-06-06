@@ -1,25 +1,18 @@
 #include "directory_watcher.h"
 #include "log.h"
 
-#include <algorithm>
-
-DirectoryWatcher::DirectoryWatcher(const std::string &path, const std::string &extension_filter)
-    : m_path(path)
-    , m_extension_filter(extension_filter)
+DirectoryWatcher::DirectoryWatcher(const std::filesystem::path &path, const std::string &extension_filter)
+    : m_path{path}
+    , m_extension_filter{extension_filter}
     , m_files{}
-{
-#if defined(_WIN32)
-    /* Normalize the path to feature the Windows-preferred path separator. */
-    std::replace(m_path.begin(), m_path.end(), '/', '\\');
-#endif
-}
+{}
 
 DirectoryWatcher::~DirectoryWatcher()
 {
     Stop();
 }
 
-const std::string &DirectoryWatcher::GetPath()
+const std::filesystem::path &DirectoryWatcher::GetPath()
 {
     return m_path;
 }
@@ -34,7 +27,7 @@ void DirectoryWatcher::MainLoop()
         return;
     }
 
-    Log::log->trace("Starting directory watcher for '{}'.", m_path);
+    Log::log->trace("Starting directory watcher for '{}'.", m_path.c_str());
     m_thread_exit_code = SCAPE_EOK;
 
     for (;;)
@@ -106,5 +99,5 @@ void DirectoryWatcher::MainLoop()
             break;
     }
 
-    Log::log->trace("Stopping directory watcher for '{}'.", m_path);
+    Log::log->trace("Stopping directory watcher for '{}'.", m_path.c_str());
 }

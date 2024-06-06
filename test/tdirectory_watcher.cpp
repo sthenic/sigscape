@@ -9,15 +9,9 @@ TEST_GROUP(DirectoryWatcher)
 
 TEST(DirectoryWatcher, WatchDirectory)
 {
-#if defined(_WIN32)
-    const std::string PATH = ".\\tmp";
-    const std::string FILE1 = PATH + "\\file1.txt";
-    const std::string FILE2 = PATH + "\\file2.txt";
-#else
-    const std::string PATH = "./tmp";
-    const std::string FILE1 = PATH + "/file1.txt";
-    const std::string FILE2 = PATH + "/file2.txt";
-#endif
+    const std::filesystem::path PATH = "./tmp";
+    const std::filesystem::path FILE1 = PATH / "file1.txt";
+    const std::filesystem::path FILE2 = PATH / "file2.txt";
     std::filesystem::remove_all(PATH);
 
     DirectoryWatcher watcher{PATH};
@@ -76,7 +70,7 @@ TEST(DirectoryWatcher, WatchDirectory)
 
 TEST(DirectoryWatcher, DontWatchFile)
 {
-    const std::string FILE = "./tmp";
+    const std::filesystem::path FILE = "./tmp";
     std::filesystem::remove_all(FILE);
 
     DirectoryWatcher watcher{FILE};
@@ -98,15 +92,9 @@ TEST(DirectoryWatcher, DontWatchFile)
 
 TEST(DirectoryWatcher, ExtensionFilter)
 {
-#if defined(_WIN32)
-    const std::string PATH = ".\\tmp";
-    const std::string FILE1 = PATH + "\\file1.txt";
-    const std::string FILE2 = PATH + "\\file2.py";
-#else
-    const std::string PATH = "./tmp";
-    const std::string FILE1 = PATH + "/file1.txt";
-    const std::string FILE2 = PATH + "/file2.py";
-#endif
+    const std::filesystem::path PATH = "./tmp";
+    const std::filesystem::path FILE1 = PATH / "file1.txt";
+    const std::filesystem::path FILE2 = PATH / "file2.py";
     std::filesystem::remove_all(PATH);
 
     DirectoryWatcher watcher{PATH, ".py"};

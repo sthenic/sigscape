@@ -68,7 +68,7 @@ struct ADQGen4RecordHeader
     uint8_t data_format;
     char serial_number[10];
     uint64_t sampling_period;
-    float time_unit;
+    double time_unit;
     uint32_t firmware_specific;
 };
 

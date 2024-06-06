@@ -15,6 +15,7 @@
 
 #include <array>
 #include <chrono>
+#include <filesystem>
 
 enum class DigitizerMessageId
 {
@@ -188,7 +189,8 @@ class Digitizer : public MessageThread<Digitizer, DigitizerMessage>
 {
 public:
     Digitizer(
-        void *handle, int init_index, int index, const std::string &configuration_directory,
+        void *handle, int init_index, int index,
+        const std::filesystem::path &configuration_directory,
         std::shared_ptr<EmbeddedPythonThread> python);
     ~Digitizer() override;
 
@@ -221,7 +223,7 @@ private:
     } m_id;
 
     /* The directory where we store the parameter files. */
-    std::string m_configuration_directory;
+    const std::filesystem::path m_configuration_directory;
 
     /* The shared embedded Python session object. */
     const std::shared_ptr<EmbeddedPythonThread> m_python;

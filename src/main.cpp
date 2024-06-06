@@ -94,7 +94,7 @@ int main(int, char **)
        directories. Pushing back another sink is not thread safe, but at this
        point were running in a single thread. */
     auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
-        PersistentDirectories().GetLogDirectory() + "/sigscape.log", true);
+        (PersistentDirectories().GetLogDirectory() / "sigscape.log").string(), true);
     Log::log->sinks().push_back(file_sink);
     Log::log->flush_on(spdlog::level::info);
 

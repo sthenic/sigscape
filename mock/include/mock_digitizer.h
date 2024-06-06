@@ -45,5 +45,5 @@ private:
     std::string m_clock_system_parameters;
 
     int GetNofTransferChannels() const;
-    std::tuple<size_t, size_t> MapChannelIndex(int index) const;
+    std::tuple<int, int> MapChannelIndex(int index) const;
 };

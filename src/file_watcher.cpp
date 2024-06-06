@@ -31,7 +31,7 @@ void FileWatcher::MainLoop()
         return;
     }
 
-    Log::log->trace("Starting file watcher for '{}'.", m_path.c_str());
+    Log::log->trace("Starting file watcher for '{}'.", m_path.string());
     m_thread_exit_code = SCAPE_EOK;
 
     /* Before we enter the main loop, we check if the file exists. If it
@@ -90,7 +90,7 @@ void FileWatcher::MainLoop()
             break;
     }
 
-    Log::log->trace("Stopping file watcher for '{}'.", m_path.c_str());
+    Log::log->trace("Stopping file watcher for '{}'.", m_path.string());
 }
 
 void FileWatcher::ReadContents(std::string &str)

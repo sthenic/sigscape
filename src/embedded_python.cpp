@@ -355,7 +355,7 @@ bool EmbeddedPython::IsInitialized()
     return PYTHON_SESSION.IsInitialized();
 }
 
-void EmbeddedPython::AddToPath(const std::string &directory)
+void EmbeddedPython::AddToPath(const std::filesystem::path &directory)
 {
     if (!IsInitialized())
         throw EmbeddedPythonException("Not initialized");
@@ -367,7 +367,7 @@ void EmbeddedPython::AddToPath(const std::string &directory)
     if (sys_path == NULL)
         throw EmbeddedPythonException();
 
-    UniquePyObject path{PyUnicode_DecodeFSDefault(directory.c_str())};
+    UniquePyObject path{PyUnicode_DecodeFSDefault(directory.string().c_str())};
     if (path == NULL)
         throw EmbeddedPythonException();
 

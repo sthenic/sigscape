@@ -364,7 +364,7 @@ int MockDigitizer::GetNofTransferChannels() const
     return static_cast<int>(result);
 }
 
-std::tuple<size_t, size_t> MockDigitizer::MapChannelIndex(int index) const
+std::tuple<int, int> MockDigitizer::MapChannelIndex(int index) const
 {
     /* TODO: For now, we assume that a generator may only have two channels, and
        that the generator channels are grouped together. So that index wise, the

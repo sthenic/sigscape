@@ -50,7 +50,7 @@ public:
 
     /* Convenience functions for the calling threads. */
     bool IsPyadqCompatible();
-    int AddToPath(const std::string &directory);
+    int AddToPath(const std::filesystem::path &directory);
     bool HasMain(const std::filesystem::path &path);
     int CallMain(const std::string &module, void *handle, int index, std::string &out);
 

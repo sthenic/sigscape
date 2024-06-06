@@ -1,9 +1,9 @@
 #pragma once
 
 #include <GLFW/glfw3.h>
-#include <string>
+#include <filesystem>
 
 namespace Screenshot
 {
-bool Screenshot(GLFWwindow *window, const std::string &filename);
+bool Screenshot(GLFWwindow *window, const std::filesystem::path &filename);
 };

@@ -5,18 +5,11 @@
 
 TEST_GROUP(FileWatcher)
 {
-    void setup()
-    {
-    }
-
-    void teardown()
-    {
-    }
 };
 
 TEST(FileWatcher, WatchFile)
 {
-    const std::string PATH = "./foo.txt";
+    const std::filesystem::path PATH = "./foo.txt";
     std::filesystem::remove(PATH);
 
     FileWatcher watcher(PATH);
@@ -63,7 +56,7 @@ TEST(FileWatcher, WatchFile)
 
 TEST(FileWatcher, WriteToFile)
 {
-    const std::string PATH = "./foo.txt";
+    const std::filesystem::path PATH = "./foo.txt";
     std::filesystem::remove(PATH);
 
     FileWatcher watcher(PATH);

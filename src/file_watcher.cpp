@@ -2,18 +2,13 @@
 #include "log.h"
 
 #include <fstream>
-#include <algorithm>
 
-FileWatcher::FileWatcher(const std::string &path)
-    : m_path(path)
-    , m_timestamp()
-    , m_is_watching(false)
-    , m_ignore_next_update(false)
+FileWatcher::FileWatcher(const std::filesystem::path &path)
+    : m_path{path}
+    , m_timestamp{}
+    , m_is_watching{false}
+    , m_ignore_next_update{false}
 {
-#if defined(_WIN32)
-    /* Normalize the path to feature the Windows-preferred path separator. */
-    std::replace(m_path.begin(), m_path.end(), '/', '\\');
-#endif
 }
 
 FileWatcher::~FileWatcher()
@@ -21,7 +16,7 @@ FileWatcher::~FileWatcher()
     Stop();
 }
 
-const std::string &FileWatcher::GetPath()
+const std::filesystem::path &FileWatcher::GetPath()
 {
     return m_path;
 }
@@ -36,7 +31,7 @@ void FileWatcher::MainLoop()
         return;
     }
 
-    Log::log->trace("Starting file watcher for '{}'.", m_path);
+    Log::log->trace("Starting file watcher for '{}'.", m_path.c_str());
     m_thread_exit_code = SCAPE_EOK;
 
     /* Before we enter the main loop, we check if the file exists. If it
@@ -55,7 +50,7 @@ void FileWatcher::MainLoop()
                 /* The file has been created, read the contents in full and emit a message. */
                 m_is_watching = true;
                 m_timestamp = timestamp;
-                std::string contents;
+                std::string contents{};
                 ReadContents(contents);
                 _EmplaceMessage(FileWatcherMessageId::FILE_CREATED, std::move(contents));
             }
@@ -72,7 +67,7 @@ void FileWatcher::MainLoop()
                 }
                 else
                 {
-                    std::string contents;
+                    std::string contents{};
                     ReadContents(contents);
                     _EmplaceMessage(FileWatcherMessageId::FILE_UPDATED, std::move(contents));
                 }
@@ -95,7 +90,7 @@ void FileWatcher::MainLoop()
             break;
     }
 
-    Log::log->trace("Stopping file watcher for '{}'.", m_path);
+    Log::log->trace("Stopping file watcher for '{}'.", m_path.c_str());
 }
 
 void FileWatcher::ReadContents(std::string &str)

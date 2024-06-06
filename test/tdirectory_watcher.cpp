@@ -5,13 +5,6 @@
 
 TEST_GROUP(DirectoryWatcher)
 {
-    void setup()
-    {
-    }
-
-    void teardown()
-    {
-    }
 };
 
 TEST(DirectoryWatcher, WatchDirectory)

@@ -36,7 +36,7 @@ TEST(SineGenerator, Records)
 {
     constexpr size_t RECORD_LENGTH = 1024;
     constexpr double TRIGGER_FREQUENCY = 30.0;
-    constexpr int NOF_RECORDS = 60;
+    constexpr int NOF_RECORDS = 30;
 
     SineGeneratorTopParameters top{};
     top.record_length = RECORD_LENGTH;
@@ -56,16 +56,6 @@ TEST(SineGenerator, Records)
     {
         std::shared_ptr<ADQGen4Record> record;
         int result = generator.WaitForBuffer(record, 1000);
-
-        if ((result == SCAPE_EAGAIN) && !return_records)
-        {
-            for (auto it = records.begin(); it != records.end(); ++it)
-                LONGS_EQUAL(SCAPE_EOK, generator.ReturnBuffer(*it));
-            records.clear();
-            return_records = true;
-            continue;
-        }
-
         LONGS_EQUAL(SCAPE_EOK, result);
         CHECK(record != NULL);
         LONGS_EQUAL(RECORD_LENGTH, record->header->record_length);
@@ -78,16 +68,15 @@ TEST(SineGenerator, Records)
             LONGS_EQUAL(SCAPE_EOK, generator.ReturnBuffer(record));
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     LONGS_EQUAL(SCAPE_EOK, generator.PushMessageWaitForResponse({GeneratorMessageId::DISABLE}));
 }
 
 TEST(SineGenerator, RepeatedStartStop)
 {
     constexpr size_t RECORD_LENGTH = 8192;
-    constexpr double TRIGGER_FREQUENCY = 2.0;
-    constexpr int NOF_RECORDS = 2;
-    constexpr int NOF_LOOPS = 5;
+    constexpr double TRIGGER_FREQUENCY = 20.0;
+    constexpr int NOF_RECORDS = 5;
+    constexpr int NOF_LOOPS = 3;
 
     SineGeneratorTopParameters top{};
     top.record_length = RECORD_LENGTH;

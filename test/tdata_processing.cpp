@@ -87,7 +87,7 @@ TEST(DataProcessing, Records)
     LONGS_EQUAL(SCAPE_EOK, processing->Start());
     LONGS_EQUAL(ADQ_EOK, ADQ_StartDataAcquisition(&mock_control_unit, index));
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     LONGS_EQUAL(SCAPE_EOK, processing->Stop());
     LONGS_EQUAL(ADQ_EOK, ADQ_StopDataAcquisition(&mock_control_unit, index));
 }
@@ -95,7 +95,7 @@ TEST(DataProcessing, Records)
 TEST(DataProcessing, RepeatedStartStop)
 {
     constexpr size_t RECORD_LENGTH = 8192;
-    constexpr double TRIGGER_FREQUENCY = 10.0;
+    constexpr double TRIGGER_FREQUENCY = 60.0;
     constexpr int NOF_RECORDS = 30;
     constexpr int NOF_LOOPS = 2;
 

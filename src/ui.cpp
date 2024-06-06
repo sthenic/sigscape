@@ -328,14 +328,13 @@ void Ui::Render(float width, float height)
        been rendered completely. */
     if (m_should_screenshot && Screenshot)
     {
-        const auto filename = fmt::format("{}/sigscape_{}.png",
-                                          m_persistent_directories.GetScreenshotDirectory(),
-                                          NowAsIso8601());
+        const auto filename = m_persistent_directories.GetScreenshotDirectory() /
+                              fmt::format("sigscape_{}.png", NowAsIso8601());
 
         if (Screenshot(filename))
-            Log::log->info("Saved screenshot as '{}'.", filename);
+            Log::log->info("Saved screenshot as '{}'.", filename.string());
         else
-            Log::log->error("Failed to screenshot '{}'.", filename);
+            Log::log->error("Failed to screenshot '{}'.", filename.string());
 
         m_should_screenshot = false;
     }
@@ -1107,21 +1106,18 @@ void Ui::RenderPopupAddPythonScript()
     ImGui::OpenPopup("Add Python script");
     if (ImGui::BeginPopupModal("Add Python script", NULL, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        const char separator =
-#if defined(_WIN32)
-        '\\';
-#else
-        '/';
-#endif
         ImGui::AlignTextToFramePadding();
-        ImGui::Text(m_persistent_directories.GetPythonDirectory() + separator);
+        /* FIXME: Check if this is leaves the last separator on Windows. */
+        ImGui::Text((m_persistent_directories.GetPythonDirectory() / "").string());
         static char stem[64] = "";
         ImGui::SameLine(0.0f, 0.0f);
         ImGui::InputText("##pythonstem", stem, sizeof(stem));
         ImGui::SameLine(0.0f, 0.0f);
         ImGui::Text(".py");
 
-        const auto path = fmt::format("{}{}{}.py", m_persistent_directories.GetPythonDirectory(), separator, stem);
+        const auto path = (m_persistent_directories.GetPythonDirectory() / stem)
+                              .replace_extension(".py");
+
         bool valid = stem[0] != '\0' && !std::filesystem::exists(path);
         if (!valid)
         {
@@ -1275,11 +1271,11 @@ void Ui::RenderPythonCommandPalette(bool enable)
     if (ImGui::Button("Copy", BUTTON_SIZE))
     {
       ImGui::LogToClipboard();
-      ImGui::LogText("%s", m_persistent_directories.GetPythonDirectory().c_str());
+      ImGui::LogText("%s", m_persistent_directories.GetPythonDirectory().string().c_str());
       ImGui::LogFinish();
     }
     ImGui::SameLine();
-    ImGui::Text(m_persistent_directories.GetPythonDirectory());
+    ImGui::Text(m_persistent_directories.GetPythonDirectory().string());
 
     if (!enable)
         ImGui::BeginDisabled();
@@ -2998,8 +2994,8 @@ void Ui::RenderLog(const ImVec2 &position, const ImVec2 &size)
     const int flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
 
-    ImGui::Begin(fmt::format("Log - {}/sigscape.log",
-                 m_persistent_directories.GetLogDirectory()).c_str(), NULL, flags);
+    const auto log_file = m_persistent_directories.GetLogDirectory() / "sigscape.log";
+    ImGui::Begin(fmt::format("Log - {}", log_file.string()).c_str(), NULL, flags);
     m_collapsed.log = ImGui::IsWindowCollapsed();
 
     for (const auto &line : Log::buffer->last_formatted())

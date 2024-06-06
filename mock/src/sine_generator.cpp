@@ -76,7 +76,7 @@ void SineGenerator::SeedHeader(ADQGen4RecordHeader *header)
 {
     Generator::SeedHeader(header);
     header->data_format = ADQ_DATA_FORMAT_INT16;
-    header->record_length = m_top_parameters.record_length;
+    header->record_length = static_cast<uint32_t>(m_top_parameters.record_length);
 }
 
 std::shared_ptr<ADQGen4Record> SineGenerator::Sine()

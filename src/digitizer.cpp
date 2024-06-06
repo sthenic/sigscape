@@ -30,11 +30,11 @@ public:
 };
 
 Digitizer::Digitizer(void *handle, int init_index, int index,
-                     const std::string &configuration_directory,
+                     const std::filesystem::path &configuration_directory,
                      std::shared_ptr<EmbeddedPythonThread> python)
     : m_state(DigitizerState::NOT_INITIALIZED)
     , m_id{handle, init_index, index}
-    , m_configuration_directory(configuration_directory)
+    , m_configuration_directory{configuration_directory}
     , m_python{python}
     , m_constant{}
     , m_watchers{}
@@ -616,12 +616,13 @@ void Digitizer::HandleMessageInIdle(const DigitizerMessage &message)
         break;
 
     case DigitizerMessageId::GET_TOP_PARAMETERS_FILENAME:
-        _EmplaceMessage(DigitizerMessageId::PARAMETERS_FILENAME, m_watchers.top->GetPath());
+        _EmplaceMessage(
+            DigitizerMessageId::PARAMETERS_FILENAME, m_watchers.top->GetPath().string());
         break;
 
     case DigitizerMessageId::GET_CLOCK_SYSTEM_PARAMETERS_FILENAME:
         _EmplaceMessage(
-            DigitizerMessageId::PARAMETERS_FILENAME, m_watchers.clock_system->GetPath());
+            DigitizerMessageId::PARAMETERS_FILENAME, m_watchers.clock_system->GetPath().string());
         break;
 
     case DigitizerMessageId::CALL_PYTHON:
@@ -717,12 +718,13 @@ void Digitizer::HandleMessageInAcquisition(const DigitizerMessage &message)
         break;
 
     case DigitizerMessageId::GET_TOP_PARAMETERS_FILENAME:
-        _EmplaceMessage(DigitizerMessageId::PARAMETERS_FILENAME, m_watchers.top->GetPath());
+        _EmplaceMessage(
+            DigitizerMessageId::PARAMETERS_FILENAME, m_watchers.top->GetPath().string());
         break;
 
     case DigitizerMessageId::GET_CLOCK_SYSTEM_PARAMETERS_FILENAME:
         _EmplaceMessage(
-            DigitizerMessageId::PARAMETERS_FILENAME, m_watchers.clock_system->GetPath());
+            DigitizerMessageId::PARAMETERS_FILENAME, m_watchers.clock_system->GetPath().string());
         break;
 
     case DigitizerMessageId::CALL_PYTHON:
@@ -1060,10 +1062,10 @@ void Digitizer::InitializeFileWatchers()
 
     /* Creating new file watchers will destroy the old ones (correctly stopping the threads). */
     m_watchers.top = std::make_unique<FileWatcher>(
-        fmt::format("{}/parameters_top_{}.json", m_configuration_directory, identifier));
+        m_configuration_directory / fmt::format("parameters_top_{}.json", identifier));
 
     m_watchers.clock_system = std::make_unique<FileWatcher>(
-        fmt::format("{}/parameters_clock_system_{}.json", m_configuration_directory, identifier));
+        m_configuration_directory / fmt::format("parameters_clock_system_{}.json", identifier));
 
     m_parameters.top = std::make_shared<std::string>("");
     m_parameters.clock_system = std::make_shared<std::string>("");

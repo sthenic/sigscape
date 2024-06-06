@@ -21,10 +21,10 @@ bool EmbeddedPythonThread::IsPyadqCompatible()
         {EmbeddedPythonMessageId::IS_PYADQ_COMPATIBLE}, [](auto &r) { return r.result; });
 }
 
-int EmbeddedPythonThread::AddToPath(const std::string &directory)
+int EmbeddedPythonThread::AddToPath(const std::filesystem::path &directory)
 {
     return PushMessageWaitForResponse(
-        {EmbeddedPythonMessageId::ADD_TO_PATH, directory}, [](auto &r) { return r.result; });
+        {EmbeddedPythonMessageId::ADD_TO_PATH, directory.string()}, [](auto &r) { return r.result; });
 }
 
 bool EmbeddedPythonThread::HasMain(const std::filesystem::path &path)

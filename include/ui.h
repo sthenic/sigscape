@@ -37,7 +37,7 @@ public:
     void Terminate();
 
 private:
-    std::function<bool(const std::string &filename)> Screenshot;
+    std::function<bool(const std::filesystem::path &filename)> Screenshot;
     bool m_should_screenshot;
     PersistentDirectories m_persistent_directories;
     DirectoryWatcher m_python_directory_watcher;

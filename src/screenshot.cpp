@@ -6,7 +6,7 @@
 #include <vector>
 #include <stdexcept>
 
-static bool SaveAsPng(const std::string &filename, uint8_t *pixels, int width, int height)
+static bool SaveAsPng(const std::filesystem::path &filename, uint8_t *pixels, int width, int height)
 {
     png_structp png = NULL;
     png_infop info = NULL;
@@ -24,9 +24,9 @@ static bool SaveAsPng(const std::string &filename, uint8_t *pixels, int width, i
         if (info == NULL)
             throw std::runtime_error("libpng: png_create_info_struct failed.");
 
-        fp = std::fopen(filename.c_str(), "wb");
+        fp = std::fopen(filename.string().c_str(), "wb");
         if (fp == NULL)
-            throw std::runtime_error(fmt::format("Failed to open '{}' for writing.", filename));
+            throw std::runtime_error(fmt::format("Failed to open '{}' for writing.", filename.string()));
 
         png_init_io(png, fp);
         png_set_IHDR(png, info, width, height, 8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
@@ -73,7 +73,7 @@ static bool SaveAsPng(const std::string &filename, uint8_t *pixels, int width, i
     }
 }
 
-bool Screenshot::Screenshot(GLFWwindow *window, const std::string &filename)
+bool Screenshot::Screenshot(GLFWwindow *window, const std::filesystem::path &filename)
 {
     int width;
     int height;

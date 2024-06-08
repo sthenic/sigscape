@@ -151,7 +151,6 @@ void EmbeddedPythonThread::HasMain(const StampedMessage &message)
     _PushMessage(response);
 }
 
-
 void EmbeddedPythonThread::CallMain(const StampedMessage &message)
 {
     /* The caller expects a response w/ a matching id. */
@@ -162,4 +161,3 @@ void EmbeddedPythonThread::CallMain(const StampedMessage &message)
     Log::log->trace("Embedded Python called main() in module {}.", message.contents.str);
     _PushMessage(response);
 }
-

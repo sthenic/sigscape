@@ -9,7 +9,9 @@ class EmbeddedPythonException : public std::runtime_error
 {
 public:
     EmbeddedPythonException();
-    EmbeddedPythonException(const std::string &str);
+    EmbeddedPythonException(const std::string &str)
+        : std::runtime_error(str)
+    {}
 };
 
 namespace EmbeddedPython

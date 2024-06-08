@@ -1,6 +1,8 @@
 #include "embedded_python.h"
 #include "log.h"
 
+#ifdef EMBEDDED_PYTHON
+
 #if defined(_WIN32)
 #include <windows.h>
 #else
@@ -227,10 +229,6 @@ EmbeddedPythonException::EmbeddedPythonException()
     : std::runtime_error(GetStringFromStream("stderr"))
 {}
 
-EmbeddedPythonException::EmbeddedPythonException(const std::string &str)
-    : std::runtime_error(str)
-{}
-
 /* A base class to use for the Python session on Windows where we rely on
    run-time dynamic linking. */
 #if defined(_WIN32)
@@ -343,8 +341,7 @@ public:
     }
 
 private:
-    PyThreadState *m_state;
-    bool m_is_initialized;
+    PyThreadState *m_state{};
 };
 
 /* The global Python session object. */
@@ -527,3 +524,32 @@ bool EmbeddedPython::IsPyadqCompatible()
        to disambiguate. */
     return PyLong_AsLong(result.get()) == 0;
 }
+
+#else
+
+bool EmbeddedPython::IsInitialized()
+{
+    return false;
+}
+
+void EmbeddedPython::AddToPath(const std::filesystem::path &)
+{
+    throw EmbeddedPythonException("Unsupported");
+}
+
+bool EmbeddedPython::HasMain(const std::filesystem::path &)
+{
+    return false;
+}
+
+void EmbeddedPython::CallMain(const std::string &, void *, int, std::string &)
+{
+    throw EmbeddedPythonException("Unsupported");
+}
+
+bool EmbeddedPython::IsPyadqCompatible()
+{
+    return false;
+}
+
+#endif

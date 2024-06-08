@@ -10,6 +10,7 @@ add_executable(${PROJECT_NAME})
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(MOCK_ADQAPI "With this set to ON, only the simulator mode is available." OFF)
+option(EMBEDDED_PYTHON "Set to OFF to disable support for embedded python." ON)
 
 # Optional path to libadq. Set with -DLIBADQ_PATH=<path-to-libadq/ADQAPI>
 set(LIBADQ_PATH "" CACHE PATH "Optional path to libadq.so/ADQAPI.dll.")
@@ -177,7 +178,10 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     IMGUI_IMPL_OPENGL_LOADER_GL3W
     SIGSCAPE_REVISION=\"${SIGSCAPE_REVISION}\"
     IMGUI_USER_CONFIG="imgui_config.h"
+    $<$<BOOL:${EMBEDDED_PYTHON}>:EMBEDDED_PYTHON>
 )
+
+message(STATUS "Embedded Python is ${EMBEDDED_PYTHON}.")
 
 if (MOCK_ADQAPI)
     # Build a mocked shared library, whose CMakeLists.txt is located in

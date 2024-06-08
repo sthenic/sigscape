@@ -64,6 +64,7 @@ TEST_GROUP(Python)
 
 TEST(Python, CheckAndCall)
 {
+#ifdef EMBEDDED_PYTHON
     /* First we interact with the static session object directly. */
     LONGS_EQUAL(1, EmbeddedPython::IsInitialized());
 
@@ -98,4 +99,7 @@ TEST(Python, CheckAndCall)
         CHECK(out.size() > 0);
         STRCMP_CONTAINS("Called main() with '<pyadq.ADQ object at", out.c_str());
     }
+#else
+    LONGS_EQUAL(0, EmbeddedPython::IsInitialized());
+#endif
 }

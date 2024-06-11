@@ -146,6 +146,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     src/screenshot.cpp
     src/log.cpp
     src/record_frame.cpp
+    src/opengl/opengl.cpp
     src/main.cpp
 )
 

@@ -208,6 +208,13 @@ private:
     } m_libadq;
     ImGui::FileBrowser m_file_browser;
 
+    struct
+    {
+        GLuint texture;
+        int width;
+        int height;
+    } m_image{};
+
     void InitializeEmbeddedPython();
 
     void ClearChannelSelection();

@@ -16,6 +16,8 @@
 
 #include <csignal>
 
+#include "learning_opengl.h"
+
 static bool should_exit = false;
 static void signal_handler(int)
 {
@@ -115,7 +117,7 @@ int main(int, char **)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 #endif
 
-    GLFWwindow *window = glfwCreateWindow(1920, 1080, "sigscape", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(1080, 1080, "sigscape", NULL, NULL);
     if (window == NULL)
         return -1;
 
@@ -134,8 +136,11 @@ int main(int, char **)
         return -1;
     }
 
-    Ui ui;
-    ui.Initialize(window, glsl_version);
+    // Ui ui;
+    // ui.Initialize(window, glsl_version);
+
+    Learning learning{};
+    learning.Initialize();
 
     while (!glfwWindowShouldClose(window) && !should_exit)
     {
@@ -146,11 +151,13 @@ int main(int, char **)
         glClear(GL_COLOR_BUFFER_BIT);
         glfwGetFramebufferSize(window, &display_width, &display_height);
         glViewport(0, 0, display_width, display_height);
-        ui.Render(static_cast<float>(display_width), static_cast<float>(display_height));
+        // ui.Render(static_cast<float>(display_width), static_cast<float>(display_height));
+        learning.Render();
         glfwSwapBuffers(window);
     }
 
-    ui.Terminate();
+    // ui.Terminate();
+    learning.Terminate();
     glfwDestroyWindow(window);
     glfwTerminate();
     return 0;

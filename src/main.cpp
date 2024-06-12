@@ -16,7 +16,7 @@
 
 #include <csignal>
 
-#include "learning_opengl.h"
+#include "opengl/learning.h"
 
 static bool should_exit = false;
 static void signal_handler(int)

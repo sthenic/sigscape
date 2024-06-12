@@ -41,6 +41,9 @@ public:
 
 private:
     GLuint m_id{0};
+    std::map<std::string, GLuint> m_uniform_cache{};
+
+    GLuint GetUniformLocation(const std::string &name);
 
     /* Wrapper around a vertex or fragment shader read from file to leverage RAII. */
     class _Shader

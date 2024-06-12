@@ -82,35 +82,61 @@ int Shader::Set(const std::string &name, int value)
     return SCAPE_EOK;
 }
 
+/* FIXME: Some template function with constexpr dispatch instead? Consolidate location retrieval. */
 int Shader::Set(const std::string &name, float value)
 {
-    const auto location = glGetUniformLocation(m_id, name.c_str());
-    if (location < 0)
+    try
+    {
+        glUniform1f(GetUniformLocation(name), value);
+    }
+    catch (const ShaderException &)
+    {
         return SCAPE_EINTERNAL;
+    }
 
-    glUniform1f(location, value);
     return SCAPE_EOK;
 }
 
 int Shader::Set(const std::string &name, const std::vector<float> &value)
 {
-    /* FIXME: Opportunity for caching? */
-    const auto location = glGetUniformLocation(m_id, name.c_str());
-    if (location < 0)
+    try
+    {
+        const auto location = GetUniformLocation(name);
+        if (value.size() == 1)
+            glUniform1f(location, value[0]);
+        else if (value.size() == 2)
+            glUniform2f(location, value[0], value[1]);
+        else if (value.size() == 3)
+            glUniform3f(location, value[0], value[1], value[2]);
+        else if (value.size() == 4)
+            glUniform4f(location, value[0], value[1], value[2], value[3]);
+        else
+            return SCAPE_EUNSUPPORTED;
+    }
+    catch (const ShaderException &)
+    {
         return SCAPE_EINTERNAL;
-
-    if (value.size() == 1)
-        glUniform1f(location, value[0]);
-    else if (value.size() == 2)
-        glUniform2f(location, value[0], value[1]);
-    else if (value.size() == 3)
-        glUniform3f(location, value[0], value[1], value[2]);
-    else if (value.size() == 4)
-        glUniform4f(location, value[0], value[1], value[2], value[3]);
-    else
-        return SCAPE_EUNSUPPORTED;
+    }
 
     return SCAPE_EOK;
+}
+
+GLuint Shader::GetUniformLocation(const std::string &name)
+{
+    if (const auto match = m_uniform_cache.find(name); match != m_uniform_cache.end())
+    {
+        printf("Matched %s -> %d\n", name.c_str(), match->second);
+        return match->second;
+    }
+    else
+    {
+        const auto location = glGetUniformLocation(m_id, name.c_str());
+        if (location < 0)
+            throw ShaderException(fmt::format("Failed to find uniform '{}'.", name));
+
+        m_uniform_cache[name] = location;
+        return location;
+    }
 }
 
 Shader::_Shader::_Shader(const std::filesystem::path &path, GLenum type)

@@ -1,40 +1,49 @@
-#include "learning_opengl.h"
+#include "opengl/learning.h"
 #include "GL/gl3w.h"
+#include "GLFW/glfw3.h"
 
 #include <cstddef>
 #include <cstdio>
 #include <vector>
+#include <cmath>
 
 void Learning::Initialize()
 {
     static const std::vector<float> vertices = {
-         0.5f,  0.5f, 0.0f, /* top right */
-         0.5f, -0.5f, 0.0f, /* bottom right */
-        -0.5f, -0.5f, 0.0f, /* bottom left */
-        -0.5f,  0.5f, 0.0f, /* top left */
+        //  0.5f,  0.5f, 0.0f, /* top right */
+         0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, /* bottom right */
+        -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, /* bottom left */
+        // -0.5f,  0.5f, 0.0f, /* top left */
+         0.0f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f,
     };
 
     static const std::vector<unsigned int> indices = {
-        0, 1, 3, /* first triangle */
-        1, 2, 3, /* second triangle */
+        0, 1, 2,
+        // 0, 1, 3, /* first triangle */
+        // 1, 2, 3, /* second triangle */
     };
 
     static const char *vertex_shader_source = R"(
 #version 330 core
 layout (location = 0) in vec3 pos;
+layout (location = 1) in vec3 color;
+
+out vec3 our_color;
 
 void main()
 {
-    gl_Position = vec4(pos.x, pos.y, pos.z, 1.0);
+    gl_Position = vec4(pos, 1.0);
+    our_color = color;
 }
 )";
     static const char *fragment_shader_source = R"(
 #version 330 core
 out vec4 FragColor;
+in vec3 our_color;
 
 void main()
 {
-    FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
+    FragColor = vec4(our_color, 1.0f);
 }
 )";
 
@@ -103,8 +112,11 @@ void main()
     glBufferData(
         GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(indices[0]), indices.data(), GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
@@ -114,10 +126,15 @@ void main()
 
 void Learning::Render()
 {
+    float time_value = glfwGetTime();
+    float green_value = (std::sin(time_value) / 2.0f) + 0.5f;
+    int vertex_color_location = glGetUniformLocation(m_shader_program, "our_color");
     glUseProgram(m_shader_program);
+    glUniform4f(vertex_color_location, 0.0f, green_value, 0.0f, 1.0f);
+
     glBindVertexArray(m_VAO);
-    // glDrawArrays(GL_TRIANGLES, 0, 3);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    // glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
 }
 

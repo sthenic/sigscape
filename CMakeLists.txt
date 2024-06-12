@@ -147,6 +147,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     src/log.cpp
     src/record_frame.cpp
     src/opengl/opengl.cpp
+    src/opengl/shader.cpp
     src/main.cpp
 )
 

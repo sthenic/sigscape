@@ -125,7 +125,6 @@ GLuint Shader::GetUniformLocation(const std::string &name)
 {
     if (const auto match = m_uniform_cache.find(name); match != m_uniform_cache.end())
     {
-        printf("Matched %s -> %d\n", name.c_str(), match->second);
         return match->second;
     }
     else

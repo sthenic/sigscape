@@ -13,10 +13,6 @@
 #include <fstream>
 #include <functional>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-#include "sigscape48.h"
-
 const ImVec4 Ui::COLOR_GREEN = {0.0f, 1.0f, 0.5f, 0.6f};
 const ImVec4 Ui::COLOR_RED = {1.0f, 0.0f, 0.2f, 0.6f};
 const ImVec4 Ui::COLOR_YELLOW = {1.0f, 1.0f, 0.3f, 0.8f};
@@ -45,49 +41,49 @@ static void WIP()
     ImGui::PopStyleColor();
 }
 
-static bool LoadTextureFromFile(
-    const std::filesystem::path &filename, GLuint &texture, int &width, int &height)
-{
-    auto data = stbi_load(filename.c_str(), &width, &height, NULL, 4);
-    if (data == NULL)
-        return false;
+// static bool LoadTextureFromFile(
+//     const std::filesystem::path &filename, GLuint &texture, int &width, int &height)
+// {
+//     auto data = stbi_load(filename.c_str(), &width, &height, NULL, 4);
+//     if (data == NULL)
+//         return false;
 
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
+//     glGenTextures(1, &texture);
+//     glBindTexture(GL_TEXTURE_2D, texture);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+//     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+//     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+//     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+//     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-    stbi_image_free(data);
+//     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+//     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+//     stbi_image_free(data);
 
-    return true;
-}
+//     return true;
+// }
 
-static bool LoadTextureFromMemory(
-    const uint8_t *buffer, size_t len, GLuint &texture, int &width, int &height)
-{
-    auto data = stbi_load_from_memory(buffer, static_cast<int>(len), &width, &height, NULL, 4);
-    if (data == NULL)
-        return false;
+// static bool LoadTextureFromMemory(
+//     const uint8_t *buffer, size_t len, GLuint &texture, int &width, int &height)
+// {
+//     auto data = stbi_load_from_memory(buffer, static_cast<int>(len), &width, &height, NULL, 4);
+//     if (data == NULL)
+//         return false;
 
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
+//     glGenTextures(1, &texture);
+//     glBindTexture(GL_TEXTURE_2D, texture);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+//     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+//     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+//     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+//     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-    stbi_image_free(data);
+//     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+//     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+//     stbi_image_free(data);
 
-    return true;
-}
+//     return true;
+// }
 
 Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     : color{}
@@ -296,8 +292,8 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version)
     ImGui::StyleColorsDark();
     ImGui::GetStyle().FrameRounding = 1.0f;
 
-    LoadTextureFromMemory(
-        sigscape48_png, sizeof(sigscape48_png), m_image.texture, m_image.width, m_image.height);
+    // LoadTextureFromMemory(
+    //     sigscape48_png, sizeof(sigscape48_png), m_image.texture, m_image.width, m_image.height);
 
     /* We explicitly bind the `window` to the screenshot call and store _that_
        as a member (instead of the window pointer) to avoid keeping the 'raw'
@@ -348,7 +344,7 @@ void Ui::Terminate()
         DeleteADQControlUnit(m_adq_control_unit);
     m_adq_control_unit = NULL;
 
-    glDeleteTextures(1, &m_image.texture);
+    // glDeleteTextures(1, &m_image.texture);
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
@@ -2908,7 +2904,7 @@ void Ui::RenderChannelPlot()
         RemoveDoubleClickedMarkers(m_time_domain_markers);
         RenderUnitsPerDivision(m_time_domain_units_per_division.Format());
 
-        ImPlot::PlotImage("SigscapeImage", (void *)(intptr_t)m_image.texture, ImVec2{0, 0}, ImVec2{1, 1});
+        // ImPlot::PlotImage("SigscapeImage", (void *)(intptr_t)m_image.texture, ImVec2{0, 0}, ImVec2{1, 1});
 
         ImPlot::EndPlot();
 

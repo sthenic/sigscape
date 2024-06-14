@@ -16,6 +16,7 @@
 #include "marker.h"
 #include "format.h"
 #include "record_frame.h"
+#include "opengl/learning.h"
 #if defined(_WIN32)
 #include "hotplug_windows.h"
 #else
@@ -210,12 +211,7 @@ private:
     } m_libadq;
     ImGui::FileBrowser m_file_browser;
 
-    struct
-    {
-        GLuint texture;
-        int width;
-        int height;
-    } m_image{};
+    Learning m_image{};
 
     void InitializeEmbeddedPython();
 

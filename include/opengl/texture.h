@@ -15,7 +15,7 @@ public:
     Texture(Texture &&other);
     Texture &operator=(Texture &&other);
 
-    GLuint GetId() const;
+    [[nodiscard]] GLuint GetId() const;
 
 private:
     GLuint m_id{0};

@@ -3,6 +3,7 @@
 #include "GL/gl3w.h"
 #include "opengl/shader.h"
 #include "opengl/vertex_buffer.h"
+#include "opengl/texture.h"
 
 class Learning
 {
@@ -15,8 +16,7 @@ public:
     void Terminate();
 
 private:
-    GLuint m_texture0{0};
-    GLuint m_texture1{0};
     Shader m_shader;
-    VertexBuffer m_vertex_buffer{{}};
+    VertexBuffer m_vertex_buffer;
+    Texture m_texture;
 };

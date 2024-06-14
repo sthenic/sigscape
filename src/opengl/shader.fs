@@ -11,5 +11,5 @@ uniform vec3 mix_color;
 
 void main()
 {
-    FragColor = mix(texture(texture0, our_tex_coord) * vec4(mix_color, 1.0), texture(texture1, our_tex_coord), mix_value);
+    FragColor = texture(texture1, our_tex_coord) * vec4(our_tex_coord, 0.5, 1.0);
 }

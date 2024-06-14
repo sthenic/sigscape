@@ -34,6 +34,7 @@ public:
         bool m_is_normalized;
     };
 
+    VertexBuffer() = default;
     explicit VertexBuffer(const std::vector<Attribute> &attributes);
     ~VertexBuffer();
 

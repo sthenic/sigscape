@@ -39,47 +39,17 @@ void Learning::Initialize()
     int height;
     int nof_channels;
     stbi_set_flip_vertically_on_load(true);
-    uint8_t *data = stbi_load("/home/marcus/Documents/git/sigscape/container.jpg", &width, &height, &nof_channels, 0);
-    if (data == NULL)
-    {
-        printf("Failed loading texture 'container.jpg'.\n");
-        return;
-    }
-
-    /* Texture object 0 */
-    glGenTextures(1, &m_texture0);
-    glBindTexture(GL_TEXTURE_2D, m_texture0);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-    glGenerateMipmap(GL_TEXTURE_2D);
-    stbi_image_free(data);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    data = stbi_load("/home/marcus/Documents/git/sigscape/awesomeface.png", &width, &height, &nof_channels, 0);
+    uint8_t *data = stbi_load("/home/marcus/Documents/git/sigscape/awesomeface.png", &width, &height, &nof_channels, 0);
     if (data == NULL)
     {
         printf("Failed loading texture 'awesomeface.png'.\n");
         return;
     }
 
-    glGenTextures(1, &m_texture1);
-    glBindTexture(GL_TEXTURE_2D, m_texture1);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-    glGenerateMipmap(GL_TEXTURE_2D);
-    stbi_image_free(data);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    m_texture = Texture(width, height, data);
 
     m_shader.Use();
-    m_shader.Set("texture0", 0);
-    m_shader.Set("texture1", 1);
+    m_shader.Set("our_texture", 0);
 }
 
 void Learning::Render()
@@ -94,9 +64,7 @@ void Learning::Render()
     m_shader.Set("mix_value", 0.2f);
     m_shader.Set("mix_color", std::array{1.0f, 0.5f, 0.2f});
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, m_texture0);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, m_texture1);
+    glBindTexture(GL_TEXTURE_2D, m_texture.GetId());
     m_vertex_buffer.Bind();
     glDrawArrays(GL_TRIANGLES, 0, 3);
     m_vertex_buffer.Unbind();
@@ -104,6 +72,4 @@ void Learning::Render()
 
 void Learning::Terminate()
 {
-    glDeleteTextures(1, &m_texture0);
-    glDeleteTextures(1, &m_texture1);
 }

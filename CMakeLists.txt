@@ -150,6 +150,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     src/opengl/shader.cpp
     src/opengl/vertex_buffer.cpp
     src/opengl/texture.cpp
+    src/opengl/frame_buffer.cpp
     src/main.cpp
 )
 

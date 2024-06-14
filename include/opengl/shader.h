@@ -7,6 +7,8 @@
 #include <stdexcept>
 #include <vector>
 #include <map>
+#include <array>
+#include <variant>
 
 class ShaderException : public std::runtime_error
 {
@@ -33,11 +35,13 @@ public:
     Shader &operator=(Shader &&other);
 
     GLuint GetId() const;
-    void Use();
-    int Set(const std::string &name, bool value);
-    int Set(const std::string &name, int value);
-    int Set(const std::string &name, float value);
-    int Set(const std::string &name, const std::vector<float> &value);
+    void Use() const;
+
+    /* Type variant to implement a `Set` function for a few explicit types we
+       can pass as uniform values. */
+    using Uniform = std::variant<
+        bool, int, float, std::array<float, 2>, std::array<float, 3>, std::array<float, 4>>;
+    int Set(const std::string &name, Uniform value);
 
 private:
     GLuint m_id{0};
@@ -51,6 +55,9 @@ private:
     public:
         _Shader(const std::filesystem::path &path, GLenum type);
         ~_Shader();
+
+        _Shader(const _Shader &other) = delete;
+        _Shader &operator=(const _Shader &other) = delete;
 
         GLuint GetId() const;
 

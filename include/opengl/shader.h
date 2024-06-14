@@ -34,7 +34,7 @@ public:
     Shader(Shader &&other);
     Shader &operator=(Shader &&other);
 
-    GLuint GetId() const;
+    [[nodiscard]] GLuint GetId() const;
     void Use() const;
 
     /* Type variant to implement a `Set` function for a few explicit types we

@@ -47,6 +47,7 @@ void Learning::Initialize()
     }
 
     m_texture = Texture(width, height, data);
+    m_frame_buffer.SetTexture(m_texture.GetId());
 
     m_shader.Use();
     m_shader.Set("our_texture", 0);
@@ -63,13 +64,21 @@ void Learning::Render()
     m_shader.Use();
     m_shader.Set("mix_value", 0.2f);
     m_shader.Set("mix_color", std::array{1.0f, 0.5f, 0.2f});
+
+    m_frame_buffer.Bind();
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, m_texture.GetId());
     m_vertex_buffer.Bind();
     glDrawArrays(GL_TRIANGLES, 0, 3);
     m_vertex_buffer.Unbind();
+    m_frame_buffer.Unbind();
 }
 
 void Learning::Terminate()
 {
+}
+
+GLuint Learning::GetId() const
+{
+    return m_texture.GetId();
 }

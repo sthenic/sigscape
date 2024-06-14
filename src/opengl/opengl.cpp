@@ -107,7 +107,8 @@ void Learning::Render()
 {
     float time = glfwGetTime();
     m_shader.Use();
-    m_shader.Set("mix_value", std::clamp(std::sin(time), 0.0f, 1.0f));
+    m_shader.Set("mix_value", 0.2f);
+    m_shader.Set("mix_color", std::array{1.0f, 0.5f, 0.2f});
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, m_texture0);
     glActiveTexture(GL_TEXTURE1);

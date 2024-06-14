@@ -13,50 +13,26 @@
 #include <cstdint>
 #include <algorithm>
 
+static const std::vector<float> vertices = {
+    0.0f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.5f, 1.5f, /* top right */
+    0.5f,  0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.5f, 0.0f, /* bottom right */
+    -0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, -0.5f, 0.0f, /* bottom left */
+    // -0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, /* top left */
+};
+
 void Learning::Initialize()
 {
-    static const std::vector<float> vertices = {
-         0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, /* top right */
-         0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, /* bottom right */
-        -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, /* bottom left */
-        -0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, /* top left */
-    };
-
-    static const std::vector<unsigned int> indices = {
-        0, 1, 3, /* first triangle */
-        1, 2, 3, /* second triangle */
-    };
-
     m_shader = Shader(
         "/home/marcus/Documents/git/sigscape/src/opengl/shader.vs",
         "/home/marcus/Documents/git/sigscape/src/opengl/shader.fs");
 
-    /* Vertex array object */
-    glGenVertexArrays(1, &m_VAO);
-    glBindVertexArray(m_VAO);
+    m_vertex_buffer = VertexBuffer({
+        {VertexBuffer::Attribute::Type::FLOAT, 3},
+        {VertexBuffer::Attribute::Type::FLOAT, 3},
+        {VertexBuffer::Attribute::Type::FLOAT, 2},
+    });
 
-    /* Create a vertex buffer object. */
-    glGenBuffers(1, &m_VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
-
-    glBufferData(
-        GL_ARRAY_BUFFER, vertices.size() * sizeof(vertices[0]), vertices.data(), GL_STATIC_DRAW);
-
-    /* Create a element buffer object */
-    glGenBuffers(1, &m_EBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_EBO);
-
-    glBufferData(
-        GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(indices[0]), indices.data(), GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)0);
-    glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(6 * sizeof(float)));
-    glEnableVertexAttribArray(2);
+    m_vertex_buffer.SetData(vertices.data(), vertices.size() * sizeof(vertices[0]));
 
     /* Load texture */
     int width;
@@ -78,8 +54,8 @@ void Learning::Initialize()
     glGenerateMipmap(GL_TEXTURE_2D);
     stbi_image_free(data);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
@@ -95,17 +71,25 @@ void Learning::Initialize()
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
     glGenerateMipmap(GL_TEXTURE_2D);
     stbi_image_free(data);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
     m_shader.Use();
     m_shader.Set("texture0", 0);
     m_shader.Set("texture1", 1);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
 }
 
 void Learning::Render()
 {
     float time = glfwGetTime();
+    auto v = vertices;
+    v[0] = std::sin(4.0 * time);
+    v[1] = std::cos(4.0 * time);
+    m_vertex_buffer.SetData(v.data(), v.size() * sizeof(v[0]));
+
     m_shader.Use();
     m_shader.Set("mix_value", 0.2f);
     m_shader.Set("mix_color", std::array{1.0f, 0.5f, 0.2f});
@@ -113,16 +97,13 @@ void Learning::Render()
     glBindTexture(GL_TEXTURE_2D, m_texture0);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, m_texture1);
-    glBindVertexArray(m_VAO);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-    glBindVertexArray(0);
+    m_vertex_buffer.Bind();
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    m_vertex_buffer.Unbind();
 }
 
 void Learning::Terminate()
 {
-    glDeleteVertexArrays(1, &m_VAO);
-    glDeleteBuffers(1, &m_VBO);
-    glDeleteBuffers(1, &m_EBO);
     glDeleteTextures(1, &m_texture0);
     glDeleteTextures(1, &m_texture1);
 }

@@ -148,6 +148,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     src/record_frame.cpp
     src/opengl/opengl.cpp
     src/opengl/shader.cpp
+    src/opengl/vertex_buffer.cpp
     src/main.cpp
 )
 

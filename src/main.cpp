@@ -134,9 +134,17 @@ int main(int, char **)
         return -1;
     }
 
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable( GL_BLEND );
+
+    /* FIXME: https://github.com/ocornut/imgui/issues/5485 */
+    /* FIXME: https://github.com/ocornut/imgui/issues/6892 */
+    /* FIXME: https://github.com/ocornut/imgui/issues/4214 */
+    /* FIXME: https://github.com/ocornut/imgui/issues/984 */
+    /* FIXME: https://gamedev.stackexchange.com/questions/150214/render-in-a-imgui-window/207560 */
+
     Ui ui;
     ui.Initialize(window, glsl_version);
-
     while (!glfwWindowShouldClose(window) && !should_exit)
     {
         int display_width;

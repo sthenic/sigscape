@@ -2855,8 +2855,24 @@ void Ui::RenderChannelPlot()
     {
         ImPlot::SetupLegend(ImPlotLocation_NorthEast, ImPlotLegendFlags_Sort);
         PlotTimeDomainSelected();
-        m_image.Render();
-        ImPlot::PlotImage("SigscapeImage", (void *)(intptr_t)m_image.GetId(), ImVec2{0, 0}, ImVec2{1, 1});
+
+        auto plot_rect = ImPlot::GetCurrentPlot()->PlotRect;
+        m_image.SetViewport(
+            plot_rect.Min.x, ImGui::GetIO().DisplaySize.y - plot_rect.Max.y, plot_rect.GetWidth(),
+            plot_rect.GetHeight());
+
+        auto limits = ImPlot::GetPlotLimits();
+        m_image.SetLimits(limits.Min().x, limits.Max().x, limits.Min().y, limits.Max().y);
+
+        auto CustomRender = [](const ImDrawList *, const ImDrawCmd *dc)
+        {
+            auto image = reinterpret_cast<Learning *>(dc->UserCallbackData);
+            image->Render();
+        };
+
+        ImPlot::PlotCallback(
+            "AA OpenGL", ImPlotPoint{-1, -1}, ImPlotPoint{1, 1}, CustomRender, &m_image);
+
         RemoveDoubleClickedMarkers(m_time_domain_markers);
         RenderUnitsPerDivision(m_time_domain_units_per_division.Format());
 

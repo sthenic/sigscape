@@ -14,12 +14,17 @@ public:
     void Initialize();
     void Render();
     void Terminate();
-
-    [[nodiscard]] GLuint GetId() const;
+    void SetViewport(int x, int y, int width, int height);
+    void SetLimits(float xmin, float xmax, float ymin, float ymax);
 
 private:
+    struct Viewport
+    {
+        int x;
+        int y;
+        int width;
+        int height;
+    } m_viewport{};
     Shader m_shader;
     VertexBuffer m_vertex_buffer;
-    Texture m_texture;
-    FrameBuffer m_frame_buffer;
 };

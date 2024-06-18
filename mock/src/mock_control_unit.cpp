@@ -11,8 +11,8 @@ static bool has_added_digitizers = false;
 void MockControlUnit::AddDigitizer(enum ADQProductID_Enum pid,
                                    const ADQConstantParameters &constant)
 {
-    m_info_list.push_back({pid});
-    m_digitizers.push_back(std::make_unique<MockDigitizer>(constant));
+    // m_info_list.push_back({pid});
+    // m_digitizers.push_back(std::make_unique<MockDigitizer>(constant));
 }
 
 /* Mocked functions */

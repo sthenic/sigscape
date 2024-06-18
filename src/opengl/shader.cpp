@@ -19,7 +19,9 @@ Shader &Shader::operator=(Shader &&other)
     return *this;
 }
 
-Shader::Shader(const std::filesystem::path &vertex_path, const std::filesystem::path &fragment_path)
+Shader::Shader(
+    const std::filesystem::path &vertex_path, const std::filesystem::path &fragment_path,
+    const std::filesystem::path &geometry_path)
 {
     /* Throws on error. The destructors cleans up any allocated resources. */
     const _Shader vertex_shader{vertex_path, GL_VERTEX_SHADER};
@@ -30,9 +32,22 @@ Shader::Shader(const std::filesystem::path &vertex_path, const std::filesystem::
     glAttachShader(m_id, vertex_shader.GetId());
     glAttachShader(m_id, fragment_shader.GetId());
 
-    /* Link the program then check for any errors. */
-    glLinkProgram(m_id);
+    /* Link the shader, but not before creating and attaching the geometry
+       shader if the path is defined. `glLinkProgram` is in both branches
+       because we can't run the destructor of the `geometry_shader` before the
+       shader has been linked. */
+    if (geometry_path != "")
+    {
+        const _Shader geometry_shader{geometry_path, GL_GEOMETRY_SHADER};
+        glAttachShader(m_id, geometry_shader.GetId());
+        glLinkProgram(m_id);
+    }
+    else
+    {
+        glLinkProgram(m_id);
+    }
 
+    /* Check for any errors. */
     GLint success{};
     glGetProgramiv(m_id, GL_LINK_STATUS, &success);
 
@@ -129,6 +144,7 @@ Shader::_Shader::_Shader(const std::filesystem::path &path, GLenum type)
     {
     case GL_VERTEX_SHADER:
     case GL_FRAGMENT_SHADER:
+    case GL_GEOMETRY_SHADER:
         m_id = glCreateShader(type);
         break;
 
@@ -136,7 +152,9 @@ Shader::_Shader::_Shader(const std::filesystem::path &path, GLenum type)
         throw ShaderException(fmt::format("Unknown shader type '{}'.", type));
     }
 
-    /* Compile the shader then check for any errors. */
+    /* Compile the shader then check for any errors. We need temporary storage
+       for the `const char *` because we need to pass the address of it to
+       `glShaderSource`. */
     auto code = source.c_str();
     glShaderSource(m_id, 1, &code, NULL);
     glCompileShader(m_id);
@@ -157,6 +175,19 @@ Shader::_Shader::~_Shader()
 {
     if (m_id > 0)
         glDeleteShader(m_id);
+}
+
+Shader::_Shader::_Shader(_Shader &&other)
+{
+    m_id = other.m_id;
+    other.m_id = 0;
+}
+
+Shader::_Shader &Shader::_Shader::operator=(_Shader &&other)
+{
+    m_id = other.m_id;
+    other.m_id = 0;
+    return *this;
 }
 
 GLuint Shader::_Shader::GetId() const

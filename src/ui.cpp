@@ -224,7 +224,7 @@ Ui::Ui()
     , m_time_domain_units_per_division()
     , m_frequency_domain_units_per_division()
     , m_sensor_units_per_division{0.0, 0.0, "s", "?"}
-    , m_should_auto_fit_time_domain(true)
+    , m_should_auto_fit_time_domain(false)
     , m_should_auto_fit_frequency_domain(true)
     , m_should_auto_fit_waterfall(true)
     , m_should_save_sensors_to_file(false)

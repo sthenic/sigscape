@@ -114,6 +114,7 @@ int main(int, char **)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 #endif
+    glfwWindowHint(GLFW_SAMPLES, 4);
 
     GLFWwindow *window = glfwCreateWindow(1920, 1080, "sigscape", NULL, NULL);
     if (window == NULL)
@@ -139,6 +140,8 @@ int main(int, char **)
     /* FIXME: https://github.com/ocornut/imgui/issues/4214 */
     /* FIXME: https://github.com/ocornut/imgui/issues/984 */
     /* FIXME: https://gamedev.stackexchange.com/questions/150214/render-in-a-imgui-window/207560 */
+
+    glEnable(GL_MULTISAMPLE);
 
     Ui ui;
     ui.Initialize(window, glsl_version);

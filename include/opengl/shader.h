@@ -24,7 +24,9 @@ public:
     /* Allow default construction of an uninitialized shader, or a shader where
        both the vertex shader and the fragment shader are specified. */
     Shader() = default;
-    Shader(const std::filesystem::path &vertex_path, const std::filesystem::path &fragment_path);
+    Shader(
+        const std::filesystem::path &vertex_path, const std::filesystem::path &fragment_path,
+        const std::filesystem::path &geometry_path = "");
 
     ~Shader();
 
@@ -53,11 +55,14 @@ private:
     class _Shader
     {
     public:
+        _Shader() = default;
         _Shader(const std::filesystem::path &path, GLenum type);
         ~_Shader();
 
         _Shader(const _Shader &other) = delete;
         _Shader &operator=(const _Shader &other) = delete;
+        _Shader(_Shader &&other);
+        _Shader &operator=(_Shader &&other);
 
         GLuint GetId() const;
 

@@ -134,9 +134,6 @@ int main(int, char **)
         return -1;
     }
 
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glEnable( GL_BLEND );
-
     /* FIXME: https://github.com/ocornut/imgui/issues/5485 */
     /* FIXME: https://github.com/ocornut/imgui/issues/6892 */
     /* FIXME: https://github.com/ocornut/imgui/issues/4214 */

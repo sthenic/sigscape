@@ -21,7 +21,7 @@ if (APPLE)
 endif()
 
 # Get version control information from `git describe`
-execute_process(COMMAND git describe --dirty
+execute_process(COMMAND git -C ${CMAKE_CURRENT_LIST_DIR} describe --dirty
                 OUTPUT_VARIABLE SIGSCAPE_REVISION
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
 message("Revision is ${SIGSCAPE_REVISION}")
@@ -312,6 +312,7 @@ set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-${SIGSCAPE_REVISION}-${CMAKE_SYSTEM
 set(CPACK_PACKAGE_CONTACT "Marcus Eriksson")
 
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS YES)
+set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
 
 # Required for NSIS start menu shortcut
 set(CPACK_PACKAGE_EXECUTABLES "${PROJECT_NAME};${PROJECT_NAME}")

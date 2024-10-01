@@ -47,6 +47,8 @@ struct Markers
     bool empty() const;
     Marker &last() { return last_marker->second; }
 
+    std::vector<Marker> filter(size_t digitizer, size_t channel) const;
+
     /* Expose the iterator interface to the wrapped std::map for convenience. */
     using iterator = std::map<size_t, Marker>::iterator;
     using const_iterator = std::map<size_t, Marker>::const_iterator;

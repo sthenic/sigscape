@@ -70,7 +70,9 @@ private:
     struct ChannelUiState
     {
         ChannelUiState(int &nof_channels_total);
-        void SaveToFile(const std::filesystem::path &path);
+        void SaveToFile(
+            const std::filesystem::path &path, const std::vector<Marker> &time_domain_markers,
+            const std::vector<Marker> &frequency_domain_markers) const;
         std::string GetDefaultFilename();
 
         ImVec4 color;

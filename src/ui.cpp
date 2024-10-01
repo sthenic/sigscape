@@ -63,7 +63,9 @@ Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     color = ImPlot::GetColormapColor(nof_channels_total++);
 }
 
-void Ui::ChannelUiState::SaveToFile(const std::filesystem::path &path)
+void Ui::ChannelUiState::SaveToFile(
+    const std::filesystem::path &path, const std::vector<Marker> &time_domain_markers,
+    const std::vector<Marker> &frequency_domain_markers) const
 {
     /* TODO: Prevent saving if the existing extension is not '.json'? */
     /* TODO: Popup if the file already exists? */
@@ -80,10 +82,18 @@ void Ui::ChannelUiState::SaveToFile(const std::filesystem::path &path)
     json["time_domain"]["y"]["data"] = record->time_domain->y;
     json["time_domain"]["y"]["unit"] = record->time_domain->y_properties.unit;
 
+    json["time_domain"]["markers"] = nlohmann::json::array();
+    for (const auto &marker : time_domain_markers)
+        json["time_domain"]["markers"] += {{"x", marker.x.value}, {"y", marker.y.value}};
+
     json["frequency_domain"]["x"]["data"] = record->frequency_domain->x;
     json["frequency_domain"]["x"]["unit"] = record->frequency_domain->x_properties.unit;
     json["frequency_domain"]["y"]["data"] = record->frequency_domain->y;
     json["frequency_domain"]["y"]["unit"] = record->frequency_domain->y_properties.unit;
+
+    json["frequency_domain"]["markers"] = nlohmann::json::array();
+    for (const auto &marker : frequency_domain_markers)
+        json["frequency_domain"]["markers"] += {{"x", marker.x.value}, {"y", marker.y.value}};
 
     /* TODO: Stringify header? */
 
@@ -1030,20 +1040,22 @@ void Ui::RenderPopups()
         if (m_digitizers[i].ui.popup_initialize_would_overwrite)
             RenderPopupInitializeWouldOverwrite(i);
 
-        /* FIXME: Improve this? Generalize to get/pass the UI objects instead? */
-        for (auto &chui : m_digitizers[i].ui.channels)
+        for (size_t ch = 0; ch < m_digitizers[i].ui.channels.size(); ++ch)
         {
-            if (chui.should_save_to_file)
+            auto &ui = m_digitizers[i].ui.channels[ch];
+            if (ui.should_save_to_file)
             {
                 m_file_browser.Display();
                 if (m_file_browser.HasSelected())
                 {
-                    chui.SaveToFile(m_file_browser.GetSelected());
-                    chui.should_save_to_file = false;
+                    ui.SaveToFile(
+                        m_file_browser.GetSelected(), m_time_domain_markers.filter(i, ch),
+                        m_frequency_domain_markers.filter(i, ch));
+                    ui.should_save_to_file = false;
                 }
                 else if (!m_file_browser.IsOpened())
                 {
-                    chui.should_save_to_file = false;
+                    ui.should_save_to_file = false;
                 }
             }
         }

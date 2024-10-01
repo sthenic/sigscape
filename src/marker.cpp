@@ -37,6 +37,18 @@ bool Markers::empty() const
     return markers.empty();
 }
 
+std::vector<Marker> Markers::filter(size_t digitizer, size_t channel) const
+{
+    std::vector<Marker> result{};
+    for (const auto &[_, marker] : markers)
+    {
+        if (digitizer == marker.digitizer && channel == marker.channel)
+            result.emplace_back(marker);
+    }
+
+    return result;
+}
+
 void Markers::insert(size_t digitizer, size_t channel, size_t sample, const Value &x,
                      const Value &y, bool add_delta_to_last)
 {

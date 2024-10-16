@@ -60,6 +60,19 @@ private:
 
     static int Callback(ImGuiInputTextCallbackData *data);
 };
+
+/* Calculate a color (black or white) for text provided an arbitrary background color. */
+ImVec4 GetTextColor(const ImVec4 &color);
+
+struct Bar
+{
+    std::string label;
+    double value;
+    ImVec4 color;
+};
+
+/* Add a horizontal bar stack. */
+void BarStack(const std::string &label, const ImVec2 &size, const std::vector<Bar> &bars);
 }
 
 static inline bool operator==(const ImVec2 &lhs, const ImVec2 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }

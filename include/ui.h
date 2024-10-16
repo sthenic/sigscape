@@ -302,6 +302,7 @@ private:
     void RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size);
     void RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size);
     void RenderApplicationMetrics(const ImVec2 &position, const ImVec2 &size);
+    void RenderNoiseAndDistortionBar(const ChannelUiState &ui);
 
     static std::string NowAsIso8601();
 
@@ -310,6 +311,7 @@ private:
     static constexpr float THIRD_COLUMN_RELATIVE_WIDTH = 0.22f;
 
     static constexpr ImVec2 COMMAND_PALETTE_BUTTON_SIZE = {85, 50};
+    static constexpr float NOISE_AND_DISTORTION_BAR_HEIGHT = 15.0f;
 
     static const ImVec4 COLOR_GREEN;
     static const ImVec4 COLOR_RED;

@@ -420,6 +420,7 @@ struct FrequencyDomainRecord : public BaseRecord
         , rbw(0.0, {"Hz", PRECISION, 1e6})
         , scale_factor(1.0)
         , energy_factor(1.0)
+        , relative_power{}
     {}
 
     /* Delete copy constructors until we need them. */
@@ -552,6 +553,13 @@ struct FrequencyDomainRecord : public BaseRecord
     Value rbw;
     double scale_factor;
     double energy_factor;
+    struct
+    {
+        double noise;
+        double gain_phase_spur;
+        double offset_spur;
+        std::vector<double> harmonics;
+    } relative_power;
 };
 
 struct Waterfall

@@ -2880,7 +2880,7 @@ void Ui::PlotSensorsSelected()
                 if (!sensor.is_plotted)
                     continue;
 
-                const auto label = fmt::format("{}:{}", digitizer.ui.identifier, sensor.label);
+                const auto label = fmt::format("{}: {}", digitizer.ui.identifier, sensor.label);
                 ImPlot::PlotLine(label.c_str(), sensor.record.x.data(), sensor.record.y.data(),
                                  static_cast<int>(sensor.record.x.size()));
             }
@@ -3635,6 +3635,8 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
                 flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV |
                         ImGuiTableFlags_NoSavedSettings;
 
+                RenderNoiseAndDistortionBar(ui);
+
                 if (ImGui::BeginTable("Metrics", 5, flags))
                 {
                     ImGui::TableSetupColumn("Metric0", ImGuiTableColumnFlags_WidthFixed);
@@ -3670,6 +3672,47 @@ void Ui::RenderApplicationMetrics(const ImVec2 &position, const ImVec2 &size)
     const ImGuiIO &io = ImGui::GetIO();
     ImGui::Text("Average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
     ImGui::End();
+}
+
+void Ui::RenderNoiseAndDistortionBar(const ChannelUiState &ui)
+{
+    const auto &power = ui.record->frequency_domain->relative_power;
+    const std::vector<ImGui::Bar> bars{
+        {"Noise", power.noise, ImVec4{1.0f, 1.0f, 1.0f, 1.0f}},
+        {"HD2", power.harmonics.at(0), ImPlot::GetColormapColor(0)},
+        {"HD3", power.harmonics.at(1), ImPlot::GetColormapColor(1)},
+        {"HD4", power.harmonics.at(2), ImPlot::GetColormapColor(2)},
+        {"HD5", power.harmonics.at(3), ImPlot::GetColormapColor(3)},
+        {"TIx", power.gain_phase_spur, ImPlot::GetColormapColor(4)},
+        {"TIo", power.offset_spur, ImPlot::GetColormapColor(5)},
+    };
+
+    ImGui::BarStack("BarStack", ImVec2{-1.0f, NOISE_AND_DISTORTION_BAR_HEIGHT}, bars);
+
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && ImGui::BeginTooltip())
+    {
+        ImGui::Text("NAD (rel.pow.)");
+        ImGui::Separator();
+        auto flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV |
+                     ImGuiTableFlags_NoSavedSettings;
+        if (ImGui::BeginTable("NAD", 2, flags))
+        {
+            ImGui::TableSetupColumn("Component", ImGuiTableColumnFlags_WidthFixed);
+            ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
+
+            for (const auto &bar : bars)
+            {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::Text(bar.label);
+                ImGui::TableNextColumn();
+                ImGui::Text(fmt::format("{: >4.1f}%", 100.0 * bar.value));
+            }
+
+            ImGui::EndTable();
+        }
+        ImGui::EndTooltip();
+    }
 }
 
 std::string Ui::NowAsIso8601()

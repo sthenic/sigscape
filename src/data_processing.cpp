@@ -449,6 +449,15 @@ void DataProcessing::AnalyzeFrequencyDomain(const std::vector<std::complex<doubl
     for (const auto &noise : m_noise_moving_average)
         frequency_domain->noise_moving_average.value += noise / normalization;
 
+    /* Calculate the relative power of the spectral components contributing to
+       the noise and distortion (not relative to the total power). */
+    const double denominator = noise_power + interleaving_spur_power + harmonic_distortion_power;
+    frequency_domain->relative_power.noise = noise_power / denominator;
+    frequency_domain->relative_power.gain_phase_spur = gain_phase_spur.power / denominator;
+    frequency_domain->relative_power.offset_spur = offset_spur.power / denominator;
+    for (const auto &harmonic : harmonics)
+        frequency_domain->relative_power.harmonics.emplace_back(harmonic.power / denominator);
+
     /* TODO: Adjust worst spur if it turns out that it's one of the harmonics
              that ended up within the blind spot? */
 }

@@ -877,16 +877,11 @@ void Digitizer::ConfigureDefaultAcquisition()
         acquisition.channel[ch].trigger_edge = ADQ_EDGE_RISING;
         acquisition.channel[ch].trigger_blocking_source = ADQ_FUNCTION_INVALID;
 
-        transfer.channel[ch].nof_buffers = 4;
+        transfer.channel[ch].nof_buffers = 8;
         transfer.channel[ch].metadata_enabled = 1;
         transfer.channel[ch].metadata_buffer_size = sizeof(ADQGen4RecordHeader);
-        transfer.channel[ch].record_size = acquisition.channel[ch].record_length *
-#if ADQAPI_VERSION_MAJOR >= 10
-                                           m_constant.channel[ch].nof_bytes_per_sample;
-#else
-                                           acquisition.channel[ch].bytes_per_sample;
-#endif
-        transfer.channel[ch].record_buffer_size = transfer.channel[ch].record_size;
+        transfer.channel[ch].record_buffer_size = 32 * m_constant.record_buffer_size_step;
+        transfer.channel[ch].dynamic_record_length_enabled = 1;
 
         readout.channel[ch].nof_record_buffers_max = ADQ_INFINITE_NOF_RECORDS;
         readout.channel[ch].record_buffer_size_max = ADQ_INFINITE_RECORD_LENGTH;
@@ -950,11 +945,6 @@ void Digitizer::ScaleRecordLength(double factor)
     if (result != sizeof(acquisition))
         ThrowDigitizerException("Failed to get acquisition parameters, result {}.", result);
 
-    ADQDataTransferParameters transfer;
-    result = ADQ_GetParameters(m_id.handle, m_id.index, ADQ_PARAMETER_ID_DATA_TRANSFER, &transfer);
-    if (result != sizeof(transfer))
-        ThrowDigitizerException("Failed to get transfer parameters, result {}.", result);
-
     for (int ch = 0; ch < m_constant.nof_acquisition_channels; ++ch)
     {
         if (acquisition.channel[ch].nof_records == 0)
@@ -964,22 +954,11 @@ void Digitizer::ScaleRecordLength(double factor)
             std::round(factor * static_cast<double>(acquisition.channel[ch].record_length)));
 
         acquisition.channel[ch].record_length = record_length;
-        transfer.channel[ch].record_size = record_length *
-#if ADQAPI_VERSION_MAJOR >= 10
-                                           m_constant.channel[ch].nof_bytes_per_sample;
-#else
-                                           acquisition.channel[ch].bytes_per_sample;
-#endif
-        transfer.channel[ch].record_buffer_size = transfer.channel[ch].record_size;
     }
 
     result = ADQ_SetParameters(m_id.handle, m_id.index, &acquisition);
     if (result != sizeof(acquisition))
         ThrowDigitizerException("Failed to set acquisition parameters, result {}.", result);
-
-    result = ADQ_SetParameters(m_id.handle, m_id.index, &transfer);
-    if (result != sizeof(transfer))
-        ThrowDigitizerException("Failed to set transfer parameters, result {}.", result);
 #endif
 }
 

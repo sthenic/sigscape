@@ -3617,14 +3617,6 @@ void Ui::RenderFrequencyDomainMetrics(const ImVec2 &position, const ImVec2 &size
 
             if (node_open)
             {
-                if (!ui.record->frequency_domain->AreAllMetricsValid())
-                {
-                    ImGui::SameLine();
-                    ImGui::PushStyleColor(ImGuiCol_Button, COLOR_RED);
-                    ImGui::SmallButton("INVALID");
-                    ImGui::PopStyleColor();
-                }
-
                 if ((ui.is_muted || IsAnySolo()) && !ui.is_solo)
                     ImGui::BeginDisabled();
 
@@ -3677,19 +3669,22 @@ void Ui::RenderApplicationMetrics(const ImVec2 &position, const ImVec2 &size)
 void Ui::RenderNoiseAndDistortionBar(const ChannelUiState &ui)
 {
     const auto &power = ui.record->frequency_domain->relative_power;
-    const std::vector<ImGui::Bar> bars{
-        {"Noise", power.noise, ImVec4{1.0f, 1.0f, 1.0f, 1.0f}},
-        {"HD2", power.harmonics.at(0), ImPlot::GetColormapColor(0)},
-        {"HD3", power.harmonics.at(1), ImPlot::GetColormapColor(1)},
-        {"HD4", power.harmonics.at(2), ImPlot::GetColormapColor(2)},
-        {"HD5", power.harmonics.at(3), ImPlot::GetColormapColor(3)},
-        {"TIx", power.gain_phase_spur, ImPlot::GetColormapColor(4)},
-        {"TIo", power.offset_spur, ImPlot::GetColormapColor(5)},
-    };
+    const auto bars = ui.record->frequency_domain->AreAllMetricsValid()
+        ? std::vector<ImGui::Bar>{
+            {"Noise", power.noise, ImVec4{1.0f, 1.0f, 1.0f, 1.0f}},
+            {"HD2", power.harmonics.at(0), ImPlot::GetColormapColor(0)},
+            {"HD3", power.harmonics.at(1), ImPlot::GetColormapColor(1)},
+            {"HD4", power.harmonics.at(2), ImPlot::GetColormapColor(2)},
+            {"HD5", power.harmonics.at(3), ImPlot::GetColormapColor(3)},
+            {"TIx", power.gain_phase_spur, ImPlot::GetColormapColor(4)},
+            {"TIo", power.offset_spur, ImPlot::GetColormapColor(5)}}
+        : std::vector<ImGui::Bar>{
+            {"Invalid", 1.0, COLOR_RED}};
 
     ImGui::BarStack("BarStack", ImVec2{-1.0f, NOISE_AND_DISTORTION_BAR_HEIGHT}, bars);
 
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && ImGui::BeginTooltip())
+    if (ui.record->frequency_domain->AreAllMetricsValid() &&
+        ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) && ImGui::BeginTooltip())
     {
         ImGui::Text("NAD (rel.pow.)");
         ImGui::Separator();

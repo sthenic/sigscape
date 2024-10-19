@@ -1,16 +1,12 @@
 #version 330 core
 
-layout (lines) in; // 2 positions in
+layout (lines) in;
 layout (triangle_strip, max_vertices = 6) out;
 
-// in vec3 vs_out_col[];
-// out vec3 gs_out_col;
+uniform float thickness;
 
 void main()
 {
-    // gs_out_col = vs_out_col[0];
-    float thickness = 0.001;
-
     /* Extract the (x,y) coordinates of the two points on the line. */
     vec2 p1 = gl_in[0].gl_Position.xy / thickness;
     vec2 p2 = gl_in[1].gl_Position.xy / thickness;

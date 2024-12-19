@@ -33,7 +33,7 @@ void Identification::MainLoop()
     /* Enable the trace logs. */
     const auto &log_directory = m_persistent_directories.GetLogDirectory();
     if (!log_directory.empty()
-        && !ADQControlUnit_EnableErrorTrace(handle, 0x00010000, log_directory.string().c_str()))
+        && !ADQControlUnit_EnableErrorTrace(handle, LOG_LEVEL_INFO, log_directory.string().c_str()))
     {
         Log::log->error("Failed to redirect trace logging to '{}'.", log_directory.string());
     }

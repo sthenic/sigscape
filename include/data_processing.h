@@ -20,7 +20,6 @@ enum class FrequencyDomainScaling
 enum class DataProcessingMessageId
 {
     SET_AFE_PARAMETERS,
-    SET_CLOCK_SYSTEM_PARAMETERS,
     SET_PROCESSING_PARAMETERS,
     CLEAR_PROCESSING_MEMORY,
 };
@@ -90,7 +89,6 @@ private:
     std::string m_label;
     ADQAnalogFrontendParametersChannel m_afe;
     ADQConstantParameters m_constant;
-    ADQClockSystemParameters m_clock_system;
     WindowCache m_window_cache;
     DataProcessingParameters m_parameters;
     TimeDomainMetrics m_time_domain_metrics;

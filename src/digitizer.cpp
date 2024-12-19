@@ -478,8 +478,6 @@ void Digitizer::StartDataAcquisition()
 
             m_processing_threads[i]->EmplaceMessage(
                 DataProcessingMessageId::SET_AFE_PARAMETERS, afe.channel[i]);
-            m_processing_threads[i]->EmplaceMessage(
-                DataProcessingMessageId::SET_CLOCK_SYSTEM_PARAMETERS, clock_system);
 
             if (SCAPE_EOK != m_processing_threads[i]->Start())
             {

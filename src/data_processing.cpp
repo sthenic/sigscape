@@ -84,7 +84,6 @@ DataProcessing::DataProcessing(void *handle, int index, int channel, const std::
     , m_label{label}
     , m_afe{1000.0, 0.0}
     , m_constant{constant}
-    , m_clock_system{constant.clock_system}
     , m_window_cache()
     , m_parameters{}
     , m_time_domain_metrics{}
@@ -237,7 +236,7 @@ int DataProcessing::ProcessRecord(const ADQGen4Record *raw_time_domain,
     {
         /* Processing the raw time domain data can throw if the data format is unsupported. */
         processed_record.time_domain = std::make_shared<TimeDomainRecord>(
-            raw_time_domain, m_afe, m_clock_system, code_normalization,
+            raw_time_domain, m_afe, code_normalization,
             m_parameters.convert_horizontal, m_parameters.convert_vertical
         );
     }
@@ -762,10 +761,6 @@ void DataProcessing::ProcessMessages()
         {
         case DataProcessingMessageId::SET_AFE_PARAMETERS:
             m_afe = std::move(message.afe);
-            break;
-
-        case DataProcessingMessageId::SET_CLOCK_SYSTEM_PARAMETERS:
-            m_clock_system = std::move(message.clock_system);
             break;
 
         case DataProcessingMessageId::SET_PROCESSING_PARAMETERS:

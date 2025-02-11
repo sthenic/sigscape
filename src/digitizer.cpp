@@ -431,13 +431,17 @@ void Digitizer::CheckStatus()
         /* Update the timestamp. */
         m_last_status_timestamp = now;
 
-        ADQDramStatus dram_status;
-        if (sizeof(dram_status) ==
-            ADQ_GetStatus(m_id.handle, m_id.index, ADQ_STATUS_ID_DRAM, &dram_status))
+        /* Skip DRAM status if FWATD. */
+        if (m_constant.firmware.type != ADQ_FIRMWARE_TYPE_FWATD)
         {
-            double fill_percent = static_cast<double>(dram_status.fill) /
-                                  static_cast<double>(m_constant.dram_size);
-            _EmplaceMessage(DigitizerMessageId::DRAM_FILL, fill_percent);
+            ADQDramStatus dram_status;
+            if (sizeof(dram_status) ==
+                ADQ_GetStatus(m_id.handle, m_id.index, ADQ_STATUS_ID_DRAM, &dram_status))
+            {
+                double fill_percent = static_cast<double>(dram_status.fill) /
+                                      static_cast<double>(m_constant.dram_size);
+                _EmplaceMessage(DigitizerMessageId::DRAM_FILL, fill_percent);
+            }
         }
 
         ADQOverflowStatus overflow_status;

@@ -34,9 +34,11 @@ set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 
 include(FetchContent)
 FetchContent_Declare(
-  glfw
-  GIT_REPOSITORY https://github.com/glfw/glfw
-  GIT_TAG 3.3.6
+    glfw
+    GIT_REPOSITORY https://github.com/glfw/glfw
+    GIT_TAG 3.3.6
+    GIT_SHALLOW TRUE
+    GIT_PROGRESS TRUE
 )
 
 # Disable examples etc.
@@ -52,6 +54,8 @@ FetchContent_Declare(
     implot
     GIT_REPOSITORY https://github.com/epezent/implot
     GIT_TAG v0.16
+    GIT_SHALLOW TRUE
+    GIT_PROGRESS TRUE
 )
 FetchContent_MakeAvailable(implot)
 
@@ -59,6 +63,8 @@ FetchContent_Declare(
     imgui
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
     GIT_TAG v1.90
+    GIT_SHALLOW TRUE
+    GIT_PROGRESS TRUE
 )
 FetchContent_MakeAvailable(imgui)
 
@@ -66,6 +72,8 @@ FetchContent_Declare(
     fmt
     GIT_REPOSITORY https://github.com/fmtlib/fmt
     GIT_TAG 9.1.0
+    GIT_SHALLOW TRUE
+    GIT_PROGRESS TRUE
 )
 FetchContent_MakeAvailable(fmt)
 
@@ -73,6 +81,8 @@ FetchContent_Declare(
     zlib
     GIT_REPOSITORY https://github.com/madler/zlib
     GIT_TAG v1.2.13
+    GIT_SHALLOW TRUE
+    GIT_PROGRESS TRUE
 )
 set(SKIP_INSTALL_ALL ON)
 FetchContent_MakeAvailable(zlib)
@@ -81,6 +91,8 @@ FetchContent_Declare(
     png
     GIT_REPOSITORY https://github.com/glennrp/libpng
     GIT_TAG v1.6.39
+    GIT_SHALLOW TRUE
+    GIT_PROGRESS TRUE
 )
 
 set(ZLIB_INCLUDE_DIRS ${zlib_SOURCE_DIR} ${zlib_BINARY_DIR})
@@ -98,6 +110,8 @@ FetchContent_Declare(
     json
     GIT_REPOSITORY https://github.com/nlohmann/json
     GIT_TAG v3.11.2
+    GIT_SHALLOW TRUE
+    GIT_PROGRESS TRUE
 )
 FetchContent_MakeAvailable(json)
 
@@ -105,6 +119,8 @@ FetchContent_Declare(
     spdlog
     GIT_REPOSITORY https://github.com/gabime/spdlog
     GIT_TAG v1.11.0
+    GIT_SHALLOW TRUE
+    GIT_PROGRESS TRUE
 )
 FetchContent_MakeAvailable(spdlog)
 

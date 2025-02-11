@@ -802,45 +802,74 @@ void Ui::RenderMenuBar()
         m_should_screenshot = true;
     }
 
-    if (ImGui::BeginMenu("Demo"))
+    if (ImGui::MenuItem("Autofit"))
     {
-        ImGui::MenuItem("ImGui", NULL, &m_show_imgui_demo_window);
-        ImGui::MenuItem("ImPlot", NULL, &m_show_implot_demo_window);
-        ImGui::EndMenu();
+        m_should_auto_fit_time_domain = true;
+        m_should_auto_fit_frequency_domain = true;
+        m_should_auto_fit_waterfall = true;
     }
 
-    if (ImGui::BeginMenu("Style"))
+    if (ImGui::BeginMenu("Assorted"))
     {
-        static int style_idx = 0;
-        if (ImGui::Combo("##combostyle", &style_idx, "Dark\0Light\0"))
+        if (ImGui::BeginMenu("Demo"))
         {
-            switch (style_idx)
-            {
-            case 0:
-                ImGui::StyleColorsDark();
-                break;
-            case 1:
-                ImGui::StyleColorsLight();
-                break;
-            }
+            ImGui::MenuItem("ImGui", NULL, &m_show_imgui_demo_window);
+            ImGui::MenuItem("ImPlot", NULL, &m_show_implot_demo_window);
+            ImGui::EndMenu();
         }
-        ImGui::EndMenu();
-    }
 
-    if (ImGui::BeginMenu("Log"))
-    {
-        const auto LogLevelGetter = [](void *, int idx, const char **label) -> bool
+        if (ImGui::BeginMenu("Style"))
         {
-            /* Assume a straight mapping between the index and the log level enumeration. */
-            static const std::vector<spdlog::string_view_t> log_levels SPDLOG_LEVEL_NAMES;
-            *label = log_levels.at(idx).data();
-            return true;
-        };
+            static bool style_colors_dark = true;
+            static bool style_colors_light = false;
 
-        static int log_level = spdlog::level::info;
-        if (ImGui::Combo("##combologlevel", &log_level, LogLevelGetter, NULL, spdlog::level::n_levels))
+            if (ImGui::MenuItem("Dark", NULL, style_colors_dark))
+            {
+                ImGui::StyleColorsDark();
+                style_colors_dark = true;
+                style_colors_light = false;
+            }
+
+            if (ImGui::MenuItem("Light", NULL, style_colors_light))
+            {
+                ImGui::StyleColorsLight();
+                style_colors_light = true;
+                style_colors_dark = false;
+            }
+
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Log level"))
         {
-            Log::log->set_level(static_cast<spdlog::level::level_enum>(log_level));
+            static std::vector<std::tuple<const char *, spdlog::level::level_enum, bool>> levels =
+            {
+                {"Trace", spdlog::level::trace, false},
+                {"Debug", spdlog::level::debug, false},
+                {"Info", spdlog::level::info, true},
+                {"Warning", spdlog::level::warn, false},
+                {"Error", spdlog::level::err, false},
+                {"Critical", spdlog::level::critical, false},
+                {"Off", spdlog::level::off, false},
+            };
+
+            const auto Reset = [&]()
+            {
+                for (auto &[label, level, state] : levels)
+                    state = false;
+            };
+
+            for (auto &[label, level, state] : levels)
+            {
+                if (ImGui::MenuItem(label, NULL, state))
+                {
+                    Reset();
+                    state = true;
+                    Log::log->set_level(level);
+                }
+            }
+
+            ImGui::EndMenu();
         }
 
         ImGui::EndMenu();

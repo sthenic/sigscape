@@ -961,6 +961,10 @@ void Digitizer::ScaleRecordLength(double factor)
     result = ADQ_SetParameters(m_id.handle, m_id.index, &acquisition);
     if (result != sizeof(acquisition))
         ThrowDigitizerException("Failed to set acquisition parameters, result {}.", result);
+
+    /* Finish up by getting the current parameters to make these settings
+       reflect in the configuration file. */
+    GetParameters(ADQ_PARAMETER_ID_TOP, m_parameters.top, m_watchers.top);
 #endif
 }
 

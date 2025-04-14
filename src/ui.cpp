@@ -2922,7 +2922,7 @@ void Ui::RenderSensorPlot()
     ImPlot::PushStyleVar(ImPlotStyleVar_FitPadding, ImVec2(0.0f, 0.1f));
     if (ImPlot::BeginPlot("Sensors##Plot", ImVec2(-1, -1), ImPlotFlags_NoTitle))
     {
-        ImPlot::SetupLegend(ImPlotLocation_NorthEast, ImPlotLegendFlags_Sort);
+        ImPlot::SetupLegend(ImPlotLocation_NorthWest, ImPlotLegendFlags_Sort);
         ImPlot::SetupAxisFormat(ImAxis_X1, Format::Metric, (void *)"s");
         ImPlot::SetupAxis(ImAxis_X1, NULL, ImPlotAxisFlags_AutoFit);
         ImPlot::SetupAxisScale(ImAxis_X1, ImPlotScale_Time);

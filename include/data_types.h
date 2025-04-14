@@ -341,6 +341,11 @@ struct TimeDomainRecord : public BaseRecord
         return {
             {"Record number", fmt::format("{: >8d}", header.record_number)},
             {
+                "Record length",
+                sampling_period.Format(static_cast<double>(header.record_length) * sampling_period.value),
+                fmt::format("{: >8d} S", header.record_length),
+            },
+            {
                 "Maximum",
                 metrics.max.Format(),
                 {metrics.max.Mean().Format(), StatisticalMeasureHover(metrics.max)},

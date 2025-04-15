@@ -52,8 +52,8 @@ FetchContent_MakeAvailable(glfw)
 
 FetchContent_Declare(
     implot
-    GIT_REPOSITORY https://github.com/epezent/implot
-    GIT_TAG v0.16
+    GIT_REPOSITORY https://github.com/sthenic/implot
+    GIT_TAG 1038938842bd84ea9e28a3b13c2e3ff13ac6eda9
     GIT_SHALLOW TRUE
     GIT_PROGRESS TRUE
 )

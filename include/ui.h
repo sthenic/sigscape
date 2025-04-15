@@ -81,6 +81,7 @@ private:
         bool is_solo;
         bool is_sample_markers_enabled;
         bool is_plot_frame_enabled;
+        bool is_show_input_range_enabled;
         bool is_harmonics_annotated;
         bool is_interleaving_spurs_annotated;
         bool is_time_domain_visible;

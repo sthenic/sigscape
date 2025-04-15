@@ -48,6 +48,7 @@ Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     , is_solo(false)
     , is_sample_markers_enabled(false)
     , is_plot_frame_enabled(false)
+    , is_show_input_range_enabled(false)
     , is_harmonics_annotated(true)
     , is_interleaving_spurs_annotated(true)
     , is_time_domain_visible(true)
@@ -2690,6 +2691,9 @@ void Ui::PlotTimeDomainSelected()
       }
     }
 
+    /* If input range visualization is switched on, we want to plot these guides
+       (stretching infinitely on the x-axis) first, so that the records are
+       shown in the on top of these in the foreground. */
     for (auto &[i, ch, ui] : FilterUiStates())
     {
         /* One-shot configuration to sample units (assuming to be equal for all
@@ -2708,6 +2712,31 @@ void Ui::PlotTimeDomainSelected()
             first = false;
         }
 
+        if (ui->is_show_input_range_enabled)
+        {
+          ImPlot::PushStyleColor(ImPlotCol_Line, ui->color);
+          ImPlot::PushStyleColor(ImPlotCol_Fill, ui->color);
+          ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.10f);
+
+          const std::vector<double> y{
+            ui->record->time_domain->range_min.value,
+            ui->record->time_domain->range_max.value,
+          };
+
+          const auto label_lines = fmt::format("##input_range_lines_{}", ui->record->label.c_str());
+          ImPlot::PlotInfLines(label_lines.c_str(), y.data(), static_cast<int>(y.size()),
+                               ImPlotInfLinesFlags_Horizontal);
+
+          const auto label_shaded = fmt::format("##input_range_shaded_{}", ui->record->label.c_str());
+          ImPlot::PlotInfShaded(label_shaded.c_str(), y[0], y[1], ImPlotInfLinesFlags_Horizontal);
+
+          ImPlot::PopStyleColor(2);
+          ImPlot::PopStyleVar();
+        }
+    }
+
+    for (auto &[i, ch, ui] : FilterUiStates())
+    {
         /* Unset the automatic auto fit as soon as we know we have something to
            plot (it's already been armed at this point). */
         m_should_auto_fit_time_domain = false;
@@ -2728,7 +2757,7 @@ void Ui::PlotTimeDomainSelected()
                     continue;
 
                 const std::string label = fmt::format("##{}{}", record->label.c_str(), j);
-                ImPlot::PlotLine(record->label.c_str(), record->time_domain->x.data(),
+                ImPlot::PlotLine(label.c_str(), record->time_domain->x.data(),
                                  record->time_domain->y.data(),
                                  static_cast<int>(record->time_domain->x.size()));
             }
@@ -3530,6 +3559,7 @@ void Ui::RenderTimeDomainMetrics(const ImVec2 &position, const ImVec2 &size)
                 ImGui::MenuItem("Mute", "", &ui.is_muted);
                 ImGui::MenuItem("Sample markers", "", &ui.is_sample_markers_enabled);
                 ImGui::MenuItem("Plot frame", "", &ui.is_plot_frame_enabled);
+                ImGui::MenuItem("Show input range", "", &ui.is_show_input_range_enabled);
 
                 if (ImGui::MenuItem("Add to memory"))
                     ui.memory.push_back(ui.record);

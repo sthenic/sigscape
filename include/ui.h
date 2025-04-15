@@ -196,6 +196,7 @@ private:
     UnitsPerDivision m_time_domain_units_per_division;
     UnitsPerDivision m_frequency_domain_units_per_division;
     UnitsPerDivision m_sensor_units_per_division;
+    bool m_should_fit_to_input_range;
     bool m_should_auto_fit_time_domain;
     bool m_should_auto_fit_frequency_domain;
     bool m_should_auto_fit_waterfall;

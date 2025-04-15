@@ -224,6 +224,7 @@ Ui::Ui()
     , m_time_domain_units_per_division()
     , m_frequency_domain_units_per_division()
     , m_sensor_units_per_division{0.0, 0.0, "s", "?"}
+    , m_should_fit_to_input_range(false)
     , m_should_auto_fit_time_domain(true)
     , m_should_auto_fit_frequency_domain(true)
     , m_should_auto_fit_waterfall(true)
@@ -2672,6 +2673,23 @@ void Ui::PlotTimeDomainSelected()
     int marker_id = 0;
     bool first = true;
 
+    /* We keep track of the maximum and minimum input range we encounter to be
+       able to zoom the Y-axis to the input range limits we encounter. */
+    double range_max = std::numeric_limits<double>::min();
+    double range_min = std::numeric_limits<double>::max();
+
+    if (m_should_fit_to_input_range)
+    {
+      for (auto &[i, ch, ui] : FilterUiStates())
+      {
+        if (ui->record->time_domain->range_max.value > range_max)
+          range_max = ui->record->time_domain->range_max.value;
+
+        if (ui->record->time_domain->range_min.value < range_min)
+          range_min = ui->record->time_domain->range_min.value;
+      }
+    }
+
     for (auto &[i, ch, ui] : FilterUiStates())
     {
         /* One-shot configuration to sample units (assuming to be equal for all
@@ -2683,13 +2701,17 @@ void Ui::PlotTimeDomainSelected()
             ImPlot::SetupAxisFormat(ImAxis_Y1, Format::Metric, record->y_properties.unit.data());
             m_time_domain_units_per_division.x_unit = record->x_properties.delta_unit;
             m_time_domain_units_per_division.y_unit = record->y_properties.delta_unit;
+
+            if (m_should_fit_to_input_range)
+              ImPlot::SetupAxisLimits(ImAxis_Y1, 1.1 * range_min, 1.1 * range_max, ImPlotCond_Always);
+
             first = false;
         }
 
         /* Unset the automatic auto fit as soon as we know we have something to
            plot (it's already been armed at this point). */
-        if (m_should_auto_fit_time_domain)
-          m_should_auto_fit_time_domain = false;
+        m_should_auto_fit_time_domain = false;
+        m_should_fit_to_input_range = false;
 
         if (ui->is_sample_markers_enabled)
             ImPlot::SetNextMarkerStyle(ImPlotMarker_Cross);
@@ -2967,6 +2989,13 @@ void Ui::RenderTimeDomain(const ImVec2 &position, const ImVec2 &size)
     {
         if (ImGui::BeginTabItem("Channels"))
         {
+            ImGui::SetCursorPosX(ImGui::GetWindowContentRegionMax().x -
+                                2 * ImGui::GetStyle().ItemInnerSpacing.x -
+                                ImGui::CalcTextSize("Zoom to Input Range").x);
+
+            if (ImGui::SmallButton("Zoom to Input Range"))
+              m_should_fit_to_input_range = true;
+
             RenderChannelPlot();
             ImGui::EndTabItem();
         }

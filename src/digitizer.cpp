@@ -366,19 +366,23 @@ void Digitizer::UpdateSystemManagerObjects()
             }
 
             /* TODO: Maybe a configurable value? */
-            /* Storing 10 hours of sensor data (1 Hz sampling rate) will mean
-               that a single sensor consumes at most about 0.5 MB of memory. I
-               think that's reasonable if you let it run that long. */
-            if (sensor.y.size() > 60 * 60 * 10)
+            /* Storing 24 hours of sensor data (1 Hz sampling rate) will mean
+               that a single sensor consumes at most about 1.4 MB of memory.
+               I think that's reasonable if you let it run that long. */
+            if (sensor.y.size() > 60 * 60 * 24)
             {
                 sensor.y.erase(sensor.y.begin());
                 sensor.x.erase(sensor.x.begin());
             }
 
+            /* Store the sensor value together with a time point expressed in
+               seconds since the epoch with millisecond accuracy. */
+            auto milliseconds_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                                std::chrono::system_clock::now().time_since_epoch()
+                                            ).count();
+
+            sensor.x.emplace_back(static_cast<double>(milliseconds_since_epoch) / 1e3);
             sensor.y.emplace_back(value);
-            double last = (sensor.x.size() > 0) ? sensor.x.back()
-                                                : static_cast<double>(std::time(NULL));
-            sensor.x.emplace_back(last + sensor.step);
         }
 
         /* Make a copy of the current sensor records and push a shared pointer

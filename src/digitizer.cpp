@@ -46,6 +46,10 @@ Digitizer::Digitizer(void *handle, int init_index, int index,
     , m_sensor_record_queue()
     , m_sensor_last_record_timestamp(std::chrono::high_resolution_clock::now())
     , m_last_status_timestamp(std::chrono::high_resolution_clock::now())
+    , m_sensor_next_idx{0}
+    , m_sensor_update_length{0}
+    , m_sensor_update_period{1.0}
+    , m_sensor_update_enabled{true}
 {
     m_sensor_record_queue.Start();
 }
@@ -335,15 +339,27 @@ void Digitizer::InitializeSystemManagerObjects()
 
 void Digitizer::UpdateSystemManagerObjects()
 {
+    if (!m_sensor_update_enabled)
+        return;
+
     const auto now = std::chrono::high_resolution_clock::now();
-    if ((now - m_sensor_last_record_timestamp).count() / 1e6 >= SENSOR_SAMPLING_PERIOD_MS)
+    if ((now - m_sensor_last_record_timestamp).count() >= m_sensor_update_period * 1e9)
     {
         /* Update the timestamp. */
         m_sensor_last_record_timestamp = now;
 
-        for (auto &sensor : m_sensor_records)
+        /* If the number of sensors to update per call is zero, we update all of
+           the sensor records. Otherwise, we do it it blocks of the input value. */
+        size_t update_length = m_sensor_update_length == 0 ? m_sensor_records.size()
+                                                           : m_sensor_update_length;
+
+        /* Cap the value to the end of the container. */
+        size_t update_length_bounded = std::min(
+            update_length, m_sensor_records.size() - m_sensor_next_idx);
+
+        for (size_t i = 0; i < update_length_bounded; ++i)
         {
-            sensor.step = SENSOR_SAMPLING_PERIOD_MS / 1e3;
+            auto &sensor = m_sensor_records[i + m_sensor_next_idx];
             struct ArgSensorGetValue arg
             {
                 static_cast<uint32_t>(sensor.id), SENSOR_FORMAT_FLOAT
@@ -384,6 +400,10 @@ void Digitizer::UpdateSystemManagerObjects()
             sensor.x.emplace_back(static_cast<double>(milliseconds_since_epoch) / 1e3);
             sensor.y.emplace_back(value);
         }
+
+        /* Advance to the index of the next sensor to be updated, taking care to
+           wrap back around to zero when we've reached the last sensor. */
+        m_sensor_next_idx = (m_sensor_next_idx + update_length_bounded) % m_sensor_records.size();
 
         /* Make a copy of the current sensor records and push a shared pointer
            to the outbound queue. */
@@ -616,6 +636,13 @@ void Digitizer::HandleMessageInIdle(const DigitizerMessage &message)
         }
         break;
 
+    case DigitizerMessageId::SET_SENSOR_PARAMETERS:
+        m_sensor_update_period = message.dvalue;
+        m_sensor_update_length = static_cast<size_t>(message.ivalue);
+        m_sensor_update_enabled = message.bvalue;
+        m_sensor_next_idx = 0;
+        break;
+
     case DigitizerMessageId::CLEAR_PROCESSING_MEMORY:
         for (const auto &t : m_processing_threads)
             t->EmplaceMessage(DataProcessingMessageId::CLEAR_PROCESSING_MEMORY);
@@ -716,6 +743,13 @@ void Digitizer::HandleMessageInAcquisition(const DigitizerMessage &message)
             t->EmplaceMessage(DataProcessingMessageId::SET_PROCESSING_PARAMETERS,
                               std::move(message.processing_parameters));
         }
+        break;
+
+    case DigitizerMessageId::SET_SENSOR_PARAMETERS:
+        m_sensor_update_period = message.dvalue;
+        m_sensor_update_length = static_cast<size_t>(message.ivalue);
+        m_sensor_update_enabled = message.bvalue;
+        m_sensor_next_idx = 0;
         break;
 
     case DigitizerMessageId::CLEAR_PROCESSING_MEMORY:

@@ -170,6 +170,10 @@ Ui::DigitizerUiState::DigitizerUiState()
     , popup_initialize_would_overwrite(false)
     , is_selected(false)
     , dram_fill(0.0f)
+    , sensor_update_period(1.0)
+    , sensor_update_length(0)
+    , sensor_update_length_max(0)
+    , sensor_update_enabled(true)
     , boot_status()
     , sensor_groups{}
     , channels{}
@@ -710,8 +714,34 @@ void Ui::HandleMessage(DigitizerUi &digitizer, const DigitizerMessage &message)
 
     case DigitizerMessageId::SENSOR_TREE:
         digitizer.ui.sensor_groups.clear();
+        digitizer.ui.sensor_update_length_max = 0;
         for (const auto &group : message.sensor_tree)
+        {
             digitizer.ui.sensor_groups.try_emplace(group.id, group.label, group.sensors);
+            digitizer.ui.sensor_update_length_max += group.sensors.size();
+        }
+
+        /* We reduce the rate at which sensors are updated if we're using any
+           interface other than PCIe. */
+        if (digitizer.ui.constant.communication_interface.type == ADQ_COMMUNICATION_INTERFACE_PCIE)
+        {
+            digitizer.ui.sensor_update_length = digitizer.ui.sensor_update_length_max;
+            digitizer.ui.sensor_update_period = 1.0;
+        }
+        else
+        {
+            digitizer.ui.sensor_update_length = 5;
+            digitizer.ui.sensor_update_period = 5.0;
+        }
+
+        /* Push the sensor settings to the digitizer. */
+        digitizer.interface->PushMessage({
+            DigitizerMessageId::SET_SENSOR_PARAMETERS,
+            digitizer.ui.sensor_update_length,
+            digitizer.ui.sensor_update_period,
+            digitizer.ui.sensor_update_enabled,
+        });
+
         break;
 
     case DigitizerMessageId::BOOT_STATUS:
@@ -1859,6 +1889,64 @@ void Ui::RenderSensors()
 
     if (!enable)
         ImGui::EndDisabled();
+
+    bool push_parameters = false;
+    const float WIDGET_WIDTH = 0.6f * ImGui::GetWindowWidth();
+    static const ImS32 NOF_SENSORS_TO_UPDATE_LIMIT_LOW = 1;
+
+    if (ImGui::Checkbox("##sensorupdateenable", &ui->sensor_update_enabled))
+    {
+        push_parameters = true;
+    }
+
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+        ImGui::SetTooltip("%s", ui->sensor_update_enabled ? "Enabled" : "Disabled");
+
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(WIDGET_WIDTH - 27.0f);
+    static ImGui::InputDoubleMetric sensor_update_period(
+        "Update period", ui->sensor_update_period, "{} {}s", 1);
+
+    if (!ui->sensor_update_enabled)
+        ImGui::BeginDisabled();
+
+    if (sensor_update_period.Changed())
+    {
+        push_parameters = true;
+        ui->sensor_update_period = sensor_update_period.value;
+    }
+
+    ImGui::SameLine();
+    ImGui::TextDisabled("(?)");
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+        ImGui::SetTooltip("Time between consecutive sensor readings");
+
+    ImGui::SetNextItemWidth(WIDGET_WIDTH);
+    if (ImGui::SliderScalar(
+            "Update length", ImGuiDataType_S32, &ui->sensor_update_length,
+            &NOF_SENSORS_TO_UPDATE_LIMIT_LOW, &ui->sensor_update_length_max, NULL,
+            ImGuiSliderFlags_AlwaysClamp))
+    {
+        push_parameters = true;
+    }
+
+    ImGui::SameLine();
+    ImGui::TextDisabled("(?)");
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+        ImGui::SetTooltip("Number of sensors read at each update interval");
+
+    if (!ui->sensor_update_enabled)
+        ImGui::EndDisabled();
+
+    if (push_parameters)
+    {
+        PushMessage({
+            DigitizerMessageId::SET_SENSOR_PARAMETERS,
+            ui->sensor_update_length,
+            ui->sensor_update_period,
+            ui->sensor_update_enabled,
+        });
+    }
 
     ImGui::Separator();
 

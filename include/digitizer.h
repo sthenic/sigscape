@@ -54,6 +54,7 @@ enum class DigitizerMessageId
     INITIALIZE_PARAMETERS_FORCE,
     SET_CLOCK_SYSTEM_PARAMETERS,
     SET_PROCESSING_PARAMETERS,
+    SET_SENSOR_PARAMETERS,
     GET_TOP_PARAMETERS_FILENAME,
     GET_CLOCK_SYSTEM_PARAMETERS_FILENAME,
     CLEAR_PROCESSING_MEMORY,
@@ -146,6 +147,14 @@ struct DigitizerMessage
         , dvalue(dvalue)
     {}
 
+    /* Create a integer/double/bool message. */
+    DigitizerMessage(DigitizerMessageId id, int ivalue, double dvalue, bool bvalue)
+        : id(id)
+        , ivalue(ivalue)
+        , dvalue(dvalue)
+        , bvalue(bvalue)
+    {}
+
     /* Create a message holding data processing parameters. */
     DigitizerMessage(DigitizerMessageId id, const DataProcessingParameters &parameters)
         : id(id)
@@ -179,6 +188,7 @@ struct DigitizerMessage
     int ivalue{};
     int result{};
     double dvalue{};
+    bool bvalue{};
     DataProcessingParameters processing_parameters{};
     SensorTree sensor_tree{};
     std::vector<BootEntry> boot_entries{};
@@ -256,6 +266,12 @@ private:
     std::chrono::high_resolution_clock::time_point m_sensor_last_record_timestamp;
     std::chrono::high_resolution_clock::time_point m_last_status_timestamp;
 
+    /* Parameters for the sensor update mechanism. */
+    size_t m_sensor_next_idx;
+    size_t m_sensor_update_length;
+    double m_sensor_update_period;
+    bool m_sensor_update_enabled;
+
     void MainInitialization();
 
     void SignalError(const std::string &message);
@@ -305,7 +321,6 @@ private:
     template <typename... Args>
     void ThrowDigitizerException(Args &&... args);
 
-    static constexpr double SENSOR_SAMPLING_PERIOD_MS = 1000.0;
     static constexpr double STATUS_SAMPLING_PERIOD_MS = 1000.0;
     static constexpr int DEFAULT_ACTIVITY_THRESHOLD_MS = 1000;
     static constexpr int ACTIVITY_HYSTERESIS_MS = 500;
@@ -415,6 +430,9 @@ struct fmt::formatter<DigitizerMessageId> : formatter<string_view>
             break;
         case DigitizerMessageId::SET_PROCESSING_PARAMETERS:
             name = "SET_PROCESSING_PARAMETERS";
+            break;
+        case DigitizerMessageId::SET_SENSOR_PARAMETERS:
+            name = "SET_SENSOR_PARAMETERS";
             break;
         case DigitizerMessageId::GET_TOP_PARAMETERS_FILENAME:
             name = "GET_TOP_PARAMETERS_FILENAME";

@@ -152,6 +152,10 @@ private:
         bool popup_initialize_would_overwrite;
         bool is_selected;
         float dram_fill;
+        double sensor_update_period;
+        int sensor_update_length;
+        int sensor_update_length_max;
+        bool sensor_update_enabled;
 
         BootStatusUiState boot_status;
         std::map<uint32_t, SensorGroupUiState> sensor_groups;

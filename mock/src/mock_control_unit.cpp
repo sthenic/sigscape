@@ -174,6 +174,7 @@ void *CreateADQControlUnit()
                                                        ADQ_COMMUNICATION_INTERFACE_PCIE,
                                                        3,
                                                        8,
+                                                       8000 * 8,
                                                    },
                                                    {
                                                        {"A", 2, {2500.0}, 65536},
@@ -193,9 +194,10 @@ void *CreateADQControlUnit()
                                                        "400-001-XYZ",
                                                    },
                                                    {
-                                                       ADQ_COMMUNICATION_INTERFACE_PCIE,
+                                                       ADQ_COMMUNICATION_INTERFACE_USB,
                                                        2,
-                                                       4,
+                                                       2,
+                                                       10000,
                                                    },
                                                    {
                                                        {"A", 1, {2500.0}, 65536},

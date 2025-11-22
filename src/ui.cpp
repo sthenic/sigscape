@@ -2242,6 +2242,18 @@ void Ui::RenderStaticInformation()
             Row("Link generation", fmt::format("{}", ui->constant.communication_interface.link_generation));
             Row("Link width", fmt::format("{}", ui->constant.communication_interface.link_width));
 
+#if ADQAPI_VERSION_MAJOR >= 13
+            Row("Link rate",
+                fmt::format(
+                    "{} ({})",
+                    Format::Metric(
+                        static_cast<double>(ui->constant.communication_interface.link_rate) * 1e6,
+                        "{:.0f} {}b/s", 1e9, 1.0),
+                    Format::Metric(
+                        static_cast<double>(ui->constant.communication_interface.link_rate) * 1e6 / 8,
+                        "{} {}B/s", 1e9, 1.0)));
+#endif
+
             ImGui::EndTable();
         }
     }

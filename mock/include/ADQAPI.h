@@ -11,7 +11,7 @@
 #include <stdexcept>
 #endif
 
-#define ADQAPI_VERSION_MAJOR 1
+#define ADQAPI_VERSION_MAJOR 13
 #define ADQAPI_VERSION_MINOR 0
 
 #define LOG_LEVEL_INFO 3
@@ -237,16 +237,18 @@ struct ADQConstantParametersCommunicationInterface
     /* Convenience constructor for simulated digitizers. */
     ADQConstantParametersCommunicationInterface() = default;
     ADQConstantParametersCommunicationInterface(enum ADQCommunicationInterface type, int link_width,
-                                                int link_generation)
+                                                int link_generation, int link_rate)
         : type(type)
         , link_width(static_cast<int32_t>(link_width))
         , link_generation(static_cast<int32_t>(link_generation))
+        , link_rate(static_cast<int32_t>(link_rate))
     {};
 #endif
 
     enum ADQCommunicationInterface type;
     int32_t link_width;
     int32_t link_generation;
+    int32_t link_rate;
 };
 
 /* A reduced version of the set of constant parameters. */

@@ -30,6 +30,7 @@ TEST_GROUP(DataProcessing)
                                                        ADQ_COMMUNICATION_INTERFACE_PCIE,
                                                        3,
                                                        8,
+                                                       64000,
                                                    },
                                                    {
                                                        {"A", 2, {2500.0}, 65536},

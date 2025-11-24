@@ -17,6 +17,7 @@ private:
     struct udev *m_handle;
     int m_nof_devices;
 
+    int Enumerate(const char *subsystem, const char *sysattr, const char *value);
     void CheckForEvents();
     int CreateHandle();
     void DestroyHandle();

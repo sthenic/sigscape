@@ -33,44 +33,50 @@ std::vector<std::string> HotplugWindows::SplitDeviceList(const std::string &list
     return result;
 }
 
-void HotplugWindows::CheckForEvents()
+size_t HotplugWindows::Enumerate(const char *guid)
 {
     /* We check for events by polling the Windows kernel for devices
          - present on the system; and
-         - matching the setup class GUID for a TSPD digitizer.
-
-       We simply take the difference between the number of devices we got in the
-       last call and the number we get from a new call. This obviously misses
-       the case when a digitizer gets removed and added between polling events
-       but that's so rare that it basically shouldn't happen in practice. */
+         - matching the target setup class GUID. */
 
     const ULONG LIST_FLAGS = CM_GETIDLIST_FILTER_CLASS | CM_GETIDLIST_FILTER_PRESENT;
     ULONG list_size = 0;
 
-    CONFIGRET result = CM_Get_Device_ID_List_SizeA(&list_size, GUID, LIST_FLAGS);
+    CONFIGRET result = CM_Get_Device_ID_List_SizeA(&list_size, guid, LIST_FLAGS);
     if (result != CR_SUCCESS)
     {
         Log::log->error("CM_Get_Device_ID_List_SizeA failed, code {}.", result);
-        return;
+        return 0;
     }
 
     /* Allocate a string of the prescribed size (includes the NULL terminator). */
     auto list = std::string(list_size, '\0');
 
-    result = CM_Get_Device_ID_ListA(GUID, (PZZSTR)list.data(), (ULONG)list.capacity(), LIST_FLAGS);
+    result = CM_Get_Device_ID_ListA(guid, (PZZSTR)list.data(), (ULONG)list.capacity(), LIST_FLAGS);
     if (result != CR_SUCCESS)
     {
         Log::log->error("CM_Get_Device_ID_ListA failed, code {}.", result);
-        return;
+        return 0;
     }
 
-    auto devices = std::move(SplitDeviceList(list));
-    if (devices.size() > m_nof_devices)
+    return SplitDeviceList(list).size();
+}
+
+void HotplugWindows::CheckForEvents()
+{
+    size_t nof_devices = Enumerate(GUID_PCI) + Enumerate(GUID_USB);
+
+    /* We simply take the difference between the number of devices we got in the
+       last call and the number we get from a new call. This obviously misses
+       the case when a digitizer gets removed and added between polling events
+       but that's so rare that it basically shouldn't happen in practice. */
+
+    if (nof_devices > m_nof_devices)
         _EmplaceMessage(HotplugEvent::CONNECT);
-    else if (devices.size() < m_nof_devices)
+    else if (nof_devices < m_nof_devices)
         _EmplaceMessage(HotplugEvent::DISCONNECT);
 
-    m_nof_devices = devices.size();
+    m_nof_devices = nof_devices;
 }
 
 void HotplugWindows::MainLoop()

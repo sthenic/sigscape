@@ -21,20 +21,19 @@ HotplugLinux::~HotplugLinux()
     Stop();
 }
 
-void HotplugLinux::CheckForEvents()
+int HotplugLinux::Enumerate(const char *subsystem, const char *sysattr, const char *value)
 {
     struct udev_enumerate *enumerator = udev_enumerate_new(m_handle);
     try
     {
-        /* Filter the PCI subsystem for devices w/ vendor id 0x1b37. */
         if (enumerator == NULL)
             throw HotplugLinuxException("Failed to create libudev enumerator.");
 
-        if (udev_enumerate_add_match_subsystem(enumerator, "pci") < 0)
-            throw HotplugLinuxException("Failed to add libudev enumerator filter.");
+        if (udev_enumerate_add_match_subsystem(enumerator, subsystem) < 0)
+            throw HotplugLinuxException("Failed to add libudev enumerator subsystem filter.");
 
-        if (udev_enumerate_add_match_sysattr(enumerator, "vendor", "0x1b37") < 0)
-            throw HotplugLinuxException("Failed to add libudev enumerator vendor filter.");
+        if (udev_enumerate_add_match_sysattr(enumerator, sysattr, value) < 0)
+            throw HotplugLinuxException("Failed to add libudev enumerator sysattr filter.");
 
         udev_enumerate_scan_devices(enumerator);
 
@@ -44,20 +43,30 @@ void HotplugLinux::CheckForEvents()
         udev_list_entry_foreach(entry, devices)
             nof_devices++;
 
-        if (nof_devices > m_nof_devices)
-            _EmplaceMessage(HotplugEvent::CONNECT);
-        else if (nof_devices < m_nof_devices)
-            _EmplaceMessage(HotplugEvent::DISCONNECT);
-
-        m_nof_devices = nof_devices;
         udev_enumerate_unref(enumerator);
+        return nof_devices;
     }
     catch (const HotplugLinuxException& e)
     {
         if (enumerator != NULL)
             udev_enumerate_unref(enumerator);
         Log::log->error(e.what());
+        return 0;
     }
+}
+
+void HotplugLinux::CheckForEvents()
+{
+    /* Filter the PCI subsystem for devices with vendor id 0x1b37 and the USB
+       subsystem for devices with vendor id 0x1d73. */
+    int nof_devices = Enumerate("pci", "vendor", "0x1b37") + Enumerate("usb", "idVendor", "1d73");
+
+    if (nof_devices > m_nof_devices)
+        _EmplaceMessage(HotplugEvent::CONNECT);
+    else if (nof_devices < m_nof_devices)
+        _EmplaceMessage(HotplugEvent::DISCONNECT);
+
+    m_nof_devices = nof_devices;
 }
 
 int HotplugLinux::CreateHandle()

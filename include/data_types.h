@@ -241,19 +241,14 @@ struct TimeDomainRecord : public BaseRecord
         , range_min(ValueY(0.0))
         , range_mid(ValueY(0.0))
     {
-        /* The time unit is specified in picoseconds at most. Given that we're
-           using a 32-bit float, we truncate any information beyond that point. */
-        int time_unit_ps = static_cast<int>(raw->header->time_unit * 1e12);
-        double time_unit = static_cast<double>(time_unit_ps) * 1e-12;
-
-        sampling_period.value = static_cast<double>(raw->header->sampling_period) * time_unit;
+        sampling_period.value = static_cast<double>(raw->header->sampling_period) * raw->header->time_unit;
         sampling_frequency.value = std::round(1.0 / sampling_period.value);
 
         double record_start;
         if (convert_horizontal)
         {
             step = sampling_period.value;
-            record_start = static_cast<double>(raw->header->record_start) * time_unit;
+            record_start = static_cast<double>(raw->header->record_start) * raw->header->time_unit;
         }
         else
         {

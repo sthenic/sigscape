@@ -18,6 +18,9 @@ public:
     void SetLimits(float xmin, float xmax, float ymin, float ymax);
 
 private:
+    static constexpr size_t NOF_WAVES = 10;
+    static constexpr int NOF_POINTS = 1000000;
+
     struct Viewport
     {
         int x;
@@ -27,4 +30,6 @@ private:
     } m_viewport{};
     Shader m_shader;
     VertexBuffer m_vertex_buffer;
+    std::vector<std::vector<std::pair<float, float>>> m_waves;
+    size_t m_current_wave = 0;
 };

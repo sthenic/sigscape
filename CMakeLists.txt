@@ -162,7 +162,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     src/screenshot.cpp
     src/log.cpp
     src/record_frame.cpp
-    src/opengl/opengl.cpp
+    src/opengl/gl_line_renderer.cpp
     src/opengl/shader.cpp
     src/opengl/vertex_buffer.cpp
     src/opengl/texture.cpp

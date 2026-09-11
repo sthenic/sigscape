@@ -16,7 +16,7 @@
 #include "marker.h"
 #include "format.h"
 #include "record_frame.h"
-#include "opengl/learning.h"
+#include "opengl/gl_line_renderer.h"
 #if defined(_WIN32)
 #include "hotplug_windows.h"
 #else
@@ -76,6 +76,10 @@ private:
             const std::vector<Marker> &frequency_domain_markers) const;
         std::string GetDefaultFilename();
 
+        /* GPU rendering resources - lazily created on first use */
+        void UpdateGlTimeDomainRenderer();
+        void UpdateGlFrequencyDomainRenderer();
+
         ImVec4 color;
         bool is_selected;
         bool is_muted;
@@ -91,6 +95,10 @@ private:
         RecordFrame frame;
         std::shared_ptr<ProcessedRecord> record; /* FIXME: Remove and replace w/ frame access. */
         std::vector<std::shared_ptr<ProcessedRecord>> memory;
+
+        /* GPU renderers for time and frequency domain data */
+        std::unique_ptr<GlLineRenderer> gl_time_domain;
+        std::unique_ptr<GlLineRenderer> gl_frequency_domain;
     };
 
     /* Representation of the state of the digitizer's sensors in the UI. */
@@ -216,8 +224,6 @@ private:
         bool pyadq_compatible;
     } m_libadq;
     ImGui::FileBrowser m_file_browser;
-
-    Learning m_image{};
 
     void InitializeEmbeddedPython();
 

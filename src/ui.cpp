@@ -57,6 +57,8 @@ Ui::ChannelUiState::ChannelUiState(int &nof_channels_total)
     , frame()
     , record()
     , memory{}
+    , gl_time_domain()
+    , gl_frequency_domain()
 {
     if (nof_channels_total == 0)
         is_selected = true;
@@ -119,6 +121,42 @@ std::string Ui::ChannelUiState::GetDefaultFilename()
     filename.append(fmt::format("_{}.json", NowAsIso8601()));
     std::replace(filename.begin(), filename.end(), ' ', '_');
     return filename;
+}
+
+void Ui::ChannelUiState::UpdateGlTimeDomainRenderer()
+{
+    if (!record || !record->time_domain)
+    {
+        gl_time_domain.reset();
+        return;
+    }
+
+    if (!gl_time_domain)
+    {
+        gl_time_domain = std::make_unique<GlLineRenderer>();
+        gl_time_domain->Initialize();
+    }
+
+    gl_time_domain->SetData(record->time_domain.get());
+    gl_time_domain->SetColor(color);
+}
+
+void Ui::ChannelUiState::UpdateGlFrequencyDomainRenderer()
+{
+    if (!record || !record->frequency_domain)
+    {
+        gl_frequency_domain.reset();
+        return;
+    }
+
+    if (!gl_frequency_domain)
+    {
+        gl_frequency_domain = std::make_unique<GlLineRenderer>();
+        gl_frequency_domain->Initialize();
+    }
+
+    gl_frequency_domain->SetData(record->frequency_domain.get());
+    gl_frequency_domain->SetColor(color);
 }
 
 Ui::SensorUiState::SensorUiState(const std::string &label)
@@ -230,7 +268,7 @@ Ui::Ui()
     , m_frequency_domain_units_per_division()
     , m_sensor_units_per_division{0.0, 0.0, "s", "?"}
     , m_should_fit_to_input_range(false)
-    , m_should_auto_fit_time_domain(false)
+    , m_should_auto_fit_time_domain(true)
     , m_should_auto_fit_frequency_domain(true)
     , m_should_auto_fit_waterfall(true)
     , m_should_save_sensors_to_file(false)
@@ -253,9 +291,6 @@ void Ui::Initialize(GLFWwindow *window, const char *glsl_version)
     ImGui_ImplOpenGL3_Init(glsl_version);
     ImGui::StyleColorsDark();
     ImGui::GetStyle().FrameRounding = 1.0f;
-
-    /* FIXME: Remove */
-    m_image.Initialize();
 
     /* We explicitly bind the `window` to the screenshot call and store _that_
        as a member (instead of the window pointer) to avoid keeping the 'raw'
@@ -565,11 +600,16 @@ void Ui::UpdateRecords()
             std::shared_ptr<ProcessedRecord> record = NULL;
             while (SCAPE_EOK == digitizer.interface->WaitForProcessedRecord(ch, record))
             {
-                digitizer.ui.channels[ch].frame.PushRecord(record);
+                auto &ui = digitizer.ui.channels[ch];
+                ui.frame.PushRecord(record);
                 /* FIXME: Temporary workaround. A better solution is to use an
                           access function instead and replace every use of
                           `.record` with that. */
-                digitizer.ui.channels[ch].record = digitizer.ui.channels[ch].frame.Record();
+                ui.record = ui.frame.Record();
+
+                /* Update GPU renderers with new data */
+                ui.UpdateGlTimeDomainRenderer();
+                ui.UpdateGlFrequencyDomainRenderer();
             }
         }
     }
@@ -2859,6 +2899,8 @@ void Ui::PlotTimeDomainSelected()
                 if (record == ui->record)
                     continue;
 
+                /* FIXME: The frame should be plotted GPU accelerated too but that needs
+                          dedicated GlLineRenderers. */
                 const std::string label = fmt::format("##{}{}", record->label.c_str(), j);
                 ImPlot::PlotLine(label.c_str(), record->time_domain->x.data(),
                                  record->time_domain->y.data(),
@@ -2870,9 +2912,25 @@ void Ui::PlotTimeDomainSelected()
            information about and interact with via the markers and friends.
            Depending on the current 'fill' of the frame, this may be a record
            from the last frame and thus not plotted by the loop above. */
-        ImPlot::PlotLine(ui->record->label.c_str(), ui->record->time_domain->x.data(),
-                         ui->record->time_domain->y.data(),
-                         static_cast<int>(ui->record->time_domain->x.size()));
+        /* Use GPU renderer if available, otherwise fall back to ImPlot */
+        if (ui->gl_time_domain && ui->is_time_domain_visible)
+        {
+            auto CustomRender = [](const ImDrawList *, const ImDrawCmd *dc)
+            {
+                auto renderer = reinterpret_cast<GlLineRenderer *>(dc->UserCallbackData);
+                renderer->Render();
+            };
+            ImPlot::PlotCallback(
+                ui->record->label.c_str(), ui->gl_time_domain->GetBoundsMin(),
+                ui->gl_time_domain->GetBoundsMax(),
+                CustomRender, ui->gl_time_domain.get());
+        }
+        else
+        {
+            ImPlot::PlotLine(ui->record->label.c_str(), ui->record->time_domain->x.data(),
+                             ui->record->time_domain->y.data(),
+                             static_cast<int>(ui->record->time_domain->x.size()));
+        }
 
         ImPlot::PopStyleColor();
 
@@ -3036,22 +3094,25 @@ void Ui::RenderChannelPlot()
         ImPlot::SetupLegend(ImPlotLocation_NorthEast, ImPlotLegendFlags_Sort);
         PlotTimeDomainSelected();
 
+        /* Set viewport and limits for all GPU renderers */
         auto plot_rect = ImPlot::GetCurrentPlot()->PlotRect;
-        m_image.SetViewport(
-            plot_rect.Min.x, ImGui::GetIO().DisplaySize.y - plot_rect.Max.y, plot_rect.GetWidth(),
-            plot_rect.GetHeight());
-
         auto limits = ImPlot::GetPlotLimits();
-        m_image.SetLimits(limits.Min().x, limits.Max().x, limits.Min().y, limits.Max().y);
-
-        auto CustomRender = [](const ImDrawList *, const ImDrawCmd *dc)
+        for (auto &digitizer : m_digitizers)
         {
-            auto image = reinterpret_cast<Learning *>(dc->UserCallbackData);
-            image->Render();
-        };
-
-        ImPlot::PlotCallback(
-            "AA OpenGL", ImPlotPoint{-1, -1}, ImPlotPoint{1, 1}, CustomRender, &m_image);
+            if (!digitizer.ui.is_selected)
+                continue;
+            for (auto &ui : digitizer.ui.channels)
+            {
+                if (ui.gl_time_domain)
+                {
+                    ui.gl_time_domain->SetViewport(
+                        plot_rect.Min.x, ImGui::GetIO().DisplaySize.y - plot_rect.Max.y,
+                        plot_rect.GetWidth(), plot_rect.GetHeight());
+                    ui.gl_time_domain->SetLimits(
+                        limits.Min().x, limits.Max().x, limits.Min().y, limits.Max().y);
+                }
+            }
+        }
 
         RemoveDoubleClickedMarkers(m_time_domain_markers);
         RenderUnitsPerDivision(m_time_domain_units_per_division.Format());
@@ -3313,9 +3374,25 @@ void Ui::PlotFourierTransformSelected()
           m_should_auto_fit_frequency_domain = false;
 
         ImPlot::PushStyleColor(ImPlotCol_Line, ui->color);
-        ImPlot::PlotLine(ui->record->label.c_str(), ui->record->frequency_domain->x.data(),
-                         ui->record->frequency_domain->y.data(),
-                         static_cast<int>(ui->record->frequency_domain->x.size()));
+        /* Use GPU renderer if available, otherwise fall back to ImPlot */
+        if (ui->gl_frequency_domain && ui->is_frequency_domain_visible)
+        {
+            auto CustomRender = [](const ImDrawList *, const ImDrawCmd *dc)
+            {
+                auto renderer = reinterpret_cast<GlLineRenderer *>(dc->UserCallbackData);
+                renderer->Render();
+            };
+            ImPlot::PlotCallback(
+                ui->record->label.c_str(), ui->gl_frequency_domain->GetBoundsMin(),
+                ui->gl_frequency_domain->GetBoundsMax(),
+                CustomRender, ui->gl_frequency_domain.get());
+        }
+        else
+        {
+            ImPlot::PlotLine(ui->record->label.c_str(), ui->record->frequency_domain->x.data(),
+                             ui->record->frequency_domain->y.data(),
+                             static_cast<int>(ui->record->frequency_domain->x.size()));
+        }
         ImPlot::PopStyleColor();
 
         /* Plot any waveforms in memory. */
@@ -3424,6 +3501,27 @@ void Ui::RenderFourierTransformPlot()
     {
         ImPlot::SetupLegend(ImPlotLocation_NorthEast, ImPlotLegendFlags_Sort);
         PlotFourierTransformSelected();
+
+        /* Set viewport and limits for all GPU renderers */
+        auto plot_rect = ImPlot::GetCurrentPlot()->PlotRect;
+        auto limits = ImPlot::GetPlotLimits();
+        for (auto &digitizer : m_digitizers)
+        {
+            if (!digitizer.ui.is_selected)
+                continue;
+            for (auto &ui : digitizer.ui.channels)
+            {
+                if (ui.gl_frequency_domain)
+                {
+                    ui.gl_frequency_domain->SetViewport(
+                        plot_rect.Min.x, ImGui::GetIO().DisplaySize.y - plot_rect.Max.y,
+                        plot_rect.GetWidth(), plot_rect.GetHeight());
+                    ui.gl_frequency_domain->SetLimits(
+                        limits.Min().x, limits.Max().x, limits.Min().y, limits.Max().y);
+                }
+            }
+        }
+
         RemoveDoubleClickedMarkers(m_frequency_domain_markers);
         RenderUnitsPerDivision(m_frequency_domain_units_per_division.Format());
 
